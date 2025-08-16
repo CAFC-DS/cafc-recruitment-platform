@@ -34,6 +34,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.get("/health/snowflake")
+async def test_snowflake_connection():
+    """Test Snowflake connection for debugging"""
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        conn.close()
+        return {"status": "success", "result": result[0]}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
 # Environment-based CORS configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,https://cafc-recruitment-platform.vercel.app").split(",")

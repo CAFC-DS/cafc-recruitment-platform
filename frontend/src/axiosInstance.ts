@@ -14,7 +14,7 @@ const getApiUrl = () => {
 
 const axiosInstance = axios.create({
   baseURL: getApiUrl(),
-  timeout: 10000, // 10 second timeout
+  timeout: 60000, // 60 second timeout for Railway cold starts
 });
 
 // Add a request interceptor
