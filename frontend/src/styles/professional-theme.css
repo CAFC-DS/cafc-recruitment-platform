@@ -1,0 +1,303 @@
+/* Professional Theme Override CSS */
+/* Based on minimalistic design principles with strategic color usage */
+
+:root {
+  /* Override Bootstrap variables with professional colors */
+  --bs-primary: #b91c1c;
+  --bs-primary-rgb: 185, 28, 28;
+  --bs-secondary: #6b7280;
+  --bs-secondary-rgb: 107, 114, 128;
+  --bs-light: #f8f9fa;
+  --bs-light-rgb: 248, 249, 250;
+  --bs-dark: #4b5563;
+  --bs-dark-rgb: 75, 85, 99;
+  
+  /* Success, Warning, Danger - Keep vivid for performance indicators */
+  --bs-success: #16a34a;
+  --bs-warning: #d97706;
+  --bs-danger: #dc2626;
+  
+  /* Neutral colors for professional look */
+  --bs-gray-100: #f8f9fa;
+  --bs-gray-200: #e5e7eb;
+  --bs-gray-300: #d1d5db;
+  --bs-gray-600: #6b7280;
+  --bs-gray-800: #374151;
+  --bs-gray-900: #111827;
+}
+
+/* Professional body styling */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--color-background, #f8f9fa);
+  color: var(--color-text, #374151);
+  line-height: 1.5;
+}
+
+/* Card styling - minimal shadows and clean borders */
+.card {
+  background-color: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-header {
+  background: #212529;
+  border-bottom: 2px solid var(--color-primary, #b91c1c);
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Special styling for important headers */
+.card-header.bg-light {
+  background: #212529 !important;
+  color: #ffffff !important;
+}
+
+/* Table styling - professional and clean */
+.table {
+  background-color: var(--color-surface, #ffffff);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.table th {
+  background-color: var(--color-background, #f8f9fa);
+  border-color: var(--color-border, #e5e7eb);
+  font-weight: 600;
+  color: var(--color-text, #374151);
+  padding: 0.75rem;
+}
+
+.table td {
+  border-color: var(--color-border, #e5e7eb);
+  color: var(--color-text, #374151);
+  padding: 0.75rem;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td {
+  background-color: rgba(248, 249, 250, 0.5);
+}
+
+/* Button styling - minimal and professional */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-width: 1px;
+}
+
+.btn-primary {
+  background-color: var(--color-primary, #b91c1c);
+  border-color: var(--color-primary, #b91c1c);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-dark, #991b1b);
+  border-color: var(--color-primary-dark, #991b1b);
+}
+
+.btn-outline-primary {
+  color: var(--color-primary, #b91c1c);
+  border-color: var(--color-primary, #b91c1c);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--color-primary, #b91c1c);
+  border-color: var(--color-primary, #b91c1c);
+}
+
+/* Remove excessive colors from secondary buttons */
+.btn-secondary, .btn-outline-secondary {
+  background-color: transparent;
+  border-color: var(--color-border, #e5e7eb);
+  color: var(--color-text, #374151);
+}
+
+.btn-secondary:hover, .btn-outline-secondary:hover {
+  background-color: var(--color-background, #f8f9fa);
+  border-color: var(--color-border, #e5e7eb);
+  color: var(--color-text, #374151);
+}
+
+/* Badge styling - only keep vivid colors for performance indicators */
+.badge {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Keep vivid colors only for performance badges */
+.badge.bg-success { background-color: var(--bs-success) !important; }
+.badge.bg-warning { background-color: var(--bs-warning) !important; }
+/* Commented out to allow custom flag colors */
+/* .badge.bg-danger { background-color: var(--bs-danger) !important; } */
+
+/* Special performance badge colors */
+.badge.bg-gold { 
+  background: linear-gradient(135deg, #FFD700, #FFA500) !important; 
+  color: #1a1a1a !important;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+.badge.bg-silver { 
+  background: linear-gradient(135deg, #C0C0C0, #A8A8A8) !important; 
+  color: #1a1a1a !important;
+  font-weight: 600;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+}
+
+/* Make other badges neutral - but allow custom overrides */
+.badge.bg-light {
+  background-color: var(--color-border, #e5e7eb) !important;
+  color: var(--color-text, #374151) !important;
+}
+/* Commented out to allow custom clips colors */
+/* .badge.bg-secondary {
+  background-color: var(--color-border, #e5e7eb) !important;
+  color: var(--color-text, #374151) !important;
+} */
+
+/* Ensure dark badges have white text - but allow custom overrides */
+.badge.bg-dark:not(.performance-badge):not([style*="background"]) {
+  background-color: #212529 !important;
+  color: #ffffff !important;
+}
+
+/* Form styling */
+.form-control, .form-select {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background-color: var(--color-surface, #ffffff);
+  color: var(--color-text, #374151);
+  transition: border-color 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--color-primary, #b91c1c);
+  box-shadow: 0 0 0 0.2rem rgba(185, 28, 28, 0.1);
+}
+
+/* Modal styling with red accent */
+.modal-content {
+  background-color: var(--color-surface, #ffffff);
+  border: 2px solid var(--color-primary, #b91c1c);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.1);
+}
+
+.modal-header {
+  border-bottom: 2px solid var(--color-primary, #b91c1c);
+  background: #212529;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.modal-title {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Alert styling - minimal */
+.alert {
+  border: 1px solid;
+  border-radius: 6px;
+}
+
+.alert-success {
+  background-color: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.2);
+  color: #15803d;
+}
+
+.alert-warning {
+  background-color: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.2);
+  color: #d97706;
+}
+
+.alert-danger {
+  background-color: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #dc2626;
+}
+
+/* Navigation styling */
+.navbar {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.nav-link {
+  color: var(--color-header-text, #ffffff) !important;
+  transition: opacity 0.2s ease;
+}
+
+.nav-link:hover {
+  opacity: 0.8;
+}
+
+/* Container spacing */
+.container, .container-fluid {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+/* Remove unnecessary colorful elements */
+.text-primary:not(.performance-text) {
+  color: var(--color-text, #374151) !important;
+}
+
+.text-secondary:not(.performance-text) {
+  color: var(--color-text-muted, #6b7280) !important;
+}
+
+/* Dark mode specific styles */
+[data-bs-theme="dark"] {
+  --color-background: #111827;
+  --color-surface: #1f2937;
+  --color-border: #374151;
+  --color-text: #f9fafb;
+  --color-text-muted: #d1d5db;
+  --color-header-bg: #111827;
+}
+
+[data-bs-theme="dark"] .table th {
+  background-color: #1f2937;
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > td {
+  background-color: rgba(31, 41, 55, 0.5);
+}
+
+/* Spinner/Loading animations */
+.spinner-border {
+  color: var(--color-primary, #b91c1c);
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background, #f8f9fa);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border, #e5e7eb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted, #6b7280);
+}

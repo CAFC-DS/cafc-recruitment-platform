@@ -1,0 +1,56 @@
+# Environment variables - NEVER commit these!
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs
+*.log
+backend_errors.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Private keys and certificates - SECURITY!
+*.pem
+*.key
+*.p8
+private_key.txt
+rsa_key.p8
+
+# Snowflake private key files
+*private_key*
+*rsa_key*
