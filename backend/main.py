@@ -73,14 +73,27 @@ _cache_expiry = {}
 
 @lru_cache(maxsize=1)
 def get_private_key():
-    """Cache the private key to avoid repeated file reads"""
+    """Load private key from environment variable (production) or file (development)"""
     try:
-        with open(SNOWFLAKE_PRIVATE_KEY_PATH, "rb") as key:
+        # In production, use environment variable
+        if ENVIRONMENT == "production":
+            private_key_content = os.getenv("SNOWFLAKE_PRIVATE_KEY")
+            if not private_key_content:
+                raise Exception("SNOWFLAKE_PRIVATE_KEY environment variable not set")
+            
             p_key = serialization.load_pem_private_key(
-                key.read(),
+                private_key_content.encode('utf-8'),
                 password=None,
                 backend=default_backend()
             )
+        else:
+            # In development, use file
+            with open(SNOWFLAKE_PRIVATE_KEY_PATH, "rb") as key:
+                p_key = serialization.load_pem_private_key(
+                    key.read(),
+                    password=None,
+                    backend=default_backend()
+                )
         
         return p_key.private_bytes(
             encoding=serialization.Encoding.DER,
