@@ -2,13 +2,14 @@ import axios from 'axios';
 
 // Environment-based API URL configuration
 const getApiUrl = () => {
-  // In production, use the environment variable
-  if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
+  // Check if we're in production (Vercel sets NODE_ENV=production)
+  if (process.env.NODE_ENV === 'production') {
+    // Force production URL if env var is not set
+    return process.env.REACT_APP_API_URL || 'https://cafc-recruitment-platform-production.up.railway.app';
   }
   
   // In development, use localhost
-  return 'http://localhost:8000';
+  return process.env.REACT_APP_API_URL || 'http://localhost:8000';
 };
 
 const axiosInstance = axios.create({
