@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Form, Button, Badge, InputGroup, Table, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
@@ -18,55 +18,80 @@ interface Player {
   recruitment_status: string;
 }
 
+interface PaginationInfo {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  limit: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
 const PlayersPage: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    current_page: 1,
+    total_pages: 1,
+    total_count: 0,
+    limit: 20,
+    has_next: false,
+    has_prev: false
+  });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [positionFilter, setPositionFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const positions = ["GK", "RB", "RWB", "RCB", "LCB", "LCB(3)", "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW", "Target Man CF", "In Behind CF"];
   
-  // Pipeline functionality removed - will be added later
-  const getStatusBadge = (status: string) => {
+  // Status badge - simplified for now
+  const getStatusBadge = () => {
     return <Badge bg="secondary">🔍 Scouted</Badge>;
   };
-  
-  const pipelineStatuses = []; // Placeholder for now
 
-  useEffect(() => {
-    if (token) {
-      fetchPlayers();
-    }
-  }, [token]);
-
-  const fetchPlayers = async () => {
+  const fetchPlayers = useCallback(async (page = 1) => {
     try {
-      const response = await axiosInstance.get('/players/all');
-      setPlayers(response.data);
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20'
+      });
+      
+      if (searchTerm) params.append('search', searchTerm);
+      if (positionFilter) params.append('position', positionFilter);
+      if (teamFilter) params.append('team', teamFilter);
+      
+      const response = await axiosInstance.get(`/players/all?${params}`);
+      setPlayers(response.data.players);
+      setPagination(response.data.pagination);
+      setCurrentPage(page);
     } catch (error) {
       console.error('Error fetching players:', error);
     } finally {
       setLoading(false);
     }
+  }, [searchTerm, positionFilter, teamFilter]);
+
+  useEffect(() => {
+    if (token) {
+      fetchPlayers(1);
+    }
+  }, [token, fetchPlayers]);
+
+  const handlePageChange = (page: number) => {
+    fetchPlayers(page);
   };
 
-  const filteredPlayers = players.filter(player => {
-    const matchesSearch = player.player_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         player.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         player.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         player.squad_name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesPosition = !positionFilter || player.position === positionFilter;
-    const matchesTeam = !teamFilter || player.squad_name.toLowerCase().includes(teamFilter.toLowerCase());
-    const matchesStatus = true; // No status filtering for now
+  const handleSearch = () => {
+    fetchPlayers(1);
+  };
 
-    return matchesSearch && matchesPosition && matchesTeam && matchesStatus;
-  });
+  // Server-side filtering eliminates need for client-side filtering
+  const displayPlayers = players;
 
   const uniqueTeams = players.reduce((teams: string[], player) => {
     if (!teams.includes(player.squad_name)) {
@@ -90,7 +115,7 @@ const PlayersPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>👥 Players Database</h2>
         <div className="d-flex align-items-center gap-3">
-          <Badge bg="info">{filteredPlayers.length} players</Badge>
+          <Badge bg="info">{pagination.total_count} players (Page {pagination.current_page} of {pagination.total_pages})</Badge>
           <div className="btn-group" role="group">
             <Button
               variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
@@ -126,7 +151,11 @@ const PlayersPage: React.FC = () => {
                     placeholder="Name, team..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   />
+                  <Button variant="outline-secondary" onClick={handleSearch}>
+                    🔍
+                  </Button>
                 </InputGroup>
               </Form.Group>
             </Col>
@@ -169,7 +198,7 @@ const PlayersPage: React.FC = () => {
                   setSearchTerm('');
                   setPositionFilter('');
                   setTeamFilter('');
-                  setStatusFilter('');
+                  fetchPlayers(1);
                 }}
               >
                 🔄
@@ -180,7 +209,7 @@ const PlayersPage: React.FC = () => {
       </Card>
 
       {/* Players List */}
-      {filteredPlayers.length === 0 ? (
+      {displayPlayers.length === 0 ? (
         <Card className="text-center p-4">
           <Card.Body>
             <h5>No Players Found</h5>
@@ -189,7 +218,7 @@ const PlayersPage: React.FC = () => {
         </Card>
       ) : viewMode === 'cards' ? (
         <Row>
-          {filteredPlayers.map((player) => (
+          {displayPlayers.map((player) => (
             <Col key={player.player_id} lg={6} xl={4} className="mb-3">
               <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
                 <Card.Header className="d-flex justify-content-between align-items-start border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
@@ -264,7 +293,7 @@ const PlayersPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPlayers.map((player) => (
+              {displayPlayers.map((player) => (
                 <tr key={player.player_id} className="align-middle">
                   <td>
                     <div>
@@ -309,6 +338,37 @@ const PlayersPage: React.FC = () => {
             </tbody>
           </Table>
         </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.total_pages > 1 && (
+        <Row className="mt-4">
+          <Col md={4}>
+            <div className="d-flex align-items-center">
+              <Button 
+                variant="outline-secondary" 
+                size="sm" 
+                onClick={() => handlePageChange(currentPage - 1)} 
+                disabled={!pagination.has_prev || loading}
+                className="me-2"
+              >
+                ‹
+              </Button>
+              <small className="text-muted mx-2">
+                Page {currentPage} of {pagination.total_pages}
+              </small>
+              <Button 
+                variant="outline-secondary" 
+                size="sm" 
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={!pagination.has_next || loading}
+                className="ms-2"
+              >
+                ›
+              </Button>
+            </div>
+          </Col>
+        </Row>
       )}
 
       <style>{`

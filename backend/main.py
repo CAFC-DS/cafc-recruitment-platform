@@ -1290,11 +1290,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
             }
             player_list.append(player_data)
             
-        return {
-            "players": player_list,
-            "has_cafc_system": has_cafc_id,
-            "note": "Use cafc_player_id for new operations, player_id for backwards compatibility"
-        }
+        return player_list
         
     except Exception as e:
         logging.exception(e)
@@ -2155,14 +2151,53 @@ async def add_player_note(player_id: int, note: PlayerNote, current_user: User =
 # Pipeline status endpoint removed - will be added later when pipeline table exists
 
 @app.get("/players/all")
-async def get_all_players(current_user: User = Depends(get_current_user)):
+async def get_all_players(
+    page: int = 1,
+    limit: int = 20,
+    search: str = None,
+    position: str = None,
+    team: str = None,
+    current_user: User = Depends(get_current_user)
+):
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         
-        # Get all players with report counts (no pipeline for now)
-        sql = """
+        # Build WHERE conditions
+        where_conditions = ["p.PLAYERID IS NOT NULL"]
+        params = []
+        
+        if search:
+            where_conditions.append("(UPPER(p.PLAYERNAME) LIKE UPPER(?) OR UPPER(p.FIRSTNAME) LIKE UPPER(?) OR UPPER(p.LASTNAME) LIKE UPPER(?))")
+            search_param = f"%{search}%"
+            params.extend([search_param, search_param, search_param])
+            
+        if position:
+            where_conditions.append("UPPER(p.POSITION) = UPPER(?)")
+            params.append(position)
+            
+        if team:
+            where_conditions.append("UPPER(p.SQUADNAME) LIKE UPPER(?)")
+            params.append(f"%{team}%")
+        
+        where_clause = " AND ".join(where_conditions)
+        
+        # Get total count
+        count_sql = f"""
+            SELECT COUNT(DISTINCT p.PLAYERID)
+            FROM players p
+            WHERE {where_clause}
+        """
+        cursor.execute(count_sql, params)
+        total_count = cursor.fetchone()[0]
+        
+        # Calculate pagination
+        offset = (page - 1) * limit
+        total_pages = (total_count + limit - 1) // limit
+        
+        # Get paginated players with report counts
+        sql = f"""
             SELECT 
                 p.PLAYERID,
                 p.PLAYERNAME,
@@ -2177,12 +2212,13 @@ async def get_all_players(current_user: User = Depends(get_current_user)):
             FROM players p
             LEFT JOIN scout_reports sr ON p.PLAYERID = sr.PLAYER_ID
             LEFT JOIN player_information pi ON p.PLAYERID = pi.PLAYER_ID
-            WHERE p.PLAYERID IS NOT NULL
+            WHERE {where_clause}
             GROUP BY p.PLAYERID, p.PLAYERNAME, p.FIRSTNAME, p.LASTNAME, p.BIRTHDATE, p.SQUADNAME, p.POSITION
             ORDER BY p.PLAYERNAME
+            LIMIT ? OFFSET ?
         """
         
-        cursor.execute(sql)
+        cursor.execute(sql, params + [limit, offset])
         players = cursor.fetchall()
         
         player_list = []
@@ -2208,7 +2244,17 @@ async def get_all_players(current_user: User = Depends(get_current_user)):
                 "recruitment_status": "scouted"  # Default status for now
             })
         
-        return player_list
+        return {
+            "players": player_list,
+            "pagination": {
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_count": total_count,
+                "limit": limit,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
+        }
         
     except Exception as e:
         logging.exception(e)
