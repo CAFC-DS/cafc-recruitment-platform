@@ -136,7 +136,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
   };
 
   const handleMatchSelectChange = (selectedOption: any) => {
-    setFormData({ ...formData, selectedMatch: selectedOption ? selectedOption.value : '' });
+    setFormData({ ...formData, selectedMatch: selectedOption ? selectedOption.value.toString() : '' });
   };
 
   const handleConfirmSubmit = async () => {

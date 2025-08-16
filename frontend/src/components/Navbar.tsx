@@ -24,7 +24,7 @@ const AppNavbar: React.FC = () => {
       <Container>
         <Navbar.Brand as={Link} to="/">
           <img
-            src="/logo.png"
+            src={`${process.env.PUBLIC_URL}/logo.png`}
             width="30"
             height="30"
             className="d-inline-block align-top"
