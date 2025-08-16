@@ -36,7 +36,7 @@ app = FastAPI(
 
 # Environment-based CORS configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,https://cafc-recruitment-platform.vercel.app/").split(",")
 
 if ENVIRONMENT == "production":
     # Production CORS - more restrictive
