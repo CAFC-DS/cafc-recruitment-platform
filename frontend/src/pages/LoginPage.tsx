@@ -23,7 +23,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       const response = await axiosInstance.post(
-        'http://localhost:8000/token',
+        '/token',
         new URLSearchParams({
           username: username,
           password: password,

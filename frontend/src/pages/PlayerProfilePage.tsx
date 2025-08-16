@@ -143,7 +143,7 @@ const PlayerProfilePage: React.FC = () => {
     
     try {
       // Open the PDF export endpoint in a new tab
-      const exportUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/players/${profile.player_id}/export-pdf`;
+      const exportUrl = `${axiosInstance.defaults.baseURL}/players/${profile.player_id}/export-pdf`;
       window.open(exportUrl, '_blank');
     } catch (error) {
       console.error('Error exporting PDF:', error);
