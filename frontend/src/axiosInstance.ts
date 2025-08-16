@@ -51,5 +51,6 @@ axiosInstance.interceptors.response.use(
 
 // Log the current API URL for debugging
 console.log('API URL:', getApiUrl());
+console.log('Environment:', process.env.NODE_ENV);
 
 export default axiosInstance;
