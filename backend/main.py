@@ -37,15 +37,25 @@ app = FastAPI(
 @app.get("/health/snowflake")
 async def test_snowflake_connection():
     """Test Snowflake connection for debugging"""
+    import traceback
     try:
+        print("Testing Snowflake connection...")
         conn = get_snowflake_connection()
+        print("Connection established")
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         result = cursor.fetchone()
         conn.close()
+        print("Connection test successful")
         return {"status": "success", "result": result[0]}
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        error_details = {
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "traceback": traceback.format_exc()
+        }
+        print(f"Snowflake connection failed: {error_details}")
+        return {"status": "error", "error": error_details}
 
 # Environment-based CORS configuration
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
