@@ -152,19 +152,26 @@ def get_snowflake_connection():
     try:
         pkb = get_private_key()
         
-        conn = snowflake.connector.connect(
-            user=SNOWFLAKE_USERNAME,
-            account=SNOWFLAKE_ACCOUNT,
-            warehouse=SNOWFLAKE_WAREHOUSE,
-            database=SNOWFLAKE_DATABASE,
-            schema=SNOWFLAKE_SCHEMA,
-            private_key=pkb,
+        # SSL configuration for Railway deployment
+        connect_params = {
+            'user': SNOWFLAKE_USERNAME,
+            'account': SNOWFLAKE_ACCOUNT,
+            'warehouse': SNOWFLAKE_WAREHOUSE,
+            'database': SNOWFLAKE_DATABASE,
+            'schema': SNOWFLAKE_SCHEMA,
+            'private_key': pkb,
             # Performance optimizations
-            client_session_keep_alive=True,
-            client_session_keep_alive_heartbeat_frequency=3600,  # 1 hour
-            network_timeout=60,
-            query_timeout=300  # 5 minutes
-        )
+            'client_session_keep_alive': True,
+            'client_session_keep_alive_heartbeat_frequency': 3600,  # 1 hour
+            'network_timeout': 60,
+            'query_timeout': 300  # 5 minutes
+        }
+        
+        # Disable SSL verification in Railway for certificate issues
+        if ENVIRONMENT == "production":
+            connect_params['insecure_mode'] = True
+            
+        conn = snowflake.connector.connect(**connect_params)
         return conn
     except Exception as e:
         logging.exception(e)
