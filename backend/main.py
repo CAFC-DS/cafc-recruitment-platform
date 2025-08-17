@@ -2169,16 +2169,16 @@ async def get_all_players(
         params = []
         
         if search:
-            where_conditions.append("(UPPER(p.PLAYERNAME) LIKE UPPER(?) OR UPPER(p.FIRSTNAME) LIKE UPPER(?) OR UPPER(p.LASTNAME) LIKE UPPER(?))")
+            where_conditions.append("(UPPER(p.PLAYERNAME) LIKE UPPER(%s) OR UPPER(p.FIRSTNAME) LIKE UPPER(%s) OR UPPER(p.LASTNAME) LIKE UPPER(%s))")
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param])
             
         if position:
-            where_conditions.append("UPPER(p.POSITION) = UPPER(?)")
+            where_conditions.append("UPPER(p.POSITION) = UPPER(%s)")
             params.append(position)
             
         if team:
-            where_conditions.append("UPPER(p.SQUADNAME) LIKE UPPER(?)")
+            where_conditions.append("UPPER(p.SQUADNAME) LIKE UPPER(%s)")
             params.append(f"%{team}%")
         
         where_clause = " AND ".join(where_conditions)
@@ -2215,7 +2215,7 @@ async def get_all_players(
             WHERE {where_clause}
             GROUP BY p.PLAYERID, p.PLAYERNAME, p.FIRSTNAME, p.LASTNAME, p.BIRTHDATE, p.SQUADNAME, p.POSITION
             ORDER BY p.PLAYERNAME
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         """
         
         cursor.execute(sql, params + [limit, offset])
