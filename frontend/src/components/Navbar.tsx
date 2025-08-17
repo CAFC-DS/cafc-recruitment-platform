@@ -10,7 +10,7 @@ import logo from '../assets/logo.png';
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme } = useTheme();
-  const { isAdmin } = useCurrentUser();
+  const { isAdmin, canAccessPlayers } = useCurrentUser();
 
   return (
     <Navbar 
@@ -42,7 +42,9 @@ const AppNavbar: React.FC = () => {
                 <Nav.Link as={Link} to="/">Home</Nav.Link>
                 <Nav.Link as={Link} to="/scouting">⚽ Scouting</Nav.Link>
                 <Nav.Link as={Link} to="/intel">🕵️ Intel</Nav.Link>
-                <Nav.Link as={Link} to="/players">👥 Players</Nav.Link>
+                {canAccessPlayers && (
+                  <Nav.Link as={Link} to="/players">👥 Players</Nav.Link>
+                )}
                 {isAdmin && (
                   <Nav.Link as={Link} to="/admin">🔧 Admin</Nav.Link>
                 )}

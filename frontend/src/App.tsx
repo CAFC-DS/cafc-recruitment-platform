@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
 import PlayersPage from './pages/PlayersPage';
 import AdminPage from './pages/AdminPage';
+import { useCurrentUser } from './hooks/useCurrentUser';
 
 interface AuthContextType {
   token: string | null;
@@ -119,6 +120,23 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   return token ? children : null; // Render children only if authenticated
 };
 
+const AdminManagerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessPlayers, loading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && !canAccessPlayers) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessPlayers, loading, navigate, location]);
+
+  return token && canAccessPlayers ? children : null;
+};
+
 // New wrapper component for LoginPage
 const LoginPageWrapper: React.FC = () => {
   const { login } = useAuth();
@@ -168,9 +186,9 @@ function App() {
             <Route
               path="/players"
               element={
-                <PrivateRoute>
+                <AdminManagerRoute>
                   <PlayersPage />
-                </PrivateRoute>
+                </AdminManagerRoute>
               }
             />
             <Route

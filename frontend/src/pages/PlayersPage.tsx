@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Form, Button, Badge, InputGroup, Table, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Badge, InputGroup, Table, Spinner, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 interface Player {
   player_id: number;
@@ -29,6 +30,7 @@ interface PaginationInfo {
 
 const PlayersPage: React.FC = () => {
   const { token } = useAuth();
+  const { user, loading: userLoading, canAccessPlayers } = useCurrentUser();
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -100,11 +102,28 @@ const PlayersPage: React.FC = () => {
     return teams;
   }, []).sort();
 
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <Container className="mt-4 text-center">
         <Spinner animation="border" />
         <p>Loading players...</p>
+      </Container>
+    );
+  }
+
+  if (!canAccessPlayers) {
+    return (
+      <Container className="mt-4">
+        <Alert variant="danger">
+          <Alert.Heading>Access Denied</Alert.Heading>
+          <p>
+            You don't have permission to view the players database. 
+            This page is only accessible to managers and administrators.
+          </p>
+          <Button variant="outline-danger" onClick={() => navigate('/')}>
+            Return to Home
+          </Button>
+        </Alert>
       </Container>
     );
   }

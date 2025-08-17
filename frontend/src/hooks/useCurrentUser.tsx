@@ -38,5 +38,11 @@ export const useCurrentUser = () => {
     fetchCurrentUser();
   }, [token]);
 
-  return { user, loading, isAdmin: user?.role === 'admin' };
+  return { 
+    user, 
+    loading, 
+    isAdmin: user?.role === 'admin',
+    isManager: user?.role === 'manager',
+    canAccessPlayers: user?.role === 'admin' || user?.role === 'manager'
+  };
 };
