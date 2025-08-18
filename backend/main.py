@@ -1453,6 +1453,218 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
             conn.autocommit = True
             conn.close()
 
+@app.put("/scout_reports/{report_id}")
+async def update_scout_report(report_id: int, report: ScoutReport, current_user: User = Depends(get_current_user)):
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        conn.autocommit = False
+        
+        # Check if report exists and user has permission to edit it
+        cursor.execute("SELECT USER_ID FROM scout_reports WHERE ID = %s", (report_id,))
+        existing_report = cursor.fetchone()
+        
+        if not existing_report:
+            raise HTTPException(status_code=404, detail="Scout report not found")
+        
+        # Check if user has permission (either admin or report owner)
+        if current_user.role != 'admin' and existing_report[0] != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to edit this report")
+        
+        report_type = report.reportType
+        
+        # Prepare common fields
+        player_id = report.player_id
+        position = report.playerPosition
+        build = report.playerBuild
+        height = report.playerHeight
+        summary = report.assessmentSummary
+        scouting_type = report.scoutingType
+        performance_score = report.performanceScore
+        strengths = ', '.join(report.strengths) if report.strengths else None
+        weaknesses = ', '.join(report.weaknesses) if report.weaknesses else None
+        
+        # Initialize fields that might be null
+        justification_rationale = None
+        attribute_score = None
+        purpose_of_assessment = None
+        flag_category = None
+        match_id = None
+        formation = None
+        
+        if report_type == 'Player Assessment':
+            justification_rationale = report.justificationRationale
+            purpose_of_assessment = report.purposeOfAssessment
+            match_id = report.selectedMatch
+            formation = report.formation
+            if report.attributeScores:
+                attribute_score = sum(report.attributeScores.values())
+        elif report_type == 'Flag':
+            flag_category = report.flagCategory
+            match_id = report.selectedMatch
+        elif report_type == 'Clips':
+            pass
+        
+        # Update the scout report
+        sql = """
+            UPDATE scout_reports SET 
+                PLAYER_ID = %s, POSITION = %s, BUILD = %s, HEIGHT = %s, STRENGTHS = %s, WEAKNESSES = %s,
+                SUMMARY = %s, JUSTIFICATION = %s, ATTRIBUTE_SCORE = %s, PERFORMANCE_SCORE = %s,
+                PURPOSE = %s, SCOUTING_TYPE = %s, FLAG_CATEGORY = %s, REPORT_TYPE = %s, MATCH_ID = %s, FORMATION = %s
+            WHERE ID = %s
+        """
+        
+        values = (
+            player_id, position, build, height, strengths, weaknesses, summary, 
+            justification_rationale, attribute_score, performance_score, purpose_of_assessment,
+            scouting_type, flag_category, report_type, match_id, formation, report_id
+        )
+        
+        cursor.execute(sql, values)
+        
+        # Delete existing attribute scores and insert new ones
+        cursor.execute("DELETE FROM SCOUT_REPORT_ATTRIBUTE_SCORES WHERE SCOUT_REPORT_ID = %s", (report_id,))
+        
+        if report_type == 'Player Assessment' and report.attributeScores:
+            attribute_data = [
+                (report_id, attribute, score)
+                for attribute, score in report.attributeScores.items()
+            ]
+            cursor.executemany(
+                """INSERT INTO SCOUT_REPORT_ATTRIBUTE_SCORES (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE) VALUES (%s, %s, %s)""",
+                attribute_data
+            )
+        
+        conn.commit()
+        return {"message": "Scout report updated successfully", "report_id": report_id}
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating scout report: {e}")
+    finally:
+        if conn:
+            conn.autocommit = True
+            conn.close()
+
+@app.delete("/scout_reports/{report_id}")
+async def delete_scout_report(report_id: int, current_user: User = Depends(get_current_user)):
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        conn.autocommit = False
+        
+        # Check if report exists and user has permission to delete it
+        cursor.execute("SELECT USER_ID FROM scout_reports WHERE ID = %s", (report_id,))
+        existing_report = cursor.fetchone()
+        
+        if not existing_report:
+            raise HTTPException(status_code=404, detail="Scout report not found")
+        
+        # Check if user has permission (either admin or report owner)
+        if current_user.role != 'admin' and existing_report[0] != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this report")
+        
+        # Delete attribute scores first (foreign key constraint)
+        cursor.execute("DELETE FROM SCOUT_REPORT_ATTRIBUTE_SCORES WHERE SCOUT_REPORT_ID = %s", (report_id,))
+        
+        # Delete the scout report
+        cursor.execute("DELETE FROM scout_reports WHERE ID = %s", (report_id,))
+        
+        conn.commit()
+        return {"message": "Scout report deleted successfully"}
+        
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error deleting scout report: {e}")
+    finally:
+        if conn:
+            conn.autocommit = True
+            conn.close()
+
+@app.get("/scout_reports/details/{report_id}")
+async def get_scout_report(report_id: int, current_user: User = Depends(get_current_user)):
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        
+        # Get the scout report with all details
+        cursor.execute("""
+            SELECT sr.ID, sr.PLAYER_ID, sr.POSITION, sr.BUILD, sr.HEIGHT, sr.STRENGTHS, sr.WEAKNESSES,
+                   sr.SUMMARY, sr.JUSTIFICATION, sr.ATTRIBUTE_SCORE, sr.PERFORMANCE_SCORE, sr.PURPOSE,
+                   sr.SCOUTING_TYPE, sr.FLAG_CATEGORY, sr.REPORT_TYPE, sr.MATCH_ID, sr.FORMATION,
+                   p.PLAYERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, DATE(m.SCHEDULEDDATE) as FIXTURE_DATE
+            FROM scout_reports sr
+            LEFT JOIN players p ON sr.PLAYER_ID = p.PLAYERID
+            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            WHERE sr.ID = %s
+        """, (report_id,))
+        
+        report = cursor.fetchone()
+        if not report:
+            raise HTTPException(status_code=404, detail="Scout report not found")
+        
+        # Get attribute scores
+        cursor.execute("""
+            SELECT ATTRIBUTE_NAME, ATTRIBUTE_SCORE 
+            FROM SCOUT_REPORT_ATTRIBUTE_SCORES 
+            WHERE SCOUT_REPORT_ID = %s
+        """, (report_id,))
+        
+        attribute_scores = dict(cursor.fetchall())
+        
+        # Convert strengths and weaknesses from comma-separated strings to arrays
+        strengths = [s.strip() for s in report[5].split(',')] if report[5] else []
+        weaknesses = [w.strip() for w in report[6].split(',')] if report[6] else []
+        
+        report_data = {
+            "report_id": report[0],
+            "player_id": report[1],
+            "playerPosition": report[2],
+            "playerBuild": report[3],
+            "playerHeight": report[4],
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "assessmentSummary": report[7],
+            "justificationRationale": report[8],
+            "performanceScore": report[10],
+            "purposeOfAssessment": report[11],
+            "scoutingType": report[12],
+            "flagCategory": report[13],
+            "reportType": report[14],
+            "selectedMatch": report[15],
+            "formation": report[16],
+            "attributeScores": attribute_scores,
+            "player_name": report[17],
+            "fixtureDate": str(report[20]) if report[20] else None,
+            "matchLabel": f"{report[18]} vs {report[19]}" if report[18] and report[19] else None
+        }
+        
+        return report_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching scout report: {e}")
+    finally:
+        if conn:
+            conn.close()
+
 @app.get("/tables")
 async def get_tables(current_user: User = Depends(get_current_user)):
     conn = None
@@ -1628,11 +1840,12 @@ async def get_matches_by_date(fixture_date: str, current_user: User = Depends(ge
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         # Use DATE() to compare only the date part of the timestamp for better Snowflake compatibility
-        cursor.execute("""SELECT ID, HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE FROM matches WHERE DATE(SCHEDULEDDATE) = %s""", (fixture_date,))
+        cursor.execute("""SELECT ID, HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE FROM matches WHERE DATE(SCHEDULEDDATE) = %s AND ID IS NOT NULL""", (fixture_date,))
         matches = cursor.fetchall()
         match_list = []
         for row in matches:
-            match_list.append({"match_id": row[0], "home_team": row[1], "away_team": row[2], "fixture_date": str(row[3])}) 
+            if row[0] is not None:  # Additional check for null ID
+                match_list.append({"match_id": row[0], "home_team": row[1], "away_team": row[2], "fixture_date": str(row[3])}) 
         return match_list
     except Exception as e:
         logging.exception(e) # Log the error for debugging
@@ -1798,7 +2011,8 @@ async def get_all_scout_reports(
                 sr.REPORT_TYPE,
                 sr.SCOUTING_TYPE,
                 u.USERNAME,
-                p.PLAYERID
+                p.PLAYERID,
+                sr.FLAG_CATEGORY
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -1839,7 +2053,8 @@ async def get_all_scout_reports(
                 "report_type": row[10],
                 "scouting_type": row[11],
                 "scout_name": row[12] if row[12] else "Unknown Scout",
-                "player_id": row[13]
+                "player_id": row[13],
+                "flag_category": row[14]
             })
         return {
             "total_reports": total_reports,
@@ -1883,7 +2098,8 @@ async def get_single_scout_report(report_id: int, current_user: User = Depends(g
                 sr.FORMATION,
                 sr.ATTRIBUTE_SCORE,
                 u.USERNAME,
-                sr.REPORT_TYPE
+                sr.REPORT_TYPE,
+                sr.FLAG_CATEGORY
             FROM scout_reports sr
             JOIN players p ON sr.PLAYER_ID = p.PLAYERID
             LEFT JOIN matches m ON sr.MATCH_ID = m.ID
@@ -1945,6 +2161,7 @@ async def get_single_scout_report(report_id: int, current_user: User = Depends(g
             "total_attribute_score": report_data[17],
             "scout_name": report_data[18] if report_data[18] else "Unknown Scout",
             "report_type": report_data[19] if report_data[19] else "Player Assessment",
+            "flag_category": report_data[20],
             "individual_attribute_scores": individual_attribute_scores,
             "average_attribute_score": round(average_attribute_score, 2)
         }

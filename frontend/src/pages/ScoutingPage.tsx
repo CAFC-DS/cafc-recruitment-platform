@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Badge, Collapse, Alert } from 'react-bootstrap';
+import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Badge, Collapse, Alert, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import PlayerReportModal from '../components/PlayerReportModal';
@@ -59,6 +59,14 @@ const ScoutingPage: React.FC = () => {
   // Role-based permissions
   const [userRole, setUserRole] = useState('');
   const [currentUsername, setCurrentUsername] = useState('');
+  
+  // Edit and delete functionality
+  const [editMode, setEditMode] = useState(false);
+  const [editReportId, setEditReportId] = useState<number | null>(null);
+  const [editReportData, setEditReportData] = useState<any>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchScoutReports = useCallback(async (page: number, limit: number, recency: string) => {
     setLoading(true);
@@ -101,6 +109,50 @@ const ScoutingPage: React.FC = () => {
       console.error('Error fetching user info:', error);
     }
   }, []);
+
+  const handleEditReport = async (reportId: number) => {
+    try {
+      setLoadingReportId(reportId);
+      const response = await axiosInstance.get(`/scout_reports/details/${reportId}`);
+      setEditReportData(response.data);
+      setEditReportId(reportId);
+      setSelectedPlayer({ player_id: response.data.player_id, player_name: response.data.player_name });
+      setEditMode(true);
+      setShowAssessmentModal(true);
+    } catch (error) {
+      console.error('Error fetching report for edit:', error);
+    } finally {
+      setLoadingReportId(null);
+    }
+  };
+
+  const handleDeleteReport = (reportId: number) => {
+    setDeleteReportId(reportId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteReport = async () => {
+    if (!deleteReportId) return;
+    
+    try {
+      setDeleteLoading(true);
+      await axiosInstance.delete(`/scout_reports/${deleteReportId}`);
+      setShowDeleteModal(false);
+      setDeleteReportId(null);
+      fetchScoutReports(currentPage, itemsPerPage, recencyFilter);
+    } catch (error) {
+      console.error('Error deleting report:', error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleAssessmentModalHide = () => {
+    setShowAssessmentModal(false);
+    setEditMode(false);
+    setEditReportId(null);
+    setEditReportData(null);
+  };
 
   useEffect(() => {
     if (token) {
@@ -179,10 +231,13 @@ const ScoutingPage: React.FC = () => {
     return 'dark'; // For scores 0-23
   };
 
-  const getReportTypeBadge = (reportType: string, scoutingType: string) => {
+  const getReportTypeBadge = (reportType: string, scoutingType: string, flagType?: string) => {
     switch (reportType.toLowerCase()) {
       case 'flag':
-        return <Badge style={{ backgroundColor: '#fbbf24', color: '#000', fontWeight: '500' }}>🚩 Flag</Badge>;
+      case 'flag assessment':
+        // Create a unique class for this flag type
+        const flagClass = `flag-${flagType?.toLowerCase() || 'default'}`;
+        return <Badge className={flagClass} style={{ fontWeight: '500' }}>🚩 Flag</Badge>;
       case 'clips':
         return <Badge bg="secondary">📹 Clips</Badge>;
       case 'player assessment':
@@ -299,10 +354,31 @@ const ScoutingPage: React.FC = () => {
       <AddFixtureModal show={showAddFixtureModal} onHide={() => setShowAddFixtureModal(false)} />
       <ScoutingAssessmentModal
         show={showAssessmentModal}
-        onHide={() => setShowAssessmentModal(false)}
+        onHide={handleAssessmentModalHide}
         selectedPlayer={selectedPlayer}
         onAssessmentSubmitSuccess={() => fetchScoutReports(currentPage, itemsPerPage, recencyFilter)}
+        editMode={editMode}
+        reportId={editReportId}
+        existingReportData={editReportData}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }}>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this scout report? This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmDeleteReport} disabled={deleteLoading}>
+            {deleteLoading ? <Spinner animation="border" size="sm" /> : 'Delete'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h3>Scout Reports</h3>
@@ -469,18 +545,18 @@ const ScoutingPage: React.FC = () => {
                       </td>
                       <td>{report.scout_name}</td>
                       <td>
-                        {getReportTypeBadge(report.report_type, report.scouting_type)}
+                        {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                       </td>
                       <td><Badge bg={getPerformanceScoreVariant(report.performance_score)}>{report.performance_score}</Badge></td>
                       <td><Badge bg={getAttributeScoreVariant(report.attribute_score)}>{report.attribute_score}</Badge></td>
                       <td>
                         <div className="btn-group">
-                          <Button variant="primary" size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report">
+                          <Button variant="outline-dark" size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report">
                             {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                           </Button>
-                          <Button variant="outline-secondary" size="sm" title="Edit">✏️</Button>
-                          <Button variant="outline-danger" size="sm" title="Delete">🗑️</Button>
+                          <Button variant="outline-secondary" size="sm" title="Edit" onClick={() => handleEditReport(report.report_id)}>✏️</Button>
+                          <Button variant="outline-danger" size="sm" title="Delete" onClick={() => handleDeleteReport(report.report_id)}>🗑️</Button>
                         </div>
                       </td>
                     </tr>
@@ -505,7 +581,7 @@ const ScoutingPage: React.FC = () => {
                             {report.player_name}
                           </Button>
                           <div className="mb-2">
-                            {getReportTypeBadge(report.report_type, report.scouting_type)}
+                            {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                             {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                           </div>
                         </div>
@@ -516,24 +592,40 @@ const ScoutingPage: React.FC = () => {
                       </div>
                     </Card.Header>
                     <Card.Body className="pb-2">
-                      <Row className="mb-3">
-                        <Col xs={6}>
-                          <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                            <div className="fw-bold text-muted small mb-1">PERFORMANCE</div>
-                            <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="fs-6">
-                              {report.performance_score}
-                            </Badge>
-                          </div>
-                        </Col>
-                        <Col xs={6}>
-                          <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                            <div className="fw-bold text-muted small mb-1">ATTRIBUTES</div>
-                            <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="fs-6">
-                              {report.attribute_score}
-                            </Badge>
-                          </div>
-                        </Col>
-                      </Row>
+                      {/* Conditional rendering based on report type */}
+                      {report.report_type?.toLowerCase() === 'flag' || report.report_type?.toLowerCase() === 'flag assessment' ? (
+                        /* Flag Report Layout */
+                        <Row className="mb-3">
+                          <Col xs={12}>
+                            <div className="text-center p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
+                              <div className="fw-bold text-muted small mb-2">CATEGORY</div>
+                              <Badge className={`flag-${(report as any).flag_category?.toLowerCase() || 'default'} fs-5`}>
+                                🚩 {(report as any).flag_category || 'Not specified'}
+                              </Badge>
+                            </div>
+                          </Col>
+                        </Row>
+                      ) : (
+                        /* Regular Report Layout */
+                        <Row className="mb-3">
+                          <Col xs={6}>
+                            <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
+                              <div className="fw-bold text-muted small mb-1">PERFORMANCE</div>
+                              <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="fs-6">
+                                {report.performance_score}
+                              </Badge>
+                            </div>
+                          </Col>
+                          <Col xs={6}>
+                            <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
+                              <div className="fw-bold text-muted small mb-1">ATTRIBUTES</div>
+                              <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="fs-6">
+                                {report.attribute_score}
+                              </Badge>
+                            </div>
+                          </Col>
+                        </Row>
+                      )}
                       {report.fixture_date && (
                         <div className="mb-2">
                           <small className="text-muted">
@@ -552,7 +644,7 @@ const ScoutingPage: React.FC = () => {
                     <Card.Footer className="bg-transparent border-0 pt-0">
                       <div className="d-grid gap-2 d-md-flex">
                         <Button 
-                          variant="primary" 
+                          variant="outline-dark" 
                           size="sm" 
                           className="flex-grow-1 rounded-pill" 
                           onClick={() => handleOpenReportModal(report.report_id)} 
@@ -560,8 +652,8 @@ const ScoutingPage: React.FC = () => {
                         >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️ View Report'}
                         </Button>
-                        <Button variant="outline-secondary" size="sm" className="rounded-pill" title="Edit">✏️</Button>
-                        <Button variant="outline-danger" size="sm" className="rounded-pill" title="Delete">🗑️</Button>
+                        <Button variant="outline-secondary" size="sm" className="rounded-pill" title="Edit" onClick={() => handleEditReport(report.report_id)}>✏️</Button>
+                        <Button variant="outline-danger" size="sm" className="rounded-pill" title="Delete" onClick={() => handleDeleteReport(report.report_id)}>🗑️</Button>
                       </div>
                     </Card.Footer>
                   </Card>
@@ -619,6 +711,26 @@ const ScoutingPage: React.FC = () => {
           background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
           color: #000 !important;
           font-weight: 600;
+        }
+        .flag-positive {
+          background-color: #28a745 !important;
+          color: #fff !important;
+          border-color: #28a745 !important;
+        }
+        .flag-neutral {
+          background-color: #6c757d !important;
+          color: #fff !important;
+          border-color: #6c757d !important;
+        }
+        .flag-negative {
+          background-color: #ffc107 !important;
+          color: #000 !important;
+          border-color: #ffc107 !important;
+        }
+        .flag-default {
+          background-color: #fbbf24 !important;
+          color: #000 !important;
+          border-color: #fbbf24 !important;
         }
       `}</style>
     </Container>

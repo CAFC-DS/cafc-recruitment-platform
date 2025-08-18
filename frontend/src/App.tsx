@@ -32,6 +32,31 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     localStorage.removeItem('token');
   };
 
+  // Validate token on app startup
+  useEffect(() => {
+    const validateToken = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        try {
+          // Simple validation check - just try to decode the JWT
+          const payload = JSON.parse(atob(storedToken.split('.')[1]));
+          const currentTime = Date.now() / 1000;
+          
+          // Check if token is expired
+          if (payload.exp && payload.exp < currentTime) {
+            logout();
+          }
+        } catch (error) {
+          // Invalid token format
+          console.warn('Invalid token found, clearing...');
+          logout();
+        }
+      }
+    };
+
+    validateToken();
+  }, []);
+
   // Auto-logout on tab close/browser exit
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -147,12 +172,23 @@ const LoginPageWrapper: React.FC = () => {
 const HomePageWrapper: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      navigate('/login');
-    }
+    const checkAuth = async () => {
+      if (!token) {
+        navigate('/login');
+      }
+      setAuthChecked(true);
+    };
+
+    checkAuth();
   }, [token, navigate]);
+
+  // Don't render anything until auth check is complete
+  if (!authChecked) {
+    return null;
+  }
 
   return token ? <HomePage /> : null;
 };

@@ -325,6 +325,23 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   };
 
   const reportInfo = getReportTypeInfo();
+  
+  // Function to get flag badge CSS class based on flag category
+  const getFlagBadgeClass = (flagCategory: string) => {
+    switch (flagCategory?.toLowerCase()) {
+      case 'positive':
+        return 'flag-positive';
+      case 'neutral':
+        return 'flag-neutral';
+      case 'negative':
+        return 'flag-negative';
+      default:
+        return 'flag-default';
+    }
+  };
+  
+  // Check if this is a flag report for simplified layout
+  const isFlagReport = report.report_type?.toLowerCase() === 'flag' || report.report_type?.toLowerCase() === 'flag assessment';
 
   return (
     <Modal show={show} onHide={onHide} size="xl" centered>
@@ -332,157 +349,58 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         <Modal.Title>{reportInfo.icon} {report.player_name} - {reportInfo.title}</Modal.Title>
       </Modal.Header>
       <Modal.Body ref={reportRef}>
-        {/* Report Overview - Full Width Row */}
-        <Row className="mb-4">
-          <Col md={12}>
-            <Card>
-              <Card.Header>
+        {isFlagReport ? (
+          /* Simplified Flag Report Layout */
+          <>
+            {/* Report Overview */}
+            <Card className="mb-4">
+              <Card.Header className="bg-light">
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">📊 Report Overview</h5>
-                  <div>
-                    <Badge bg={reportInfo.color} className="me-2">{report.report_type || 'Player Assessment'}</Badge>
-                    {report.scouting_type && <Badge bg="secondary">{report.scouting_type}</Badge>}
-                  </div>
+                  <Badge className={getFlagBadgeClass(report.flag_category)}>
+                    🚩 {report.flag_category || 'Flag'}
+                  </Badge>
                 </div>
               </Card.Header>
               <Card.Body>
                 <Row>
                   <Col md={6}>
                     <p><strong>Player:</strong> {report.player_name}</p>
-                    <p><strong>Build:</strong> {report.build}</p>
-                    <p><strong>Height:</strong> {report.height}</p>
+                    <p><strong>Date Submitted:</strong> {new Date(report.created_at).toLocaleDateString()}</p>
+                    <p><strong>Scout:</strong> {report.scout_name}</p>
                   </Col>
                   <Col md={6}>
                     <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
                     <p><strong>Date:</strong> {new Date(report.fixture_date).toLocaleDateString()}</p>
-                    <p><strong>Scout:</strong> {report.scout_name}</p>
+                    <p><strong>Flag Type:</strong> 
+                      <Badge className={`ms-2 ${getFlagBadgeClass(report.flag_category)}`}>
+                        {report.flag_category || 'Not specified'}
+                      </Badge>
+                    </p>
                   </Col>
                 </Row>
               </Card.Body>
             </Card>
-          </Col>
-        </Row>
 
-        {/* Performance Metrics and Strengths/Weaknesses Row */}
-        <Row className="mb-4">
-          <Col md={6}>
-            <Card className="h-100">
-              <Card.Header>
-                <h5 className="mb-0">🏆 Performance Metrics</h5>
+            {/* Summary Notes */}
+            <Card className="mb-4">
+              <Card.Header className="bg-light text-dark">
+                <h6 className="mb-0">📝 Summary Notes</h6>
               </Card.Header>
               <Card.Body>
-                <div className="text-center">
-                  <Row>
-                    <Col xs={4}>
-                      <div className="border-end">
-                        <h4 className="mb-1">
-                          <Badge bg={getPerformanceScoreVariant(report.average_attribute_score)} className="performance-badge">
-                            {report.average_attribute_score}
-                          </Badge>
-                        </h4>
-                        <small className="text-muted">Average Score</small>
-                      </div>
-                    </Col>
-                    <Col xs={4}>
-                      <div className="border-end">
-                        <h4 className="mb-1">
-                          <Badge bg={getAttributeScoreVariant(report.total_attribute_score)} className="performance-badge">
-                            {report.total_attribute_score}
-                          </Badge>
-                        </h4>
-                        <small className="text-muted">Total Score</small>
-                      </div>
-                    </Col>
-                    <Col xs={4}>
-                      <div>
-                        <h4 className="mb-1">
-                          <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="performance-badge">
-                            {report.performance_score}
-                          </Badge>
-                        </h4>
-                        <small className="text-muted">Performance</small>
-                      </div>
-                    </Col>
-                  </Row>
+                <div className="border-start border-secondary border-4 ps-3">
+                  <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                    {report.summary || 'No summary provided'}
+                  </p>
                 </div>
               </Card.Body>
             </Card>
-          </Col>
-          <Col md={6}>
-            {/* Strengths & Weaknesses */}
-            <Card className="h-100">
-              <Card.Header>
-                <h6 className="mb-0">💪 Strengths & Areas for Improvement</h6>
-              </Card.Header>
-              <Card.Body>
-                <div className="mb-3">
-                  <strong className="text-success">✅ Strengths:</strong>
-                  <div className="mt-2">
-                    {report.strengths && report.strengths.length > 0 ? (
-                      report.strengths.map((strength: string, index: number) => (
-                        <Badge key={index} bg="success" className="me-1 mb-1">
-                          {strength}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted">No strengths specified</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <strong className="text-warning">⚠️ Areas for Improvement:</strong>
-                  <div className="mt-2">
-                    {report.weaknesses && report.weaknesses.length > 0 ? (
-                      report.weaknesses.map((weakness: string, index: number) => (
-                        <Badge key={index} bg="warning" className="me-1 mb-1">
-                          {weakness}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted">No weaknesses specified</span>
-                    )}
-                  </div>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
 
-        {/* Attribute Analysis and Scout Summary/Justification Row */}
-        <Row>
-          <Col md={6}>
-            {/* Attribute Analysis - Full Column */}
-            <Card className="h-100">
-              <Card.Header>
-                <h6 className="mb-0">📈 Attribute Analysis</h6>
-              </Card.Header>
-              <Card.Body style={{ height: '500px', padding: '25px' }}>
-                <PolarArea data={polarAreaChartData} options={polarAreaChartOptions} />
-              </Card.Body>
-            </Card>
-          </Col>
-
-          <Col md={6}>
-            {/* Scout Summary and Justification Combined */}
-            <div className="d-flex flex-column h-100">
-              {/* Summary */}
-              <Card className="mb-3 flex-fill">
-                <Card.Header>
-                  <h6 className="mb-0">📝 Scout Summary</h6>
-                </Card.Header>
-                <Card.Body>
-                  <div className="border-start border-secondary border-4 ps-3">
-                    <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
-                      {report.summary}
-                    </p>
-                  </div>
-                </Card.Body>
-              </Card>
-
-              {/* Justification */}
-              <Card className="flex-fill">
-                <Card.Header>
-                  <h6 className="mb-0">💭 Justification & Rationale</h6>
+            {/* Justification if available */}
+            {report.justification && (
+              <Card className="mb-4">
+                <Card.Header className="bg-light text-dark">
+                  <h6 className="mb-0">💭 Additional Details</h6>
                 </Card.Header>
                 <Card.Body>
                   <div className="border-start border-secondary border-4 ps-3">
@@ -492,15 +410,184 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                   </div>
                 </Card.Body>
               </Card>
-            </div>
-          </Col>
-        </Row>
+            )}
+          </>
+        ) : (
+          /* Full Player Assessment Report Layout */
+          <>
+            {/* Report Overview - Full Width Row */}
+            <Row className="mb-4">
+              <Col md={12}>
+                <Card>
+                  <Card.Header>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <h5 className="mb-0">📊 Report Overview</h5>
+                      <div>
+                        <Badge bg={reportInfo.color} className="me-2">{report.report_type || 'Player Assessment'}</Badge>
+                        {report.scouting_type && <Badge bg="secondary">{report.scouting_type}</Badge>}
+                      </div>
+                    </div>
+                  </Card.Header>
+                  <Card.Body>
+                    <Row>
+                      <Col md={6}>
+                        <p><strong>Player:</strong> {report.player_name}</p>
+                        <p><strong>Build:</strong> {report.build}</p>
+                        <p><strong>Height:</strong> {report.height}</p>
+                      </Col>
+                      <Col md={6}>
+                        <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
+                        <p><strong>Date:</strong> {new Date(report.fixture_date).toLocaleDateString()}</p>
+                        <p><strong>Scout:</strong> {report.scout_name}</p>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Performance Metrics and Strengths/Weaknesses Row */}
+            <Row className="mb-4">
+              <Col md={6}>
+                <Card className="h-100">
+                  <Card.Header>
+                    <h5 className="mb-0">🏆 Performance Metrics</h5>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="text-center">
+                      <Row>
+                        <Col xs={4}>
+                          <div className="border-end">
+                            <h4 className="mb-1">
+                              <Badge bg={getPerformanceScoreVariant(report.average_attribute_score)} className="performance-badge">
+                                {report.average_attribute_score}
+                              </Badge>
+                            </h4>
+                            <small className="text-muted">Average Score</small>
+                          </div>
+                        </Col>
+                        <Col xs={4}>
+                          <div className="border-end">
+                            <h4 className="mb-1">
+                              <Badge bg={getAttributeScoreVariant(report.total_attribute_score)} className="performance-badge">
+                                {report.total_attribute_score}
+                              </Badge>
+                            </h4>
+                            <small className="text-muted">Total Score</small>
+                          </div>
+                        </Col>
+                        <Col xs={4}>
+                          <div>
+                            <h4 className="mb-1">
+                              <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="performance-badge">
+                                {report.performance_score}
+                              </Badge>
+                            </h4>
+                            <small className="text-muted">Performance</small>
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={6}>
+                {/* Strengths & Weaknesses */}
+                <Card className="h-100">
+                  <Card.Header>
+                    <h6 className="mb-0">💪 Strengths & Areas for Improvement</h6>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="mb-3">
+                      <strong className="text-success">✅ Strengths:</strong>
+                      <div className="mt-2">
+                        {report.strengths && report.strengths.length > 0 ? (
+                          report.strengths.map((strength: string, index: number) => (
+                            <Badge key={index} bg="success" className="me-1 mb-1">
+                              {strength}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted">No strengths specified</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <strong className="text-warning">⚠️ Areas for Improvement:</strong>
+                      <div className="mt-2">
+                        {report.weaknesses && report.weaknesses.length > 0 ? (
+                          report.weaknesses.map((weakness: string, index: number) => (
+                            <Badge key={index} bg="warning" className="me-1 mb-1">
+                              {weakness}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-muted">No weaknesses specified</span>
+                        )}
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Attribute Analysis and Scout Summary/Justification Row */}
+            <Row>
+              <Col md={6}>
+                {/* Attribute Analysis - Full Column */}
+                <Card className="h-100">
+                  <Card.Header>
+                    <h6 className="mb-0">📈 Attribute Analysis</h6>
+                  </Card.Header>
+                  <Card.Body style={{ height: '500px', padding: '25px' }}>
+                    <PolarArea data={polarAreaChartData} options={polarAreaChartOptions} />
+                  </Card.Body>
+                </Card>
+              </Col>
+
+              <Col md={6}>
+                {/* Scout Summary and Justification Combined */}
+                <div className="d-flex flex-column h-100">
+                  {/* Summary */}
+                  <Card className="mb-3 flex-fill">
+                    <Card.Header>
+                      <h6 className="mb-0">📝 Scout Summary</h6>
+                    </Card.Header>
+                    <Card.Body>
+                      <div className="border-start border-secondary border-4 ps-3">
+                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                          {report.summary}
+                        </p>
+                      </div>
+                    </Card.Body>
+                  </Card>
+
+                  {/* Justification */}
+                  <Card className="flex-fill">
+                    <Card.Header>
+                      <h6 className="mb-0">💭 Justification & Rationale</h6>
+                    </Card.Header>
+                    <Card.Body>
+                      <div className="border-start border-secondary border-4 ps-3">
+                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                          {report.justification}
+                        </p>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </div>
+              </Col>
+            </Row>
+          </>
+        )}
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="success" onClick={handleExportReport}>
-          Export Report as Image
-        </Button>
-        <Button variant="secondary" onClick={onHide}>
+        {!isFlagReport && (
+          <Button variant="success" onClick={handleExportReport}>
+            Export Report as Image
+          </Button>
+        )}
+        <Button variant="outline-dark" onClick={onHide}>
           Close
         </Button>
       </Modal.Footer>
@@ -508,7 +595,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   );
 };
 
-// Add CSS for white close button and gold/silver badges
+// Add CSS for white close button, gold/silver badges, and flag colors
 const style = document.createElement('style');
 style.textContent = `
   .modal-header-dark .btn-close {
@@ -523,6 +610,26 @@ style.textContent = `
     background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
     color: #000 !important;
     font-weight: 600;
+  }
+  .flag-positive {
+    background-color: #28a745 !important;
+    color: #fff !important;
+    border-color: #28a745 !important;
+  }
+  .flag-neutral {
+    background-color: #6c757d !important;
+    color: #fff !important;
+    border-color: #6c757d !important;
+  }
+  .flag-negative {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+    border-color: #ffc107 !important;
+  }
+  .flag-default {
+    background-color: #fbbf24 !important;
+    color: #000 !important;
+    border-color: #fbbf24 !important;
   }
 `;
 if (!document.head.querySelector('style[data-modal-fix]')) {

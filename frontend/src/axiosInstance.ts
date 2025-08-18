@@ -29,6 +29,16 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Function to clear authentication and redirect
+const clearAuthAndRedirect = () => {
+  localStorage.removeItem('token');
+  
+  // Only redirect if we're not already on the login page
+  if (!window.location.pathname.includes('/login')) {
+    window.location.href = '/login';
+  }
+};
+
 // Add a response interceptor for better error handling
 axiosInstance.interceptors.response.use(
   (response) => response,
@@ -39,16 +49,15 @@ axiosInstance.interceptors.response.use(
       // You could show a global error message here
     }
     
-    // Handle 401 errors (unauthorized) - but only redirect on specific endpoints to avoid logout loops
-    if (error.response?.status === 401) {
+    // Handle authentication errors (401 and 422)
+    if (error.response?.status === 401 || error.response?.status === 422) {
       // Don't auto-logout on scout report submissions or other critical operations
       const url = error.config?.url || '';
-      const isScoutReportSubmission = url.includes('/scout_reports');
+      const isScoutReportSubmission = url.includes('/scout_reports') && (error.config?.method === 'post' || error.config?.method === 'put');
       const isMatchesByDate = url.includes('/matches/date');
       
       if (!isScoutReportSubmission && !isMatchesByDate) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
+        clearAuthAndRedirect();
       }
     }
     

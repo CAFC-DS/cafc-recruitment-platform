@@ -76,9 +76,16 @@ const HomePage: React.FC = () => {
           .slice(0, 5) : [];
       setTopAttributeReports(topReports);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
-      setError('Failed to load dashboard data');
+      
+      // Handle authentication errors specifically
+      if (error.response?.status === 401 || error.response?.status === 422) {
+        setError('Authentication failed. Please log in again.');
+        // Clear token and redirect will be handled by axios interceptor
+      } else {
+        setError('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }

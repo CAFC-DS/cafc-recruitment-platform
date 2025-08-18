@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Row, Col, OverlayTrigger, Tooltip, Spinner, Toast, ToastContainer } from 'react-bootstrap';
 import axiosInstance from '../axiosInstance';
 import Select from 'react-select';
@@ -8,9 +8,12 @@ interface ScoutingAssessmentModalProps {
   onHide: () => void;
   selectedPlayer: any;
   onAssessmentSubmitSuccess: () => void;
+  editMode?: boolean;
+  reportId?: number | null;
+  existingReportData?: any;
 }
 
-const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show, onHide, selectedPlayer, onAssessmentSubmitSuccess }) => {
+const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show, onHide, selectedPlayer, onAssessmentSubmitSuccess, editMode = false, reportId, existingReportData }) => {
   const [assessmentType, setAssessmentType] = useState<'Player Assessment' | 'Flag' | 'Clips' | null>(null);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,6 +42,91 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
   };
 
   const [formData, setFormData] = useState(initialFormData);
+
+  // Clear form when modal is closed or when switching to new assessment
+  useEffect(() => {
+    if (!show) {
+      // Reset everything when modal closes
+      setFormData(initialFormData);
+      setAssessmentType(null);
+      setFixtureDate('');
+      setMatches([]);
+      setStrengths([]);
+      setWeaknesses([]);
+      setPositionAttributes([]);
+      setAttributeScores({});
+    } else if (show && !editMode) {
+      // Clear form when opening for new assessment
+      setFormData(initialFormData);
+      setAssessmentType(null);
+      setFixtureDate('');
+      setMatches([]);
+      setStrengths([]);
+      setWeaknesses([]);
+      setPositionAttributes([]);
+      setAttributeScores({});
+    }
+  }, [show, editMode]);
+
+  // Populate form when in edit mode
+  useEffect(() => {
+    if (editMode && existingReportData) {
+      setAssessmentType(existingReportData.reportType);
+      setFormData({
+        selectedMatch: existingReportData.selectedMatch?.toString() || '',
+        playerPosition: existingReportData.playerPosition || '',
+        formation: existingReportData.formation || '',
+        playerBuild: existingReportData.playerBuild || '',
+        playerHeight: existingReportData.playerHeight || '',
+        scoutingType: existingReportData.scoutingType || 'Live',
+        purposeOfAssessment: existingReportData.purposeOfAssessment || 'Player Assessment',
+        performanceScore: existingReportData.performanceScore || 5,
+        assessmentSummary: existingReportData.assessmentSummary || '',
+        justificationRationale: existingReportData.justificationRationale || '',
+        flagCategory: existingReportData.flagCategory || '',
+      });
+      
+      if (existingReportData.fixtureDate) {
+        const fixtureDate = existingReportData.fixtureDate;
+        setFixtureDate(fixtureDate);
+        
+        // Fetch matches for the fixture date in edit mode
+        const fetchMatchesForEdit = async () => {
+          try {
+            const response = await axiosInstance.get(`/matches/date?fixture_date=${fixtureDate}`);
+            const sortedMatches = response.data.sort((a: any, b: any) => {
+              const matchA = `${a.home_team} vs ${a.away_team}`.toLowerCase();
+              const matchB = `${b.home_team} vs ${b.away_team}`.toLowerCase();
+              return matchA.localeCompare(matchB);
+            });
+            setMatches(sortedMatches);
+          } catch (error) {
+            console.error('Error fetching matches for edit:', error);
+            setMatches([]);
+          }
+        };
+        
+        // Execute the async function
+        fetchMatchesForEdit();
+      }
+      
+      if (existingReportData.strengths) {
+        setStrengths(existingReportData.strengths.map((s: string) => ({ value: s, label: s })));
+      }
+      
+      if (existingReportData.weaknesses) {
+        setWeaknesses(existingReportData.weaknesses.map((w: string) => ({ value: w, label: w })));
+      }
+      
+      if (existingReportData.attributeScores) {
+        setAttributeScores(existingReportData.attributeScores);
+      }
+      
+      if (existingReportData.playerPosition) {
+        setPositionAttributes(Object.keys(existingReportData.attributeScores || {}));
+      }
+    }
+  }, [editMode, existingReportData]);
 
   const isFormValid = () => {
     if (assessmentType === 'Player Assessment') {
@@ -179,10 +267,15 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
         payload.performanceScore = formData.performanceScore;
       }
 
-      await axiosInstance.post('/scout_reports', payload);
+      if (editMode && reportId) {
+        await axiosInstance.put(`/scout_reports/${reportId}`, payload);
+        setToastMessage('Scout report updated successfully!');
+      } else {
+        await axiosInstance.post('/scout_reports', payload);
+        setToastMessage('Scout report submitted successfully!');
+      }
       
       setShowWarningModal(false);
-      setToastMessage('Scout report submitted successfully!');
       setToastVariant('success');
       setShowToast(true);
       onAssessmentSubmitSuccess();
@@ -258,16 +351,20 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
                 <Select
                   isSearchable
                   isDisabled={!fixtureDate || matches.length === 0}
-                  options={matches.map(match => ({
+                  options={matches.filter(match => match.match_id !== null && match.match_id !== undefined).map(match => ({
                     value: match.match_id,
                     label: `${match.home_team} vs ${match.away_team}`
                   }))}
-                  value={matches.find(match => match.match_id.toString() === formData.selectedMatch) 
-                    ? { value: formData.selectedMatch, label: `${matches.find(match => match.match_id.toString() === formData.selectedMatch)?.home_team} vs ${matches.find(match => match.match_id.toString() === formData.selectedMatch)?.away_team}` }
+                  value={formData.selectedMatch && matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch) 
+                    ? { 
+                        value: parseInt(formData.selectedMatch), 
+                        label: `${matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch)?.home_team} vs ${matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch)?.away_team}` 
+                      }
                     : null}
                   onChange={handleMatchSelectChange}
                   placeholder="Select Match"
                   isClearable
+                  key={`match-select-player-${formData.selectedMatch}-${matches.length}`}
                 />
               </Form.Group>
             </Row>
@@ -371,16 +468,20 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
                 <Select
                   isSearchable
                   isDisabled={!fixtureDate || matches.length === 0}
-                  options={matches.map(match => ({
+                  options={matches.filter(match => match.match_id !== null && match.match_id !== undefined).map(match => ({
                     value: match.match_id,
                     label: `${match.home_team} vs ${match.away_team}`
                   }))}
-                  value={matches.find(match => match.match_id.toString() === formData.selectedMatch) 
-                    ? { value: formData.selectedMatch, label: `${matches.find(match => match.match_id.toString() === formData.selectedMatch)?.home_team} vs ${matches.find(match => match.match_id.toString() === formData.selectedMatch)?.away_team}` }
+                  value={formData.selectedMatch && matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch) 
+                    ? { 
+                        value: parseInt(formData.selectedMatch), 
+                        label: `${matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch)?.home_team} vs ${matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch)?.away_team}` 
+                      }
                     : null}
                   onChange={handleMatchSelectChange}
                   placeholder="Select Match"
                   isClearable
+                  key={`match-select-flag-${formData.selectedMatch}-${matches.length}`}
                 />
               </Form.Group>
             </Row>
@@ -484,7 +585,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
 
         <div className="d-flex justify-content-between">
           <Button variant="danger" type="submit" disabled={!isFormValid() || loading}>
-            {loading ? <Spinner animation="border" size="sm" /> : 'Submit'}
+            {loading ? <Spinner animation="border" size="sm" /> : (editMode ? 'Update' : 'Submit')}
           </Button>
           <Button variant="secondary" onClick={() => setAssessmentType(null)}>Back</Button>
         </div>
@@ -514,7 +615,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
       <Modal show={show} onHide={onHide} size="lg">
         <Modal.Header closeButton style={getHeaderStyle()} className="modal-header-dark">
           <Modal.Title>
-            {assessmentType ? `${getHeaderIcon()} ${assessmentType} for ${selectedPlayer?.player_name}` : '📋 Select Assessment Type'}
+            {assessmentType ? `${getHeaderIcon()} ${editMode ? 'Edit' : ''} ${assessmentType} for ${selectedPlayer?.player_name}` : '📋 Select Assessment Type'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>

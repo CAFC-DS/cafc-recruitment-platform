@@ -97,7 +97,7 @@ const PlayerProfilePage: React.FC = () => {
   const handleOpenReportModal = async (reportId: number) => {
     setLoadingReportId(reportId);
     try {
-      const response = await axiosInstance.get(`/scout_reports/${reportId}`);
+      const response = await axiosInstance.get(`/scout_reports/details/${reportId}`);
       setSelectedReport(response.data);
       setShowReportModal(true);
     } catch (error) {
@@ -250,7 +250,7 @@ const PlayerProfilePage: React.FC = () => {
                         </div>
                         <Button 
                           size="sm" 
-                          variant="danger" 
+                          variant="outline-dark" 
                           className="mt-2 rounded-pill"
                           onClick={() => handleOpenReportModal(report.report_id)}
                           disabled={loadingReportId === report.report_id}
@@ -294,7 +294,7 @@ const PlayerProfilePage: React.FC = () => {
                         </div>
                         <Button 
                           size="sm" 
-                          variant="danger" 
+                          variant="outline-dark" 
                           className="mt-2 rounded-pill"
                           onClick={() => handleOpenIntelModal(intel.intel_id)}
                         >
@@ -359,7 +359,7 @@ const PlayerProfilePage: React.FC = () => {
                         <td>
                           <Button 
                             size="sm" 
-                            variant="danger"
+                            variant="outline-dark"
                             className="rounded-pill"
                             onClick={() => handleOpenReportModal(report.report_id)}
                             disabled={loadingReportId === report.report_id}
@@ -417,7 +417,7 @@ const PlayerProfilePage: React.FC = () => {
                         <td>
                           <Button 
                             size="sm" 
-                            variant="danger"
+                            variant="outline-dark"
                             className="rounded-pill"
                             onClick={() => handleOpenIntelModal(intel.intel_id)}
                           >
