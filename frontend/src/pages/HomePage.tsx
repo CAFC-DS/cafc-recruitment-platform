@@ -52,8 +52,8 @@ const HomePage: React.FC = () => {
       const userResponse = await axiosInstance.get('/users/me');
       setUserRole(userResponse.data.role || 'scout');
 
-      // Fetch recent scout reports (last 5) - role-based filtering will be done on server
-      const scoutResponse = await axiosInstance.get('/scout_reports/all?page=1&limit=5');
+      // Fetch recent scout reports (last 15 to allow for better filtering) - role-based filtering will be done on server
+      const scoutResponse = await axiosInstance.get('/scout_reports/all?page=1&limit=15');
       const scoutReports = scoutResponse.data.reports || scoutResponse.data || [];
       
       // Filter scout reports for scout role (client-side backup)
@@ -62,14 +62,18 @@ const HomePage: React.FC = () => {
         (Array.isArray(scoutReports) ? scoutReports : []);
       
       // Separate flag reports from regular scout reports
-      const flagReports = filteredScoutReports.filter(report => 
-        report.report_type?.toLowerCase() === 'flag' || 
-        report.report_type?.toLowerCase() === 'flag assessment'
-      );
-      const regularReports = filteredScoutReports.filter(report => 
-        report.report_type?.toLowerCase() !== 'flag' && 
-        report.report_type?.toLowerCase() !== 'flag assessment'
-      );
+      const flagReports = filteredScoutReports
+        .filter(report => 
+          report.report_type?.toLowerCase() === 'flag' || 
+          report.report_type?.toLowerCase() === 'flag assessment'
+        )
+        .slice(0, 5); // Show only 5 most recent flag reports
+      const regularReports = filteredScoutReports
+        .filter(report => 
+          report.report_type?.toLowerCase() !== 'flag' && 
+          report.report_type?.toLowerCase() !== 'flag assessment'
+        )
+        .slice(0, 5); // Show only 5 most recent regular reports
       
       setRecentScoutReports(regularReports);
       setRecentFlagReports(flagReports);
