@@ -2010,7 +2010,7 @@ async def get_all_scout_reports(
                 sr.ID,
                 sr.REPORT_TYPE,
                 sr.SCOUTING_TYPE,
-                u.USERNAME,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
                 p.PLAYERID,
                 sr.FLAG_CATEGORY
             {base_sql}
@@ -2097,7 +2097,7 @@ async def get_single_scout_report(report_id: int, current_user: User = Depends(g
                 sr.PURPOSE,
                 sr.FORMATION,
                 sr.ATTRIBUTE_SCORE,
-                u.USERNAME,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
                 sr.REPORT_TYPE,
                 sr.FLAG_CATEGORY
             FROM scout_reports sr

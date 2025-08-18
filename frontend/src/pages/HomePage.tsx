@@ -14,6 +14,7 @@ interface ScoutReport {
   report_type: string;
   scout_name: string;
   player_id: number;
+  flag_category?: string;
 }
 
 interface IntelReport {
@@ -31,6 +32,7 @@ const HomePage: React.FC = () => {
   const { user } = useCurrentUser();
   const [userRole, setUserRole] = useState('');
   const [recentScoutReports, setRecentScoutReports] = useState<ScoutReport[]>([]);
+  const [recentFlagReports, setRecentFlagReports] = useState<ScoutReport[]>([]);
   const [recentIntelReports, setRecentIntelReports] = useState<IntelReport[]>([]);
   const [topAttributeReports, setTopAttributeReports] = useState<ScoutReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,19 @@ const HomePage: React.FC = () => {
       const filteredScoutReports = userResponse.data.role === 'scout' ? 
         (Array.isArray(scoutReports) ? scoutReports.filter(report => report.scout_name === userResponse.data.username) : []) :
         (Array.isArray(scoutReports) ? scoutReports : []);
-      setRecentScoutReports(filteredScoutReports);
+      
+      // Separate flag reports from regular scout reports
+      const flagReports = filteredScoutReports.filter(report => 
+        report.report_type?.toLowerCase() === 'flag' || 
+        report.report_type?.toLowerCase() === 'flag assessment'
+      );
+      const regularReports = filteredScoutReports.filter(report => 
+        report.report_type?.toLowerCase() !== 'flag' && 
+        report.report_type?.toLowerCase() !== 'flag assessment'
+      );
+      
+      setRecentScoutReports(regularReports);
+      setRecentFlagReports(flagReports);
 
       // Fetch recent intel reports (last 5) - role-based filtering will be done on server
       const intelResponse = await axiosInstance.get('/intel_reports/all?page=1&limit=5');
@@ -68,9 +82,9 @@ const HomePage: React.FC = () => {
       // TODO: Add created_by field to intel reports for proper filtering
       setRecentIntelReports(Array.isArray(intelReports) ? intelReports : []);
 
-      // For top attribute reports, use filtered scout reports
-      const topReports = filteredScoutReports.length > 0 ? 
-        filteredScoutReports
+      // For top attribute reports, use regular reports only (not flag reports)
+      const topReports = regularReports.length > 0 ? 
+        regularReports
           .filter(report => report.attribute_score && report.attribute_score > 0)
           .sort((a, b) => (b.attribute_score || 0) - (a.attribute_score || 0))
           .slice(0, 5) : [];
@@ -109,6 +123,20 @@ const HomePage: React.FC = () => {
     return 'danger';
   };
 
+  // Flag category colors
+  const getFlagCategoryVariant = (category?: string) => {
+    switch (category?.toLowerCase()) {
+      case 'positive':
+        return 'success';
+      case 'neutral':
+        return 'secondary';
+      case 'negative':
+        return 'warning';
+      default:
+        return 'secondary';
+    }
+  };
+
   if (loading) {
     return (
       <Container className="mt-4 text-center">
@@ -138,6 +166,22 @@ const HomePage: React.FC = () => {
           background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
           color: #000 !important;
           font-weight: 600;
+        }
+        .flag-positive {
+          background-color: #198754 !important;
+          color: white !important;
+        }
+        .flag-neutral {
+          background-color: #6c757d !important;
+          color: white !important;
+        }
+        .flag-negative {
+          background-color: #ffc107 !important;
+          color: #212529 !important;
+        }
+        .flag-default {
+          background-color: #6c757d !important;
+          color: white !important;
         }
       `}</style>
       <Container className="mt-4">
@@ -320,14 +364,51 @@ const HomePage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Bottom Right: Empty (as requested) */}
+        {/* Bottom Right: Recent Flag Reports */}
         <Col md={6}>
           <Card className="h-100">
-            <Card.Body className="d-flex align-items-center justify-content-center text-muted">
-              <div className="text-center">
-                <h5>📋</h5>
-                <p>Available for future features</p>
+            <Card.Header className="bg-light border-bottom">
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">🚩 Recent Flag Reports</h5>
+                <Button 
+                  variant="outline-dark" 
+                  size="sm"
+                  onClick={() => navigate('/scouting')}
+                >
+                  View All
+                </Button>
               </div>
+            </Card.Header>
+            <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
+              {recentFlagReports.length === 0 ? (
+                <p className="text-muted text-center">No recent flag reports</p>
+              ) : (
+                recentFlagReports.map((report) => (
+                  <div key={report.report_id} className="border-bottom pb-2 mb-2">
+                    <div className="d-flex justify-content-between align-items-start">
+                      <div>
+                        <Button 
+                          variant="link" 
+                          className="p-0 text-decoration-none text-start fw-bold"
+                          style={{ color: 'inherit' }}
+                          onClick={() => navigate(`/player/${report.player_id}`)}
+                        >
+                          {report.player_name}
+                        </Button>
+                        <div className="small text-muted">by {report.scout_name}</div>
+                      </div>
+                      <div className="text-end">
+                        <Badge className={`flag-${(report.flag_category?.toLowerCase() || 'default')}`}>
+                          🚩 {report.flag_category || 'Not specified'}
+                        </Badge>
+                        <div className="small text-muted">
+                          {new Date(report.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </Card.Body>
           </Card>
         </Col>
