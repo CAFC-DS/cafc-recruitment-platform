@@ -1627,8 +1627,8 @@ async def get_matches_by_date(fixture_date: str, current_user: User = Depends(ge
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        # Use TO_DATE to compare only the date part of the timestamp
-        cursor.execute("""SELECT ID, HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE FROM matches WHERE TO_DATE(SCHEDULEDDATE) = %s""", (fixture_date,))
+        # Use DATE() to compare only the date part of the timestamp for better Snowflake compatibility
+        cursor.execute("""SELECT ID, HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE FROM matches WHERE DATE(SCHEDULEDDATE) = %s""", (fixture_date,))
         matches = cursor.fetchall()
         match_list = []
         for row in matches:

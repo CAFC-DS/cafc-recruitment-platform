@@ -39,10 +39,17 @@ axiosInstance.interceptors.response.use(
       // You could show a global error message here
     }
     
-    // Handle 401 errors (unauthorized)
+    // Handle 401 errors (unauthorized) - but only redirect on specific endpoints to avoid logout loops
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Don't auto-logout on scout report submissions or other critical operations
+      const url = error.config?.url || '';
+      const isScoutReportSubmission = url.includes('/scout_reports');
+      const isMatchesByDate = url.includes('/matches/date');
+      
+      if (!isScoutReportSubmission && !isMatchesByDate) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);
