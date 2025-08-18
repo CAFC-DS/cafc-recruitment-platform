@@ -2174,6 +2174,7 @@ async def get_single_scout_report(report_id: int, current_user: User = Depends(g
         if conn:
             conn.close()
 
+
 # --- Player Profile Endpoints ---
 class PlayerNote(BaseModel):
     player_id: int
