@@ -432,8 +432,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                     <Row>
                       <Col md={6}>
                         <p><strong>Player:</strong> {report.player_name}</p>
-                        <p><strong>Build:</strong> {report.build}</p>
-                        <p><strong>Height:</strong> {report.height}</p>
+                        <p><strong>Position:</strong> {report.position_played || 'Not specified'} &nbsp;&nbsp;&nbsp;<strong>Formation:</strong> {report.formation || 'Not specified'}</p>
+                        <p><strong>Build:</strong> {report.build} &nbsp;&nbsp;&nbsp;<strong>Height:</strong> {report.height}</p>
                       </Col>
                       <Col md={6}>
                         <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>

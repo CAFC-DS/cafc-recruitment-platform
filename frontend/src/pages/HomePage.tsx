@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import PlayerReportModal from '../components/PlayerReportModal';
 
 interface ScoutReport {
   report_id: number;
@@ -37,6 +38,9 @@ const HomePage: React.FC = () => {
   const [topAttributeReports, setTopAttributeReports] = useState<ScoutReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -107,6 +111,24 @@ const HomePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenReportModal = async (reportId: number) => {
+    try {
+      setLoadingReportId(reportId);
+      const response = await axiosInstance.get(`/scout_reports/${reportId}`);
+      setSelectedReport(response.data);
+      setShowReportModal(true);
+    } catch (error) {
+      console.error('Error fetching report details:', error);
+    } finally {
+      setLoadingReportId(null);
+    }
+  };
+
+  const handleCloseReportModal = () => {
+    setShowReportModal(false);
+    setSelectedReport(null);
   };
 
   // Performance score colors matching website-wide system
@@ -221,24 +243,38 @@ const HomePage: React.FC = () => {
                 recentScoutReports.map((report) => (
                   <div key={report.report_id} className="border-bottom pb-2 mb-2">
                     <div className="d-flex justify-content-between align-items-start">
-                      <div>
+                      <div className="d-flex align-items-start">
                         <Button 
-                          variant="link" 
-                          className="p-0 text-decoration-none text-start fw-bold"
-                          style={{ color: 'inherit' }}
-                          onClick={() => navigate(`/player/${report.player_id}`)}
+                          variant="outline-dark" 
+                          size="sm" 
+                          onClick={() => handleOpenReportModal(report.report_id)} 
+                          disabled={loadingReportId === report.report_id}
+                          title="View Report"
+                          className="me-2 mt-1"
                         >
-                          {report.player_name}
+                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
-                        <div className="small text-muted">by {report.scout_name}</div>
+                        <div>
+                          <Button 
+                            variant="link" 
+                            className="p-0 text-decoration-none text-start fw-bold"
+                            style={{ color: 'inherit' }}
+                            onClick={() => navigate(`/player/${report.player_id}`)}
+                          >
+                            {report.player_name}
+                          </Button>
+                          <div className="small text-muted">by {report.scout_name}</div>
+                        </div>
                       </div>
                       <div className="text-end">
-                        <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="me-1">
-                          {report.performance_score}
-                        </Badge>
-                        <Badge bg={getAttributeScoreVariant(report.attribute_score)}>
-                          {report.attribute_score}
-                        </Badge>
+                        <div className="mb-1">
+                          <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="me-1">
+                            {report.performance_score}
+                          </Badge>
+                          <Badge bg={getAttributeScoreVariant(report.attribute_score)}>
+                            {report.attribute_score}
+                          </Badge>
+                        </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
                         </div>
@@ -340,6 +376,16 @@ const HomePage: React.FC = () => {
                     <div className="d-flex justify-content-between align-items-start">
                       <div className="d-flex align-items-center">
                         <span className="badge bg-secondary me-2">#{index + 1}</span>
+                        <Button 
+                          variant="outline-dark" 
+                          size="sm" 
+                          onClick={() => handleOpenReportModal(report.report_id)} 
+                          disabled={loadingReportId === report.report_id}
+                          title="View Report"
+                          className="me-2"
+                        >
+                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
+                        </Button>
                         <div>
                           <Button 
                             variant="link" 
@@ -353,9 +399,11 @@ const HomePage: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-end">
-                        <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="fs-6">
-                          {report.attribute_score}
-                        </Badge>
+                        <div className="mb-1">
+                          <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="fs-6">
+                            {report.attribute_score}
+                          </Badge>
+                        </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
                         </div>
@@ -390,21 +438,35 @@ const HomePage: React.FC = () => {
                 recentFlagReports.map((report) => (
                   <div key={report.report_id} className="border-bottom pb-2 mb-2">
                     <div className="d-flex justify-content-between align-items-start">
-                      <div>
+                      <div className="d-flex align-items-start">
                         <Button 
-                          variant="link" 
-                          className="p-0 text-decoration-none text-start fw-bold"
-                          style={{ color: 'inherit' }}
-                          onClick={() => navigate(`/player/${report.player_id}`)}
+                          variant="outline-dark" 
+                          size="sm" 
+                          onClick={() => handleOpenReportModal(report.report_id)} 
+                          disabled={loadingReportId === report.report_id}
+                          title="View Report"
+                          className="me-2 mt-1"
                         >
-                          {report.player_name}
+                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
-                        <div className="small text-muted">by {report.scout_name}</div>
+                        <div>
+                          <Button 
+                            variant="link" 
+                            className="p-0 text-decoration-none text-start fw-bold"
+                            style={{ color: 'inherit' }}
+                            onClick={() => navigate(`/player/${report.player_id}`)}
+                          >
+                            {report.player_name}
+                          </Button>
+                          <div className="small text-muted">by {report.scout_name}</div>
+                        </div>
                       </div>
                       <div className="text-end">
-                        <Badge className={`flag-${(report.flag_category?.toLowerCase() || 'default')}`}>
-                          🚩 {report.flag_category || 'Not specified'}
-                        </Badge>
+                        <div className="mb-1">
+                          <Badge className={`flag-${(report.flag_category?.toLowerCase() || 'default')}`}>
+                            🚩 {report.flag_category || 'Not specified'}
+                          </Badge>
+                        </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
                         </div>
@@ -418,6 +480,13 @@ const HomePage: React.FC = () => {
         </Col>
       </Row>
       </Container>
+      
+      {/* Player Report Modal */}
+      <PlayerReportModal 
+        show={showReportModal}
+        onHide={handleCloseReportModal}
+        report={selectedReport}
+      />
     </>
   );
 };
