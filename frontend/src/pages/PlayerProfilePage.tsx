@@ -97,7 +97,7 @@ const PlayerProfilePage: React.FC = () => {
   const handleOpenReportModal = async (reportId: number) => {
     setLoadingReportId(reportId);
     try {
-      const response = await axiosInstance.get(`/scout_reports/details/${reportId}`);
+      const response = await axiosInstance.get(`/scout_reports/${reportId}`);
       setSelectedReport(response.data);
       setShowReportModal(true);
     } catch (error) {

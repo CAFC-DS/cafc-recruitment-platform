@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ViewModeProvider } from './contexts/ViewModeContext';
 import AppNavbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import ScoutingPage from './pages/ScoutingPage';
@@ -197,9 +198,10 @@ const HomePageWrapper: React.FC = () => {
 function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <AuthProvider>
-          <AppNavbar />
+      <ViewModeProvider>
+        <Router>
+          <AuthProvider>
+            <AppNavbar />
           <Routes>
             <Route path="/" element={<HomePageWrapper />} />
             <Route path="/login" element={<LoginPageWrapper />} /> {/* Use the wrapper here */}
@@ -244,8 +246,9 @@ function App() {
               }
             />
           </Routes>
-        </AuthProvider>
-      </Router>
+          </AuthProvider>
+        </Router>
+      </ViewModeProvider>
     </ThemeProvider>
   );
 }

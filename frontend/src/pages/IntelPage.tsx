@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Badge, Toast, ToastContainer, Alert, Collapse, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import IntelModal from '../components/IntelModal';
 import IntelReportModal from '../components/IntelReportModal';
 import { useAuth } from '../App';
+import { useViewMode } from '../contexts/ViewModeContext';
 
 interface IntelReport {
   intel_id: number;
@@ -26,6 +27,7 @@ interface IntelReport {
 
 const IntelPage: React.FC = () => {
   const { token } = useAuth();
+  const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const [playerSearch, setPlayerSearch] = useState('');
   const [players, setPlayers] = useState<any[]>([]);
@@ -33,12 +35,11 @@ const IntelPage: React.FC = () => {
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [intelReports, setIntelReports] = useState<IntelReport[]>([]);
   const [modalKey, setModalKey] = useState(0);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   
   // Pagination and filter states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
-  const [itemsPerPage] = useState(10); // Corresponds to 'limit'
+  const [itemsPerPage] = useState(20); // Corresponds to 'limit'
   const [recencyFilter, setRecencyFilter] = useState<string>('7'); // '7', '30', '90', 'all'
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
@@ -63,6 +64,11 @@ const IntelPage: React.FC = () => {
   // Player search error state
   const [playerSearchError, setPlayerSearchError] = useState('');
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
+  
+  // Add debouncing and caching for player search
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchCacheRef = useRef<Record<string, any[]>>({});
+  const [showDropdown, setShowDropdown] = useState(false);
   
   // Advanced filters for Intel
   const [actionFilter, setActionFilter] = useState('');
@@ -144,10 +150,14 @@ const IntelPage: React.FC = () => {
       setUserRole(response.data.role || 'scout');
       setCurrentUsername(response.data.username || '');
       setShowAdminTools(response.data.role === 'admin');
+      // Initialize user's view mode preference
+      if (response.data.id || response.data.username) {
+        initializeUserViewMode(response.data.id?.toString() || response.data.username);
+      }
     } catch (error) {
       console.error('Error fetching user info:', error);
     }
-  }, []);
+  }, [initializeUserViewMode]);
 
   useEffect(() => {
     if (token) {
@@ -157,42 +167,102 @@ const IntelPage: React.FC = () => {
     }
   }, [token, currentPage, itemsPerPage, recencyFilter, fetchIntelReports, fetchUserInfo]);
 
-  const handlePlayerSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setPlayerSearch(query);
-    setPlayerSearchError(''); // Clear previous errors
+  const performPlayerSearch = useCallback(async (query: string) => {
+    const trimmedQuery = query.trim().toLowerCase();
     
-    if (query.length > 2) {
-      setPlayerSearchLoading(true);
-      try {
-        const response = await axiosInstance.get(`/players/search?query=${query}`);
-        if (response.data && response.data.length > 0) {
-          setPlayers(response.data);
-          setPlayerSearchError('');
-        } else {
-          setPlayers([]);
-          setPlayerSearchError('No players found matching your search.');
-        }
-      } catch (error) {
-        console.error('Error searching players:', error);
-        setPlayers([]);
-        setPlayerSearchError('Error searching for players. Please try again.');
-      } finally {
-        setPlayerSearchLoading(false);
-      }
-    } else {
-      setPlayers([]);
+    // Check cache first
+    if (searchCacheRef.current[trimmedQuery]) {
+      setPlayers(searchCacheRef.current[trimmedQuery]);
       setPlayerSearchError('');
       setPlayerSearchLoading(false);
+      setShowDropdown(searchCacheRef.current[trimmedQuery].length > 0);
+      return;
     }
+    
+    try {
+      setPlayerSearchLoading(true);
+      const response = await axiosInstance.get(`/players/search?query=${trimmedQuery}`);
+      const results = response.data || [];
+      
+      // Cache the results
+      searchCacheRef.current[trimmedQuery] = results;
+      
+      setPlayers(results);
+      setShowDropdown(results.length > 0);
+      
+      if (results.length === 0) {
+        setPlayerSearchError('No players found matching your search.');
+      } else {
+        setPlayerSearchError('');
+      }
+    } catch (error) {
+      console.error('Error searching players:', error);
+      setPlayers([]);
+      setShowDropdown(false);
+      setPlayerSearchError('Error searching for players. Please try again.');
+    } finally {
+      setPlayerSearchLoading(false);
+    }
+  }, []);
+
+  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setPlayerSearch(query);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Clear error immediately when user starts typing
+    setPlayerSearchError('');
+    
+    if (query.length <= 2) {
+      setPlayers([]);
+      setShowDropdown(false);
+      setPlayerSearchLoading(false);
+      return;
+    }
+    
+    // Set loading immediately for better UX
+    setPlayerSearchLoading(true);
+    
+    // Debounce the actual search
+    searchTimeoutRef.current = setTimeout(() => {
+      performPlayerSearch(query);
+    }, 300); // 300ms delay
   };
 
   const handlePlayerSelect = (player: any) => {
     setSelectedPlayer(player);
     setPlayerSearch(`${player.player_name} (${player.team})`);
     setPlayers([]);
-    setPlayerSearchError(''); // Clear error when player is selected
+    setShowDropdown(false);
+    setPlayerSearchError('');
   };
+  
+  // Close dropdown when clicking outside
+  const handleInputBlur = () => {
+    // Small delay to allow click on dropdown items
+    setTimeout(() => {
+      setShowDropdown(false);
+    }, 200);
+  };
+  
+  const handleInputFocus = () => {
+    if (players.length > 0) {
+      setShowDropdown(true);
+    }
+  };
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleShowIntelModal = () => {
     if (selectedPlayer) {
@@ -285,6 +355,8 @@ const IntelPage: React.FC = () => {
                 placeholder="Enter player name"
                 value={playerSearch}
                 onChange={handlePlayerSearchChange}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
               />
               {playerSearchLoading && (
                 <div className="position-absolute top-50 end-0 translate-middle-y me-3" style={{ zIndex: 10 }}>
@@ -294,11 +366,17 @@ const IntelPage: React.FC = () => {
                 </div>
               )}
             </div>
-            {players.length > 0 && (
-              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)' }}>
+            {showDropdown && players.length > 0 && (
+              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
                 {players.map((player, index) => (
-                  <ListGroup.Item key={index} action onClick={() => handlePlayerSelect(player)}>
-                    {player.player_name} ({player.team})
+                  <ListGroup.Item 
+                    key={`${player.player_id || player.id || index}-${player.player_name}`} 
+                    action 
+                    onClick={() => handlePlayerSelect(player)}
+                    className="d-flex justify-content-between align-items-center"
+                  >
+                    <span>{player.player_name}</span>
+                    <small className="text-muted">({player.team})</small>
                   </ListGroup.Item>
                 ))}
               </ListGroup>
@@ -778,6 +856,36 @@ const IntelPage: React.FC = () => {
           padding: 1rem 0.75rem;
           vertical-align: middle;
           border-top: 1px solid #e9ecef;
+          text-align: left;
+        }
+        .table-modern th {
+          text-align: left;
+        }
+        .table-modern .btn-link {
+          text-align: left;
+          justify-content: flex-start;
+          padding-left: 0;
+        }
+        
+        /* Dark mode card improvements */
+        body.theme-dark .card, [data-bs-theme="dark"] .card {
+          background-color: var(--bs-card-bg) !important;
+          color: var(--bs-card-color) !important;
+          border-color: var(--bs-card-border-color) !important;
+        }
+        body.theme-dark .card-header, [data-bs-theme="dark"] .card-header {
+          background-color: var(--bs-card-bg) !important;
+          color: var(--bs-card-color) !important;
+          border-bottom-color: var(--bs-card-border-color) !important;
+        }
+        body.theme-dark .card-body, [data-bs-theme="dark"] .card-body {
+          color: var(--bs-card-color) !important;
+        }
+        body.theme-dark .text-muted, [data-bs-theme="dark"] .text-muted {
+          color: var(--bs-secondary-color) !important;
+        }
+        body.theme-dark .small.text-muted, [data-bs-theme="dark"] .small.text-muted {
+          color: #d1d5db !important;
         }
       `}</style>
     </Container>

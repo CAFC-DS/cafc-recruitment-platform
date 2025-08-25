@@ -46,21 +46,21 @@ const lightTheme: ThemeColors = {
 };
 
 const darkTheme: ThemeColors = {
-  primary: '#dc2626', // Slightly brighter red for dark mode
-  primaryDark: '#b91c1c',
+  primary: '#ef4444', // Brighter red for dark mode
+  primaryDark: '#dc2626',
   
-  success: '#22c55e',
+  success: '#10b981',
   warning: '#f59e0b',
   danger: '#ef4444',
   
-  background: '#111827',
-  surface: '#1f2937',
-  border: '#374151',
-  text: '#f9fafb',
-  textMuted: '#d1d5db',
+  background: '#111827', // Dark but not too dark
+  surface: '#374151',    // Much lighter surface for better visibility
+  border: '#6b7280',     // More visible borders
+  text: '#f9fafb',       // High contrast white text
+  textMuted: '#d1d5db',  // Better visibility for muted text
   
-  headerBg: '#111827',
-  headerText: '#ffffff',
+  headerBg: '#1f2937',   // Slightly lighter header
+  headerText: '#f9fafb',
 };
 
 interface ThemeContextType {
@@ -97,6 +97,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.body.style.backgroundColor = theme.colors.background;
     document.body.style.color = theme.colors.text;
     
+    // Add theme class to body for CSS targeting
+    document.body.classList.remove('theme-light', 'theme-dark');
+    document.body.classList.add(isDark ? 'theme-dark' : 'theme-light');
+    document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
+    
     // Apply Bootstrap variable overrides
     root.style.setProperty('--bs-primary', theme.colors.primary);
     root.style.setProperty('--bs-success', theme.colors.success);
@@ -107,6 +112,42 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--bs-body-bg', theme.colors.background);
     root.style.setProperty('--bs-body-color', theme.colors.text);
     root.style.setProperty('--bs-border-color', theme.colors.border);
+    
+    // Additional Bootstrap components
+    root.style.setProperty('--bs-card-bg', theme.colors.surface);
+    root.style.setProperty('--bs-card-border-color', theme.colors.border);
+    root.style.setProperty('--bs-card-color', theme.colors.text);
+    root.style.setProperty('--bs-modal-bg', theme.colors.surface);
+    root.style.setProperty('--bs-modal-header-bg', theme.colors.surface);
+    root.style.setProperty('--bs-modal-color', theme.colors.text);
+    root.style.setProperty('--bs-nav-link-color', theme.colors.text);
+    root.style.setProperty('--bs-navbar-brand-color', theme.colors.headerText);
+    root.style.setProperty('--bs-table-bg', theme.colors.surface);
+    root.style.setProperty('--bs-table-color', theme.colors.text);
+    root.style.setProperty('--bs-table-striped-bg', isDark ? '#4b5563' : '#f8f9fa');
+    root.style.setProperty('--bs-table-hover-bg', isDark ? '#4b5563' : '#e9ecef');
+    root.style.setProperty('--bs-form-control-bg', theme.colors.surface);
+    root.style.setProperty('--bs-form-control-color', theme.colors.text);
+    root.style.setProperty('--bs-form-control-border-color', theme.colors.border);
+    root.style.setProperty('--bs-btn-close-color', theme.colors.text);
+    root.style.setProperty('--bs-dropdown-bg', theme.colors.surface);
+    root.style.setProperty('--bs-dropdown-color', theme.colors.text);
+    root.style.setProperty('--bs-dropdown-border-color', theme.colors.border);
+    
+    // Alert components
+    root.style.setProperty('--bs-alert-bg', theme.colors.surface);
+    root.style.setProperty('--bs-alert-border-color', theme.colors.border);
+    root.style.setProperty('--bs-alert-color', theme.colors.text);
+    
+    // Additional dark mode specific overrides
+    if (isDark) {
+      root.style.setProperty('--bs-secondary', theme.colors.surface);
+      root.style.setProperty('--bs-secondary-bg', theme.colors.surface);
+      root.style.setProperty('--bs-tertiary-bg', theme.colors.background);
+      root.style.setProperty('--bs-emphasis-color', theme.colors.text);
+      root.style.setProperty('--bs-link-color', '#60a5fa');
+      root.style.setProperty('--bs-link-hover-color', '#3b82f6');
+    }
   }, [theme]);
 
   return (

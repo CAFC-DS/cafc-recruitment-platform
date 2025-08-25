@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Badge, Collapse, Alert, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
@@ -7,6 +7,7 @@ import AddPlayerModal from '../components/AddPlayerModal';
 import AddFixtureModal from '../components/AddFixtureModal';
 import ScoutingAssessmentModal from '../components/ScoutingAssessmentModal';
 import { useAuth } from '../App';
+import { useViewMode } from '../contexts/ViewModeContext';
 
 interface ScoutReport {
   report_id: number;
@@ -14,6 +15,9 @@ interface ScoutReport {
   player_name: string;
   age: number | null;
   fixture_date: string;
+  fixture_details: string;
+  home_team: string | null;
+  away_team: string | null;
   position_played: string;
   performance_score: number;
   attribute_score: number;
@@ -25,6 +29,7 @@ interface ScoutReport {
 
 const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
+  const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const [playerSearch, setPlayerSearch] = useState('');
   const [players, setPlayers] = useState<any[]>([]);
@@ -38,16 +43,20 @@ const ScoutingPage: React.FC = () => {
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
 
   // New states from IntelPage
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(20);
   const [recencyFilter, setRecencyFilter] = useState<string>('7');
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [playerSearchError, setPlayerSearchError] = useState('');
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
+  
+  // Add debouncing and caching for player search
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchCacheRef = useRef<Record<string, any[]>>({});
+  const [showDropdown, setShowDropdown] = useState(false);
   
   // Advanced filters
   const [performanceFilter, setPerformanceFilter] = useState('');
@@ -105,10 +114,14 @@ const ScoutingPage: React.FC = () => {
       const response = await axiosInstance.get('/users/me');
       setUserRole(response.data.role || 'scout');
       setCurrentUsername(response.data.username || '');
+      // Initialize user's view mode preference
+      if (response.data.id || response.data.username) {
+        initializeUserViewMode(response.data.id?.toString() || response.data.username);
+      }
     } catch (error) {
       console.error('Error fetching user info:', error);
     }
-  }, []);
+  }, [initializeUserViewMode]);
 
   const handleEditReport = async (reportId: number) => {
     try {
@@ -162,37 +175,102 @@ const ScoutingPage: React.FC = () => {
     }
   }, [token, currentPage, itemsPerPage, recencyFilter, fetchScoutReports, fetchUserInfo]);
 
-  const handlePlayerSearchChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const performPlayerSearch = useCallback(async (query: string) => {
+    const trimmedQuery = query.trim().toLowerCase();
+    
+    // Check cache first
+    if (searchCacheRef.current[trimmedQuery]) {
+      setPlayers(searchCacheRef.current[trimmedQuery]);
+      setPlayerSearchError('');
+      setPlayerSearchLoading(false);
+      setShowDropdown(searchCacheRef.current[trimmedQuery].length > 0);
+      return;
+    }
+    
+    try {
+      setPlayerSearchLoading(true);
+      const response = await axiosInstance.get(`/players/search?query=${trimmedQuery}`);
+      const results = response.data || [];
+      
+      // Cache the results
+      searchCacheRef.current[trimmedQuery] = results;
+      
+      setPlayers(results);
+      setShowDropdown(results.length > 0);
+      
+      if (results.length === 0) {
+        setPlayerSearchError('No players found.');
+      } else {
+        setPlayerSearchError('');
+      }
+    } catch (error) {
+      console.error('Error searching players:', error);
+      setPlayers([]);
+      setShowDropdown(false);
+      setPlayerSearchError('Error searching for players.');
+    } finally {
+      setPlayerSearchLoading(false);
+    }
+  }, []);
+
+  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setPlayerSearch(query);
-    setPlayerSearchError('');
-    if (query.length > 2) {
-      setPlayerSearchLoading(true);
-      try {
-        const response = await axiosInstance.get(`/players/search?query=${query}`);
-        if (response.data && response.data.length > 0) {
-          setPlayers(response.data);
-        } else {
-          setPlayers([]);
-          setPlayerSearchError('No players found.');
-        }
-      } catch (error) {
-        console.error('Error searching players:', error);
-        setPlayers([]);
-        setPlayerSearchError('Error searching for players.');
-      } finally {
-        setPlayerSearchLoading(false);
-      }
-    } else {
-      setPlayers([]);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
+    
+    // Clear error immediately when user starts typing
+    setPlayerSearchError('');
+    
+    if (query.length <= 2) {
+      setPlayers([]);
+      setShowDropdown(false);
+      setPlayerSearchLoading(false);
+      return;
+    }
+    
+    // Set loading immediately for better UX
+    setPlayerSearchLoading(true);
+    
+    // Debounce the actual search
+    searchTimeoutRef.current = setTimeout(() => {
+      performPlayerSearch(query);
+    }, 300); // 300ms delay
   };
 
   const handlePlayerSelect = (player: any) => {
     setSelectedPlayer(player);
     setPlayerSearch(`${player.player_name} (${player.team})`);
     setPlayers([]);
+    setShowDropdown(false);
+    setPlayerSearchError('');
   };
+  
+  // Close dropdown when clicking outside
+  const handleInputBlur = () => {
+    // Small delay to allow click on dropdown items
+    setTimeout(() => {
+      setShowDropdown(false);
+    }, 200);
+  };
+  
+  const handleInputFocus = () => {
+    if (players.length > 0) {
+      setShowDropdown(true);
+    }
+  };
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleShowAssessmentModal = () => {
     if (selectedPlayer) {
@@ -320,6 +398,8 @@ const ScoutingPage: React.FC = () => {
                 placeholder="Enter player name"
                 value={playerSearch}
                 onChange={handlePlayerSearchChange}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
               />
               {playerSearchLoading && (
                 <div className="position-absolute top-50 end-0 translate-middle-y me-3" style={{ zIndex: 10 }}>
@@ -327,11 +407,17 @@ const ScoutingPage: React.FC = () => {
                 </div>
               )}
             </div>
-            {players.length > 0 && (
-              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)' }}>
+            {showDropdown && players.length > 0 && (
+              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
                 {players.map((player, index) => (
-                  <ListGroup.Item key={index} action onClick={() => handlePlayerSelect(player)}>
-                    {player.player_name} ({player.team})
+                  <ListGroup.Item 
+                    key={`${player.player_id || player.id || index}-${player.player_name}`} 
+                    action 
+                    onClick={() => handlePlayerSelect(player)}
+                    className="d-flex justify-content-between align-items-center"
+                  >
+                    <span>{player.player_name}</span>
+                    <small className="text-muted">({player.team})</small>
                   </ListGroup.Item>
                 ))}
               </ListGroup>
@@ -525,8 +611,10 @@ const ScoutingPage: React.FC = () => {
               <Table responsive hover className="table-modern">
                 <thead className="table-dark">
                   <tr>
-                    <th>Date</th>
+                    <th>Report Date</th>
                     <th>Player</th>
+                    <th>Fixture Date</th>
+                    <th>Fixture</th>
                     <th>Scout</th>
                     <th>Type</th>
                     <th>Performance</th>
@@ -542,6 +630,18 @@ const ScoutingPage: React.FC = () => {
                         <Button variant="link" onClick={() => navigate(`/player/${report.player_id}`)}>
                           {report.player_name}
                         </Button>
+                      </td>
+                      <td>
+                        {report.fixture_date && report.fixture_date !== 'N/A' ? 
+                          new Date(report.fixture_date).toLocaleDateString() : 
+                          'N/A'
+                        }
+                      </td>
+                      <td>
+                        {report.fixture_details && report.fixture_details !== 'N/A' ? 
+                          report.fixture_details : 
+                          'N/A'
+                        }
                       </td>
                       <td>{report.scout_name}</td>
                       <td>
@@ -626,10 +726,13 @@ const ScoutingPage: React.FC = () => {
                           </Col>
                         </Row>
                       )}
-                      {report.fixture_date && (
+                      {report.fixture_date && report.fixture_date !== 'N/A' && (
                         <div className="mb-2">
                           <small className="text-muted">
                             📅 <strong>Fixture:</strong> {new Date(report.fixture_date).toLocaleDateString()}
+                            {report.fixture_details && report.fixture_details !== 'N/A' && (
+                              <><br />🏟️ <strong>{report.fixture_details}</strong></>
+                            )}
                           </small>
                         </div>
                       )}
@@ -701,6 +804,15 @@ const ScoutingPage: React.FC = () => {
           padding: 1rem 0.75rem;
           vertical-align: middle;
           border-top: 1px solid #e9ecef;
+          text-align: left;
+        }
+        .table-modern th {
+          text-align: left;
+        }
+        .table-modern .btn-link {
+          text-align: left;
+          justify-content: flex-start;
+          padding-left: 0;
         }
         .badge.bg-gold {
           background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
@@ -731,6 +843,27 @@ const ScoutingPage: React.FC = () => {
           background-color: #fbbf24 !important;
           color: #000 !important;
           border-color: #fbbf24 !important;
+        }
+        
+        /* Dark mode card improvements */
+        body.theme-dark .card, [data-bs-theme="dark"] .card {
+          background-color: var(--bs-card-bg) !important;
+          color: var(--bs-card-color) !important;
+          border-color: var(--bs-card-border-color) !important;
+        }
+        body.theme-dark .card-header, [data-bs-theme="dark"] .card-header {
+          background-color: var(--bs-card-bg) !important;
+          color: var(--bs-card-color) !important;
+          border-bottom-color: var(--bs-card-border-color) !important;
+        }
+        body.theme-dark .card-body, [data-bs-theme="dark"] .card-body {
+          color: var(--bs-card-color) !important;
+        }
+        body.theme-dark .text-muted, [data-bs-theme="dark"] .text-muted {
+          color: var(--bs-secondary-color) !important;
+        }
+        body.theme-dark .small.text-muted, [data-bs-theme="dark"] .small.text-muted {
+          color: #d1d5db !important;
         }
       `}</style>
     </Container>
