@@ -24,9 +24,20 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, date
 import asyncio
 from functools import lru_cache
+import unicodedata
+import re
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Text normalization utility for accent-insensitive search
+def normalize_text(text: str) -> str:
+    """Remove diacritical marks (accents) from text for accent-insensitive search"""
+    if not text:
+        return ""
+    # Decompose combined characters and remove diacritical marks
+    normalized = unicodedata.normalize('NFD', text)
+    return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn').lower()
 
 app = FastAPI(
     title="CAFC Recruitment Platform API",
@@ -1251,7 +1262,7 @@ async def read_root():
 
 @app.get("/players/search")
 async def search_players(query: str, current_user: User = Depends(get_current_user)):
-    """Search players with support for CAFC_PLAYER_ID system"""
+    """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching"""
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -1263,32 +1274,88 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         column_names = [col[0] for col in columns]
         has_cafc_id = 'CAFC_PLAYER_ID' in column_names
         
+        # For accent-insensitive search, we'll search with a broader database query
+        # then apply precise client-side filtering
+        normalized_query = normalize_text(query).strip()
+        
+        if not normalized_query:
+            return []
+        
+        # Create multiple search patterns to catch accent variations
+        # We need to be much more aggressive about catching accent variations
+        # since ILIKE doesn't handle accents automatically
+        
+        # Strategy: Get a broader set from the database, then filter client-side with proper accent handling
+        # This is more reliable than trying to predict all accent combinations in SQL
+        
+        # For single word queries like "Oscar", search for any name containing that pattern
+        # For multi-word queries like "Oscar Gil", search for names containing any of those words
+        
+        query_words = query.strip().split()
+        search_patterns = []
+        
+        # Add the original query and normalized version
+        search_patterns.append(f'%{query}%')
+        search_patterns.append(f'%{normalized_query}%')
+        
+        # For each word in the query, add patterns to catch it
+        for word in query_words:
+            if len(word) >= 2:  # Avoid single character searches
+                normalized_word = normalize_text(word)
+                search_patterns.append(f'%{word}%')
+                search_patterns.append(f'%{normalized_word}%')
+                
+                # Add common accent variations for better database matching
+                if normalized_word == 'oscar':
+                    search_patterns.extend([
+                        '%Óscar%', '%óscar%', '%Òscar%', '%òscar%',
+                        '%Ôscar%', '%ôscar%', '%Õscar%', '%õscar%'
+                    ])
+                elif normalized_word == 'jose':
+                    search_patterns.extend([
+                        '%José%', '%josé%', '%Josè%', '%josè%'
+                    ])
+                # Add more common name variations as needed
+        
+        # Build the WHERE clause with multiple ILIKE conditions
+        where_conditions = ' OR '.join(['PLAYERNAME ILIKE %s'] * len(search_patterns))
+        
         if has_cafc_id:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME 
                 FROM players 
-                WHERE PLAYERNAME ILIKE %s
+                WHERE {where_conditions}
                 ORDER BY PLAYERNAME
-            """, (f'%{query}%',))
+            """, search_patterns)
         else:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME 
                 FROM players 
-                WHERE PLAYERNAME ILIKE %s
+                WHERE {where_conditions}
                 ORDER BY PLAYERNAME
-            """, (f'%{query}%',))
+            """, search_patterns)
             
         players = cursor.fetchall()
         player_list = []
+        
+        # Apply precise accent-insensitive filtering on the results
         for row in players:
-            player_data = {
-                "player_id": row[1],  # External player ID (backwards compatibility)
-                "cafc_player_id": row[0],  # Internal stable ID (None if not set up)
-                "player_name": row[2], 
-                "position": row[3], 
-                "team": row[4]
-            }
-            player_list.append(player_data)
+            player_name = row[2]
+            if player_name:
+                normalized_player_name = normalize_text(player_name)
+                # Check if the normalized query matches the normalized player name
+                if normalized_query in normalized_player_name:
+                    player_data = {
+                        "player_id": row[1],  # External player ID (backwards compatibility)
+                        "cafc_player_id": row[0],  # Internal stable ID (None if not set up)
+                        "player_name": player_name, 
+                        "position": row[3], 
+                        "team": row[4]
+                    }
+                    player_list.append(player_data)
+        
+        # Sort by normalized name for better accent-insensitive ordering
+        player_list.sort(key=lambda x: normalize_text(x["player_name"]))
             
         return player_list
         

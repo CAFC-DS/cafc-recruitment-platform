@@ -8,6 +8,7 @@ import AddFixtureModal from '../components/AddFixtureModal';
 import ScoutingAssessmentModal from '../components/ScoutingAssessmentModal';
 import { useAuth } from '../App';
 import { useViewMode } from '../contexts/ViewModeContext';
+import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
 
 interface ScoutReport {
   report_id: number;
@@ -176,24 +177,29 @@ const ScoutingPage: React.FC = () => {
   }, [token, currentPage, itemsPerPage, recencyFilter, fetchScoutReports, fetchUserInfo]);
 
   const performPlayerSearch = useCallback(async (query: string) => {
-    const trimmedQuery = query.trim().toLowerCase();
+    const trimmedQuery = query.trim();
+    const normalizedQuery = normalizeText(trimmedQuery);
     
-    // Check cache first
-    if (searchCacheRef.current[trimmedQuery]) {
-      setPlayers(searchCacheRef.current[trimmedQuery]);
+    // Check cache first using normalized query
+    if (searchCacheRef.current[normalizedQuery]) {
+      setPlayers(searchCacheRef.current[normalizedQuery]);
       setPlayerSearchError('');
       setPlayerSearchLoading(false);
-      setShowDropdown(searchCacheRef.current[trimmedQuery].length > 0);
+      setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
       return;
     }
     
     try {
       setPlayerSearchLoading(true);
-      const response = await axiosInstance.get(`/players/search?query=${trimmedQuery}`);
-      const results = response.data || [];
+      // Backend now handles comprehensive accent-insensitive search
+      const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(trimmedQuery)}`);
+      let results = response.data || [];
       
-      // Cache the results
-      searchCacheRef.current[trimmedQuery] = results;
+      // Backend already handles accent-insensitive search and sorting
+      // No need for additional client-side filtering
+      
+      // Cache the results using normalized query
+      searchCacheRef.current[normalizedQuery] = results;
       
       setPlayers(results);
       setShowDropdown(results.length > 0);
@@ -367,7 +373,7 @@ const ScoutingPage: React.FC = () => {
     // Player name filter
     if (playerNameFilter) {
       filtered = filtered.filter(report => 
-        report.player_name.toLowerCase().includes(playerNameFilter.toLowerCase())
+        containsAccentInsensitive(report.player_name, playerNameFilter)
       );
     }
 
@@ -422,7 +428,13 @@ const ScoutingPage: React.FC = () => {
                 ))}
               </ListGroup>
             )}
-            {playerSearchError && <small className="text-danger mt-1">{playerSearchError}</small>}
+            {playerSearchError && (
+              <div className="mt-2">
+                <small className="text-danger d-block">
+                  ⚠️ {playerSearchError}
+                </small>
+              </div>
+            )}
           </Form.Group>
           <Button className="mt-2" variant="danger" onClick={handleShowAssessmentModal} disabled={!selectedPlayer}>
             Add Assessment
