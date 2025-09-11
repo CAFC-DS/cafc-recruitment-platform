@@ -459,7 +459,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = await get_user(username)
     if user is None:
         raise credentials_exception
-    return User(id=user.id, username=user.username, role=user.role)
+    return User(id=user.id, username=user.username, role=user.role, email=user.email, firstname=user.firstname, lastname=user.lastname)
 
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
@@ -1350,7 +1350,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                         "cafc_player_id": row[0],  # Internal stable ID (None if not set up)
                         "player_name": player_name, 
                         "position": row[3], 
-                        "team": row[4]
+                        "squad_name": row[4]
                     }
                     player_list.append(player_data)
         
@@ -2079,7 +2079,8 @@ async def get_all_scout_reports(
                 sr.SCOUTING_TYPE,
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
                 p.PLAYERID,
-                sr.FLAG_CATEGORY
+                sr.FLAG_CATEGORY,
+                sr.PURPOSE
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -2121,7 +2122,8 @@ async def get_all_scout_reports(
                 "scouting_type": row[11],
                 "scout_name": row[12] if row[12] else "Unknown Scout",
                 "player_id": row[13],
-                "flag_category": row[14]
+                "flag_category": row[14],
+                "purpose": row[15] if row[15] else None
             })
         return {
             "total_reports": total_reports,
@@ -3270,6 +3272,111 @@ async def optimize_all_operations(current_user: User = Depends(get_current_user)
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error during optimization: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.post("/admin/migrate-purpose-values")
+async def migrate_purpose_values(current_user: User = Depends(get_current_user)):
+    """Migrate PURPOSE values from Assessment to Report format (admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        
+        results = []
+        
+        # Check current values
+        cursor.execute("SELECT DISTINCT PURPOSE, COUNT(*) FROM scout_reports WHERE PURPOSE IS NOT NULL GROUP BY PURPOSE ORDER BY PURPOSE")
+        current_values = cursor.fetchall()
+        results.append(f"Current PURPOSE values: {dict(current_values)}")
+        
+        # Update Player Assessment -> Player Report
+        cursor.execute("UPDATE scout_reports SET PURPOSE = 'Player Report' WHERE PURPOSE = 'Player Assessment'")
+        player_updates = cursor.rowcount
+        results.append(f"Updated {player_updates} records from 'Player Assessment' to 'Player Report'")
+        
+        # Update Loan Assessment -> Loan Report  
+        cursor.execute("UPDATE scout_reports SET PURPOSE = 'Loan Report' WHERE PURPOSE = 'Loan Assessment'")
+        loan_updates = cursor.rowcount
+        results.append(f"Updated {loan_updates} records from 'Loan Assessment' to 'Loan Report'")
+        
+        conn.commit()
+        
+        # Verify updates
+        cursor.execute("SELECT DISTINCT PURPOSE, COUNT(*) FROM scout_reports WHERE PURPOSE IS NOT NULL GROUP BY PURPOSE ORDER BY PURPOSE")
+        updated_values = cursor.fetchall()
+        results.append(f"Updated PURPOSE values: {dict(updated_values)}")
+        
+        total_updates = player_updates + loan_updates
+        results.append(f"Total records updated: {total_updates}")
+        
+        return {
+            "message": "Purpose values migration completed successfully",
+            "results": results,
+            "total_updates": total_updates
+        }
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error during migration: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/database/metadata")
+async def get_database_metadata():
+    """Get database metadata including counts and recent data info"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        
+        metadata = {}
+        
+        # Get actual table metadata from INFORMATION_SCHEMA
+        try:
+            cursor.execute("""
+                SELECT TABLE_NAME, CREATED, LAST_ALTERED 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_SCHEMA = 'PUBLIC'
+                AND TABLE_NAME IN ('PLAYERS', 'MATCHES')
+                ORDER BY TABLE_NAME
+            """)
+            table_info = cursor.fetchall()
+            
+            for row in table_info:
+                table_name, created, last_altered = row
+                if table_name == 'PLAYERS':
+                    cursor.execute("SELECT COUNT(*) FROM players")
+                    player_count = cursor.fetchone()[0]
+                    metadata["players_table"] = {
+                        "count": player_count,
+                        "created": str(created) if created else None,
+                        "last_updated": str(last_altered) if last_altered else None
+                    }
+                elif table_name == 'MATCHES':
+                    cursor.execute("SELECT COUNT(*) FROM matches")
+                    matches_count = cursor.fetchone()[0]
+                    metadata["matches_table"] = {
+                        "count": matches_count,
+                        "created": str(created) if created else None,
+                        "last_updated": str(last_altered) if last_altered else None
+                    }
+                    
+        except Exception as e:
+            metadata["error"] = str(e)
+            
+        return metadata
+        
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching database metadata: {e}")
     finally:
         if conn:
             conn.close()
