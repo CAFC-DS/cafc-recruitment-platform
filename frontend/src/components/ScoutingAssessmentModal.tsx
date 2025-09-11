@@ -34,7 +34,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
     playerBuild: '',
     playerHeight: '',
     scoutingType: 'Live',
-    purposeOfAssessment: 'Player Assessment',
+    purposeOfAssessment: 'Player Report',
     performanceScore: 5,
     assessmentSummary: '',
     justificationRationale: '',
@@ -79,7 +79,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
         playerBuild: existingReportData.playerBuild || '',
         playerHeight: existingReportData.playerHeight || '',
         scoutingType: existingReportData.scoutingType || 'Live',
-        purposeOfAssessment: existingReportData.purposeOfAssessment || 'Player Assessment',
+        purposeOfAssessment: existingReportData.purposeOfAssessment || 'Player Report',
         performanceScore: existingReportData.performanceScore || 5,
         assessmentSummary: existingReportData.assessmentSummary || '',
         justificationRationale: existingReportData.justificationRationale || '',
@@ -409,8 +409,8 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
               <Form.Group as={Col} controlId="purposeOfAssessment">
                 <Form.Label>Purpose of Assessment <span className="text-danger">*</span></Form.Label>
                 <Form.Select name="purposeOfAssessment" value={formData.purposeOfAssessment} onChange={handleChange}>
-                  <option value="Player Assessment">Player Assessment</option>
-                  <option value="Loan Assessment">Loan Assessment</option>
+                  <option value="Player Report">Player Report</option>
+                  <option value="Loan Report">Loan Report</option>
                 </Form.Select>
               </Form.Group>
             </Row>

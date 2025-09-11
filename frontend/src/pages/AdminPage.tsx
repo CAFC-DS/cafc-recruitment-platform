@@ -161,6 +161,22 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const migratePurposeValues = async () => {
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await axiosInstance.post('/admin/migrate-purpose-values');
+      setSuccess(`Purpose values migration completed! ${response.data.message}. Total updates: ${response.data.total_updates}`);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.detail || 'Failed to migrate purpose values');
+      } else {
+        setError('An unexpected error occurred');
+      }
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin': return 'danger';
@@ -192,6 +208,14 @@ const AdminPage: React.FC = () => {
                 size="sm"
               >
                 🔄 Setup CAFC Player IDs
+              </Button>
+              <Button 
+                variant="outline-info" 
+                onClick={migratePurposeValues}
+                className="me-2"
+                size="sm"
+              >
+                📋 Migrate Purpose Values
               </Button>
               <Button 
                 variant="primary" 

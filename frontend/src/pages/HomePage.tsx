@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Badge, Button, Spinner, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Button, Spinner, Alert, Form } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
@@ -41,12 +41,14 @@ const HomePage: React.FC = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
+  const [databaseMetadata, setDatabaseMetadata] = useState<any>(null);
+  const [recencyFilter, setRecencyFilter] = useState('30'); // Default to 30 days
 
   useEffect(() => {
     if (token) {
       fetchDashboardData();
     }
-  }, [token]);
+  }, [token, recencyFilter]);
 
   const fetchDashboardData = async () => {
     try {
@@ -56,8 +58,8 @@ const HomePage: React.FC = () => {
       const userResponse = await axiosInstance.get('/users/me');
       setUserRole(userResponse.data.role || 'scout');
 
-      // Fetch recent scout reports (last 15 to allow for better filtering) - role-based filtering will be done on server
-      const scoutResponse = await axiosInstance.get('/scout_reports/all?page=1&limit=15');
+      // Fetch recent scout reports with recency filter
+      const scoutResponse = await axiosInstance.get(`/scout_reports/all?page=1&limit=50&recency_days=${recencyFilter}`);
       const scoutReports = scoutResponse.data.reports || scoutResponse.data || [];
       
       // Filter scout reports for scout role (client-side backup)
@@ -71,13 +73,13 @@ const HomePage: React.FC = () => {
           report.report_type?.toLowerCase() === 'flag' || 
           report.report_type?.toLowerCase() === 'flag assessment'
         )
-        .slice(0, 5); // Show only 5 most recent flag reports
+        .slice(0, 10); // Show 10 most recent flag reports
       const regularReports = filteredScoutReports
         .filter(report => 
           report.report_type?.toLowerCase() !== 'flag' && 
           report.report_type?.toLowerCase() !== 'flag assessment'
         )
-        .slice(0, 5); // Show only 5 most recent regular reports
+        .slice(0, 10); // Show 10 most recent regular reports
       
       setRecentScoutReports(regularReports);
       setRecentFlagReports(flagReports);
@@ -90,13 +92,22 @@ const HomePage: React.FC = () => {
       // TODO: Add created_by field to intel reports for proper filtering
       setRecentIntelReports(Array.isArray(intelReports) ? intelReports : []);
 
-      // For top attribute reports, use regular reports only (not flag reports)
-      const topReports = regularReports.length > 0 ? 
-        regularReports
+      // For top attribute reports, use all filtered reports (including flag reports with attribute scores)
+      const topReports = filteredScoutReports.length > 0 ? 
+        filteredScoutReports
           .filter(report => report.attribute_score && report.attribute_score > 0)
           .sort((a, b) => (b.attribute_score || 0) - (a.attribute_score || 0))
-          .slice(0, 5) : [];
+          .slice(0, 10) : []; // Show top 10 attribute reports
       setTopAttributeReports(topReports);
+
+      // Fetch database metadata
+      try {
+        const metadataResponse = await axiosInstance.get('/database/metadata');
+        setDatabaseMetadata(metadataResponse.data);
+      } catch (metadataError) {
+        console.error('Error fetching database metadata:', metadataError);
+        // Non-critical, don't fail the whole dashboard
+      }
 
     } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
@@ -214,9 +225,54 @@ const HomePage: React.FC = () => {
         {/* Welcome Header */}
         <div className="mb-4">
           <h1 className="text-dark">
-            Welcome, {user?.firstname && user?.lastname ? `${user.firstname} ${user.lastname}` : user?.username || 'User'}
+            Welcome, {user?.firstname} {user?.lastname}
           </h1>
-          <p className="text-muted">Charlton Athletic Recruitment Platform Dashboard</p>
+          <Row>
+            <Col md={8}>
+              <p className="text-muted mb-2">Charlton Athletic Recruitment Platform Dashboard</p>
+              <div className="d-flex align-items-center gap-2">
+                <small className="text-muted">Show reports from:</small>
+                <Form.Select 
+                  size="sm" 
+                  value={recencyFilter} 
+                  onChange={e => setRecencyFilter(e.target.value)}
+                  style={{ width: 'auto' }}
+                >
+                  <option value="7">Last 7 Days</option>
+                  <option value="30">Last 30 Days</option>
+                  <option value="90">Last 90 Days</option>
+                  <option value="all">All Time</option>
+                </Form.Select>
+              </div>
+            </Col>
+            <Col md={4}>
+              {/* Database Status Info - positioned on the right */}
+              {databaseMetadata && !databaseMetadata.error && (
+                <div className="d-flex flex-column gap-1 mt-2">
+                  {databaseMetadata.players_table && (
+                    <small className="text-muted d-flex align-items-center justify-content-end">
+                      👥 Players: {databaseMetadata.players_table.count?.toLocaleString() || '0'} records
+                      {databaseMetadata.players_table.last_updated && (
+                        <span className="ms-1">
+                          (Updated: {new Date(databaseMetadata.players_table.last_updated).toLocaleDateString()})
+                        </span>
+                      )}
+                    </small>
+                  )}
+                  {databaseMetadata.matches_table && (
+                    <small className="text-muted d-flex align-items-center justify-content-end">
+                      ⚽ Matches: {databaseMetadata.matches_table.count?.toLocaleString() || '0'} records
+                      {databaseMetadata.matches_table.last_updated && (
+                        <span className="ms-1">
+                          (Updated: {new Date(databaseMetadata.matches_table.last_updated).toLocaleDateString()})
+                        </span>
+                      )}
+                    </small>
+                  )}
+                </div>
+              )}
+            </Col>
+          </Row>
         </div>
 
       {/* 2x2 Grid Dashboard */}
@@ -226,7 +282,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">⚽ Recent Scout Reports</h5>
+                <h5 className="mb-0">⚽ Recent Scout Reports ({recentScoutReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
@@ -292,7 +348,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🕵️ Recent Intel Reports</h5>
+                <h5 className="mb-0">🕵️ Recent Intel Reports ({recentIntelReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
@@ -357,7 +413,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🏆 Highest Attribute Scores</h5>
+                <h5 className="mb-0">🏆 Highest Attribute Scores ({topAttributeReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
@@ -421,7 +477,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🚩 Recent Flag Reports</h5>
+                <h5 className="mb-0">🚩 Recent Flag Reports ({recentFlagReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"

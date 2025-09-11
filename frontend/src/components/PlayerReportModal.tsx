@@ -1,8 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Modal, Row, Col, Badge, Card, Button } from 'react-bootstrap';
 import { PolarArea } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import html2canvas from 'html2canvas';
 import {
   Chart as ChartJS,
   RadialLinearScale,
@@ -32,25 +31,9 @@ interface PlayerReportModalProps {
 }
 
 const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, report }) => {
-  const reportRef = useRef<HTMLDivElement>(null);
-
   if (!report) {
     return null;
   }
-
-  const handleExportReport = () => {
-    if (reportRef.current) {
-      html2canvas(reportRef.current, {
-        useCORS: true, // Important for images loaded from other origins
-        scale: 2, // Increase scale for better resolution
-      }).then(canvas => {
-        const link = document.createElement('a');
-        link.download = `${report.player_name}_Scouting_Report.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      });
-    }
-  };
 
   // Group-based color mapping using Red, Blue, Orange palette
   const getAttributeGroupColor = (attributeName: string) => {
@@ -348,7 +331,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
       <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }} className="modal-header-dark">
         <Modal.Title>{reportInfo.icon} {report.player_name} - {reportInfo.title}</Modal.Title>
       </Modal.Header>
-      <Modal.Body ref={reportRef}>
+      <Modal.Body>
         {isFlagReport ? (
           /* Simplified Flag Report Layout */
           <>
@@ -582,11 +565,6 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         )}
       </Modal.Body>
       <Modal.Footer>
-        {!isFlagReport && (
-          <Button variant="success" onClick={handleExportReport}>
-            Export Report as Image
-          </Button>
-        )}
         <Button variant="outline-dark" onClick={onHide}>
           Close
         </Button>

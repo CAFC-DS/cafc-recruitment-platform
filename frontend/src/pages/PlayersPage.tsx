@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Form, Button, Badge, InputGroup, Table, Spinner, Alert } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Container, Row, Col, Card, Form, Button, Badge, Table, Spinner, Alert, ListGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
 
 interface Player {
   player_id: number;
@@ -47,6 +48,15 @@ const PlayersPage: React.FC = () => {
   const [teamFilter, setTeamFilter] = useState('');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Advanced search functionality
+  const [playerSearch, setPlayerSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<Player[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [playerSearchError, setPlayerSearchError] = useState('');
+  const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchCacheRef = useRef<Record<string, Player[]>>({});
 
   const positions = ["GK", "RB", "RWB", "RCB", "LCB", "LCB(3)", "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW", "Target Man CF", "In Behind CF"];
   
@@ -91,6 +101,101 @@ const PlayersPage: React.FC = () => {
   const handleSearch = () => {
     fetchPlayers(1);
   };
+
+  const performPlayerSearch = useCallback(async (query: string) => {
+    const trimmedQuery = query.trim();
+    const normalizedQuery = normalizeText(trimmedQuery);
+    
+    // Check cache first using normalized query
+    if (searchCacheRef.current[normalizedQuery]) {
+      setSearchResults(searchCacheRef.current[normalizedQuery]);
+      setPlayerSearchError('');
+      setPlayerSearchLoading(false);
+      setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
+      return;
+    }
+    
+    try {
+      setPlayerSearchLoading(true);
+      // Backend now handles comprehensive accent-insensitive search
+      const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(trimmedQuery)}`);
+      let results = response.data || [];
+      
+      // Cache the results using normalized query
+      searchCacheRef.current[normalizedQuery] = results;
+      
+      setSearchResults(results);
+      setShowDropdown(results.length > 0);
+      
+      if (results.length === 0) {
+        setPlayerSearchError('No players found.');
+      } else {
+        setPlayerSearchError('');
+      }
+    } catch (error) {
+      console.error('Error searching players:', error);
+      setSearchResults([]);
+      setShowDropdown(false);
+      setPlayerSearchError('Error searching for players.');
+    } finally {
+      setPlayerSearchLoading(false);
+    }
+  }, []);
+
+  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setPlayerSearch(query);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Clear error immediately when user starts typing
+    setPlayerSearchError('');
+    
+    if (query.length <= 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setPlayerSearchLoading(false);
+      return;
+    }
+    
+    // Set loading immediately for better UX
+    setPlayerSearchLoading(true);
+    
+    // Debounce the actual search
+    searchTimeoutRef.current = setTimeout(() => {
+      performPlayerSearch(query);
+    }, 300); // 300ms delay
+  };
+
+  const handlePlayerSelect = (player: Player) => {
+    navigate(`/player/${player.player_id}`);
+  };
+  
+  // Close dropdown when clicking outside
+  const handleInputBlur = () => {
+    // Small delay to allow click on dropdown items
+    setTimeout(() => {
+      setShowDropdown(false);
+    }, 200);
+  };
+  
+  const handleInputFocus = () => {
+    if (searchResults.length > 0) {
+      setShowDropdown(true);
+    }
+  };
+  
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Server-side filtering eliminates need for client-side filtering
   const displayPlayers = players;
@@ -154,31 +259,63 @@ const PlayersPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Quick Player Search */}
+      <Card className="mb-4">
+        <Card.Body>
+          <Card.Title>🔍 Quick Player Search</Card.Title>
+          <Form.Group controlId="playerName">
+            <div className="position-relative">
+              <Form.Control
+                type="text"
+                placeholder="Search for a player by name..."
+                value={playerSearch}
+                onChange={handlePlayerSearchChange}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
+              />
+              {playerSearchLoading && (
+                <div className="position-absolute top-50 end-0 translate-middle-y me-3" style={{ zIndex: 10 }}>
+                  <Spinner animation="border" size="sm" />
+                </div>
+              )}
+            </div>
+            {showDropdown && searchResults.length > 0 && (
+              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
+                {searchResults.map((player, index) => (
+                  <ListGroup.Item 
+                    key={`${player.player_id || index}-${player.player_name}`} 
+                    action 
+                    onClick={() => handlePlayerSelect(player)}
+                    className="d-flex justify-content-between align-items-center"
+                  >
+                    <div>
+                      <strong>{player.player_name}</strong>
+                      <small className="text-muted ms-2">{player.position}</small>
+                    </div>
+                    <small className="text-muted">({player.squad_name})</small>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            )}
+            {playerSearchError && (
+              <div className="mt-2">
+                <small className="text-danger d-block">
+                  ⚠️ {playerSearchError}
+                </small>
+              </div>
+            )}
+          </Form.Group>
+        </Card.Body>
+      </Card>
+
       {/* Filters */}
       <Card className="mb-4">
         <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
-          <Card.Title className="h6 mb-0 text-white">🔍 Filter Players</Card.Title>
+          <Card.Title className="h6 mb-0 text-white">🔧 Filter Players</Card.Title>
         </Card.Header>
         <Card.Body>
           <Row>
-            <Col md={3} className="mb-3">
-              <Form.Group>
-                <Form.Label className="small fw-bold">Search</Form.Label>
-                <InputGroup size="sm">
-                  <Form.Control
-                    type="text"
-                    placeholder="Name, team..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                  <Button variant="outline-secondary" onClick={handleSearch}>
-                    🔍
-                  </Button>
-                </InputGroup>
-              </Form.Group>
-            </Col>
-            <Col md={2} className="mb-3">
+            <Col md={4} className="mb-3">
               <Form.Group>
                 <Form.Label className="small fw-bold">Position</Form.Label>
                 <Form.Select
@@ -193,7 +330,7 @@ const PlayersPage: React.FC = () => {
                 </Form.Select>
               </Form.Group>
             </Col>
-            <Col md={3} className="mb-3">
+            <Col md={4} className="mb-3">
               <Form.Group>
                 <Form.Label className="small fw-bold">Team</Form.Label>
                 <Form.Select
@@ -208,8 +345,7 @@ const PlayersPage: React.FC = () => {
                 </Form.Select>
               </Form.Group>
             </Col>
-            {/* Status filter removed - will be added with pipeline */}
-            <Col md={1} className="mb-3 d-flex align-items-end">
+            <Col md={4} className="mb-3 d-flex align-items-end">
               <Button 
                 variant="outline-secondary" 
                 size="sm" 
@@ -219,8 +355,16 @@ const PlayersPage: React.FC = () => {
                   setTeamFilter('');
                   fetchPlayers(1);
                 }}
+                className="me-2"
               >
-                🔄
+                🔄 Clear Filters
+              </Button>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={handleSearch}
+              >
+                Apply Filters
               </Button>
             </Col>
           </Row>

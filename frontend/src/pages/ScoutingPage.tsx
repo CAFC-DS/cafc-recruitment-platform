@@ -26,6 +26,7 @@ interface ScoutReport {
   report_type: string;
   scouting_type: string;
   player_id: number;
+  purpose: string | null;
 }
 
 const ScoutingPage: React.FC = () => {
@@ -61,10 +62,14 @@ const ScoutingPage: React.FC = () => {
   
   // Advanced filters
   const [performanceFilter, setPerformanceFilter] = useState('');
+  const [attributeFilter, setAttributeFilter] = useState('');
   const [scoutNameFilter, setScoutNameFilter] = useState('');
   const [playerNameFilter, setPlayerNameFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
+  const [reportTypeFilter, setReportTypeFilter] = useState('');
+  const [scoutingTypeFilter, setScoutingTypeFilter] = useState('');
+  const [positionFilter, setPositionFilter] = useState('');
   
   // Role-based permissions
   const [userRole, setUserRole] = useState('');
@@ -78,13 +83,13 @@ const ScoutingPage: React.FC = () => {
   const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchScoutReports = useCallback(async (page: number, limit: number, recency: string) => {
+  const fetchScoutReports = useCallback(async (recency: string) => {
     setLoading(true);
     setErrorReports(null);
     try {
       const params: any = {
-        page,
-        limit,
+        page: 1,
+        limit: 1000, // Load all reports for client-side filtering and pagination
       };
       if (recency !== 'all') {
         params.recency_days = parseInt(recency);
@@ -98,7 +103,7 @@ const ScoutingPage: React.FC = () => {
       }
       
       setScoutReports(reports);
-      setTotalReports(response.data.total_reports || 0);
+      setTotalReports(reports.length); // Use actual loaded reports count
     } catch (error) {
       console.error('Error fetching scout reports:', error);
       setErrorReports('Failed to load scout reports. Please try again.');
@@ -107,7 +112,7 @@ const ScoutingPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userRole, currentUsername]);
 
   // Fetch user role and username
   const fetchUserInfo = useCallback(async () => {
@@ -153,7 +158,7 @@ const ScoutingPage: React.FC = () => {
       await axiosInstance.delete(`/scout_reports/${deleteReportId}`);
       setShowDeleteModal(false);
       setDeleteReportId(null);
-      fetchScoutReports(currentPage, itemsPerPage, recencyFilter);
+      fetchScoutReports(recencyFilter);
     } catch (error) {
       console.error('Error deleting report:', error);
     } finally {
@@ -171,10 +176,10 @@ const ScoutingPage: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchUserInfo().then(() => {
-        fetchScoutReports(currentPage, itemsPerPage, recencyFilter);
+        fetchScoutReports(recencyFilter);
       });
     }
-  }, [token, currentPage, itemsPerPage, recencyFilter, fetchScoutReports, fetchUserInfo]);
+  }, [token, recencyFilter, fetchScoutReports, fetchUserInfo]);
 
   const performPlayerSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim();
@@ -343,6 +348,23 @@ const ScoutingPage: React.FC = () => {
     }
   };
 
+  const getPurposeBadge = (purpose: string | null) => {
+    if (!purpose) return null;
+    
+    switch (purpose.toLowerCase()) {
+      case 'player report':
+        return <Badge bg="primary">📋 Player Report</Badge>;
+      case 'loan report':
+        return <Badge bg="info">🤝 Loan Report</Badge>;
+      case 'player assessment':
+        return <Badge bg="primary">📋 Player Report</Badge>;
+      case 'loan assessment':
+        return <Badge bg="info">🤝 Loan Report</Badge>;
+      default:
+        return <Badge bg="secondary">{purpose}</Badge>;
+    }
+  };
+
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
@@ -363,6 +385,18 @@ const ScoutingPage: React.FC = () => {
       }
     }
 
+    // Attribute score filter
+    if (attributeFilter) {
+      const [min, max] = attributeFilter.split('-').map(Number);
+      if (max) {
+        filtered = filtered.filter(report => report.attribute_score >= min && report.attribute_score <= max);
+      } else {
+        // Single value filter
+        const score = parseInt(attributeFilter);
+        filtered = filtered.filter(report => report.attribute_score === score);
+      }
+    }
+
     // Scout name filter
     if (scoutNameFilter) {
       filtered = filtered.filter(report => 
@@ -374,6 +408,27 @@ const ScoutingPage: React.FC = () => {
     if (playerNameFilter) {
       filtered = filtered.filter(report => 
         containsAccentInsensitive(report.player_name, playerNameFilter)
+      );
+    }
+
+    // Report type filter
+    if (reportTypeFilter) {
+      filtered = filtered.filter(report => 
+        report.report_type.toLowerCase().includes(reportTypeFilter.toLowerCase())
+      );
+    }
+
+    // Scouting type filter
+    if (scoutingTypeFilter) {
+      filtered = filtered.filter(report => 
+        report.scouting_type.toLowerCase() === scoutingTypeFilter.toLowerCase()
+      );
+    }
+
+    // Position filter
+    if (positionFilter) {
+      filtered = filtered.filter(report => 
+        report.position_played && report.position_played.toLowerCase().includes(positionFilter.toLowerCase())
       );
     }
 
@@ -391,6 +446,21 @@ const ScoutingPage: React.FC = () => {
   };
 
   const filteredReports = getFilteredReports();
+  
+  // Client-side pagination for filtered results
+  const getPaginatedReports = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredReports.slice(startIndex, endIndex);
+  };
+  
+  const paginatedReports = getPaginatedReports();
+  const filteredTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
+  
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [performanceFilter, attributeFilter, scoutNameFilter, playerNameFilter, dateFromFilter, dateToFilter, reportTypeFilter, scoutingTypeFilter, positionFilter]);
 
   return (
     <Container className="mt-4">
@@ -454,7 +524,7 @@ const ScoutingPage: React.FC = () => {
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
         selectedPlayer={selectedPlayer}
-        onAssessmentSubmitSuccess={() => fetchScoutReports(currentPage, itemsPerPage, recencyFilter)}
+        onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter)}
         editMode={editMode}
         reportId={editReportId}
         existingReportData={editReportData}
@@ -495,7 +565,7 @@ const ScoutingPage: React.FC = () => {
       {/* Pagination and Filters Row */}
       <Row className="mb-3 align-items-center">
         <Col md={4}>
-          {totalReports > itemsPerPage && (
+          {filteredTotalPages > 1 && (
             <div className="d-flex align-items-center">
               <Button 
                 variant="outline-secondary" 
@@ -507,13 +577,13 @@ const ScoutingPage: React.FC = () => {
                 ‹
               </Button>
               <small className="text-muted mx-2">
-                Page {currentPage} of {Math.ceil(totalReports / itemsPerPage)}
+                Page {currentPage} of {filteredTotalPages}
               </small>
               <Button 
                 variant="outline-secondary" 
                 size="sm" 
                 onClick={() => handlePageChange(currentPage + 1)} 
-                disabled={currentPage >= Math.ceil(totalReports / itemsPerPage) || loading}
+                disabled={currentPage >= filteredTotalPages || loading}
               >
                 ›
               </Button>
@@ -534,7 +604,10 @@ const ScoutingPage: React.FC = () => {
           </Form.Select>
         </Col>
         <Col md={4} className="text-end">
-          <small className="text-muted">Showing {filteredReports.length} of {totalReports} reports</small>
+          <small className="text-muted">
+            Showing {Math.min(paginatedReports.length, itemsPerPage)} of {filteredReports.length} filtered results
+            {filteredReports.length !== totalReports && <span> ({totalReports} total)</span>}
+          </small>
         </Col>
       </Row>
 
@@ -571,6 +644,42 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={3}>
                 <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Attribute Score</Form.Label>
+                  <Form.Select size="sm" value={attributeFilter} onChange={(e) => setAttributeFilter(e.target.value)}>
+                    <option value="">All Scores</option>
+                    <option value="0-20">0-20 (Very Low)</option>
+                    <option value="21-40">21-40 (Low)</option>
+                    <option value="41-60">41-60 (Average)</option>
+                    <option value="61-75">61-75 (Good)</option>
+                    <option value="76-80">76-80 (Excellent)</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Report Type</Form.Label>
+                  <Form.Select size="sm" value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)}>
+                    <option value="">All Types</option>
+                    <option value="player assessment">Player Assessment</option>
+                    <option value="flag">Flag</option>
+                    <option value="clips">Clips</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Scouting Type</Form.Label>
+                  <Form.Select size="sm" value={scoutingTypeFilter} onChange={(e) => setScoutingTypeFilter(e.target.value)}>
+                    <option value="">All Types</option>
+                    <option value="live">Live</option>
+                    <option value="video">Video</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row>
+              <Col md={3}>
+                <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">Scout Name</Form.Label>
                   <Form.Control size="sm" type="text" placeholder="Enter scout name" value={scoutNameFilter} onChange={(e) => setScoutNameFilter(e.target.value)} />
                 </Form.Group>
@@ -583,10 +692,16 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={3}>
                 <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Position</Form.Label>
+                  <Form.Control size="sm" type="text" placeholder="e.g. GK, CM, ST" value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)} />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">Date Range</Form.Label>
                   <div className="d-flex gap-1">
-                    <Form.Control size="sm" type="date" value={dateFromFilter} onChange={(e) => setDateFromFilter(e.target.value)} />
-                    <Form.Control size="sm" type="date" value={dateToFilter} onChange={(e) => setDateToFilter(e.target.value)} />
+                    <Form.Control size="sm" type="date" value={dateFromFilter} onChange={(e) => setDateFromFilter(e.target.value)} placeholder="From" />
+                    <Form.Control size="sm" type="date" value={dateToFilter} onChange={(e) => setDateToFilter(e.target.value)} placeholder="To" />
                   </div>
                 </Form.Group>
               </Col>
@@ -598,14 +713,21 @@ const ScoutingPage: React.FC = () => {
                   size="sm" 
                   onClick={() => {
                     setPerformanceFilter('');
+                    setAttributeFilter('');
                     setScoutNameFilter('');
                     setPlayerNameFilter('');
                     setDateFromFilter('');
                     setDateToFilter('');
+                    setReportTypeFilter('');
+                    setScoutingTypeFilter('');
+                    setPositionFilter('');
                   }}
                 >
-                  🔄 Clear Filters
+                  🔄 Clear All Filters
                 </Button>
+                <small className="text-muted ms-3">
+                  Showing {filteredReports.length} of {scoutReports.length} reports
+                </small>
               </Col>
             </Row>
           </Card.Body>
@@ -635,7 +757,7 @@ const ScoutingPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredReports.map((report) => (
+                  {paginatedReports.map((report) => (
                     <tr key={report.report_id}>
                       <td>{new Date(report.created_at).toLocaleDateString()}</td>
                       <td>
@@ -659,6 +781,7 @@ const ScoutingPage: React.FC = () => {
                       <td>
                         {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
+                        {report.purpose && <span className="ms-1">{getPurposeBadge(report.purpose)}</span>}
                       </td>
                       <td><Badge bg={getPerformanceScoreVariant(report.performance_score)}>{report.performance_score}</Badge></td>
                       <td><Badge bg={getAttributeScoreVariant(report.attribute_score)}>{report.attribute_score}</Badge></td>
@@ -678,7 +801,7 @@ const ScoutingPage: React.FC = () => {
             </div>
           ) : (
             <Row>
-              {filteredReports.map((report) => (
+              {paginatedReports.map((report) => (
                 <Col md={6} lg={4} key={report.report_id} className="mb-4">
                   <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
                     <Card.Header className="border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
@@ -695,6 +818,7 @@ const ScoutingPage: React.FC = () => {
                           <div className="mb-2">
                             {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                             {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
+                            {report.purpose && <span className="ms-1">{getPurposeBadge(report.purpose)}</span>}
                           </div>
                         </div>
                         <div className="text-end">
