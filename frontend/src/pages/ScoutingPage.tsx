@@ -254,7 +254,7 @@ const ScoutingPage: React.FC = () => {
 
   const handlePlayerSelect = (player: any) => {
     setSelectedPlayer(player);
-    setPlayerSearch(`${player.player_name} (${player.team})`);
+    setPlayerSearch(`${player.player_name} (${player.squad_name})`);
     setPlayers([]);
     setShowDropdown(false);
     setPlayerSearchError('');
@@ -493,7 +493,7 @@ const ScoutingPage: React.FC = () => {
                     className="d-flex justify-content-between align-items-center"
                   >
                     <span>{player.player_name}</span>
-                    <small className="text-muted">({player.team})</small>
+                    <small className="text-muted">({player.squad_name})</small>
                   </ListGroup.Item>
                 ))}
               </ListGroup>

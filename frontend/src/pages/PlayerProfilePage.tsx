@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Badge, Button, Table, Tab, Tabs, Form, Alert, Spinner, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Button, Table, Tab, Tabs, Form, Alert, Spinner, Modal, ProgressBar } from 'react-bootstrap';
 import axiosInstance from '../axiosInstance';
 import PlayerReportModal from '../components/PlayerReportModal';
 import IntelReportModal from '../components/IntelReportModal';
@@ -21,11 +21,49 @@ interface PlayerProfile {
   notes: any[];
 }
 
+interface AttributeData {
+  name: string;
+  average_score: number;
+  report_count: number;
+  display_order: number;
+}
+
+interface PlayerAttributes {
+  player_id: number;
+  player_position: string;
+  attribute_group: string;
+  attribute_groups: { [key: string]: AttributeData[] };
+  total_reports: number;
+  total_attributes: number;
+}
+
+interface ScoutReport {
+  report_id: number;
+  report_date: string;
+  scout_name: string;
+  game_date: string | null;
+  fixture: string | null;
+  fixture_date: string | null;
+  overall_rating: number | null;
+  attribute_count: number;
+  report_type: string | null;
+}
+
+interface ScoutReportsData {
+  player_id: number;
+  total_reports: number;
+  reports: ScoutReport[];
+}
+
 const PlayerProfilePage: React.FC = () => {
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
+  const [scoutReportsData, setScoutReportsData] = useState<ScoutReportsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attributesLoading, setAttributesLoading] = useState(true);
+  const [scoutReportsLoading, setScoutReportsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -39,17 +77,15 @@ const PlayerProfilePage: React.FC = () => {
   const [isPrivateNote, setIsPrivateNote] = useState(true);
   const [addingNote, setAddingNote] = useState(false);
 
-  // Pipeline functionality removed - will be added later
   const [updatingStatus, setUpdatingStatus] = useState(false);
   
   const getStatusBadge = (status: string) => {
     return <Badge bg="secondary">🔍 Scouted</Badge>;
   };
   
-  const pipelineStatuses = []; // Placeholder for now
+  const pipelineStatuses = [];
   
   const updatePipelineStatus = async (newStatus: string) => {
-    // Placeholder function - will be implemented later
     console.log('Pipeline status update:', newStatus);
   };
 
@@ -57,9 +93,9 @@ const PlayerProfilePage: React.FC = () => {
   const getPerformanceScoreVariant = (score: number) => {
     if (score === 10) return 'gold';
     if (score === 9) return 'silver';  
-    if (score >= 7) return 'success'; // 7-8 green
-    if (score >= 3) return 'warning'; // 3-6 amber
-    return 'danger'; // 1-3 red
+    if (score >= 7) return 'success';
+    if (score >= 3) return 'warning';
+    return 'danger';
   };
 
   const getAttributeScoreVariant = (score: number) => {
@@ -70,9 +106,12 @@ const PlayerProfilePage: React.FC = () => {
     return 'danger';
   };
 
+
   useEffect(() => {
     if (playerId) {
       fetchPlayerProfile();
+      fetchPlayerAttributes();
+      fetchScoutReports();
     }
   }, [playerId]);
 
@@ -94,6 +133,40 @@ const PlayerProfilePage: React.FC = () => {
     }
   };
 
+  const fetchPlayerAttributes = async () => {
+    if (!playerId) {
+      setAttributesLoading(false);
+      return;
+    }
+    
+    try {
+      const response = await axiosInstance.get(`/players/${playerId}/attributes`);
+      setAttributes(response.data);
+    } catch (error: any) {
+      console.error('Error fetching player attributes:', error);
+      // Don't set main error - attributes are optional
+    } finally {
+      setAttributesLoading(false);
+    }
+  };
+
+  const fetchScoutReports = async () => {
+    if (!playerId) {
+      setScoutReportsLoading(false);
+      return;
+    }
+    
+    try {
+      const response = await axiosInstance.get(`/players/${playerId}/scout-reports`);
+      setScoutReportsData(response.data);
+    } catch (error: any) {
+      console.error('Error fetching scout reports:', error);
+      // Don't set main error - scout reports are optional
+    } finally {
+      setScoutReportsLoading(false);
+    }
+  };
+
   const handleOpenReportModal = async (reportId: number) => {
     setLoadingReportId(reportId);
     try {
@@ -112,8 +185,6 @@ const PlayerProfilePage: React.FC = () => {
     setShowIntelModal(true);
   };
 
-  // Pipeline update function removed - will be added later
-
   const addNote = async () => {
     if (!profile || !newNote.trim()) return;
     
@@ -129,7 +200,6 @@ const PlayerProfilePage: React.FC = () => {
       setIsPrivateNote(true);
       setShowAddNoteModal(false);
       
-      // Refresh profile to get updated notes
       fetchPlayerProfile();
     } catch (error) {
       console.error('Error adding note:', error);
@@ -138,339 +208,454 @@ const PlayerProfilePage: React.FC = () => {
     }
   };
 
-  const exportToPDF = async () => {
-    if (!profile) return;
-    
-    try {
-      // Open the PDF export endpoint in a new tab
-      const exportUrl = `${axiosInstance.defaults.baseURL}/players/${profile.player_id}/export-pdf`;
-      window.open(exportUrl, '_blank');
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-    }
-  };
-
   if (loading) {
     return (
-      <Container className="mt-4 text-center">
-        <Spinner animation="border" />
-        <p>Loading player profile...</p>
-      </Container>
+      <div className="loading-container">
+        <div className="loading-content">
+          <Spinner animation="border" size="sm" />
+          <span>Loading player profile...</span>
+        </div>
+      </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <Container className="mt-4">
-        <Alert variant="danger">
-          {error || 'Player not found'}
-          <Button variant="outline-primary" className="ms-3" onClick={() => navigate(-1)}>
-            Go Back
-          </Button>
-        </Alert>
+      <Container className="mt-5">
+        <div className="error-container">
+          <Alert variant="danger" className="clean-alert">
+            <h5>⚠️ {error || 'Player not found'}</h5>
+            <Button variant="outline-dark" size="sm" onClick={() => navigate(-1)}>
+              ← Go Back
+            </Button>
+          </Alert>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Container className="mt-4">
-      {/* Header Section */}
-      <Card className="mb-4 shadow-sm">
-        <Card.Body>
-          <Row className="align-items-center">
-            <Col md={8}>
-              <div className="d-flex align-items-center mb-2">
-                <h2 className="mb-0 me-3">{profile.player_name}</h2>
-                <Badge bg="secondary">🔍 Scouted</Badge>
+    <div className="player-profile-page">
+      <Container fluid className="px-4">
+        {/* Clean Header */}
+        <div className="profile-header">
+          <div className="header-content">
+            <div className="player-info">
+              <div className="player-name-section">
+                <div className="player-name-line">
+                  <span className="player-firstname">{profile.first_name}</span>
+                </div>
+                <h1 className="player-lastname">{profile.last_name}</h1>
+                <div className="player-meta">
+                  <span className="club-badge">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>
+                  <span className="club-name">{profile.squad_name}</span>
+                  <span className="position-age">{profile.position} {profile.age} {profile.age && profile.age > 1 ? 'years old' : 'year old'}</span>
+                </div>
               </div>
-              <div className="text-muted">
-                <Row>
-                  <Col sm={6}>
-                    <p className="mb-1"><strong>Age:</strong> {profile.age || 'Unknown'}</p>
-                    <div className="mb-2">
-                      <strong className="mb-1 d-block">Position:</strong>
-                      <PitchView positions={[profile.position]} className="mb-2" />
+            </div>
+            
+            <div className="header-actions">
+              <Button 
+                variant="outline-secondary" 
+                size="sm" 
+                className="clean-btn"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Horizontal Scout Reports Timeline */}
+        <div className="horizontal-timeline-section mt-4 mb-4">
+          <h4 className="section-title">📅 Recent Scouting History</h4>
+          
+          {scoutReportsLoading ? (
+            <div className="text-center py-3">
+              <Spinner animation="border" size="sm" className="me-2" />
+              Loading scout reports...
+            </div>
+          ) : scoutReportsData && scoutReportsData.reports.length > 0 ? (
+            <>
+              {/* Summary Stats */}
+              <div className="timeline-summary-compact mb-3">
+                <span className="summary-stat">
+                  <strong>{scoutReportsData.total_reports}</strong> reports
+                </span>
+                <span className="summary-stat">
+                  <strong>{scoutReportsData.reports.filter(r => r.overall_rating && r.overall_rating >= 7).length}</strong> high ratings (7+)
+                </span>
+                <span className="summary-stat">
+                  <strong>{new Set(scoutReportsData.reports.map(r => r.scout_name)).size}</strong> different scouts
+                </span>
+              </div>
+
+              {/* Horizontal Timeline */}
+              <div className="horizontal-timeline">
+                <div className="timeline-track">
+                  {scoutReportsData.reports.slice(0, 4).map((report, index) => (
+                    <div key={report.report_id} className="timeline-card">
+                      <div className="timeline-card-header">
+                        <div className="timeline-card-date">
+                          {new Date(report.report_date).toLocaleDateString('en-GB', {
+                            day: 'numeric',
+                            month: 'short'
+                          })}
+                        </div>
+                        {report.overall_rating && (
+                          <Badge bg={getPerformanceScoreVariant(report.overall_rating)} className="timeline-rating">
+                            {report.overall_rating}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="timeline-card-body">
+                        <div className="timeline-card-type">
+                          <Badge bg="secondary" className="type-badge">
+                            {report.report_type || 'Scout Report'}
+                          </Badge>
+                        </div>
+                        
+                        <div className="timeline-card-fixture">
+                          {report.fixture ? (
+                            <>
+                              <small className="fixture-text">{report.fixture}</small>
+                              {report.fixture_date && (
+                                <small className="fixture-date">
+                                  {new Date(report.fixture_date).toLocaleDateString('en-GB')}
+                                </small>
+                              )}
+                            </>
+                          ) : (
+                            <small className="no-fixture">No fixture info</small>
+                          )}
+                        </div>
+                        
+                        <div className="timeline-card-scout">
+                          by {report.scout_name}
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        variant="outline-primary"
+                        className="timeline-card-btn"
+                        onClick={() => handleOpenReportModal(report.report_id)}
+                        disabled={loadingReportId === report.report_id}
+                      >
+                        {loadingReportId === report.report_id ? 
+                          <Spinner animation="border" size="sm" /> : 
+                          'View'
+                        }
+                      </Button>
+                      
+                      {/* Connector line to next card */}
+                      {index < Math.min(scoutReportsData.reports.length - 1, 3) && (
+                        <div className="timeline-connector"></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                {scoutReportsData.reports.length > 4 && (
+                  <div className="timeline-more">
+                    <small className="text-muted">
+                      +{scoutReportsData.reports.length - 4} more reports in tabs below
+                    </small>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="empty-state-compact">
+              <p>No scout reports available yet.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Compact Attributes Section */}
+        {attributesLoading ? (
+          <div className="attributes-loading mt-3 mb-2">
+            <div className="loading-content-compact">
+              <Spinner animation="border" size="sm" />
+              <span>Loading attributes...</span>
+            </div>
+          </div>
+        ) : attributes && attributes.total_attributes > 0 ? (
+          <div className="attributes-section-compact mt-3 mb-3">
+            {/* Compact Legend */}
+            <div className="attributes-legend-compact mb-2">
+              <h4 className="legend-title-compact">📊 Player Attributes</h4>
+              <p className="legend-text-compact">
+                <span className="dot-compact filled"></span> = Average from {attributes.total_reports} report{attributes.total_reports !== 1 ? 's' : ''} | 
+                {attributes.total_attributes} attributes assessed
+              </p>
+            </div>
+
+            {/* Compact Attribute Data */}
+            <Row>
+              {Object.entries(attributes.attribute_groups).map(([groupName, groupAttributes]) => {
+                // Get emoji for group
+                const groupEmojis: { [key: string]: string } = {
+                  'Physical': '💪',
+                  'Technical': '⚽',
+                  'Mental': '🧠',
+                  'Defensive': '🛡️',
+                  'Attacking': '⚡',
+                  'Other': '📊'
+                };
+                
+                return (
+                  <Col lg={4} md={6} key={groupName}>
+                    <div className="attribute-section-compact mb-3">
+                      <h5 className="section-title-compact">{groupEmojis[groupName] || '📊'} {groupName.split(' // ')[0]}</h5>
+                      <div className="attribute-grid-compact">
+                        {groupAttributes.map((attr) => (
+                          <div key={attr.name} className="attribute-row-compact">
+                            <span className="attribute-name-compact">{attr.name}</span>
+                            <div className="dots-compact">
+                              {[...Array(10)].map((_, i) => (
+                                <span 
+                                  key={i}
+                                  className={`dot-mini ${i < Math.round(attr.average_score) ? 'filled' : 'empty'}`}
+                                ></span>
+                              ))}
+                              <span className="score-compact">{Math.round(attr.average_score)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </Col>
-                  <Col sm={6}>
-                    <p className="mb-1"><strong>Club:</strong> {profile.squad_name}</p>
-                    <p className="mb-1"><strong>Birth Date:</strong> {profile.birth_date || 'Unknown'}</p>
+                );
+              })}
+            </Row>
+          </div>
+        ) : (
+          <div className="no-attributes-section mt-4 mb-3">
+            <div className="no-attributes-content">
+              <h4>📊 Player Attributes</h4>
+              <p>
+                {profile.scout_reports.length === 0 
+                  ? "No scout reports available yet. Attributes will appear here once scout assessments are submitted."
+                  : "No attribute data found in the existing scout reports. Attributes may not have been assessed yet."
+                }
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Clean Tabs */}
+        <div className="tabs-section mt-4">
+          <Tabs defaultActiveKey="overview" className="clean-tabs">
+            <Tab eventKey="overview" title="Overview">
+              <div className="tab-content-wrapper">
+                <Row>
+                  <Col md={6}>
+                    <div className="report-section">
+                      <h4 className="report-title">Scout Reports ({profile.scout_reports.length})</h4>
+                      {profile.scout_reports.length === 0 ? (
+                        <div className="empty-state">
+                          <p>No scout reports yet.</p>
+                        </div>
+                      ) : (
+                        <div className="report-list">
+                          {profile.scout_reports.map((report) => (
+                            <div key={report.report_id} className="report-card">
+                              <div className="report-header">
+                                <div className="report-badges">
+                                  <Badge bg="dark" className="clean-badge">{report.report_type}</Badge>
+                                  {report.scouting_type && <Badge bg="secondary" className="clean-badge">{report.scouting_type}</Badge>}
+                                </div>
+                                <span className="report-date">{new Date(report.created_at).toLocaleDateString()}</span>
+                              </div>
+                              <p className="report-summary">{report.summary}</p>
+                              <div className="report-footer">
+                                <span className="report-scout">by {report.scout_name}</span>
+                                <div className="report-scores">
+                                  {report.performance_score && (
+                                    <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="score-badge">
+                                      {report.performance_score}
+                                    </Badge>
+                                  )}
+                                  {report.attribute_score && (
+                                    <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="score-badge">
+                                      {report.attribute_score}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline-dark" 
+                                className="view-report-btn"
+                                onClick={() => handleOpenReportModal(report.report_id)}
+                                disabled={loadingReportId === report.report_id}
+                              >
+                                {loadingReportId === report.report_id ? 
+                                  <Spinner animation="border" size="sm" /> : 
+                                  'View Full Report'
+                                }
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="report-section">
+                      <h4 className="report-title">Intel Reports ({profile.intel_reports.length})</h4>
+                      {profile.intel_reports.length === 0 ? (
+                        <div className="empty-state">
+                          <p>No intel reports yet.</p>
+                        </div>
+                      ) : (
+                        <div className="report-list">
+                          {profile.intel_reports.map((intel) => (
+                            <div key={intel.intel_id} className="report-card">
+                              <div className="report-header">
+                                <div>
+                                  <strong>{intel.contact_name}</strong>
+                                  <span className="contact-org">{intel.contact_organisation}</span>
+                                </div>
+                                <span className="report-date">{new Date(intel.created_at).toLocaleDateString()}</span>
+                              </div>
+                              <p className="report-summary">{intel.conversation_notes}</p>
+                              <div className="report-footer">
+                                <Badge bg={intel.action_required === 'discuss urgently' ? 'danger' : 
+                                           intel.action_required === 'monitor' ? 'warning' : 'secondary'}
+                                       className="clean-badge">
+                                  {intel.action_required}
+                                </Badge>
+                                {intel.transfer_fee && <span className="transfer-fee">Fee: {intel.transfer_fee}</span>}
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline-dark" 
+                                className="view-report-btn"
+                                onClick={() => handleOpenIntelModal(intel.intel_id)}
+                              >
+                                View Full Report
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </Col>
                 </Row>
               </div>
-            </Col>
-            <Col md={4} className="text-end">
-              <div className="btn-group-vertical d-grid gap-2">
-                {/* Pipeline status selector will be added later */}
-                <Button variant="success" size="sm" onClick={exportToPDF}>
-                  📄 Export PDF
-                </Button>
-                <Button variant="outline-secondary" size="sm" onClick={() => navigate(-1)}>
-                  ← Back
-                </Button>
-              </div>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+            </Tab>
 
-      {/* Tabs Section */}
-      <Tabs defaultActiveKey="overview" className="mb-4" fill>
-        <Tab eventKey="overview" title="📊 Overview">
-          <Row>
-            <Col md={6} className="mb-4">
-              <Card className="h-100">
-                <Card.Header>
-                  <Card.Title className="h6 mb-0">⚽ Scout Reports ({profile.scout_reports.length})</Card.Title>
-                </Card.Header>
-                <Card.Body style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <Tab eventKey="reports" title="All Reports">
+              <div className="tab-content-wrapper">
+                <div className="data-table">
+                  <h4 className="section-title">All Scout Reports</h4>
                   {profile.scout_reports.length === 0 ? (
-                    <p className="text-muted">No scout reports yet.</p>
+                    <div className="empty-state">No scout reports available.</div>
                   ) : (
-                    profile.scout_reports.map((report) => (
-                      <div key={report.report_id} className="border-bottom pb-3 mb-3">
-                        <div className="d-flex justify-content-between align-items-start">
-                          <div>
-                            <Badge bg="dark" className="me-2">{report.report_type}</Badge>
-                            {report.scouting_type && <Badge bg="secondary">{report.scouting_type}</Badge>}
-                          </div>
-                          <small className="text-muted">{new Date(report.created_at).toLocaleDateString()}</small>
-                        </div>
-                        <p className="mb-2 mt-2">{report.summary}</p>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <small className="text-muted">by {report.scout_name}</small>
-                          <div>
-                            {report.performance_score && (
-                              <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="me-2">Performance: {report.performance_score}</Badge>
-                            )}
-                            {report.attribute_score && (
-                              <Badge bg={getAttributeScoreVariant(report.attribute_score)}>Attributes: {report.attribute_score}</Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline-dark" 
-                          className="mt-2 rounded-pill"
-                          onClick={() => handleOpenReportModal(report.report_id)}
-                          disabled={loadingReportId === report.report_id}
-                        >
-                          {loadingReportId === report.report_id ? 
-                            <Spinner animation="border" size="sm" /> : 
-                            'View Full Report'
-                          }
-                        </Button>
-                      </div>
-                    ))
+                    <Table responsive className="clean-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Scout</th>
+                          <th>Performance</th>
+                          <th>Attributes</th>
+                          <th>Summary</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {profile.scout_reports.map((report) => (
+                          <tr key={report.report_id}>
+                            <td>{new Date(report.created_at).toLocaleDateString()}</td>
+                            <td>
+                              <Badge bg="dark" className="clean-badge">{report.report_type}</Badge>
+                            </td>
+                            <td>{report.scout_name}</td>
+                            <td>
+                              {report.performance_score ? (
+                                <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="score-badge">
+                                  {report.performance_score}
+                                </Badge>
+                              ) : '-'}
+                            </td>
+                            <td>
+                              {report.attribute_score ? (
+                                <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="score-badge">
+                                  {report.attribute_score}
+                                </Badge>
+                              ) : '-'}
+                            </td>
+                            <td className="summary-cell">{report.summary}</td>
+                            <td>
+                              <Button 
+                                size="sm" 
+                                variant="outline-dark"
+                                className="table-action-btn"
+                                onClick={() => handleOpenReportModal(report.report_id)}
+                                disabled={loadingReportId === report.report_id}
+                              >
+                                {loadingReportId === report.report_id ? 
+                                  <Spinner animation="border" size="sm" /> : 
+                                  'View'
+                                }
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
                   )}
-                </Card.Body>
-              </Card>
-            </Col>
-            <Col md={6} className="mb-4">
-              <Card className="h-100">
-                <Card.Header>
-                  <Card.Title className="h6 mb-0">🕵️ Intel Reports ({profile.intel_reports.length})</Card.Title>
-                </Card.Header>
-                <Card.Body style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                  {profile.intel_reports.length === 0 ? (
-                    <p className="text-muted">No intel reports yet.</p>
-                  ) : (
-                    profile.intel_reports.map((intel) => (
-                      <div key={intel.intel_id} className="border-bottom pb-3 mb-3">
-                        <div className="d-flex justify-content-between align-items-start">
-                          <div>
-                            <strong>{intel.contact_name}</strong>
-                            <small className="text-muted d-block">{intel.contact_organisation}</small>
-                          </div>
-                          <small className="text-muted">{new Date(intel.created_at).toLocaleDateString()}</small>
-                        </div>
-                        <p className="mb-2 mt-2">{intel.conversation_notes}</p>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <Badge bg={intel.action_required === 'discuss urgently' ? 'danger' : 
-                                     intel.action_required === 'monitor' ? 'warning' : 'secondary'}>
-                            {intel.action_required}
-                          </Badge>
-                          {intel.transfer_fee && <small><strong>Fee:</strong> {intel.transfer_fee}</small>}
-                        </div>
-                        <Button 
-                          size="sm" 
-                          variant="outline-dark" 
-                          className="mt-2 rounded-pill"
-                          onClick={() => handleOpenIntelModal(intel.intel_id)}
-                        >
-                          View Full Report
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </Tab>
+                </div>
+              </div>
+            </Tab>
 
-        <Tab eventKey="scout-reports" title="⚽ Scout Reports">
-          <Card>
-            <Card.Header>
-              <Card.Title className="h6 mb-0">All Scout Reports ({profile.scout_reports.length})</Card.Title>
-            </Card.Header>
-            <Card.Body>
-              {profile.scout_reports.length === 0 ? (
-                <Alert variant="info">No scout reports available for this player.</Alert>
-              ) : (
-                <Table responsive hover>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Type</th>
-                      <th>Scout</th>
-                      <th>Performance</th>
-                      <th>Attributes</th>
-                      <th>Summary</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.scout_reports.map((report) => (
-                      <tr key={report.report_id}>
-                        <td>{new Date(report.created_at).toLocaleDateString()}</td>
-                        <td>
-                          <Badge bg="dark">{report.report_type}</Badge>
-                          {report.scouting_type && (
-                            <Badge bg="secondary" className="ms-1">{report.scouting_type}</Badge>
-                          )}
-                        </td>
-                        <td>{report.scout_name}</td>
-                        <td>
-                          {report.performance_score ? (
-                            <Badge bg={getPerformanceScoreVariant(report.performance_score)}>
-                              {report.performance_score}
-                            </Badge>
-                          ) : '-'}
-                        </td>
-                        <td>
-                          {report.attribute_score ? (
-                            <Badge bg={getAttributeScoreVariant(report.attribute_score)}>
-                              {report.attribute_score}
-                            </Badge>
-                          ) : '-'}
-                        </td>
-                        <td style={{ maxWidth: '200px' }}>{report.summary}</td>
-                        <td>
-                          <Button 
-                            size="sm" 
-                            variant="outline-dark"
-                            className="rounded-pill"
-                            onClick={() => handleOpenReportModal(report.report_id)}
-                            disabled={loadingReportId === report.report_id}
-                          >
-                            {loadingReportId === report.report_id ? 
-                              <Spinner animation="border" size="sm" /> : 
-                              'View'
-                            }
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-        </Tab>
-
-        <Tab eventKey="intel-reports" title="🕵️ Intel Reports">
-          <Card>
-            <Card.Header>
-              <Card.Title className="h6 mb-0">All Intel Reports ({profile.intel_reports.length})</Card.Title>
-            </Card.Header>
-            <Card.Body>
-              {profile.intel_reports.length === 0 ? (
-                <Alert variant="info">No intel reports available for this player.</Alert>
-              ) : (
-                <Table responsive hover>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Contact</th>
-                      <th>Organisation</th>
-                      <th>Action Required</th>
-                      <th>Transfer Fee</th>
-                      <th>Notes</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {profile.intel_reports.map((intel) => (
-                      <tr key={intel.intel_id}>
-                        <td>{new Date(intel.created_at).toLocaleDateString()}</td>
-                        <td>{intel.contact_name}</td>
-                        <td>{intel.contact_organisation}</td>
-                        <td>
-                          <Badge bg={intel.action_required === 'discuss urgently' ? 'danger' : 
-                                     intel.action_required === 'monitor' ? 'warning' : 'secondary'}>
-                            {intel.action_required}
-                          </Badge>
-                        </td>
-                        <td>{intel.transfer_fee || '-'}</td>
-                        <td style={{ maxWidth: '200px' }}>{intel.conversation_notes}</td>
-                        <td>
-                          <Button 
-                            size="sm" 
-                            variant="outline-dark"
-                            className="rounded-pill"
-                            onClick={() => handleOpenIntelModal(intel.intel_id)}
-                          >
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </Card.Body>
-          </Card>
-        </Tab>
-
-        <Tab eventKey="notes" title="📝 Notes">
-          <Card>
-            <Card.Header className="d-flex justify-content-between align-items-center">
-              <Card.Title className="h6 mb-0">Player Notes ({profile.notes.length})</Card.Title>
-              <Button 
-                variant="danger" 
-                size="sm"
-                className="rounded-pill"
-                onClick={() => setShowAddNoteModal(true)}
-              >
-                + Add Note
-              </Button>
-            </Card.Header>
-            <Card.Body>
-              {profile.notes.length === 0 ? (
-                <Alert variant="info">No notes yet. Add the first note above.</Alert>
-              ) : (
-                profile.notes.map((note) => (
-                  <div key={note.id} className="border-bottom pb-3 mb-3">
-                    <div className="d-flex justify-content-between align-items-start mb-2">
-                      <div>
-                        <strong>{note.author}</strong>
-                        {note.is_private && <Badge bg="warning" className="ms-2">Private</Badge>}
-                      </div>
-                      <small className="text-muted">{new Date(note.created_at).toLocaleString()}</small>
-                    </div>
-                    <p className="mb-0">{note.content}</p>
+            <Tab eventKey="notes" title="Notes">
+              <div className="tab-content-wrapper">
+                <div className="notes-section">
+                  <div className="notes-header">
+                    <h4 className="section-title">Player Notes ({profile.notes.length})</h4>
+                    <Button 
+                      variant="dark" 
+                      size="sm"
+                      className="add-note-btn"
+                      onClick={() => setShowAddNoteModal(true)}
+                    >
+                      + Add Note
+                    </Button>
                   </div>
-                ))
-              )}
-            </Card.Body>
-          </Card>
-        </Tab>
-      </Tabs>
+                  {profile.notes.length === 0 ? (
+                    <div className="empty-state">No notes yet. Add the first note above.</div>
+                  ) : (
+                    <div className="notes-list">
+                      {profile.notes.map((note) => (
+                        <div key={note.id} className="note-card">
+                          <div className="note-header">
+                            <div className="note-author">
+                              <strong>{note.author}</strong>
+                              {note.is_private && <Badge bg="warning" className="private-badge">Private</Badge>}
+                            </div>
+                            <span className="note-date">{new Date(note.created_at).toLocaleString()}</span>
+                          </div>
+                          <p className="note-content">{note.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Tab>
+          </Tabs>
+        </div>
+      </Container>
 
       {/* Add Note Modal */}
-      <Modal show={showAddNoteModal} onHide={() => setShowAddNoteModal(false)}>
-        <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }} className="modal-header-dark">
+      <Modal show={showAddNoteModal} onHide={() => setShowAddNoteModal(false)} className="clean-modal">
+        <Modal.Header closeButton>
           <Modal.Title>Add Note for {profile.player_name}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -483,6 +668,7 @@ const PlayerProfilePage: React.FC = () => {
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Enter your note about this player..."
+                className="clean-textarea"
               />
             </Form.Group>
             <Form.Group className="mb-3">
@@ -496,12 +682,11 @@ const PlayerProfilePage: React.FC = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowAddNoteModal(false)}>
+          <Button variant="outline-secondary" onClick={() => setShowAddNoteModal(false)}>
             Cancel
           </Button>
           <Button 
-            variant="danger" 
-            className="rounded-pill"
+            variant="dark" 
             onClick={addNote}
             disabled={addingNote || !newNote.trim()}
           >
@@ -525,18 +710,549 @@ const PlayerProfilePage: React.FC = () => {
       />
       
       <style>{`
+        .player-profile-page {
+          min-height: 100vh;
+          background: #fafafa;
+          padding: 1rem 0;
+        }
+
+        .loading-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 50vh;
+        }
+
+        .loading-content {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          color: #666;
+          font-size: 0.95rem;
+        }
+
+        .error-container {
+          display: flex;
+          justify-content: center;
+          padding: 2rem;
+        }
+
+        .clean-alert {
+          border: none;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          text-align: center;
+          max-width: 400px;
+        }
+
+        .profile-header {
+          background: white;
+          border-radius: 16px;
+          padding: 2rem 2rem 1.5rem;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+          margin-bottom: 1.5rem;
+        }
+
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+        }
+
+        .player-info {
+          flex: 1;
+        }
+
+        .player-name-section {
+          max-width: 600px;
+        }
+
+        .player-firstname {
+          font-size: 1.1rem;
+          color: #888;
+          font-weight: 400;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        .player-lastname {
+          font-size: 2.8rem;
+          font-weight: 700;
+          color: #222;
+          margin: -0.2rem 0 0.8rem 0;
+          line-height: 1;
+        }
+
+        .player-meta {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          color: #666;
+          font-size: 0.95rem;
+        }
+
+        .club-badge {
+          font-size: 1.2rem;
+        }
+
+        .club-name {
+          font-weight: 500;
+          color: #333;
+        }
+
+        .position-age {
+          color: #888;
+        }
+
+        .header-actions {
+          display: flex;
+          gap: 1rem;
+        }
+
+        .clean-btn {
+          border: 1px solid #ddd;
+          background: white;
+          color: #666;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          padding: 0.5rem 1rem;
+        }
+
+        .clean-btn:hover {
+          background: #f8f9fa;
+          border-color: #bbb;
+          color: #333;
+        }
+
+        .attributes-legend {
+          background: #f8f9fa;
+          border-radius: 12px;
+          padding: 1rem 1.5rem;
+          border-left: 4px solid #22c55e;
+        }
+
+        .legend-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #333;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .legend-text {
+          font-size: 0.85rem;
+          color: #666;
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .attributes-loading {
+          display: flex;
+          justify-content: center;
+          padding: 2rem;
+        }
+
+        .no-attributes-section {
+          background: white;
+          border-radius: 16px;
+          padding: 2rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          margin-bottom: 1.5rem;
+          border: 2px dashed #e0e0e0;
+          text-align: center;
+        }
+
+        .no-attributes-content h4 {
+          color: #333;
+          font-weight: 600;
+          margin-bottom: 1rem;
+        }
+
+        .no-attributes-content p {
+          color: #666;
+          margin-bottom: 0;
+          line-height: 1.6;
+        }
+
+        .attribute-section {
+          background: white;
+          border-radius: 16px;
+          padding: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+          margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 1rem;
+          border-bottom: 2px solid #f0f0f0;
+          padding-bottom: 0.4rem;
+        }
+
+        .attribute-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.6rem;
+        }
+
+        .dot-rating-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.2rem 0;
+        }
+
+        .attribute-label {
+          font-weight: 500;
+          color: #333;
+          min-width: 150px;
+          font-size: 0.9rem;
+        }
+
+        .dots-and-score {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .dots-container {
+          display: flex;
+          gap: 3px;
+        }
+
+        .score-text {
+          font-size: 0.8rem;
+          color: #666;
+          font-weight: 500;
+          min-width: 35px;
+        }
+
+        .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          border: 1px solid #ddd;
+        }
+
+        .dot.filled {
+          background: #22c55e;
+          border-color: #22c55e;
+        }
+
+        .dot.empty {
+          background: white;
+          border-color: #ddd;
+        }
+
+
+        .tabs-section {
+          background: white;
+          border-radius: 16px;
+          padding: 0.5rem;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .clean-tabs .nav-link {
+          background: transparent;
+          border: none;
+          color: #666;
+          font-weight: 500;
+          padding: 1rem 2rem;
+          border-radius: 12px;
+          margin: 0 0.25rem;
+        }
+
+        .clean-tabs .nav-link.active {
+          background: #f8f9fa;
+          color: #333;
+          border: 1px solid #e9ecef;
+        }
+
+        .tab-content-wrapper {
+          padding: 1.5rem;
+        }
+
+        .report-section {
+          margin-bottom: 2rem;
+        }
+
+        .report-title {
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 1.5rem;
+        }
+
+        .empty-state {
+          text-align: center;
+          color: #888;
+          padding: 2rem;
+          background: #f8f9fa;
+          border-radius: 12px;
+          font-style: italic;
+        }
+
+        .report-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .report-card {
+          background: #fafafa;
+          border-radius: 12px;
+          padding: 1.5rem;
+          border: 1px solid #f0f0f0;
+        }
+
+        .report-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 1rem;
+        }
+
+        .report-badges {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .clean-badge {
+          font-size: 0.75rem;
+          border-radius: 6px;
+          padding: 0.25rem 0.5rem;
+        }
+
+        .report-date {
+          font-size: 0.8rem;
+          color: #888;
+        }
+
+        .report-summary {
+          color: #555;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          margin-bottom: 1rem;
+        }
+
+        .report-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .report-scout {
+          font-size: 0.8rem;
+          color: #888;
+        }
+
+        .report-scores {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .score-badge {
+          font-size: 0.7rem;
+          border-radius: 6px;
+        }
+
+        .view-report-btn {
+          font-size: 0.8rem;
+          border-radius: 8px;
+          padding: 0.4rem 1rem;
+        }
+
+        .contact-org {
+          display: block;
+          font-size: 0.8rem;
+          color: #888;
+          font-weight: normal;
+        }
+
+        .transfer-fee {
+          font-size: 0.8rem;
+          color: #666;
+          font-weight: 500;
+        }
+
+        .data-table {
+          background: #fafafa;
+          border-radius: 12px;
+          padding: 2rem;
+        }
+
+        .clean-table {
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .clean-table th {
+          background: #f8f9fa;
+          color: #666;
+          font-weight: 600;
+          border: none;
+          font-size: 0.85rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          padding: 1rem 0.75rem;
+        }
+
+        .clean-table td {
+          border: none;
+          border-bottom: 1px solid #f0f0f0;
+          padding: 1rem 0.75rem;
+          font-size: 0.9rem;
+        }
+
+        .summary-cell {
+          max-width: 250px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .table-action-btn {
+          font-size: 0.8rem;
+          border-radius: 6px;
+          padding: 0.25rem 0.75rem;
+        }
+
+        .notes-section {
+          background: #fafafa;
+          border-radius: 12px;
+          padding: 2rem;
+        }
+
+        .notes-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+        }
+
+        .add-note-btn {
+          border-radius: 8px;
+          font-size: 0.85rem;
+          padding: 0.5rem 1rem;
+        }
+
+        .notes-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .note-card {
+          background: white;
+          border-radius: 10px;
+          padding: 1.5rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .note-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 1rem;
+        }
+
+        .note-author {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .private-badge {
+          font-size: 0.7rem;
+          border-radius: 4px;
+        }
+
+        .note-date {
+          font-size: 0.8rem;
+          color: #888;
+        }
+
+        .note-content {
+          color: #555;
+          font-size: 0.9rem;
+          line-height: 1.6;
+          margin: 0;
+        }
+
+        .clean-modal .modal-content {
+          border: none;
+          border-radius: 16px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        .clean-modal .modal-header {
+          border-bottom: 1px solid #f0f0f0;
+          padding: 1.5rem 2rem 1rem;
+        }
+
+        .clean-modal .modal-body {
+          padding: 2rem;
+        }
+
+        .clean-modal .modal-footer {
+          border-top: 1px solid #f0f0f0;
+          padding: 1rem 2rem 1.5rem;
+        }
+
+        .clean-textarea {
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          font-size: 0.9rem;
+        }
+
+        .clean-textarea:focus {
+          border-color: #666;
+          box-shadow: 0 0 0 2px rgba(102,102,102,0.1);
+        }
+
         .badge.bg-gold {
           background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
           color: #000 !important;
           font-weight: 600;
         }
+
         .badge.bg-silver {
           background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
           color: #000 !important;
           font-weight: 600;
         }
+
+        @media (max-width: 768px) {
+          .player-lastname {
+            font-size: 2.5rem;
+          }
+          
+          .attribute-label, .bar-label {
+            min-width: 120px;
+            font-size: 0.85rem;
+          }
+          
+          .profile-header {
+            padding: 2rem 1.5rem 1.5rem;
+          }
+          
+          .header-content {
+            flex-direction: column;
+            gap: 1rem;
+          }
+          
+          .clean-tabs .nav-link {
+            padding: 0.75rem 1rem;
+          }
+        }
       `}</style>
-    </Container>
+    </div>
   );
 };
 

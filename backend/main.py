@@ -1941,8 +1941,8 @@ async def get_attributes_by_position(position: str, current_user: User = Depends
             # Centre Backs - Wide (store specific positions, use WIDE CB attributes)
             "RCB(3)": "WIDE CB",  # Right CB in back 3
             "LCB(3)": "WIDE CB",  # Left CB in back 3
-            "RCB(2)": "WIDE CB",  # Right CB in back 2 (outside CB)
-            "LCB(2)": "WIDE CB",  # Left CB in back 2 (outside CB)
+            "RCB(2)": "CENTRAL CB",  # Right CB in back 2
+            "LCB(2)": "CENTRAL CB",  # Left CB in back 2
             
             # Centre Backs - Central (store as CCB(3), use CENTRAL CB attributes)
             "CCB(3)": "CENTRAL CB",  # Central CB in back 3
@@ -2391,6 +2391,236 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching player profile: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/players/{player_id}/attributes")
+async def get_player_attributes(player_id: int, current_user: User = Depends(get_current_user)):
+    """Get player attribute averages grouped by categories from all scout reports"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        
+        # Check if player exists
+        cursor.execute("SELECT PLAYERID, POSITION FROM players WHERE PLAYERID = %s", (player_id,))
+        player_data = cursor.fetchone()
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+        
+        player_position = player_data[1]
+        
+        # Get all scout report attribute scores for this player
+        # Apply role-based filtering for scout reports
+        base_query = """
+            SELECT 
+                sras.ATTRIBUTE_NAME,
+                AVG(CAST(sras.ATTRIBUTE_SCORE AS FLOAT)) as avg_score,
+                COUNT(sras.ATTRIBUTE_SCORE) as report_count
+            FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+            JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
+            WHERE sr.PLAYER_ID = %s AND sras.ATTRIBUTE_SCORE > 0
+        """
+        
+        query_params = [player_id]
+        
+        # Apply role-based filtering for scout users
+        try:
+            # Check if USER_ID column exists
+            test_cursor = conn.cursor()
+            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            if current_user.role == "scout":
+                base_query += " AND sr.USER_ID = %s"
+                query_params.append(current_user.id)
+        except:
+            # USER_ID column doesn't exist, skip filtering
+            pass
+        
+        base_query += " GROUP BY sras.ATTRIBUTE_NAME ORDER BY sras.ATTRIBUTE_NAME"
+        
+        cursor.execute(base_query, query_params)
+        attribute_data = cursor.fetchall()
+        
+        if not attribute_data:
+            return {
+                "player_id": player_id,
+                "player_position": player_position,
+                "attribute_groups": {},
+                "total_reports": 0,
+                "message": "No attribute data found for this player"
+            }
+        
+        # Create a mapping of attributes to their averages
+        attribute_averages = {}
+        total_reports = 0
+        for row in attribute_data:
+            attribute_name, avg_score, report_count = row
+            attribute_averages[attribute_name] = {
+                "average_score": round(float(avg_score), 1),
+                "report_count": report_count
+            }
+            total_reports = max(total_reports, report_count)
+        
+        # Since players don't have positions, get attributes directly from their scout reports
+        # and look up their ATTRIBUTE_GROUP from POSITION_ATTRIBUTES table
+        # Use MIN(DISPLAY_ORDER) to avoid duplicates when same attribute has multiple display orders
+        cursor.execute("""
+            SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
+            FROM POSITION_ATTRIBUTES pa
+            WHERE pa.ATTRIBUTE_NAME IN (
+                SELECT DISTINCT sras.ATTRIBUTE_NAME 
+                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras 
+                JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID 
+                WHERE sr.PLAYER_ID = %s
+            )
+            GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
+            ORDER BY pa.ATTRIBUTE_GROUP, display_order
+        """, (player_id,))
+        position_attributes = cursor.fetchall()
+        
+        # Use the real ATTRIBUTE_GROUP column from database
+        attribute_groups = {}
+        
+        # Organize attributes by their ATTRIBUTE_GROUP from database
+        for attr_row in position_attributes:
+            attribute_name, display_order, attr_group = attr_row
+            
+            if attribute_name in attribute_averages:
+                # Initialize group if it doesn't exist
+                if attr_group not in attribute_groups:
+                    attribute_groups[attr_group] = []
+                
+                attr_data = {
+                    "name": attribute_name,
+                    "average_score": attribute_averages[attribute_name]["average_score"],
+                    "report_count": attribute_averages[attribute_name]["report_count"],
+                    "display_order": display_order,
+                    "attribute_group": attr_group
+                }
+                
+                attribute_groups[attr_group].append(attr_data)
+        
+        # Remove empty groups
+        attribute_groups = {k: v for k, v in attribute_groups.items() if v}
+        
+        # Sort attributes within each group by display_order
+        for group in attribute_groups.values():
+            group.sort(key=lambda x: x["display_order"])
+        
+        # DEBUG: Get what attributes exist in scout reports for this player
+        cursor.execute("""
+            SELECT DISTINCT sras.ATTRIBUTE_NAME 
+            FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras 
+            JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID 
+            WHERE sr.PLAYER_ID = %s
+            ORDER BY sras.ATTRIBUTE_NAME
+        """, (player_id,))
+        scout_report_attributes = [row[0] for row in cursor.fetchall()]
+        
+        # DEBUG: Check if these attributes exist in POSITION_ATTRIBUTES
+        cursor.execute("""
+            SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP 
+            FROM POSITION_ATTRIBUTES 
+            WHERE ATTRIBUTE_NAME IN ({})
+            ORDER BY ATTRIBUTE_NAME
+        """.format(','.join(['%s'] * len(scout_report_attributes))), scout_report_attributes)
+        matching_attributes = cursor.fetchall()
+        
+        return {
+            "player_id": player_id,
+            "player_position": player_position,
+            "attribute_groups": attribute_groups,
+            "total_reports": total_reports,
+            "total_attributes": len(attribute_averages),
+            "debug_scout_attributes": scout_report_attributes,
+            "debug_matching_attributes": [{"name": row[0], "group": row[1]} for row in matching_attributes],
+            "debug_position_attributes_found": len(position_attributes)
+        }
+        
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching player attributes: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/players/{player_id}/scout-reports")
+async def get_player_scout_reports(player_id: int, current_user: User = Depends(get_current_user)):
+    """Get scout reports timeline for a player"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        
+        # Check if player exists
+        cursor.execute("SELECT PLAYERID FROM players WHERE PLAYERID = %s", (player_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Player not found")
+        
+        # Get scout reports with role-based filtering
+        base_query = """
+            SELECT 
+                sr.ID as report_id,
+                sr.CREATED_AT as report_date,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name,
+                DATE(m.SCHEDULEDDATE) as game_date,
+                CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) as fixture,
+                m.SCHEDULEDDATE as fixture_date,
+                sr.PERFORMANCE_SCORE as overall_rating,
+                COUNT(sras.ATTRIBUTE_NAME) as attribute_count,
+                sr.PURPOSE as report_type
+            FROM scout_reports sr
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            LEFT JOIN SCOUT_REPORT_ATTRIBUTE_SCORES sras ON sr.ID = sras.SCOUT_REPORT_ID
+            WHERE sr.PLAYER_ID = %s
+        """
+        
+        query_params = [player_id]
+        
+        # Apply role-based filtering for scout users
+        try:
+            test_cursor = conn.cursor()
+            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            if current_user.role == "scout":
+                base_query += " AND sr.USER_ID = %s"
+                query_params.append(current_user.id)
+        except:
+            pass
+        
+        base_query += """
+            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.PURPOSE
+            ORDER BY sr.CREATED_AT DESC
+        """
+        
+        cursor.execute(base_query, query_params)
+        reports = cursor.fetchall()
+        
+        reports_data = []
+        for report in reports:
+            report_id, report_date, scout_name, game_date, fixture, fixture_date, overall_rating, attribute_count, report_type = report
+            reports_data.append({
+                "report_id": report_id,
+                "report_date": report_date.isoformat() if report_date else None,
+                "scout_name": scout_name,
+                "game_date": game_date.isoformat() if game_date else None,
+                "fixture": fixture,
+                "fixture_date": fixture_date.isoformat() if fixture_date else None,
+                "overall_rating": overall_rating,
+                "attribute_count": attribute_count,
+                "report_type": report_type
+            })
+        
+        return {
+            "player_id": player_id,
+            "total_reports": len(reports_data),
+            "reports": reports_data
+        }
+        
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching scout reports: {e}")
     finally:
         if conn:
             conn.close()
