@@ -62,10 +62,8 @@ const HomePage: React.FC = () => {
       const scoutResponse = await axiosInstance.get(`/scout_reports/all?page=1&limit=50&recency_days=${recencyFilter}`);
       const scoutReports = scoutResponse.data.reports || scoutResponse.data || [];
       
-      // Filter scout reports for scout role (client-side backup)
-      const filteredScoutReports = userResponse.data.role === 'scout' ? 
-        (Array.isArray(scoutReports) ? scoutReports.filter(report => report.scout_name === userResponse.data.username) : []) :
-        (Array.isArray(scoutReports) ? scoutReports : []);
+      // Role-based filtering is handled by backend - no need for client-side filtering
+      const filteredScoutReports = Array.isArray(scoutReports) ? scoutReports : [];
       
       // Separate flag reports from regular scout reports
       const flagReports = filteredScoutReports
@@ -160,19 +158,6 @@ const HomePage: React.FC = () => {
     return 'danger';
   };
 
-  // Flag category colors
-  const getFlagCategoryVariant = (category?: string) => {
-    switch (category?.toLowerCase()) {
-      case 'positive':
-        return 'success';
-      case 'neutral':
-        return 'secondary';
-      case 'negative':
-        return 'warning';
-      default:
-        return 'secondary';
-    }
-  };
 
   if (loading) {
     return (

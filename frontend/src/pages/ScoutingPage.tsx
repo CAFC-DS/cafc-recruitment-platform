@@ -97,10 +97,8 @@ const ScoutingPage: React.FC = () => {
       const response = await axiosInstance.get('/scout_reports/all', { params });
       let reports = response.data.reports || [];
       
-      // Apply role-based filtering for scout users
-      if (userRole === 'scout' && currentUsername) {
-        reports = reports.filter((report: ScoutReport) => report.scout_name === currentUsername);
-      }
+      // Role-based filtering is now handled by the backend
+      // The backend already filters scout reports by USER_ID for scout users
       
       setScoutReports(reports);
       setTotalReports(reports.length); // Use actual loaded reports count
@@ -320,7 +318,7 @@ const ScoutingPage: React.FC = () => {
     return 'dark'; // For scores 0-23
   };
 
-  const getReportTypeBadge = (reportType: string, scoutingType: string, flagType?: string) => {
+  const getReportTypeBadge = (reportType: string, _scoutingType: string, flagType?: string) => {
     switch (reportType.toLowerCase()) {
       case 'flag':
       case 'flag assessment':
