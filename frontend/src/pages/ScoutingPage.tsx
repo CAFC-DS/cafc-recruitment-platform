@@ -747,6 +747,7 @@ const ScoutingPage: React.FC = () => {
                   <tr>
                     <th>Report Date</th>
                     <th>Player</th>
+                    <th>Position</th>
                     <th>Fixture Date</th>
                     <th>Fixture</th>
                     <th>Scout</th>
@@ -764,6 +765,9 @@ const ScoutingPage: React.FC = () => {
                         <Button variant="link" onClick={() => navigate(`/player/${report.player_id}`)}>
                           {report.player_name}
                         </Button>
+                      </td>
+                      <td>
+                        <Badge bg="dark">{report.position_played || 'N/A'}</Badge>
                       </td>
                       <td>
                         {report.fixture_date && report.fixture_date !== 'N/A' ? 

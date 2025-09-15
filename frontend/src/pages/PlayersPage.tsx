@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Card, Form, Button, Badge, Table, Spinner, Alert, ListGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Badge, Table, Spinner, Alert, ListGroup, Collapse } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
@@ -55,6 +55,7 @@ const PlayersPage: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [playerSearchError, setPlayerSearchError] = useState('');
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Record<string, Player[]>>({});
 
@@ -262,7 +263,7 @@ const PlayersPage: React.FC = () => {
       {/* Quick Player Search */}
       <Card className="mb-4">
         <Card.Body>
-          <Card.Title>🔍 Quick Player Search</Card.Title>
+          <Card.Title>🔍 Player Search</Card.Title>
           <Form.Group controlId="playerName">
             <div className="position-relative">
               <Form.Control
@@ -308,12 +309,23 @@ const PlayersPage: React.FC = () => {
         </Card.Body>
       </Card>
 
-      {/* Filters */}
+      {/* Advanced Filters */}
       <Card className="mb-4">
         <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
-          <Card.Title className="h6 mb-0 text-white">🔧 Filter Players</Card.Title>
+          <div className="d-flex justify-content-between align-items-center">
+            <h6 className="mb-0 text-white">🔧 Advanced Filters</h6>
+            <Button 
+              variant="outline-secondary" 
+              size="sm" 
+              onClick={() => setShowFilters(!showFilters)}
+              style={{ color: 'white', borderColor: 'white' }}
+            >
+              {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+            </Button>
+          </div>
         </Card.Header>
-        <Card.Body>
+        <Collapse in={showFilters}>
+          <Card.Body>
           <Row>
             <Col md={4} className="mb-3">
               <Form.Group>
@@ -368,7 +380,8 @@ const PlayersPage: React.FC = () => {
               </Button>
             </Col>
           </Row>
-        </Card.Body>
+          </Card.Body>
+        </Collapse>
       </Card>
 
       {/* Players List */}

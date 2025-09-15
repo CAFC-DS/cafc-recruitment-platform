@@ -924,3 +924,101 @@ body {
   background: var(--color-surface, #1f2937);
   border-color: var(--color-border, #374151);
 }
+
+/* ================================
+   STANDARDIZED BADGE COLORS
+   ================================ */
+
+/* Position badges - Dark theme */
+.badge.position-badge,
+.badge.bg-dark {
+  background-color: #374151 !important;
+  color: white !important;
+  border: none !important;
+}
+
+/* Report type badges - Primary red theme */
+.badge.report-type-badge,
+.badge.bg-primary {
+  background-color: var(--bs-primary, #b91c1c) !important;
+  color: white !important;
+}
+
+/* Scouting type badges - Secondary gray theme */
+.badge.scouting-type-badge,
+.badge.bg-secondary {
+  background-color: var(--bs-secondary, #6b7280) !important;
+  color: white !important;
+}
+
+/* Purpose badges - Info blue theme */
+.badge.purpose-badge,
+.badge.bg-info {
+  background-color: #0ea5e9 !important;
+  color: white !important;
+}
+
+/* Success badges - Green theme */
+.badge.bg-success {
+  background-color: var(--bs-success, #16a34a) !important;
+  color: white !important;
+}
+
+/* Warning badges - Orange theme */
+.badge.bg-warning {
+  background-color: var(--bs-warning, #d97706) !important;
+  color: white !important;
+}
+
+/* Danger badges - Red theme */
+.badge.bg-danger {
+  background-color: var(--bs-danger, #dc2626) !important;
+  color: white !important;
+}
+
+/* Light badges - Light gray theme */
+.badge.bg-light {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+/* Gold and Silver performance badges */
+.badge.bg-gold {
+  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+  color: #000 !important;
+  font-weight: 600;
+  border: none !important;
+}
+
+.badge.bg-silver {
+  background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
+  color: #000 !important;
+  font-weight: 600;
+  border: none !important;
+}
+
+/* Flag badges - Consistent with modal */
+.badge.flag-positive {
+  background-color: #16a34a !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.badge.flag-neutral {
+  background-color: #6b7280 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.badge.flag-negative {
+  background-color: #d97706 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.badge.flag-default {
+  background-color: #fbbf24 !important;
+  color: #000 !important;
+  border: none !important;
+}

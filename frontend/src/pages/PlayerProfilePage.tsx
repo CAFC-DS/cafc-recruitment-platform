@@ -388,8 +388,7 @@ const PlayerProfilePage: React.FC = () => {
             <div className="attributes-legend-compact mb-2">
               <h4 className="legend-title-compact">📊 Player Attributes</h4>
               <p className="legend-text-compact">
-                <span className="dot-compact filled"></span> = Average from {attributes.total_reports} report{attributes.total_reports !== 1 ? 's' : ''} | 
-                {attributes.total_attributes} attributes assessed
+                <span className="dot-compact filled"></span> = Average from {attributes.total_reports} report{attributes.total_reports !== 1 ? 's' : ''} | {attributes.total_attributes} attributes assessed
               </p>
             </div>
 

@@ -329,7 +329,12 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   return (
     <Modal show={show} onHide={onHide} size="xl" centered>
       <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }} className="modal-header-dark">
-        <Modal.Title>{reportInfo.icon} {report.player_name} - {reportInfo.title}</Modal.Title>
+        <Modal.Title>
+          {reportInfo.icon} {report.player_name} - {reportInfo.title}
+          <span className="text-muted ms-2" style={{ fontSize: '0.8em' }}>
+            ({new Date(report.created_at).toLocaleDateString('en-GB')})
+          </span>
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {isFlagReport ? (
@@ -354,7 +359,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                   </Col>
                   <Col md={6}>
                     <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
-                    <p><strong>Date:</strong> {new Date(report.fixture_date).toLocaleDateString()}</p>
+                    <p><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
                     <p><strong>Flag Type:</strong> 
                       <Badge className={`ms-2 ${getFlagBadgeClass(report.flag_category)}`}>
                         {report.flag_category || 'Not specified'}
@@ -407,7 +412,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                       <h5 className="mb-0">📊 Report Overview</h5>
                       <div>
                         <Badge bg={reportInfo.color} className="me-2">{report.report_type || 'Player Assessment'}</Badge>
-                        {report.scouting_type && <Badge bg="secondary">{report.scouting_type}</Badge>}
+                        {report.scouting_type && <Badge bg="secondary" className="me-2">{report.scouting_type}</Badge>}
+                        {report.purpose_of_assessment && <Badge bg="info">{report.purpose_of_assessment}</Badge>}
                       </div>
                     </div>
                   </Card.Header>
@@ -420,7 +426,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                       </Col>
                       <Col md={6}>
                         <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
-                        <p><strong>Date:</strong> {new Date(report.fixture_date).toLocaleDateString()}</p>
+                        <p><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
                         <p><strong>Scout:</strong> {report.scout_name}</p>
                       </Col>
                     </Row>
