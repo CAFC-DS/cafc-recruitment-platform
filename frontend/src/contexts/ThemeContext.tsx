@@ -41,7 +41,7 @@ const lightTheme: ThemeColors = {
   text: '#374151',
   textMuted: '#6b7280',
   
-  headerBg: '#4b5563', // Dark gray header like screenshots
+  headerBg: '#000000', // Black navbar
   headerText: '#ffffff',
 };
 
@@ -59,7 +59,7 @@ const darkTheme: ThemeColors = {
   text: '#f9fafb',       // High contrast white text
   textMuted: '#d1d5db',  // Better visibility for muted text
   
-  headerBg: '#1f2937',   // Slightly lighter header
+  headerBg: '#dc2626',   // Darker red for dark mode
   headerText: '#f9fafb',
 };
 

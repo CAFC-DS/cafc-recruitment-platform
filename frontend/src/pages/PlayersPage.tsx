@@ -438,8 +438,8 @@ const PlayersPage: React.FC = () => {
                 </Card.Body>
                 <Card.Footer className="bg-transparent border-0 pt-0">
                   <div className="d-grid">
-                    <Button 
-                      variant="danger" 
+                    <Button
+                      variant="outline-dark"
                       size="sm"
                       className="rounded-pill"
                       onClick={() => navigate(`/player/${player.player_id}`)}

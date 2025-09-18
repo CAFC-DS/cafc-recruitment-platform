@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
 import PlayersPage from './pages/PlayersPage';
 import AdminPage from './pages/AdminPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import { useCurrentUser } from './hooks/useCurrentUser';
 
 interface AuthContextType {
@@ -58,35 +59,24 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     validateToken();
   }, []);
 
-  // Auto-logout on tab close/browser exit
+  // Optional logout behaviors (disabled to prevent accidental logouts)
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Optional: Show confirmation dialog
-      // return "Are you sure you want to leave? You will be logged out.";
-      logout();
-    };
-
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        // User switched tabs or minimized - optional logout
-        // Uncomment next line for aggressive logout:
-        // logout();
+        // User switched tabs or minimized - do nothing
+        // Aggressive logout disabled to prevent accidental logouts during report uploads
       }
     };
 
-    // Logout when tab/browser closes
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    // Optional: Logout when tab becomes hidden
+    // Only listen for visibility changes, no auto-logout on page refresh
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
-  // Session timeout after 30 minutes of inactivity
+  // Session timeout after 2 hours of inactivity (increased for report uploads)
   useEffect(() => {
     let inactivityTimer: NodeJS.Timeout;
 
@@ -96,7 +86,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         inactivityTimer = setTimeout(() => {
           logout();
           alert('Session expired due to inactivity. Please login again.');
-        }, 30 * 60 * 1000); // 30 minutes
+        }, 120 * 60 * 1000); // 2 hours
       }
     };
 
@@ -242,6 +232,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <AdminPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <PrivateRoute>
+                  <AnalyticsPage />
                 </PrivateRoute>
               }
             />

@@ -67,14 +67,14 @@ const HomePage: React.FC = () => {
       
       // Separate flag reports from regular scout reports
       const flagReports = filteredScoutReports
-        .filter(report => 
-          report.report_type?.toLowerCase() === 'flag' || 
+        .filter(report =>
+          report.report_type?.toLowerCase() === 'flag' ||
           report.report_type?.toLowerCase() === 'flag assessment'
         )
         .slice(0, 10); // Show 10 most recent flag reports
       const regularReports = filteredScoutReports
-        .filter(report => 
-          report.report_type?.toLowerCase() !== 'flag' && 
+        .filter(report =>
+          report.report_type?.toLowerCase() !== 'flag' &&
           report.report_type?.toLowerCase() !== 'flag assessment'
         )
         .slice(0, 10); // Show 10 most recent regular reports
@@ -267,7 +267,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">⚽ Recent Scout Reports ({recentScoutReports.length})</h5>
+                <h5 className="mb-0">⚽ {userRole === 'scout' ? 'Your Recent Scout Reports' : 'Recent Scout Reports'} ({recentScoutReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
@@ -333,7 +333,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🕵️ Recent Intel Reports ({recentIntelReports.length})</h5>
+                <h5 className="mb-0">🕵️ {userRole === 'scout' ? 'Your Recent Intel Reports' : 'Recent Intel Reports'} ({recentIntelReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
@@ -398,7 +398,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🏆 Highest Attribute Scores ({topAttributeReports.length})</h5>
+                <h5 className="mb-0">🏆 {userRole === 'scout' ? 'Your Highest Attribute Scores' : 'Highest Attribute Scores'} ({topAttributeReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
@@ -462,7 +462,7 @@ const HomePage: React.FC = () => {
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🚩 Recent Flag Reports ({recentFlagReports.length})</h5>
+                <h5 className="mb-0">🚩 {userRole === 'scout' ? 'Your Recent Flag Reports' : 'Recent Flag Reports'} ({recentFlagReports.length})</h5>
                 <Button 
                   variant="outline-dark" 
                   size="sm"
