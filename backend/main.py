@@ -45,6 +45,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
 @app.get("/health/snowflake")
 async def test_snowflake_connection():
     """Test Snowflake connection for debugging"""
@@ -464,6 +465,234 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@app.get("/analytics/timeline")
+async def get_analytics_timeline(current_user: User = Depends(get_current_user)):
+    """Get timeline analytics data for scout reports by month and user"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Query to get timeline data grouped by month and user
+        cursor.execute("""
+            SELECT
+                TO_CHAR(sr.CREATED_AT, 'YYYY-MM') as month,
+                sr.SCOUTING_TYPE,
+                COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
+                COUNT(sr.ID) as report_count
+            FROM scout_reports sr
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            WHERE sr.CREATED_AT >= DATEADD(month, -12, CURRENT_DATE())
+            GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM'), sr.SCOUTING_TYPE, u.USERNAME
+            ORDER BY month ASC, scout_name ASC
+        """)
+
+        timeline_raw = cursor.fetchall()
+
+        # Process the data into the expected format
+        timeline_data = {}
+        scout_totals = {}
+
+        for row in timeline_raw:
+            month, scouting_type, scout_name, report_count = row
+
+            # Initialize month data if not exists
+            if month not in timeline_data:
+                timeline_data[month] = {
+                    'month': month,
+                    'totalReports': 0,
+                    'liveReports': 0,
+                    'videoReports': 0,
+                    'scouts': {}
+                }
+
+            # Add to month totals
+            timeline_data[month]['totalReports'] += report_count
+
+            # Add to scouting type totals
+            if scouting_type and scouting_type.upper() == 'LIVE':
+                timeline_data[month]['liveReports'] += report_count
+            else:
+                timeline_data[month]['videoReports'] += report_count
+
+            # Add to scout breakdown
+            if scout_name not in timeline_data[month]['scouts']:
+                timeline_data[month]['scouts'][scout_name] = 0
+            timeline_data[month]['scouts'][scout_name] += report_count
+
+            # Track scout totals
+            if scout_name not in scout_totals:
+                scout_totals[scout_name] = 0
+            scout_totals[scout_name] += report_count
+
+        # Sort timeline by month
+        timeline_list = sorted(timeline_data.values(), key=lambda x: x['month'])
+
+        # Get top scouts
+        top_scouts = sorted(
+            [{'name': name, 'reports': total} for name, total in scout_totals.items()],
+            key=lambda x: x['reports'],
+            reverse=True
+        )[:10]
+
+        return {
+            "timeline": timeline_list,
+            "totalScouts": len(scout_totals),
+            "topScouts": top_scouts
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching timeline analytics: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/analytics/timeline-daily")
+async def get_analytics_timeline_daily(
+    days: int = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """Get daily timeline analytics data for scout reports"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Access denied. Admin or manager role required.")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Query to get timeline data grouped by day and user
+        cursor.execute("""
+            SELECT
+                TO_CHAR(sr.CREATED_AT, 'YYYY-MM-DD') as day,
+                sr.SCOUTING_TYPE,
+                COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
+                COUNT(sr.ID) as report_count
+            FROM scout_reports sr
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            WHERE sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())
+            GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM-DD'), sr.SCOUTING_TYPE, u.USERNAME
+            ORDER BY day ASC, scout_name ASC
+        """, (days,))
+
+        timeline_raw = cursor.fetchall()
+
+        # Process the data into the expected format
+        timeline_data = {}
+        scout_totals = {}
+
+        for row in timeline_raw:
+            day, scouting_type, scout_name, report_count = row
+
+            # Initialize day data if not exists
+            if day not in timeline_data:
+                timeline_data[day] = {
+                    'day': day,
+                    'totalReports': 0,
+                    'liveReports': 0,
+                    'videoReports': 0,
+                    'scouts': {}
+                }
+
+            # Add to day totals
+            timeline_data[day]['totalReports'] += report_count
+
+            # Add to scouting type totals
+            if scouting_type and scouting_type.upper() == 'LIVE':
+                timeline_data[day]['liveReports'] += report_count
+            else:
+                timeline_data[day]['videoReports'] += report_count
+
+            # Add to scout breakdown
+            if scout_name not in timeline_data[day]['scouts']:
+                timeline_data[day]['scouts'][scout_name] = 0
+            timeline_data[day]['scouts'][scout_name] += report_count
+
+            # Track scout totals
+            if scout_name not in scout_totals:
+                scout_totals[scout_name] = 0
+            scout_totals[scout_name] += report_count
+
+        # Sort timeline by day
+        timeline_list = sorted(timeline_data.values(), key=lambda x: x['day'])
+
+        # Get top scouts
+        top_scouts = sorted(
+            [{'name': name, 'reports': total} for name, total in scout_totals.items()],
+            key=lambda x: x['reports'],
+            reverse=True
+        )[:10]
+
+        return {
+            "timeline": timeline_list,
+            "totalScouts": len(scout_totals),
+            "topScouts": top_scouts
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching daily timeline analytics: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/debug/scout_reports")
+async def debug_scout_reports(current_user: User = Depends(get_current_user)):
+    """Debug endpoint to check scout reports and USER_ID data"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check table structure
+        cursor.execute("DESCRIBE TABLE scout_reports")
+        columns = cursor.fetchall()
+        column_names = [col[0] for col in columns]
+
+        debug_info = {
+            "table_columns": column_names,
+            "has_user_id_column": 'USER_ID' in column_names
+        }
+
+        if 'USER_ID' in column_names:
+            # Check USER_ID data quality
+            cursor.execute("SELECT COUNT(*) FROM scout_reports")
+            total_reports = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM scout_reports WHERE USER_ID IS NOT NULL")
+            reports_with_user_id = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM scout_reports WHERE USER_ID IS NULL")
+            reports_without_user_id = cursor.fetchone()[0]
+
+            # Get sample of USER_ID values
+            cursor.execute("SELECT DISTINCT USER_ID FROM scout_reports WHERE USER_ID IS NOT NULL LIMIT 10")
+            sample_user_ids = [row[0] for row in cursor.fetchall()]
+
+            # Check users table for comparison
+            cursor.execute("SELECT ID, USERNAME, ROLE FROM users ORDER BY ID")
+            all_users = [{"id": row[0], "username": row[1], "role": row[2]} for row in cursor.fetchall()]
+
+            debug_info.update({
+                "total_reports": total_reports,
+                "reports_with_user_id": reports_with_user_id,
+                "reports_without_user_id": reports_without_user_id,
+                "sample_user_ids_in_reports": sample_user_ids,
+                "all_users": all_users
+            })
+
+        return debug_info
+
+    except Exception as e:
+        return {"error": str(e), "type": type(e).__name__}
+    finally:
+        if conn:
+            conn.close()
 
 @app.post("/reset-password")
 async def reset_password(request: PasswordResetRequest):
@@ -2039,13 +2268,24 @@ async def get_all_scout_reports(
         # Apply role-based filtering
         try:
             test_cursor = conn.cursor()
-            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
-            if current_user.role == "scout":
-                where_clauses.append("sr.USER_ID = %s")
-                sql_params.append(current_user.id)
+            # Check if USER_ID column exists by describing the table
+            test_cursor.execute("DESCRIBE TABLE scout_reports")
+            columns = test_cursor.fetchall()
+            column_names = [col[0] for col in columns]
+
+            if 'USER_ID' in column_names:
+                # Column exists, apply role-based filtering
+                if current_user.role == "scout":
+                    where_clauses.append("sr.USER_ID = %s")
+                    sql_params.append(current_user.id)
+                    logging.info(f"Applied scout filtering for user ID: {current_user.id}")
+                else:
+                    logging.info(f"User role '{current_user.role}' - no scout filtering applied")
+            else:
+                logging.warning("USER_ID column does not exist in scout_reports table")
         except Exception as e:
-            # USER_ID column doesn't exist, no role-based filtering
-            pass
+            logging.error(f"Error checking USER_ID column: {e}")
+            # If we can't determine column existence, skip role filtering for safety
 
         # Apply recency filter
         if recency_days is not None and recency_days > 0:
@@ -3607,6 +3847,193 @@ async def get_database_metadata():
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching database metadata: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+@app.get("/analytics/player-coverage")
+async def get_player_coverage_analytics(current_user: User = Depends(get_current_user)):
+    """Get analytics on player coverage per game"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Query for ALL games (games with scout reports)
+        cursor.execute("""
+            SELECT
+                m.ID as match_id,
+                m.HOMESQUADNAME,
+                m.AWAYSQUADNAME,
+                m.SCHEDULEDDATE,
+                sr.SCOUTING_TYPE,
+                COUNT(DISTINCT sr.PLAYER_ID) as players_covered,
+                COUNT(sr.ID) as total_reports
+            FROM matches m
+            INNER JOIN scout_reports sr ON m.ID = sr.MATCH_ID
+            WHERE m.ID IS NOT NULL
+            AND sr.PLAYER_ID IS NOT NULL
+            GROUP BY m.ID, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE, sr.SCOUTING_TYPE
+            ORDER BY m.SCHEDULEDDATE DESC
+        """)
+
+        all_games_data = cursor.fetchall()
+
+        # Process results
+        games_with_coverage = []
+        all_games_stats = {
+            'total_games': 0,
+            'total_players_covered': 0,
+            'total_reports': 0,
+            'average_players_per_game': 0
+        }
+
+        live_games_stats = {
+            'total_games': 0,
+            'total_players_covered': 0,
+            'total_reports': 0,
+            'average_players_per_game': 0
+        }
+
+        total_players_all = 0
+        total_players_live = 0
+        games_dict = {}
+
+        for row in all_games_data:
+            match_id, home_team, away_team, scheduled_date, scouting_type, players_covered, total_reports = row
+
+            # Create a unique key for each game
+            game_key = f"{match_id}_{home_team}_{away_team}_{scheduled_date}"
+
+            if game_key not in games_dict:
+                games_dict[game_key] = {
+                    'match_id': match_id,
+                    'home_team': home_team,
+                    'away_team': away_team,
+                    'scheduled_date': str(scheduled_date),
+                    'players_covered_all': 0,
+                    'players_covered_live': 0,
+                    'total_reports_all': 0,
+                    'total_reports_live': 0,
+                    'has_live': False,
+                    'has_other': False
+                }
+
+            # Add to ALL games totals
+            games_dict[game_key]['players_covered_all'] += players_covered
+            games_dict[game_key]['total_reports_all'] += total_reports
+            total_players_all += players_covered
+
+            # Check if this is a LIVE scouting type
+            if scouting_type and scouting_type.upper() == 'LIVE':
+                games_dict[game_key]['players_covered_live'] += players_covered
+                games_dict[game_key]['total_reports_live'] += total_reports
+                games_dict[game_key]['has_live'] = True
+                total_players_live += players_covered
+            else:
+                games_dict[game_key]['has_other'] = True
+
+        # Convert dict to list and create game data entries
+        for game_key, game_info in games_dict.items():
+            # Add entry for ALL games
+            game_data_all = {
+                'match_id': game_info['match_id'],
+                'home_team': game_info['home_team'],
+                'away_team': game_info['away_team'],
+                'scheduled_date': game_info['scheduled_date'],
+                'players_covered': game_info['players_covered_all'],
+                'total_reports': game_info['total_reports_all'],
+                'scouting_type': 'ALL'
+            }
+            games_with_coverage.append(game_data_all)
+
+            # Add entry for LIVE games if it has live scouting
+            if game_info['has_live']:
+                game_data_live = {
+                    'match_id': game_info['match_id'],
+                    'home_team': game_info['home_team'],
+                    'away_team': game_info['away_team'],
+                    'scheduled_date': game_info['scheduled_date'],
+                    'players_covered': game_info['players_covered_live'],
+                    'total_reports': game_info['total_reports_live'],
+                    'scouting_type': 'LIVE'
+                }
+                games_with_coverage.append(game_data_live)
+
+        # Count unique games for stats
+        unique_games_all = len(games_dict)
+        unique_games_live = len([g for g in games_dict.values() if g['has_live']])
+
+        # Update stats
+        all_games_stats['total_games'] = unique_games_all
+        all_games_stats['total_reports'] = sum(g['total_reports_all'] for g in games_dict.values())
+
+        live_games_stats['total_games'] = unique_games_live
+        live_games_stats['total_reports'] = sum(g['total_reports_live'] for g in games_dict.values())
+
+        # Calculate averages
+        all_games_stats['total_players_covered'] = total_players_all
+        if all_games_stats['total_games'] > 0:
+            all_games_stats['average_players_per_game'] = round(total_players_all / all_games_stats['total_games'], 2)
+
+        live_games_stats['total_players_covered'] = total_players_live
+        if live_games_stats['total_games'] > 0:
+            live_games_stats['average_players_per_game'] = round(total_players_live / live_games_stats['total_games'], 2)
+
+        # Get additional insights
+        cursor.execute("""
+            SELECT
+                COUNT(DISTINCT m.ID) as total_matches_in_db,
+                COUNT(DISTINCT CASE WHEN sr.MATCH_ID IS NOT NULL THEN m.ID END) as matches_with_reports
+            FROM matches m
+            LEFT JOIN scout_reports sr ON m.ID = sr.MATCH_ID
+        """)
+
+        coverage_info = cursor.fetchone()
+        total_matches_in_db, matches_with_reports = coverage_info
+
+        # Get top covered games (LIVE scouting only)
+        cursor.execute("""
+            SELECT
+                m.HOMESQUADNAME,
+                m.AWAYSQUADNAME,
+                m.SCHEDULEDDATE,
+                COUNT(DISTINCT sr.PLAYER_ID) as players_covered,
+                sr.SCOUTING_TYPE
+            FROM matches m
+            INNER JOIN scout_reports sr ON m.ID = sr.MATCH_ID
+            WHERE m.ID IS NOT NULL AND sr.PLAYER_ID IS NOT NULL
+            AND UPPER(sr.SCOUTING_TYPE) = 'LIVE'
+            GROUP BY m.ID, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE, sr.SCOUTING_TYPE
+            ORDER BY players_covered DESC
+            LIMIT 10
+        """)
+
+        top_covered_games = []
+        for row in cursor.fetchall():
+            home_team, away_team, scheduled_date, players_covered, scouting_type = row
+            top_covered_games.append({
+                'match': f"{home_team} vs {away_team}",
+                'date': str(scheduled_date),
+                'players_covered': players_covered,
+                'scouting_type': scouting_type
+            })
+
+        return {
+            'all_games_stats': all_games_stats,
+            'live_games_stats': live_games_stats,
+            'games_with_coverage': games_with_coverage,
+            'database_overview': {
+                'total_matches_in_database': total_matches_in_db,
+                'matches_with_scout_reports': matches_with_reports,
+                'coverage_percentage': round((matches_with_reports / total_matches_in_db * 100), 2) if total_matches_in_db > 0 else 0
+            },
+            'top_covered_games': top_covered_games
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error retrieving player coverage analytics: {e}")
     finally:
         if conn:
             conn.close()
