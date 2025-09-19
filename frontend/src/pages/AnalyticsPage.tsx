@@ -13,8 +13,8 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { useAuth } from '../App';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import axiosInstance from '../axiosInstance';
 
 ChartJS.register(
   CategoryScale,
@@ -82,7 +82,6 @@ interface AnalyticsData {
 }
 
 const AnalyticsPage: React.FC = () => {
-  const { token } = useAuth();
   const { canAccessAnalytics, loading: userLoading } = useCurrentUser();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
@@ -98,73 +97,42 @@ const AnalyticsPage: React.FC = () => {
   const fetchAnalyticsData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/analytics/player-coverage', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch analytics data: ${response.status}`);
-      }
-
-      const analyticsData = await response.json();
-      setData(analyticsData);
+      const response = await axiosInstance.get('/analytics/player-coverage');
+      setData(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics data');
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const fetchTimelineData = useCallback(async () => {
     try {
       setTimelineLoading(true);
-      const response = await fetch('http://localhost:8000/analytics/timeline', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch timeline data: ${response.status}`);
-      }
-
-      const timelineDataResponse = await response.json();
-      setTimelineData(timelineDataResponse);
+      const response = await axiosInstance.get('/analytics/timeline');
+      setTimelineData(response.data);
     } catch (err) {
       console.error('Timeline data error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch timeline data');
     } finally {
       setTimelineLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const fetchDailyTimelineData = useCallback(async (days: number) => {
     try {
       setTimelineLoading(true);
-      const response = await fetch(`http://localhost:8000/analytics/timeline-daily?days=${days}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+      const response = await axiosInstance.get('/analytics/timeline-daily', {
+        params: { days }
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch daily timeline data: ${response.status}`);
-      }
-
-      const timelineDataResponse = await response.json();
-      setTimelineData(timelineDataResponse);
+      setTimelineData(response.data);
     } catch (err) {
       console.error('Daily timeline data error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch daily timeline data');
     } finally {
       setTimelineLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     // Only fetch data if user has permission
