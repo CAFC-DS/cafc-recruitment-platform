@@ -56,7 +56,10 @@ interface ScoutReportsData {
 }
 
 const PlayerProfilePage: React.FC = () => {
-  const { playerId } = useParams<{ playerId: string }>();
+  const { playerId, cafcPlayerId } = useParams<{ playerId?: string; cafcPlayerId?: string }>();
+
+  // Determine which ID to use - external or manual
+  const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
@@ -89,41 +92,39 @@ const PlayerProfilePage: React.FC = () => {
     console.log('Pipeline status update:', newStatus);
   };
 
-  // Performance scoring functions matching website-wide system
-  const getPerformanceScoreVariant = (score: number) => {
-    if (score === 10) return 'gold';
-    if (score === 9) return 'silver';  
-    if (score >= 7) return 'success';
-    if (score >= 3) return 'warning';
-    return 'danger';
+  // Red-green gradient color functions for scoring
+  const getPerformanceScoreColor = (score: number) => {
+    // Scale from 1-10 to red-green gradient
+    const red = Math.max(0, 255 - (score - 1) * 28.33);
+    const green = Math.min(255, (score - 1) * 28.33);
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
-  const getAttributeScoreVariant = (score: number) => {
-    if (score === 100) return 'gold';
-    if (score >= 90) return 'silver';
-    if (score >= 70) return 'success';
-    if (score >= 40) return 'warning';
-    return 'danger';
+  const getAttributeScoreColor = (score: number) => {
+    // Scale from 0-100 to red-green gradient
+    const red = Math.max(0, 255 - score * 2.55);
+    const green = Math.min(255, score * 2.55);
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
 
   useEffect(() => {
-    if (playerId) {
+    if (actualPlayerId) {
       fetchPlayerProfile();
       fetchPlayerAttributes();
       fetchScoutReports();
     }
-  }, [playerId]);
+  }, [actualPlayerId]);
 
   const fetchPlayerProfile = async () => {
-    if (!playerId) {
+    if (!actualPlayerId) {
       setError('No player ID provided');
       setLoading(false);
       return;
     }
-    
+
     try {
-      const response = await axiosInstance.get(`/players/${playerId}/profile`);
+      const response = await axiosInstance.get(`/players/${actualPlayerId}/profile`);
       setProfile(response.data);
     } catch (error: any) {
       console.error('Error fetching player profile:', error);
@@ -134,13 +135,13 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   const fetchPlayerAttributes = async () => {
-    if (!playerId) {
+    if (!actualPlayerId) {
       setAttributesLoading(false);
       return;
     }
-    
+
     try {
-      const response = await axiosInstance.get(`/players/${playerId}/attributes`);
+      const response = await axiosInstance.get(`/players/${actualPlayerId}/attributes`);
       setAttributes(response.data);
     } catch (error: any) {
       console.error('Error fetching player attributes:', error);
@@ -151,13 +152,13 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   const fetchScoutReports = async () => {
-    if (!playerId) {
+    if (!actualPlayerId) {
       setScoutReportsLoading(false);
       return;
     }
-    
+
     try {
-      const response = await axiosInstance.get(`/players/${playerId}/scout-reports`);
+      const response = await axiosInstance.get(`/players/${actualPlayerId}/scout-reports`);
       setScoutReportsData(response.data);
     } catch (error: any) {
       console.error('Error fetching scout reports:', error);
@@ -304,7 +305,7 @@ const PlayerProfilePage: React.FC = () => {
                           })}
                         </div>
                         {report.overall_rating && (
-                          <Badge bg={getPerformanceScoreVariant(report.overall_rating)} className="timeline-rating">
+                          <Badge style={{ backgroundColor: getPerformanceScoreColor(report.overall_rating), color: 'white', fontWeight: 'bold' }} className="timeline-rating">
                             {report.overall_rating}
                           </Badge>
                         )}
@@ -474,12 +475,12 @@ const PlayerProfilePage: React.FC = () => {
                                 <span className="report-scout">by {report.scout_name}</span>
                                 <div className="report-scores">
                                   {report.performance_score && (
-                                    <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="score-badge">
+                                    <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
                                       {report.performance_score}
                                     </Badge>
                                   )}
                                   {report.attribute_score && (
-                                    <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="score-badge">
+                                    <Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
                                       {report.attribute_score}
                                     </Badge>
                                   )}
@@ -577,14 +578,14 @@ const PlayerProfilePage: React.FC = () => {
                             <td>{report.scout_name}</td>
                             <td>
                               {report.performance_score ? (
-                                <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="score-badge">
+                                <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
                                   {report.performance_score}
                                 </Badge>
                               ) : '-'}
                             </td>
                             <td>
                               {report.attribute_score ? (
-                                <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="score-badge">
+                                <Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
                                   {report.attribute_score}
                                 </Badge>
                               ) : '-'}

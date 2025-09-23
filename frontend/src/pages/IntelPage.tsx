@@ -283,15 +283,15 @@ const IntelPage: React.FC = () => {
   const getActionRequiredBadge = (action: string) => {
     switch (action) {
       case 'beyond us':
-        return <Badge bg="secondary">Beyond Us</Badge>;
+        return <Badge className="badge-cafc-black">Beyond Us</Badge>;
       case 'discuss urgently':
-        return <Badge bg="danger">Discuss Urgently</Badge>;
+        return <Badge className="badge-cafc-black">Discuss Urgently</Badge>;
       case 'monitor':
-        return <Badge bg="warning">Monitor</Badge>;
+        return <Badge className="badge-cafc-black">Monitor</Badge>;
       case 'no action':
-        return <Badge bg="success">No Action</Badge>;
+        return <Badge className="badge-cafc-black">No Action</Badge>;
       default:
-        return <Badge bg="info">{action}</Badge>;
+        return <Badge className="badge-cafc-black">{action}</Badge>;
     }
   };
 
@@ -442,7 +442,7 @@ const IntelPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h3>Player Intel Reports</h3>
         <div className="d-flex align-items-center gap-3">
-          <Badge bg="secondary">{totalReports} reports</Badge>
+          <Badge className="badge-cafc-black">{totalReports} reports</Badge>
           <div className="btn-group" role="group">
             <Button
               variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
@@ -623,7 +623,7 @@ const IntelPage: React.FC = () => {
                         </h5>
                       )}
                       <div className="mb-2">
-                        <Badge bg="info" className="text-dark">🕵️ Intel Report</Badge>
+                        <Badge className="badge-cafc-black">🕵️ Intel Report</Badge>
                       </div>
                     </div>
                     <div className="text-end">
@@ -689,13 +689,15 @@ const IntelPage: React.FC = () => {
                 </Card.Body>
                 <Card.Footer className="bg-transparent border-0 pt-0">
                   <div className="d-grid gap-2 d-md-flex">
-                    <Button 
-                      variant="danger" 
-                      size="sm" 
-                      className="flex-grow-1 rounded-pill"
+                    <Button
+                      variant="outline-dark"
+                      size="sm"
+                      className="rounded-circle"
                       onClick={() => handleViewIntelReport(report.intel_id)}
+                      title="View Details"
+                      style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
-                      👁️ View Details
+                      👁️
                     </Button>
                     {report.player_id && (
                       <Button 
@@ -769,11 +771,13 @@ const IntelPage: React.FC = () => {
                   </td>
                   <td>
                     <div className="btn-group">
-                      <Button 
-                        variant="primary" 
+                      <Button
+                        variant="outline-dark"
                         size="sm"
                         onClick={() => handleViewIntelReport(report.intel_id)}
                         title="View Intel Report"
+                        className="rounded-circle"
+                        style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
                         👁️
                       </Button>
@@ -842,7 +846,7 @@ const IntelPage: React.FC = () => {
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .table-modern thead th {
-          background: #6c757d;
+          background: #000000;
           color: white;
           font-weight: 600;
           text-transform: uppercase;
@@ -892,6 +896,21 @@ const IntelPage: React.FC = () => {
         }
         body.theme-dark .small.text-muted, [data-bs-theme="dark"] .small.text-muted {
           color: #d1d5db !important;
+        }
+
+        /* Charlton Athletic Badge Classes */
+        .badge-cafc-red {
+          background-color: #FF0000 !important;
+          color: white !important;
+        }
+        .badge-cafc-black {
+          background-color: #000000 !important;
+          color: white !important;
+        }
+        .badge-cafc-white {
+          background-color: #FFFFFF !important;
+          color: #000000 !important;
+          border: 1px solid #dee2e6;
         }
       `}</style>
     </Container>

@@ -1,3 +1,4 @@
+// FORCE CACHE REFRESH - UI REDESIGN COMPLETE
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -221,6 +222,14 @@ function App() {
             />
             <Route
               path="/player/:playerId"
+              element={
+                <PrivateRoute>
+                  <PlayerProfilePage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/player-profile/:cafcPlayerId"
               element={
                 <PrivateRoute>
                   <PlayerProfilePage />

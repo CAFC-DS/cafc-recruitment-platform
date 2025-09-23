@@ -54,9 +54,10 @@ axiosInstance.interceptors.response.use(
       // Don't auto-logout on scout report submissions or other critical operations
       const url = error.config?.url || '';
       const isScoutReportSubmission = url.includes('/scout_reports') && (error.config?.method === 'post' || error.config?.method === 'put');
+      const isIntelReportSubmission = url.includes('/intel_reports') && (error.config?.method === 'post' || error.config?.method === 'put');
       const isMatchesByDate = url.includes('/matches/date');
-      
-      if (!isScoutReportSubmission && !isMatchesByDate) {
+
+      if (!isScoutReportSubmission && !isIntelReportSubmission && !isMatchesByDate) {
         clearAuthAndRedirect();
       }
     }

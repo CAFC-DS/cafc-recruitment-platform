@@ -259,11 +259,12 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
     },
   };
 
-  // Red to green color scale for performance scores (1-10, with 6+ being green)
+  // Red-green gradient color functions for scoring
   const getPerformanceScoreColor = (score: number) => {
-    if (score >= 6) return '#28a745'; // Green for 6+
-    if (score >= 4) return '#ffc107'; // Yellow for 4-5
-    return '#dc3545'; // Red for 1-3
+    // Scale from 1-10 to red-green gradient
+    const red = Math.max(0, 255 - (score - 1) * 28.33);
+    const green = Math.min(255, (score - 1) * 28.33);
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
   const getPerformanceScoreVariant = (score: number) => {
@@ -274,11 +275,11 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
     return 'danger'; // 1-3 red
   };
 
-  // Red to green color scale for attribute scores (total out of 100, with 60+ being green)
   const getAttributeScoreColor = (score: number) => {
-    if (score >= 60) return '#28a745'; // Green for 60+
-    if (score >= 40) return '#ffc107'; // Yellow for 40-59
-    return '#dc3545'; // Red for below 40
+    // Scale from 0-100 to red-green gradient
+    const red = Math.max(0, 255 - score * 2.55);
+    const green = Math.min(255, score * 2.55);
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
   const getAttributeScoreVariant = (score: number) => {
@@ -448,7 +449,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                         <Col xs={4}>
                           <div className="border-end">
                             <h4 className="mb-1">
-                              <Badge bg={getPerformanceScoreVariant(report.average_attribute_score)} className="performance-badge">
+                              <Badge style={{ backgroundColor: getAttributeScoreColor(report.average_attribute_score), color: 'white', fontWeight: 'bold' }} className="performance-badge">
                                 {report.average_attribute_score}
                               </Badge>
                             </h4>
@@ -468,7 +469,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                         <Col xs={4}>
                           <div>
                             <h4 className="mb-1">
-                              <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="performance-badge">
+                              <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="performance-badge">
                                 {report.performance_score}
                               </Badge>
                             </h4>
@@ -579,46 +580,6 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   );
 };
 
-// Add CSS for white close button, gold/silver badges, and flag colors
-const style = document.createElement('style');
-style.textContent = `
-  .modal-header-dark .btn-close {
-    filter: invert(1) grayscale(100%) brightness(200%);
-  }
-  .badge.bg-gold {
-    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
-    color: #000 !important;
-    font-weight: 600;
-  }
-  .badge.bg-silver {
-    background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
-    color: #000 !important;
-    font-weight: 600;
-  }
-  .flag-positive {
-    background-color: #28a745 !important;
-    color: #fff !important;
-    border-color: #28a745 !important;
-  }
-  .flag-neutral {
-    background-color: #6c757d !important;
-    color: #fff !important;
-    border-color: #6c757d !important;
-  }
-  .flag-negative {
-    background-color: #ffc107 !important;
-    color: #000 !important;
-    border-color: #ffc107 !important;
-  }
-  .flag-default {
-    background-color: #fbbf24 !important;
-    color: #000 !important;
-    border-color: #fbbf24 !important;
-  }
-`;
-if (!document.head.querySelector('style[data-modal-fix]')) {
-  style.setAttribute('data-modal-fix', 'true');
-  document.head.appendChild(style);
-}
+
 
 export default PlayerReportModal;

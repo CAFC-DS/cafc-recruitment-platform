@@ -39,6 +39,102 @@ def normalize_text(text: str) -> str:
     normalized = unicodedata.normalize('NFD', text)
     return ''.join(char for char in normalized if unicodedata.category(char) != 'Mn').lower()
 
+# Universal ID helper functions for mixed data sources
+def get_player_universal_id(player_row):
+    """Get the appropriate ID based on data source"""
+    if player_row.get('DATA_SOURCE') == 'internal':
+        return f"manual_{player_row['CAFC_PLAYER_ID']}"
+    else:
+        return f"external_{player_row['PLAYERID']}"
+
+def get_match_universal_id(match_row):
+    """Get the appropriate ID based on data source"""
+    if match_row.get('DATA_SOURCE') == 'internal':
+        return f"manual_{match_row['CAFC_MATCH_ID']}"
+    else:
+        return f"external_{match_row['ID']}"
+
+def resolve_player_lookup(universal_id):
+    """Convert universal ID to database query"""
+    if universal_id.startswith('manual_'):
+        cafc_id = int(universal_id[7:])
+        return "CAFC_PLAYER_ID = %s AND DATA_SOURCE = 'internal'", [cafc_id]
+    else:
+        player_id = int(universal_id[9:])
+        return "PLAYERID = %s AND DATA_SOURCE = 'external'", [player_id]
+
+def resolve_match_lookup(universal_id):
+    """Convert universal ID to database query"""
+    if universal_id.startswith('manual_'):
+        cafc_id = int(universal_id[7:])
+        return "CAFC_MATCH_ID = %s AND DATA_SOURCE = 'internal'", [cafc_id]
+    else:
+        match_id = int(universal_id[9:])
+        return "ID = %s AND DATA_SOURCE = 'external'", [match_id]
+
+# Universal lookup functions for dual ID system
+def find_player_by_any_id(player_id: int, cursor):
+    """
+    Find player by trying external ID first, then CAFC_PLAYER_ID
+    Returns: (player_data, source) or (None, None) if not found
+    """
+    # Try external ID first (most common case)
+    cursor.execute("""
+        SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+               BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+        FROM players
+        WHERE PLAYERID = %s AND DATA_SOURCE = 'external'
+    """, (player_id,))
+    result = cursor.fetchone()
+
+    if result:
+        return result, 'external'
+
+    # Try CAFC_PLAYER_ID (internal/manual records)
+    cursor.execute("""
+        SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+               BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+        FROM players
+        WHERE CAFC_PLAYER_ID = %s AND DATA_SOURCE = 'internal'
+    """, (player_id,))
+    result = cursor.fetchone()
+
+    if result:
+        return result, 'internal'
+
+    return None, None
+
+def find_match_by_any_id(match_id: int, cursor):
+    """
+    Find match by trying external ID first, then CAFC_MATCH_ID
+    Returns: (match_data, source) or (None, None) if not found
+    """
+    # Try external ID first (most common case)
+    cursor.execute("""
+        SELECT ID, CAFC_MATCH_ID, HOMESQUADNAME, AWAYSQUADNAME,
+               SCHEDULEDDATE, DATA_SOURCE
+        FROM matches
+        WHERE ID = %s AND DATA_SOURCE = 'external'
+    """, (match_id,))
+    result = cursor.fetchone()
+
+    if result:
+        return result, 'external'
+
+    # Try CAFC_MATCH_ID (internal/manual records)
+    cursor.execute("""
+        SELECT ID, CAFC_MATCH_ID, HOMESQUADNAME, AWAYSQUADNAME,
+               SCHEDULEDDATE, DATA_SOURCE
+        FROM matches
+        WHERE CAFC_MATCH_ID = %s AND DATA_SOURCE = 'internal'
+    """, (match_id,))
+    result = cursor.fetchone()
+
+    if result:
+        return result, 'internal'
+
+    return None, None
+
 app = FastAPI(
     title="CAFC Recruitment Platform API",
     description="Football recruitment platform with role-based access control",
@@ -1363,74 +1459,89 @@ async def merge_players(
 
 @app.post("/players")
 async def add_player(player: Player, current_user: User = Depends(get_current_user)):
+    """Add a manual player to the database with separate ID system"""
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        
-        # Check if CAFC_PLAYER_ID column exists, add it if not
-        cursor.execute("DESCRIBE TABLE players")
-        columns = cursor.fetchall()
-        column_names = [col[0] for col in columns]
-        
-        if 'CAFC_PLAYER_ID' not in column_names:
-            cursor.execute("ALTER TABLE players ADD COLUMN CAFC_PLAYER_ID INTEGER IDENTITY(1,1)")
-            conn.commit()
-        
+
         # Create combined player name from first and last name
         player_name = f"{player.firstName} {player.lastName}".strip()
-        
-        # Check for duplicate players by name and team
+
+        # Check for duplicate players by name and team (across both manual and external)
         cursor.execute("""
-            SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME FROM players 
+            SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, DATA_SOURCE FROM players
             WHERE PLAYERNAME = %s AND SQUADNAME = %s
         """, (player_name, player.squadName))
         existing = cursor.fetchone()
-        
+
         if existing:
+            cafc_id, external_id, name, data_source = existing
+            universal_id = get_player_universal_id({
+                'CAFC_PLAYER_ID': cafc_id,
+                'PLAYERID': external_id,
+                'DATA_SOURCE': data_source
+            })
             return {
                 "message": "Player already exists",
                 "existing_player": {
-                    "cafc_player_id": existing[0],
-                    "external_player_id": existing[1],
-                    "player_name": existing[2]
+                    "cafc_player_id": cafc_id,
+                    "external_player_id": external_id,
+                    "player_name": name,
+                    "data_source": data_source,
+                    "universal_id": universal_id
                 },
-                "note": "Use existing CAFC_PLAYER_ID to avoid duplicates"
+                "note": f"Use existing {data_source} player with universal ID: {universal_id}"
             }
-        
-        # Insert player - CAFC_PLAYER_ID will be auto-generated
+
+        # Get next CAFC ID for manual player using sequence
+        cursor.execute("SELECT manual_player_seq.NEXTVAL")
+        cafc_player_id = cursor.fetchone()[0]
+
+        # Insert manual player with CAFC_PLAYER_ID, PLAYERID stays NULL
         sql = """
-            INSERT INTO players (FIRSTNAME, LASTNAME, PLAYERNAME, BIRTHDATE, SQUADNAME, POSITION)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO players (
+                FIRSTNAME, LASTNAME, PLAYERNAME, BIRTHDATE, SQUADNAME, POSITION,
+                CAFC_PLAYER_ID, DATA_SOURCE
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
+        # Parse birth date string to date object
+        birth_date_obj = None
+        if player.birthDate:
+            try:
+                from datetime import datetime
+                birth_date_obj = datetime.strptime(player.birthDate, "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid birth date format. Use YYYY-MM-DD")
+
         values = (
             player.firstName,
             player.lastName,
             player_name,
-            player.birthDate,
+            birth_date_obj,
             player.squadName,
-            player.position
+            player.position,
+            cafc_player_id,
+            'internal'
         )
         cursor.execute(sql, values)
         conn.commit()
-        
-        # Get the generated CAFC_PLAYER_ID
-        cursor.execute("SELECT CAFC_PLAYER_ID FROM players WHERE PLAYERNAME = %s AND SQUADNAME = %s ORDER BY CAFC_PLAYER_ID DESC LIMIT 1", 
-                      (player_name, player.squadName))
-        result = cursor.fetchone()
-        cafc_player_id = result[0] if result else None
-        
+
+        universal_id = f"internal_{cafc_player_id}"
+
         return {
-            "message": "Player added successfully", 
+            "message": "Internal player added successfully",
             "player": player,
             "cafc_player_id": cafc_player_id,
-            "note": "New CAFC_PLAYER_ID generated - this will never change"
+            "universal_id": universal_id,
+            "data_source": "internal",
+            "note": "This player has a separate ID space from external players - zero collision risk"
         }
     except Exception as e:
         if conn:
             conn.rollback()
         logging.exception(e)
-        raise HTTPException(status_code=500, detail=f"Error adding player: {e}")
+        raise HTTPException(status_code=500, detail=f"Error adding manual player: {e}")
     finally:
         if conn:
             conn.close()
@@ -1551,15 +1662,15 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         
         if has_cafc_id:
             cursor.execute(f"""
-                SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME 
-                FROM players 
+                SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE
+                FROM players
                 WHERE {where_conditions}
                 ORDER BY PLAYERNAME
             """, search_patterns)
         else:
             cursor.execute(f"""
-                SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME 
-                FROM players 
+                SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE
+                FROM players
                 WHERE {where_conditions}
                 ORDER BY PLAYERNAME
             """, search_patterns)
@@ -1574,12 +1685,22 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 normalized_player_name = normalize_text(player_name)
                 # Check if the normalized query matches the normalized player name
                 if normalized_query in normalized_player_name:
+                    # Generate universal_id using the helper function
+                    player_row = {
+                        'CAFC_PLAYER_ID': row[0],
+                        'PLAYERID': row[1],
+                        'DATA_SOURCE': row[5]
+                    }
+                    universal_id = get_player_universal_id(player_row)
+
                     player_data = {
                         "player_id": row[1],  # External player ID (backwards compatibility)
                         "cafc_player_id": row[0],  # Internal stable ID (None if not set up)
-                        "player_name": player_name, 
-                        "position": row[3], 
-                        "squad_name": row[4]
+                        "universal_id": universal_id,  # New universal ID format
+                        "player_name": player_name,
+                        "position": row[3],
+                        "squad_name": row[4],
+                        "data_source": row[5]
                     }
                     player_list.append(player_data)
         
@@ -1597,6 +1718,9 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
 
 @app.post("/scout_reports")
 async def create_scout_report(report: ScoutReport, request: Request, current_user: User = Depends(get_current_user)):
+    print(f"🔍 DEBUG: Scout report creation started")
+    print(f"🔍 DEBUG: player_id={report.player_id}, reportType={report.reportType}")
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -1604,9 +1728,10 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
         conn.autocommit = False
 
         report_type = report.reportType
-        
+
         # Prepare common fields
         player_id = report.player_id
+        print(f"🔍 DEBUG: About to validate player_id={player_id}")
         position = report.playerPosition
         build = report.playerBuild
         height = report.playerHeight
@@ -1639,6 +1764,30 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
         elif report_type == 'Clips':
             pass # All relevant fields are already prepared or optional
 
+        # Validate and resolve player_id using dual ID lookup
+        if player_id:
+            print(f"🔍 DEBUG: Validating player_id={player_id}")
+            player_data, player_data_source = find_player_by_any_id(player_id, cursor)
+            print(f"🔍 DEBUG: Player lookup result: player_data={player_data}, source={player_data_source}")
+            if not player_data:
+                print(f"❌ DEBUG: Player with ID {player_id} not found!")
+                raise HTTPException(status_code=404, detail=f"Player with ID {player_id} not found")
+            # Use the actual database player ID for the insert
+            actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
+            print(f"🔍 DEBUG: Using actual_player_id={actual_player_id} for database insert")
+        else:
+            actual_player_id = None
+            print(f"🔍 DEBUG: No player_id provided")
+
+        # Validate and resolve match_id using dual ID lookup if provided
+        actual_match_id = None
+        if match_id:
+            match_data, match_data_source = find_match_by_any_id(match_id, cursor)
+            if not match_data:
+                raise HTTPException(status_code=404, detail=f"Match with ID {match_id} not found")
+            # Use the actual database match ID for the insert
+            actual_match_id = match_data[0] if match_data_source == 'external' else match_data[1]
+
         # Try to insert with USER_ID first, fallback to without USER_ID if column doesn't exist
         try:
             sql = """
@@ -1650,7 +1799,7 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
             """
             
             values = (
-                player_id,
+                actual_player_id,
                 position,
                 build,
                 height,
@@ -1664,7 +1813,7 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
                 scouting_type,
                 flag_category,
                 report_type,
-                match_id,
+                actual_match_id,
                 formation,
                 current_user.id
             )
@@ -1682,7 +1831,7 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
                 """
                 
                 values = (
-                    player_id,
+                    actual_player_id,
                     position,
                     build,
                     height,
@@ -1696,7 +1845,7 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
                     scouting_type,
                     flag_category,
                     report_type,
-                    match_id,
+                    actual_match_id,
                     formation
                 )
                 cursor.execute(sql, values)
@@ -1905,8 +2054,8 @@ async def get_scout_report(report_id: int, current_user: User = Depends(get_curr
                    sr.SCOUTING_TYPE, sr.FLAG_CATEGORY, sr.REPORT_TYPE, sr.MATCH_ID, sr.FORMATION,
                    p.PLAYERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, DATE(m.SCHEDULEDDATE) as FIXTURE_DATE
             FROM scout_reports sr
-            LEFT JOIN players p ON sr.PLAYER_ID = p.PLAYERID
-            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            LEFT JOIN players p ON (sr.PLAYER_ID = p.PLAYERID OR sr.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             WHERE sr.ID = %s
         """, (report_id,))
         
@@ -2135,13 +2284,46 @@ async def get_matches_by_date(fixture_date: str, current_user: User = Depends(ge
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        # Use DATE() to compare only the date part of the timestamp for better Snowflake compatibility
-        cursor.execute("""SELECT ID, HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE FROM matches WHERE DATE(SCHEDULEDDATE) = %s AND ID IS NOT NULL""", (fixture_date,))
+        # Fetch both external and manual matches using UNION
+        cursor.execute("""
+            SELECT
+                ID as match_id,
+                HOMESQUADNAME as home_team,
+                AWAYSQUADNAME as away_team,
+                SCHEDULEDDATE as fixture_date,
+                DATA_SOURCE,
+                'external' as id_type
+            FROM matches
+            WHERE DATE(SCHEDULEDDATE) = %s AND ID IS NOT NULL AND DATA_SOURCE = 'external'
+
+            UNION ALL
+
+            SELECT
+                CAFC_MATCH_ID as match_id,
+                HOMESQUADNAME as home_team,
+                AWAYSQUADNAME as away_team,
+                SCHEDULEDDATE as fixture_date,
+                DATA_SOURCE,
+                'manual' as id_type
+            FROM matches
+            WHERE DATE(SCHEDULEDDATE) = %s AND CAFC_MATCH_ID IS NOT NULL AND DATA_SOURCE = 'internal'
+
+            ORDER BY home_team, away_team
+        """, (fixture_date, fixture_date))
+
         matches = cursor.fetchall()
         match_list = []
         for row in matches:
-            if row[0] is not None:  # Additional check for null ID
-                match_list.append({"match_id": row[0], "home_team": row[1], "away_team": row[2], "fixture_date": str(row[3])}) 
+            match_id, home_team, away_team, scheduled_date, data_source, id_type = row
+            universal_id = get_match_universal_id({'ID': match_id if id_type == 'external' else None, 'CAFC_MATCH_ID': match_id if id_type == 'manual' else None, 'DATA_SOURCE': data_source})
+            match_list.append({
+                "match_id": match_id,
+                "home_team": home_team,
+                "away_team": away_team,
+                "fixture_date": str(scheduled_date),
+                "data_source": data_source,
+                "universal_id": universal_id
+            })
         return match_list
     except Exception as e:
         logging.exception(e) # Log the error for debugging
@@ -2215,27 +2397,77 @@ async def get_attributes_by_position(position: str, current_user: User = Depends
 
 @app.post("/matches")
 async def add_match(match: Match, current_user: User = Depends(get_current_user)):
+    """Add a manual match to the database with separate ID system"""
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+
+        # Check for duplicate matches by teams and date
+        cursor.execute("""
+            SELECT CAFC_MATCH_ID, ID, HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE, DATA_SOURCE
+            FROM matches
+            WHERE HOMESQUADNAME = %s AND AWAYSQUADNAME = %s AND SCHEDULEDDATE = %s
+        """, (match.homeTeam, match.awayTeam, match.date))
+        existing = cursor.fetchone()
+
+        if existing:
+            cafc_id, external_id, home, away, date, data_source = existing
+            universal_id = get_match_universal_id({
+                'CAFC_MATCH_ID': cafc_id,
+                'ID': external_id,
+                'DATA_SOURCE': data_source
+            })
+            return {
+                "message": "Match already exists",
+                "existing_match": {
+                    "cafc_match_id": cafc_id,
+                    "external_match_id": external_id,
+                    "home_team": home,
+                    "away_team": away,
+                    "date": date,
+                    "data_source": data_source,
+                    "universal_id": universal_id
+                },
+                "note": f"Use existing {data_source} match with universal ID: {universal_id}"
+            }
+
+        # Get next CAFC ID for manual match using sequence
+        cursor.execute("SELECT manual_match_seq.NEXTVAL")
+        cafc_match_id = cursor.fetchone()[0]
+
+        # Insert manual match with CAFC_MATCH_ID, MATCH_ID stays NULL
         sql = """
-            INSERT INTO matches (HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE)
-            VALUES (%s, %s, %s)
+            INSERT INTO matches (
+                HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE,
+                CAFC_MATCH_ID, DATA_SOURCE
+            ) VALUES (%s, %s, %s, %s, %s)
         """
         values = (
             match.homeTeam,
             match.awayTeam,
-            match.date
+            match.date,
+            cafc_match_id,
+            'internal'
         )
         cursor.execute(sql, values)
         conn.commit()
-        return {"message": "Match added successfully", "match": match}
+
+        universal_id = f"internal_{cafc_match_id}"
+
+        return {
+            "message": "Internal match added successfully",
+            "match": match,
+            "cafc_match_id": cafc_match_id,
+            "universal_id": universal_id,
+            "data_source": "internal",
+            "note": "This match has a separate ID space from external matches - zero collision risk"
+        }
     except Exception as e:
         if conn:
             conn.rollback()
-        print(f"Error adding match: {e}")
-        raise HTTPException(status_code=500, detail=f"Error adding match: {e}")
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error adding manual match: {e}")
     finally:
         if conn:
             conn.close()
@@ -2254,11 +2486,11 @@ async def get_all_scout_reports(
 
         offset = (page - 1) * limit
 
-        # Base SQL query for fetching reports
+        # Base SQL query for fetching reports - updated to handle both external and manual players
         base_sql = """
             FROM scout_reports sr
-            JOIN players p ON sr.PLAYER_ID = p.PLAYERID
-            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            LEFT JOIN players p ON (sr.PLAYER_ID = p.PLAYERID OR sr.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN users u ON sr.USER_ID = u.ID
         """
         
@@ -2320,7 +2552,9 @@ async def get_all_scout_reports(
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
                 p.PLAYERID,
                 sr.FLAG_CATEGORY,
-                sr.PURPOSE
+                sr.PURPOSE,
+                p.CAFC_PLAYER_ID,
+                p.DATA_SOURCE
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -2363,7 +2597,9 @@ async def get_all_scout_reports(
                 "scout_name": row[12] if row[12] else "Unknown Scout",
                 "player_id": row[13],
                 "flag_category": row[14],
-                "purpose": row[15] if row[15] else None
+                "purpose": row[15] if row[15] else None,
+                "cafc_player_id": row[16],
+                "data_source": row[17]
             })
         return {
             "total_reports": total_reports,
@@ -2410,8 +2646,8 @@ async def get_single_scout_report(report_id: int, current_user: User = Depends(g
                 sr.REPORT_TYPE,
                 sr.FLAG_CATEGORY
             FROM scout_reports sr
-            JOIN players p ON sr.PLAYER_ID = p.PLAYERID
-            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            LEFT JOIN players p ON (sr.PLAYER_ID = p.PLAYERID OR sr.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN users u ON sr.USER_ID = u.ID
             WHERE sr.ID = %s
         """
@@ -2498,14 +2734,10 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        
-        # Get player basic info
-        cursor.execute("""
-            SELECT PLAYERID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION
-            FROM players WHERE PLAYERID = %s
-        """, (player_id,))
-        player_data = cursor.fetchone()
-        
+
+        # Get player basic info using dual ID lookup
+        player_data, data_source = find_player_by_any_id(player_id, cursor)
+
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
         
@@ -2520,16 +2752,20 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
             ORDER BY sr.CREATED_AT DESC
         """
         
+        # Determine which player ID to use for scout reports lookup
+        # Extract the actual ID being used for this player from the found data
+        actual_player_id = player_data[0] if data_source == 'external' else player_data[1]  # PLAYERID vs CAFC_PLAYER_ID
+
         # Apply role-based filtering for scout reports
-        scout_values = (player_id,)
+        scout_values = (actual_player_id,)
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
             test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
-                scout_sql = scout_sql.replace("WHERE sr.PLAYER_ID = %s", 
+                scout_sql = scout_sql.replace("WHERE sr.PLAYER_ID = %s",
                                             "WHERE sr.PLAYER_ID = %s AND sr.USER_ID = %s")
-                scout_values = (player_id, current_user.id)
+                scout_values = (actual_player_id, current_user.id)
         except:
             pass
         
@@ -2546,7 +2782,7 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
         """
         
         # Apply role-based filtering for intel reports
-        intel_values = (player_id,)
+        intel_values = (actual_player_id,)
         try:
             cursor.execute("DESCRIBE TABLE player_information")
             columns = cursor.fetchall()
@@ -2554,7 +2790,7 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
             if 'USER_ID' in column_names and current_user.role == "scout":
                 intel_sql = intel_sql.replace("WHERE pi.PLAYER_ID = %s", 
                                             "WHERE pi.PLAYER_ID = %s AND pi.USER_ID = %s")
-                intel_values = (player_id, current_user.id)
+                intel_values = (actual_player_id, current_user.id)
         except:
             pass
         
@@ -2570,7 +2806,7 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
                 LEFT JOIN users u ON pn.USER_ID = u.ID
                 WHERE pn.PLAYER_ID = %s
                 ORDER BY pn.CREATED_AT DESC
-            """, (player_id,))
+            """, (actual_player_id,))
             notes_data = cursor.fetchall()
             notes = [{"id": row[0], "content": row[1], "is_private": row[2], 
                      "created_at": str(row[3]), "author": row[4]} for row in notes_data]
@@ -2579,24 +2815,33 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
         
         # Default recruitment status (pipeline will be added later)
         recruitment_status = "scouted"
-        
+
         # Calculate age
-        birthdate = player_data[4]
+        birthdate = player_data[5]  # BIRTHDATE is at index 5
         age = None
         if birthdate:
-            today = date.today()
-            age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+            # Handle both date objects and string dates
+            if isinstance(birthdate, str):
+                from datetime import datetime
+                try:
+                    birthdate = datetime.strptime(birthdate, "%Y-%m-%d").date()
+                except ValueError:
+                    birthdate = None
+
+            if birthdate:
+                today = date.today()
+                age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
         
         # Format response
         profile = {
             "player_id": player_data[0],
-            "player_name": player_data[1],
-            "first_name": player_data[2],
-            "last_name": player_data[3],
+            "player_name": player_data[2],  # PLAYERNAME is at index 2
+            "first_name": player_data[3],   # FIRSTNAME is at index 3
+            "last_name": player_data[4],    # LASTNAME is at index 4
             "age": age,
-            "birth_date": str(player_data[4]) if player_data[4] else None,
-            "squad_name": player_data[5],
-            "position": player_data[6],
+            "birth_date": str(player_data[5]) if player_data[5] else None,  # BIRTHDATE is at index 5
+            "squad_name": player_data[6],   # SQUADNAME is at index 6
+            "position": player_data[7],     # POSITION is at index 7
             "recruitment_status": recruitment_status,
             "scout_reports": [
                 {
@@ -2643,13 +2888,14 @@ async def get_player_attributes(player_id: int, current_user: User = Depends(get
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         
-        # Check if player exists
-        cursor.execute("SELECT PLAYERID, POSITION FROM players WHERE PLAYERID = %s", (player_id,))
-        player_data = cursor.fetchone()
+        # Check if player exists using dual ID lookup
+        player_data, data_source = find_player_by_any_id(player_id, cursor)
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
-        
-        player_position = player_data[1]
+
+        # Extract the actual player ID and position for queries
+        actual_player_id = player_data[0] if data_source == 'external' else player_data[1]
+        player_position = player_data[7]  # POSITION is the 8th column (index 7)
         
         # Get all scout report attribute scores for this player
         # Apply role-based filtering for scout reports
@@ -2662,8 +2908,8 @@ async def get_player_attributes(player_id: int, current_user: User = Depends(get
             JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
             WHERE sr.PLAYER_ID = %s AND sras.ATTRIBUTE_SCORE > 0
         """
-        
-        query_params = [player_id]
+
+        query_params = [actual_player_id]
         
         # Apply role-based filtering for scout users
         try:
@@ -2793,10 +3039,13 @@ async def get_player_scout_reports(player_id: int, current_user: User = Depends(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         
-        # Check if player exists
-        cursor.execute("SELECT PLAYERID FROM players WHERE PLAYERID = %s", (player_id,))
-        if not cursor.fetchone():
+        # Check if player exists using dual ID lookup
+        player_data, data_source = find_player_by_any_id(player_id, cursor)
+        if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
+
+        # Extract the actual player ID for queries
+        actual_player_id = player_data[0] if data_source == 'external' else player_data[1]
         
         # Get scout reports with role-based filtering
         base_query = """
@@ -2812,12 +3061,12 @@ async def get_player_scout_reports(player_id: int, current_user: User = Depends(
                 sr.PURPOSE as report_type
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
-            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN SCOUT_REPORT_ATTRIBUTE_SCORES sras ON sr.ID = sras.SCOUT_REPORT_ID
             WHERE sr.PLAYER_ID = %s
         """
         
-        query_params = [player_id]
+        query_params = [actual_player_id]
         
         # Apply role-based filtering for scout users
         try:
@@ -3030,16 +3279,17 @@ async def export_player_pdf(player_id: int, current_user: User = Depends(get_cur
         # Get player profile data
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        
-        # Get player basic info
-        cursor.execute("""
-            SELECT PLAYERID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION
-            FROM players WHERE PLAYERID = %s
-        """, (player_id,))
-        player_data = cursor.fetchone()
-        
-        if not player_data:
+
+        # Check if player exists using dual ID lookup
+        player_lookup_result, data_source = find_player_by_any_id(player_id, cursor)
+        if not player_lookup_result:
             raise HTTPException(status_code=404, detail="Player not found")
+
+        # Extract the actual player ID for queries
+        actual_player_id = player_lookup_result[0] if data_source == 'external' else player_lookup_result[1]
+
+        # Get player basic info (we already have this from the lookup)
+        player_data = player_lookup_result
         
         # Calculate age
         birthdate = player_data[4]
@@ -3050,16 +3300,16 @@ async def export_player_pdf(player_id: int, current_user: User = Depends(get_cur
         
         # Get scout reports (without role filtering for PDF export)
         cursor.execute("""
-            SELECT sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE, 
+            SELECT sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE,
                    sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
                    sr.STRENGTHS, sr.WEAKNESSES, sr.JUSTIFICATION,
                    u.USERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
-            LEFT JOIN matches m ON sr.MATCH_ID = m.ID
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             WHERE sr.PLAYER_ID = %s
             ORDER BY sr.CREATED_AT DESC
-        """, (player_id,))
+        """, (actual_player_id,))
         scout_reports = cursor.fetchall()
         
         # Get intel reports (without role filtering for PDF export)
@@ -3071,7 +3321,7 @@ async def export_player_pdf(player_id: int, current_user: User = Depends(get_cur
             FROM player_information pi
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
-        """, (player_id,))
+        """, (actual_player_id,))
         intel_reports = cursor.fetchall()
         
         # Generate HTML content
@@ -3196,11 +3446,24 @@ async def export_player_pdf(player_id: int, current_user: User = Depends(get_cur
 # --- Intel Report Endpoints ---
 @app.post("/intel_reports")
 async def create_intel_report(report: IntelReport, current_user: User = Depends(get_current_user)):
+    print(f"🔍 DEBUG: Intel report creation started")
+    print(f"🔍 DEBUG: player_id={report.player_id}")
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        
+
+        # Validate and resolve player_id using dual ID lookup
+        if report.player_id:
+            print(f"🔍 DEBUG: About to validate player_id={report.player_id}")
+            player_data, player_data_source = find_player_by_any_id(report.player_id, cursor)
+            if not player_data:
+                raise HTTPException(status_code=404, detail=f"Player with ID {report.player_id} not found")
+            # Use the actual database player ID for the insert
+            actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
+        else:
+            actual_player_id = None
+
         # Check which columns exist
         cursor.execute("DESCRIBE TABLE player_information")
         columns = cursor.fetchall()
@@ -3226,7 +3489,7 @@ async def create_intel_report(report: IntelReport, current_user: User = Depends(
         if has_player_id:
             sql_columns.append("PLAYER_ID")
             sql_values.append("%s")
-            params.append(report.player_id)
+            params.append(actual_player_id)
             
         if has_user_id:
             sql_columns.append("USER_ID")
@@ -3294,7 +3557,7 @@ async def get_all_intel_reports(
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
             FROM player_information pi
-            LEFT JOIN players p ON pi.PLAYER_ID = p.PLAYERID
+            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
         """
         
         where_clauses = []
@@ -3324,7 +3587,7 @@ async def get_all_intel_reports(
         # Get total count - need to modify base_sql for counting
         count_base_sql = """
             FROM player_information pi
-            LEFT JOIN players p ON pi.PLAYER_ID = p.PLAYERID
+            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
         """
         if where_clauses:
             count_base_sql += " WHERE " + " AND ".join(where_clauses)
@@ -3419,7 +3682,7 @@ async def get_single_intel_report(intel_id: int, current_user: User = Depends(ge
                     pi.CONVERSATION_NOTES,
                     pi.ACTION_REQUIRED
                 FROM player_information pi
-                LEFT JOIN players p ON pi.PLAYER_ID = p.PLAYERID
+                LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
                 WHERE pi.ID = %s
             """
         else:

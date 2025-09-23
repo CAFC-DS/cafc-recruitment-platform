@@ -99,7 +99,7 @@ const IntelModal: React.FC<IntelModalProps> = ({ show, onHide, selectedPlayer, o
 
     try {
       const payload = {
-        player_id: selectedPlayer.player_id,
+        player_id: selectedPlayer.player_id || selectedPlayer.cafc_player_id,
         contact_name: formData.contactName,
         contact_organisation: formData.contactOrganisation,
         date_of_information: formData.dateOfInformation,

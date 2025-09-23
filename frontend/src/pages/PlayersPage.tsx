@@ -5,6 +5,7 @@ import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
+import { getPlayerProfilePath } from '../utils/playerNavigation';
 
 interface Player {
   player_id: number;
@@ -63,7 +64,7 @@ const PlayersPage: React.FC = () => {
   
   // Status badge - simplified for now
   const getStatusBadge = () => {
-    return <Badge bg="secondary">🔍 Scouted</Badge>;
+    return <Badge className="badge-cafc-black">Scouted</Badge>;
   };
 
   const fetchPlayers = useCallback(async (page = 1) => {
@@ -172,7 +173,7 @@ const PlayersPage: React.FC = () => {
   };
 
   const handlePlayerSelect = (player: Player) => {
-    navigate(`/player/${player.player_id}`);
+    navigate(getPlayerProfilePath(player));
   };
   
   // Close dropdown when clicking outside
@@ -240,7 +241,7 @@ const PlayersPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>👥 Players Database</h2>
         <div className="d-flex align-items-center gap-3">
-          <Badge bg="info">{pagination.total_count} players (Page {pagination.current_page} of {pagination.total_pages})</Badge>
+          <Badge className="badge-cafc-black">{pagination.total_count} players (Page {pagination.current_page} of {pagination.total_pages})</Badge>
           <div className="btn-group" role="group">
             <Button
               variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
@@ -399,7 +400,7 @@ const PlayersPage: React.FC = () => {
               <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
                 <Card.Header className="d-flex justify-content-between align-items-start border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
                   <div>
-                    <Badge bg="dark">{player.position}</Badge>
+                    <Badge className="badge-cafc-black">{player.position}</Badge>
                     <small className="ms-2 text-muted">Age: {player.age || 'Unknown'}</small>
                   </div>
                   <small className="text-muted">
@@ -410,7 +411,9 @@ const PlayersPage: React.FC = () => {
                   </small>
                 </Card.Header>
                 <Card.Body>
-                  <Card.Title className="h6 mb-2">{player.player_name}</Card.Title>
+                  <Card.Title className="h6 mb-2">
+                    {player.player_name}
+                  </Card.Title>
                   <div className="mb-2">
                     <small className="text-muted">
                       <strong>Club:</strong> {player.squad_name}
@@ -433,7 +436,7 @@ const PlayersPage: React.FC = () => {
                     </Row>
                   </div>
                   <div className="text-center mb-3">
-                    <Badge bg="secondary">🔍 Scouted</Badge>
+                    <Badge className="badge-cafc-black">🔍 Scouted</Badge>
                   </div>
                 </Card.Body>
                 <Card.Footer className="bg-transparent border-0 pt-0">
@@ -442,7 +445,7 @@ const PlayersPage: React.FC = () => {
                       variant="outline-dark"
                       size="sm"
                       className="rounded-pill"
-                      onClick={() => navigate(`/player/${player.player_id}`)}
+                      onClick={() => navigate(getPlayerProfilePath(player))}
                     >
                       👁️ View Profile
                     </Button>
@@ -479,17 +482,17 @@ const PlayersPage: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <Badge bg="dark">{player.position}</Badge>
+                    <Badge className="badge-cafc-black">{player.position}</Badge>
                   </td>
                   <td>{player.squad_name}</td>
                   <td>{player.age || 'Unknown'}</td>
                   <td className="text-center">
-                    <Badge bg="success" className="fs-6">{player.scout_reports_count}</Badge>
+                    <Badge className="badge-cafc-black fs-6">{player.scout_reports_count}</Badge>
                   </td>
                   <td className="text-center">
-                    <Badge bg="info" className="fs-6">{player.intel_reports_count}</Badge>
+                    <Badge className="badge-cafc-black fs-6">{player.intel_reports_count}</Badge>
                   </td>
-                  <td><Badge bg="secondary">🔍 Scouted</Badge></td>
+                  <td><Badge className="badge-cafc-black">🔍 Scouted</Badge></td>
                   <td>
                     <small>
                       {player.last_report_date ? 
@@ -499,11 +502,11 @@ const PlayersPage: React.FC = () => {
                     </small>
                   </td>
                   <td>
-                    <Button 
-                      variant="danger" 
+                    <Button
+                      variant="outline-dark"
                       size="sm"
                       className="rounded-pill"
-                      onClick={() => navigate(`/player/${player.player_id}`)}
+                      onClick={() => navigate(getPlayerProfilePath(player))}
                       title="View Profile"
                     >
                       👁️
@@ -555,33 +558,52 @@ const PlayersPage: React.FC = () => {
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
         }
+        /* Clean Charlton Athletic Table Design */
         .table-modern {
           background: white;
-          border-radius: 12px;
+          border-radius: 8px;
           overflow: hidden;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          border: 1px solid #e9ecef;
         }
         .table-modern thead th {
-          background: #6c757d;
+          background: #000000;
           color: white;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          font-size: 0.85rem;
+          font-size: 0.8rem;
           border: none;
           padding: 1rem 0.75rem;
         }
         .table-modern tbody tr {
-          transition: all 0.2s ease;
+          transition: background-color 0.2s ease;
+          border-bottom: 1px solid #f1f3f4;
         }
         .table-modern tbody tr:hover {
-          background-color: #f8f9ff;
-          transform: scale(1.002);
+          background: #f8f9fa;
+        }
+        .table-modern tbody tr:last-child {
+          border-bottom: none;
         }
         .table-modern td {
-          padding: 1rem 0.75rem;
+          padding: 0.75rem;
           vertical-align: middle;
-          border-top: 1px solid #e9ecef;
+          border-top: none;
+        }
+
+        /* Charlton Athletic Badge Classes */
+        .badge-cafc-red {
+          background-color: #FF0000 !important;
+          color: white !important;
+        }
+        .badge-cafc-black {
+          background-color: #000000 !important;
+          color: white !important;
+        }
+        .badge-cafc-white {
+          background-color: #FFFFFF !important;
+          color: #000000 !important;
+          border: 1px solid #dee2e6;
         }
       `}</style>
     </Container>

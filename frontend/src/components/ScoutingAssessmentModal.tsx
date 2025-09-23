@@ -231,7 +231,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
     setLoading(true);
     try {
       const payload: any = {
-        player_id: selectedPlayer.player_id,
+        player_id: selectedPlayer.player_id || selectedPlayer.cafc_player_id,
         reportType: assessmentType,
       };
 
@@ -351,9 +351,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
                 <Select
                   isSearchable
                   isDisabled={!fixtureDate || matches.length === 0}
-                  options={matches.filter(match => match.match_id !== null && match.match_id !== undefined).map(match => ({
+                  options={matches.map(match => ({
                     value: match.match_id,
-                    label: `${match.home_team} vs ${match.away_team}`
+                    label: `${match.home_team} vs ${match.away_team}${match.data_source === 'internal' ? ' 📝' : ''}`
                   }))}
                   value={formData.selectedMatch && matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch) 
                     ? { 
@@ -468,9 +468,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
                 <Select
                   isSearchable
                   isDisabled={!fixtureDate || matches.length === 0}
-                  options={matches.filter(match => match.match_id !== null && match.match_id !== undefined).map(match => ({
+                  options={matches.map(match => ({
                     value: match.match_id,
-                    label: `${match.home_team} vs ${match.away_team}`
+                    label: `${match.home_team} vs ${match.away_team}${match.data_source === 'internal' ? ' 📝' : ''}`
                   }))}
                   value={formData.selectedMatch && matches.find(match => match.match_id && match.match_id.toString() === formData.selectedMatch) 
                     ? { 

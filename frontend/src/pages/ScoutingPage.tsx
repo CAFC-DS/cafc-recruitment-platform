@@ -304,62 +304,83 @@ const ScoutingPage: React.FC = () => {
   };
 
   const getPerformanceScoreVariant = (score: number) => {
-    if (score === 10) return 'gold';
-    if (score === 9) return 'silver';
-    if (score >= 7) return 'success'; // 7-8 green
-    if (score >= 3) return 'warning'; // 3-6 amber
-    return 'danger'; // 1-3 red
+    // Red-green gradient for 1-10 scale
+    return 'performance-score';
+  };
+
+  // FORCE CACHE REFRESH - Red-green gradient scoring
+  const getPerformanceScoreColor = (score: number) => {
+    // Red (1) to Green (10) gradient
+    const red = Math.max(0, 255 - (score - 1) * 28.33);
+    const green = Math.min(255, (score - 1) * 28.33);
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
   const getAttributeScoreVariant = (score: number) => {
-    if (score >= 64) return 'success'; // 80 * 0.8
-    if (score >= 40) return 'warning'; // 80 * 0.5
-    if (score >= 24) return 'danger'; // 80 * 0.3
-    return 'dark'; // For scores 0-23
+    // Red-green gradient for 0-100 scale
+    return 'attribute-score';
+  };
+
+  const getAttributeScoreColor = (score: number) => {
+    // Red (0) to Green (100) gradient
+    const red = Math.max(0, 255 - score * 2.55);
+    const green = Math.min(255, score * 2.55);
+    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
   const getReportTypeBadge = (reportType: string, _scoutingType: string, flagType?: string) => {
     switch (reportType.toLowerCase()) {
       case 'flag':
       case 'flag assessment':
-        // Create a unique class for this flag type
-        const flagClass = `flag-${flagType?.toLowerCase() || 'default'}`;
-        return <Badge className={flagClass} style={{ fontWeight: '500' }}>🚩 Flag</Badge>;
+        return getFlagBadge(flagType);
       case 'clips':
-        return <Badge bg="secondary">📹 Clips</Badge>;
+        return <Badge className="badge-cafc-black">Clips</Badge>;
       case 'player assessment':
       case 'player':
-        return <Badge bg="dark">⚽ Player Assessment</Badge>;
+        return <Badge className="badge-cafc-black">Player Assessment</Badge>;
       default:
-        return <Badge bg="dark">{reportType}</Badge>;
+        return <Badge className="badge-cafc-black">{reportType}</Badge>;
+    }
+  };
+
+  const getFlagBadge = (flagType?: string) => {
+    switch (flagType?.toLowerCase()) {
+      case 'positive':
+        return <Badge className="badge-flag-positive">Positive</Badge>;
+      case 'negative':
+        return <Badge className="badge-flag-negative">Negative</Badge>;
+      case 'neutral':
+        return <Badge className="badge-flag-neutral">Neutral</Badge>;
+      default:
+        return <Badge className="badge-flag-neutral">Flag</Badge>;
     }
   };
 
   const getScoutingTypeBadge = (scoutingType: string) => {
     switch (scoutingType.toLowerCase()) {
       case 'live':
-        return <Badge bg="light" text="dark" className="border">📡 Live</Badge>;
+        return <Badge className="badge-cafc-black">Live</Badge>;
       case 'video':
-        return <Badge bg="secondary">🎥 Video</Badge>;
+        return <Badge className="badge-cafc-black">Video</Badge>;
       default:
-        return <Badge bg="secondary">{scoutingType}</Badge>;
+        return <Badge className="badge-cafc-black">{scoutingType}</Badge>;
     }
   };
 
   const getPurposeBadge = (purpose: string | null) => {
     if (!purpose) return null;
-    
+
     switch (purpose.toLowerCase()) {
       case 'player report':
-        return <Badge bg="primary">📋 Player Report</Badge>;
+        return <Badge className="badge-cafc-black">Player Report</Badge>;
       case 'loan report':
-        return <Badge bg="info">🤝 Loan Report</Badge>;
+        return <Badge className="badge-cafc-black">Loan Report</Badge>;
       case 'player assessment':
-        return <Badge bg="primary">📋 Player Report</Badge>;
+        return <Badge className="badge-cafc-black">Player Report</Badge>;
       case 'loan assessment':
-        return <Badge bg="info">🤝 Loan Report</Badge>;
+        return <Badge className="badge-cafc-black">Loan Report</Badge>;
       default:
-        return <Badge bg="secondary">{purpose}</Badge>;
+        return <Badge className="badge-cafc-black">{purpose}</Badge>;
     }
   };
 
@@ -765,7 +786,7 @@ const ScoutingPage: React.FC = () => {
                         </Button>
                       </td>
                       <td>
-                        <Badge bg="dark">{report.position_played || 'N/A'}</Badge>
+                        <Badge className="badge-cafc-black">{report.position_played || 'N/A'}</Badge>
                       </td>
                       <td>
                         {report.fixture_date && report.fixture_date !== 'N/A' ? 
@@ -785,15 +806,17 @@ const ScoutingPage: React.FC = () => {
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                         {report.purpose && <span className="ms-1">{getPurposeBadge(report.purpose)}</span>}
                       </td>
-                      <td><Badge bg={getPerformanceScoreVariant(report.performance_score)}>{report.performance_score}</Badge></td>
-                      <td><Badge bg={getAttributeScoreVariant(report.attribute_score)}>{report.attribute_score}</Badge></td>
+                      <td><Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }}>{report.performance_score}</Badge></td>
+                      <td><Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>{report.attribute_score}</Badge></td>
                       <td>
                         <div className="btn-group">
-                          <Button variant="outline-dark" size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report">
+                          <Button variant="outline-dark" size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="rounded-circle" style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                           </Button>
-                          <Button variant="outline-secondary" size="sm" title="Edit" onClick={() => handleEditReport(report.report_id)}>✏️</Button>
-                          <Button variant="outline-danger" size="sm" title="Delete" onClick={() => handleDeleteReport(report.report_id)}>🗑️</Button>
+                          <Button variant="outline-secondary" size="sm" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id} className="rounded-circle" style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
+                          </Button>
+                          <Button variant="outline-danger" size="sm" title="Delete" onClick={() => handleDeleteReport(report.report_id)} className="rounded-circle" style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</Button>
                         </div>
                       </td>
                     </tr>
@@ -832,14 +855,12 @@ const ScoutingPage: React.FC = () => {
                     <Card.Body className="pb-2">
                       {/* Conditional rendering based on report type */}
                       {report.report_type?.toLowerCase() === 'flag' || report.report_type?.toLowerCase() === 'flag assessment' ? (
-                        /* Flag Report Layout */
+                        /* Simplified Flag Report Layout */
                         <Row className="mb-3">
                           <Col xs={12}>
                             <div className="text-center p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                              <div className="fw-bold text-muted small mb-2">CATEGORY</div>
-                              <Badge className={`flag-${(report as any).flag_category?.toLowerCase() || 'default'} fs-5`}>
-                                🚩 {(report as any).flag_category || 'Not specified'}
-                              </Badge>
+                              <div className="fw-bold text-muted small mb-2">FLAG TYPE</div>
+                              {getFlagBadge((report as any).flag_category)}
                             </div>
                           </Col>
                         </Row>
@@ -849,7 +870,7 @@ const ScoutingPage: React.FC = () => {
                           <Col xs={6}>
                             <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
                               <div className="fw-bold text-muted small mb-1">PERFORMANCE</div>
-                              <Badge bg={getPerformanceScoreVariant(report.performance_score)} className="fs-6">
+                              <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="fs-6">
                                 {report.performance_score}
                               </Badge>
                             </div>
@@ -857,7 +878,7 @@ const ScoutingPage: React.FC = () => {
                           <Col xs={6}>
                             <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
                               <div className="fw-bold text-muted small mb-1">ATTRIBUTES</div>
-                              <Badge bg={getAttributeScoreVariant(report.attribute_score)} className="fs-6">
+                              <Badge  style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="fs-6">
                                 {report.attribute_score}
                               </Badge>
                             </div>
@@ -884,17 +905,21 @@ const ScoutingPage: React.FC = () => {
                     </Card.Body>
                     <Card.Footer className="bg-transparent border-0 pt-0">
                       <div className="d-grid gap-2 d-md-flex">
-                        <Button 
-                          variant="outline-dark" 
-                          size="sm" 
-                          className="flex-grow-1 rounded-pill" 
-                          onClick={() => handleOpenReportModal(report.report_id)} 
+                        <Button
+                          variant="outline-dark"
+                          size="sm"
+                          className="rounded-circle"
+                          onClick={() => handleOpenReportModal(report.report_id)}
                           disabled={loadingReportId === report.report_id}
+                          title="View Report"
+                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️ View Report'}
+                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
-                        <Button variant="outline-secondary" size="sm" className="rounded-pill" title="Edit" onClick={() => handleEditReport(report.report_id)}>✏️</Button>
-                        <Button variant="outline-danger" size="sm" className="rounded-pill" title="Delete" onClick={() => handleDeleteReport(report.report_id)}>🗑️</Button>
+                        <Button variant="outline-secondary" size="sm" className="rounded-circle" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id} style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
+                        </Button>
+                        <Button variant="outline-danger" size="sm" className="rounded-circle" title="Delete" onClick={() => handleDeleteReport(report.report_id)} style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</Button>
                       </div>
                     </Card.Footer>
                   </Card>
@@ -907,103 +932,7 @@ const ScoutingPage: React.FC = () => {
 
       <PlayerReportModal show={showReportModal} onHide={() => setShowReportModal(false)} report={selectedReport} />
 
-      <style>{`
-        .hover-card {
-          transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        .hover-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        }
-        .table-modern {
-          background: white;
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .table-modern thead th {
-          background: #6c757d;
-          color: white;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          font-size: 0.85rem;
-          border: none;
-          padding: 1rem 0.75rem;
-        }
-        .table-modern tbody tr {
-          transition: all 0.2s ease;
-        }
-        .table-modern tbody tr:hover {
-          background-color: #f8f9ff;
-          transform: scale(1.002);
-        }
-        .table-modern td {
-          padding: 1rem 0.75rem;
-          vertical-align: middle;
-          border-top: 1px solid #e9ecef;
-          text-align: left;
-        }
-        .table-modern th {
-          text-align: left;
-        }
-        .table-modern .btn-link {
-          text-align: left;
-          justify-content: flex-start;
-          padding-left: 0;
-        }
-        .badge.bg-gold {
-          background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
-          color: #000 !important;
-          font-weight: 600;
-        }
-        .badge.bg-silver {
-          background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%) !important;
-          color: #000 !important;
-          font-weight: 600;
-        }
-        .flag-positive {
-          background-color: #28a745 !important;
-          color: #fff !important;
-          border-color: #28a745 !important;
-        }
-        .flag-neutral {
-          background-color: #6c757d !important;
-          color: #fff !important;
-          border-color: #6c757d !important;
-        }
-        .flag-negative {
-          background-color: #ffc107 !important;
-          color: #000 !important;
-          border-color: #ffc107 !important;
-        }
-        .flag-default {
-          background-color: #fbbf24 !important;
-          color: #000 !important;
-          border-color: #fbbf24 !important;
-        }
-        
-        /* Dark mode card improvements */
-        body.theme-dark .card, [data-bs-theme="dark"] .card {
-          background-color: var(--bs-card-bg) !important;
-          color: var(--bs-card-color) !important;
-          border-color: var(--bs-card-border-color) !important;
-        }
-        body.theme-dark .card-header, [data-bs-theme="dark"] .card-header {
-          background-color: var(--bs-card-bg) !important;
-          color: var(--bs-card-color) !important;
-          border-bottom-color: var(--bs-card-border-color) !important;
-        }
-        body.theme-dark .card-body, [data-bs-theme="dark"] .card-body {
-          color: var(--bs-card-color) !important;
-        }
-        body.theme-dark .text-muted, [data-bs-theme="dark"] .text-muted {
-          color: var(--bs-secondary-color) !important;
-        }
-        body.theme-dark .small.text-muted, [data-bs-theme="dark"] .small.text-muted {
-          color: #d1d5db !important;
-        }
-      `}</style>
+      
     </Container>
   );
 };
