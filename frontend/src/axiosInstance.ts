@@ -39,32 +39,74 @@ const clearAuthAndRedirect = () => {
   }
 };
 
-// Add a response interceptor for better error handling
+// Add a response interceptor for better error handling and token refresh
 axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    // On successful responses, try to refresh token if we're getting close to expiry
+    const token = localStorage.getItem('token');
+    if (token && !response.config.url?.includes('/auth/refresh')) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        const timeUntilExpiry = payload.exp - currentTime;
+
+        // Refresh token if less than 30 minutes remaining
+        if (timeUntilExpiry > 0 && timeUntilExpiry < 30 * 60) {
+          refreshTokenAsync();
+        }
+      } catch (error) {
+        // Invalid token format, will be handled by auth validation
+      }
+    }
+    return response;
+  },
+  async (error) => {
     // Handle network errors
     if (!error.response) {
       console.error('Network error - API might be down');
-      // You could show a global error message here
+      return Promise.reject(error);
     }
-    
+
     // Handle authentication errors (401 and 422)
     if (error.response?.status === 401 || error.response?.status === 422) {
-      // Don't auto-logout on scout report submissions or other critical operations
       const url = error.config?.url || '';
+      const isRefreshAttempt = url.includes('/auth/refresh');
       const isScoutReportSubmission = url.includes('/scout_reports') && (error.config?.method === 'post' || error.config?.method === 'put');
       const isIntelReportSubmission = url.includes('/intel_reports') && (error.config?.method === 'post' || error.config?.method === 'put');
       const isMatchesByDate = url.includes('/matches/date');
 
-      if (!isScoutReportSubmission && !isIntelReportSubmission && !isMatchesByDate) {
+      // If refresh failed or critical operations failed, logout
+      if (isRefreshAttempt || (!isScoutReportSubmission && !isIntelReportSubmission && !isMatchesByDate)) {
         clearAuthAndRedirect();
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
+
+// Async token refresh function to avoid blocking API calls
+const refreshTokenAsync = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  try {
+    const response = await fetch(`${axiosInstance.defaults.baseURL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('token', data.access_token);
+    }
+  } catch (error) {
+    console.warn('Background token refresh failed:', error);
+  }
+};
 
 // Log the current API URL for debugging
 console.log('API URL:', getApiUrl());

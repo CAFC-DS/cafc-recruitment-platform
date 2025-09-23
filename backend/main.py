@@ -288,7 +288,7 @@ def get_snowflake_connection():
 # --- Security Configuration ---
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -557,6 +557,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     if user is None:
         raise credentials_exception
     return User(id=user.id, username=user.username, role=user.role, email=user.email, firstname=user.firstname, lastname=user.lastname)
+
+@app.post("/auth/refresh", response_model=Token)
+async def refresh_access_token(current_user: User = Depends(get_current_user)):
+    """Refresh access token for authenticated users"""
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": current_user.username, "role": current_user.role, "user_id": current_user.id},
+        expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):

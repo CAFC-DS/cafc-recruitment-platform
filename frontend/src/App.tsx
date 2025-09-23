@@ -1,5 +1,5 @@
 // FORCE CACHE REFRESH - UI REDESIGN COMPLETE
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ViewModeProvider } from './contexts/ViewModeContext';
@@ -25,33 +25,34 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
-  const login = (newToken: string) => {
+  const login = useCallback((newToken: string) => {
     setToken(newToken);
     localStorage.setItem('token', newToken);
-  };
+  }, []);
 
   const logout = () => {
     setToken(null);
     localStorage.removeItem('token');
   };
 
-  // Validate token on app startup
+  // Basic token validation on app startup (less aggressive)
   useEffect(() => {
     const validateToken = async () => {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
         try {
-          // Simple validation check - just try to decode the JWT
+          // Only validate token format, not expiry - let token refresh handle expiry
           const payload = JSON.parse(atob(storedToken.split('.')[1]));
+
+          // Only logout if token is malformed or significantly expired (more than 24 hours)
           const currentTime = Date.now() / 1000;
-          
-          // Check if token is expired
-          if (payload.exp && payload.exp < currentTime) {
+          if (payload.exp && payload.exp < currentTime - (24 * 60 * 60)) {
+            console.warn('Token extremely expired, clearing...');
             logout();
           }
         } catch (error) {
-          // Invalid token format
-          console.warn('Invalid token found, clearing...');
+          // Invalid token format - only clear if completely malformed
+          console.warn('Malformed token found, clearing...');
           logout();
         }
       }
@@ -77,7 +78,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     };
   }, []);
 
-  // Session timeout after 2 hours of inactivity (increased for report uploads)
+  // Session timeout after 20 minutes of inactivity
   useEffect(() => {
     let inactivityTimer: NodeJS.Timeout;
 
@@ -87,7 +88,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         inactivityTimer = setTimeout(() => {
           logout();
           alert('Session expired due to inactivity. Please login again.');
-        }, 120 * 60 * 1000); // 2 hours
+        }, 20 * 60 * 1000); // 20 minutes
       }
     };
 
@@ -107,6 +108,48 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       clearTimeout(inactivityTimer);
     };
   }, [token]);
+
+  // Automatic token refresh every 15 minutes for active users
+  useEffect(() => {
+    let refreshTimer: NodeJS.Timeout;
+
+    const refreshToken = async () => {
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? 'https://cafc-recruitment-platform-production.up.railway.app' : 'http://localhost:8000')}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          login(data.access_token);
+        }
+      } catch (error) {
+        console.warn('Token refresh failed:', error);
+      }
+    };
+
+    const startRefreshTimer = () => {
+      clearTimeout(refreshTimer);
+      if (token) {
+        refreshTimer = setTimeout(() => {
+          refreshToken();
+          startRefreshTimer(); // Schedule next refresh
+        }, 15 * 60 * 1000); // 15 minutes
+      }
+    };
+
+    startRefreshTimer();
+
+    return () => {
+      clearTimeout(refreshTimer);
+    };
+  }, [token, login]);
 
   return (
     <AuthContext.Provider value={{ token, login, logout }}>
