@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Modal, Row, Col, Badge, Card, Button } from 'react-bootstrap';
+import { getFlagColor, getContrastTextColor } from '../utils/colorUtils';
+import axiosInstance from '../axiosInstance';
 import { PolarArea } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import {
@@ -31,9 +33,157 @@ interface PlayerReportModalProps {
 }
 
 const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, report }) => {
+  const modalContentRef = useRef<HTMLDivElement>(null);
+  const [playerData, setPlayerData] = useState<any>(null);
+  const [loadingPlayerData, setLoadingPlayerData] = useState(false);
+
+  // Fetch player data when modal opens
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      if (show && report && report.player_name) {
+        setLoadingPlayerData(true);
+        try {
+          // Try to fetch player by name - adjust endpoint as needed
+          const response = await axiosInstance.get(`/players?search=${encodeURIComponent(report.player_name)}`);
+          if (response.data && response.data.length > 0) {
+            setPlayerData(response.data[0]); // Take first match
+          }
+        } catch (error) {
+          console.warn('Could not fetch player data:', error);
+        } finally {
+          setLoadingPlayerData(false);
+        }
+      }
+    };
+
+    fetchPlayerData();
+  }, [show, report]);
+
   if (!report) {
     return null;
   }
+
+  const handleExportPDF = async () => {
+    try {
+      // Dynamic import to avoid bundling issues
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      if (modalContentRef.current) {
+        // Hide the modal backdrop and buttons temporarily for clean export
+        const modalBackdrop = document.querySelector('.modal-backdrop');
+        const modalFooter = document.querySelector('.modal-footer');
+        const originalBackdropDisplay = modalBackdrop ? (modalBackdrop as HTMLElement).style.display : '';
+        const originalFooterDisplay = modalFooter ? (modalFooter as HTMLElement).style.display : '';
+        const originalClassName = modalContentRef.current.className;
+
+        if (modalBackdrop) (modalBackdrop as HTMLElement).style.display = 'none';
+        if (modalFooter) (modalFooter as HTMLElement).style.display = 'none';
+
+        // Apply PDF optimization class and set dimensions for A4 landscape
+        modalContentRef.current.className += ' pdf-export-optimized';
+
+        // Wait for layout to settle after CSS changes
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Capture the modal content with optimized settings for full content
+        const canvas = await html2canvas(modalContentRef.current, {
+          scale: 2.5, // Balanced scale for quality and file size
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          // Remove fixed dimensions to capture full content
+          onclone: (clonedDoc) => {
+            // Ensure the PDF styles are applied in the cloned document
+            const modalBody = clonedDoc.querySelector('.modal-body');
+            if (modalBody) {
+              (modalBody as HTMLElement).style.width = '1260px';
+              (modalBody as HTMLElement).style.maxWidth = 'none';
+              (modalBody as HTMLElement).style.minHeight = '850px';
+              (modalBody as HTMLElement).style.overflow = 'visible';
+              (modalBody as HTMLElement).style.padding = '20px';
+              (modalBody as HTMLElement).style.boxSizing = 'border-box';
+            }
+
+            // Force apply performance score styling directly
+            const performanceScore = clonedDoc.querySelector('.performance-score-large');
+            if (performanceScore) {
+              (performanceScore as HTMLElement).style.fontSize = '60px';
+              (performanceScore as HTMLElement).style.padding = '18px 30px';
+              (performanceScore as HTMLElement).style.fontWeight = '700';
+              (performanceScore as HTMLElement).style.lineHeight = '1';
+              (performanceScore as HTMLElement).style.display = 'inline-block';
+              (performanceScore as HTMLElement).style.minWidth = '120px';
+            }
+
+            // Force apply better text sizing for all content
+            const allText = clonedDoc.querySelectorAll('p, span:not(.performance-score-large), small');
+            allText.forEach(element => {
+              (element as HTMLElement).style.fontSize = '16px';
+              (element as HTMLElement).style.lineHeight = '1.4';
+            });
+
+            // Force apply chart container sizing
+            const chartContainers = clonedDoc.querySelectorAll('[style*="480px"]');
+            chartContainers.forEach(container => {
+              (container as HTMLElement).style.width = '460px';
+              (container as HTMLElement).style.height = '460px';
+            });
+          }
+        });
+
+        // Create PDF in A4 landscape format
+        const pdf = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95); // High quality JPEG for smaller file size
+        const pdfWidth = 297; // A4 landscape width in mm
+        const pdfHeight = 210; // A4 landscape height in mm
+        const margin = 5; // Minimal margins for maximum content space
+
+        // Calculate dimensions with proper aspect ratio for A4 page
+        const availableWidth = pdfWidth - (margin * 2);
+        const availableHeight = pdfHeight - (margin * 2);
+
+        const imgAspectRatio = canvas.width / canvas.height;
+        const availableAspectRatio = availableWidth / availableHeight;
+
+        let imgWidth, imgHeight;
+
+        if (imgAspectRatio > availableAspectRatio) {
+          // Image is wider than available space - fit to width
+          imgWidth = availableWidth;
+          imgHeight = availableWidth / imgAspectRatio;
+        } else {
+          // Image is taller than available space - fit to height
+          imgHeight = availableHeight;
+          imgWidth = availableHeight * imgAspectRatio;
+        }
+
+        // Center the image on the page
+        const xOffset = (pdfWidth - imgWidth) / 2;
+        const yOffset = (pdfHeight - imgHeight) / 2;
+
+        pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
+
+        // Save the PDF
+        const fileName = `${report.player_name}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+        pdf.save(fileName);
+
+        // Restore original display properties and class name
+        if (modalBackdrop) (modalBackdrop as HTMLElement).style.display = originalBackdropDisplay;
+        if (modalFooter) (modalFooter as HTMLElement).style.display = originalFooterDisplay;
+        modalContentRef.current.className = originalClassName;
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    }
+  };
 
   // Group-based color mapping using Red, Blue, Orange palette
   const getAttributeGroupColor = (attributeName: string) => {
@@ -188,11 +338,11 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         pointLabels: {
           display: true,
           font: {
-            size: 9, // Even smaller font for better fit
+            size: 8, // Smaller font for A4 printing
             weight: 'bold'
           },
           color: '#212529',
-          padding: 20, // More padding for better positioning
+          padding: 15, // Reduced padding for compact A4 layout
           centerPointLabels: true, // Center labels on their segments
           callback: function(value: any, index: number) {
             // Handle line wrapping for long labels
@@ -310,18 +460,19 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
 
   const reportInfo = getReportTypeInfo();
   
-  // Function to get flag badge CSS class based on flag category
-  const getFlagBadgeClass = (flagCategory: string) => {
-    switch (flagCategory?.toLowerCase()) {
-      case 'positive':
-        return 'flag-positive';
-      case 'neutral':
-        return 'flag-neutral';
-      case 'negative':
-        return 'flag-negative';
-      default:
-        return 'flag-default';
-    }
+  // Function to create flag badge with standardized colors
+  const getFlagBadge = (flagCategory: string) => {
+    const flagColor = getFlagColor(flagCategory);
+    const textColor = getContrastTextColor(flagColor);
+
+    return (
+      <span
+        className="badge"
+        style={{ backgroundColor: flagColor, color: textColor, border: 'none' }}
+      >
+        {flagCategory || 'Flag'}
+      </span>
+    );
   };
   
   // Check if this is a flag report for simplified layout
@@ -332,12 +483,9 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
       <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }} className="modal-header-dark">
         <Modal.Title>
           {reportInfo.icon} {report.player_name} - {reportInfo.title}
-          <span className="text-muted ms-2" style={{ fontSize: '0.8em' }}>
-            ({new Date(report.created_at).toLocaleDateString('en-GB')})
-          </span>
         </Modal.Title>
       </Modal.Header>
-      <Modal.Body>
+      <Modal.Body ref={modalContentRef}>
         {isFlagReport ? (
           /* Simplified Flag Report Layout */
           <>
@@ -346,9 +494,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
               <Card.Header className="bg-light">
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">📊 Report Overview</h5>
-                  <Badge className={getFlagBadgeClass(report.flag_category)}>
-                    🚩 {report.flag_category || 'Flag'}
-                  </Badge>
+                  {getFlagBadge(`🚩 ${report.flag_category || 'Flag'}`)}
                 </div>
               </Card.Header>
               <Card.Body>
@@ -361,10 +507,10 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                   <Col md={6}>
                     <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
                     <p><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
-                    <p><strong>Flag Type:</strong> 
-                      <Badge className={`ms-2 ${getFlagBadgeClass(report.flag_category)}`}>
-                        {report.flag_category || 'Not specified'}
-                      </Badge>
+                    <p><strong>Flag Type:</strong>
+                      <span className="ms-2">
+                        {getFlagBadge(report.flag_category || 'Not specified')}
+                      </span>
                     </p>
                   </Col>
                 </Row>
@@ -404,31 +550,129 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         ) : (
           /* Full Player Assessment Report Layout */
           <>
-            {/* Report Overview - Full Width Row */}
-            <Row className="mb-4">
-              <Col md={12}>
-                <Card>
-                  <Card.Header>
-                    <div className="d-flex justify-content-between align-items-center">
-                      <h5 className="mb-0">📊 Report Overview</h5>
-                      <div>
-                        <Badge bg={reportInfo.color} className="me-2">{report.report_type || 'Player Assessment'}</Badge>
-                        {report.scouting_type && <Badge bg="secondary" className="me-2">{report.scouting_type}</Badge>}
-                        {report.purpose_of_assessment && <Badge bg="info">{report.purpose_of_assessment}</Badge>}
-                      </div>
-                    </div>
+            {/* Report Overview + Performance Score Split Row */}
+            <Row className="mb-3">
+              <Col md={8}>
+                <Card className="h-100">
+                  <Card.Header className="py-2">
+                    <h6 className="mb-0" style={{ fontSize: '14px' }}>📊 Report Overview</h6>
                   </Card.Header>
-                  <Card.Body>
-                    <Row>
+                  <Card.Body className="py-2">
+                    <Row style={{ fontSize: '11px' }}>
                       <Col md={6}>
-                        <p><strong>Player:</strong> {report.player_name}</p>
-                        <p><strong>Position:</strong> {report.position_played || 'Not specified'} &nbsp;&nbsp;&nbsp;<strong>Formation:</strong> {report.formation || 'Not specified'}</p>
-                        <p><strong>Build:</strong> {report.build} &nbsp;&nbsp;&nbsp;<strong>Height:</strong> {report.height}</p>
+                        <p className="mb-1"><strong>Player:</strong> {report.player_name} | <strong>Squad:</strong> {playerData?.current_team || playerData?.squad || 'Loading...'}</p>
+                        <p className="mb-1"><strong>Position:</strong> {report.position_played || 'Not specified'} | <strong>Formation:</strong> {report.formation || 'Not specified'}</p>
+                        <p className="mb-0"><strong>Build:</strong> {report.build} | <strong>Height:</strong> {report.height}</p>
                       </Col>
                       <Col md={6}>
-                        <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
-                        <p><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
-                        <p><strong>Scout:</strong> {report.scout_name}</p>
+                        <p className="mb-1"><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
+                        <p className="mb-1"><strong>Report Date:</strong> {new Date(report.created_at).toLocaleDateString('en-GB')} | <strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
+                        <p className="mb-0"><strong>Scout:</strong> {report.scout_name}</p>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="h-100">
+                  <Card.Header className="py-2">
+                    <h6 className="mb-0" style={{ fontSize: '14px' }}>🏆 Performance Score</h6>
+                  </Card.Header>
+                  <Card.Body className="d-flex align-items-center justify-content-center py-2">
+                    <div className="text-center">
+                      <div className="mb-2">
+                        <span className="badge performance-badge performance-score-large" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white' }}>
+                          {report.performance_score}
+                        </span>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* Attribute Analysis with Integrated Metrics */}
+            <Row className="mb-3">
+              <Col md={12}>
+                <Card>
+                  <Card.Header className="py-2">
+                    <h6 className="mb-0" style={{ fontSize: '14px' }}>📈 Attribute Analysis</h6>
+                  </Card.Header>
+                  <Card.Body className="py-2">
+                    {/* Split Layout: Chart Left, Cards Right */}
+                    <Row>
+                      {/* Left Column: Polar Chart - Increased size */}
+                      <Col md={7}>
+                        <div style={{ height: '500px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '480px', height: '480px' }}>
+                            <PolarArea data={polarAreaChartData} options={polarAreaChartOptions} />
+                          </div>
+                        </div>
+                      </Col>
+
+                      {/* Right Column: Metrics + Strengths & Weaknesses Cards - Slightly smaller */}
+                      <Col md={5} className="d-flex flex-column">
+                        {/* Attribute Metrics Section */}
+                        <div className="text-center mb-3 attribute-metrics">
+                          <div className="d-flex justify-content-center gap-4">
+                            <div className="text-center">
+                              <div className="mb-1">
+                                <span className="badge" style={{ backgroundColor: getAttributeScoreColor(report.average_attribute_score), color: 'white', fontSize: '14px', padding: '8px 12px', fontWeight: 'bold' }}>
+                                  {report.average_attribute_score}
+                                </span>
+                              </div>
+                              <small style={{ fontSize: '10px', color: '#666' }}>Average Attribute Score</small>
+                            </div>
+                            <div className="text-center">
+                              <div className="mb-1">
+                                <span className="badge" style={{ backgroundColor: getAttributeScoreColor(report.total_attribute_score), color: 'white', fontSize: '14px', padding: '8px 12px', fontWeight: 'bold' }}>
+                                  {report.total_attribute_score}
+                                </span>
+                              </div>
+                              <small style={{ fontSize: '10px', color: '#666' }}>Total Attribute Score</small>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Strengths Card */}
+                        <Card className="mb-3 flex-fill" style={{ backgroundColor: '#f0f9f0', border: '1px solid #d4edda' }}>
+                          <Card.Header className="py-2 px-3" style={{ backgroundColor: '#e8f5e8', borderBottom: '1px solid #d4edda' }}>
+                            <strong style={{ fontSize: '12px', color: '#155724' }}>✅ Strengths</strong>
+                          </Card.Header>
+                          <Card.Body className="py-3 px-3">
+                            <div>
+                              {report.strengths && report.strengths.length > 0 ? (
+                                report.strengths.map((strength: string, index: number) => (
+                                  <span key={index} className="badge me-2 mb-2" style={{ backgroundColor: '#16a34a', color: 'white', fontSize: '10px', padding: '4px 7px' }}>
+                                    {strength}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-muted" style={{ fontSize: '10px' }}>No strengths specified</span>
+                              )}
+                            </div>
+                          </Card.Body>
+                        </Card>
+
+                        {/* Areas for Improvement Card */}
+                        <Card className="flex-fill" style={{ backgroundColor: '#fef8f0', border: '1px solid #fce4b3' }}>
+                          <Card.Header className="py-2 px-3" style={{ backgroundColor: '#fcf4e6', borderBottom: '1px solid #fce4b3' }}>
+                            <strong style={{ fontSize: '12px', color: '#8b5a00' }}>⚠️ Areas for Improvement</strong>
+                          </Card.Header>
+                          <Card.Body className="py-3 px-3">
+                            <div>
+                              {report.weaknesses && report.weaknesses.length > 0 ? (
+                                report.weaknesses.map((weakness: string, index: number) => (
+                                  <span key={index} className="badge me-2 mb-2" style={{ backgroundColor: '#d97706', color: 'white', fontSize: '10px', padding: '4px 7px' }}>
+                                    {weakness}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-muted" style={{ fontSize: '10px' }}>No weaknesses specified</span>
+                              )}
+                            </div>
+                          </Card.Body>
+                        </Card>
                       </Col>
                     </Row>
                   </Card.Body>
@@ -436,142 +680,48 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
               </Col>
             </Row>
 
-            {/* Performance Metrics and Strengths/Weaknesses Row */}
-            <Row className="mb-4">
-              <Col md={6}>
-                <Card className="h-100">
-                  <Card.Header>
-                    <h5 className="mb-0">🏆 Performance Metrics</h5>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="text-center">
-                      <Row>
-                        <Col xs={4}>
-                          <div className="border-end">
-                            <h4 className="mb-1">
-                              <Badge style={{ backgroundColor: getAttributeScoreColor(report.average_attribute_score), color: 'white', fontWeight: 'bold' }} className="performance-badge">
-                                {report.average_attribute_score}
-                              </Badge>
-                            </h4>
-                            <small className="text-muted">Average Score</small>
-                          </div>
-                        </Col>
-                        <Col xs={4}>
-                          <div className="border-end">
-                            <h4 className="mb-1">
-                              <Badge bg={getAttributeScoreVariant(report.total_attribute_score)} className="performance-badge">
-                                {report.total_attribute_score}
-                              </Badge>
-                            </h4>
-                            <small className="text-muted">Total Score</small>
-                          </div>
-                        </Col>
-                        <Col xs={4}>
-                          <div>
-                            <h4 className="mb-1">
-                              <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="performance-badge">
-                                {report.performance_score}
-                              </Badge>
-                            </h4>
-                            <small className="text-muted">Performance</small>
-                          </div>
-                        </Col>
-                      </Row>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6}>
-                {/* Strengths & Weaknesses */}
-                <Card className="h-100">
-                  <Card.Header>
-                    <h6 className="mb-0">💪 Strengths & Areas for Improvement</h6>
-                  </Card.Header>
-                  <Card.Body>
-                    <div className="mb-3">
-                      <strong className="text-success">✅ Strengths:</strong>
-                      <div className="mt-2">
-                        {report.strengths && report.strengths.length > 0 ? (
-                          report.strengths.map((strength: string, index: number) => (
-                            <Badge key={index} bg="success" className="me-1 mb-1">
-                              {strength}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted">No strengths specified</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <strong className="text-warning">⚠️ Areas for Improvement:</strong>
-                      <div className="mt-2">
-                        {report.weaknesses && report.weaknesses.length > 0 ? (
-                          report.weaknesses.map((weakness: string, index: number) => (
-                            <Badge key={index} bg="warning" className="me-1 mb-1">
-                              {weakness}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-muted">No weaknesses specified</span>
-                        )}
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
-
-            {/* Attribute Analysis and Scout Summary/Justification Row */}
+            {/* Compact Scout Analysis Section */}
             <Row>
-              <Col md={6}>
-                {/* Attribute Analysis - Full Column */}
-                <Card className="h-100">
-                  <Card.Header>
-                    <h6 className="mb-0">📈 Attribute Analysis</h6>
+              <Col md={12}>
+                <Card>
+                  <Card.Header className="py-2">
+                    <h6 className="mb-0" style={{ fontSize: '14px' }}>📝 Scout Analysis</h6>
                   </Card.Header>
-                  <Card.Body style={{ height: '500px', padding: '25px' }}>
-                    <PolarArea data={polarAreaChartData} options={polarAreaChartOptions} />
-                  </Card.Body>
-                </Card>
-              </Col>
-
-              <Col md={6}>
-                {/* Scout Summary and Justification Combined */}
-                <div className="d-flex flex-column h-100">
-                  {/* Summary */}
-                  <Card className="mb-3 flex-fill">
-                    <Card.Header>
-                      <h6 className="mb-0">📝 Scout Summary</h6>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="border-start border-secondary border-4 ps-3">
-                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
+                  <Card.Body className="py-2">
+                    <div className="mb-3">
+                      <div className="d-flex align-items-center mb-1">
+                        <strong style={{ fontSize: '12px', color: '#333' }}>Summary:</strong>
+                      </div>
+                      <div className="border-start border-secondary border-3 ps-2">
+                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap', fontSize: '11px', lineHeight: '1.4' }}>
                           {report.summary}
                         </p>
                       </div>
-                    </Card.Body>
-                  </Card>
+                    </div>
 
-                  {/* Justification */}
-                  <Card className="flex-fill">
-                    <Card.Header>
-                      <h6 className="mb-0">💭 Justification & Rationale</h6>
-                    </Card.Header>
-                    <Card.Body>
-                      <div className="border-start border-secondary border-4 ps-3">
-                        <p className="mb-0" style={{ whiteSpace: 'pre-wrap' }}>
-                          {report.justification}
-                        </p>
+                    {report.justification && (
+                      <div>
+                        <div className="d-flex align-items-center mb-1">
+                          <strong style={{ fontSize: '12px', color: '#333' }}>Justification & Rationale:</strong>
+                        </div>
+                        <div className="border-start border-secondary border-3 ps-2">
+                          <p className="mb-0" style={{ whiteSpace: 'pre-wrap', fontSize: '11px', lineHeight: '1.4' }}>
+                            {report.justification}
+                          </p>
+                        </div>
                       </div>
-                    </Card.Body>
-                  </Card>
-                </div>
+                    )}
+                  </Card.Body>
+                </Card>
               </Col>
             </Row>
           </>
         )}
       </Modal.Body>
       <Modal.Footer>
+        <Button variant="outline-secondary" onClick={handleExportPDF}>
+          📄 Export as PDF
+        </Button>
         <Button variant="outline-dark" onClick={onHide}>
           Close
         </Button>

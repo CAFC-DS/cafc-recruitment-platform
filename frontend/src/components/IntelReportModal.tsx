@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Card, Row, Col, Badge, Spinner, Alert } from 'react-bootstrap';
 import axiosInstance from '../axiosInstance';
+import { getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 
 interface IntelReportModalProps {
   show: boolean;
@@ -83,9 +84,9 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({ show, onHide, intel
     };
     
     return (
-      <Badge key={type} bg={colors[type] || 'secondary'} className="me-1">
+      <span key={type} className="badge badge-neutral-grey me-1">
         {labels[type] || type}
-      </Badge>
+      </span>
     );
   };
 
@@ -119,9 +120,9 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({ show, onHide, intel
               <Card.Header className="bg-light">
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">📊 Report Overview</h5>
-                  <Badge bg={getActionBadgeVariant(intel.action_required)}>
+                  <span className="badge" style={{ backgroundColor: getFlagColor(intel.action_required), color: getContrastTextColor(getFlagColor(intel.action_required)), fontWeight: 'bold' }}>
                     {intel.action_required}
-                  </Badge>
+                  </span>
                 </div>
               </Card.Header>
               <Card.Body>
@@ -205,9 +206,9 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({ show, onHide, intel
             <Card>
               <Card.Header className="d-flex align-items-center justify-content-between">
                 <h6 className="mb-0">⚡ Action Required</h6>
-                <Badge bg={getActionBadgeVariant(intel.action_required)} className="fs-6">
+                <span className="badge fs-6" style={{ backgroundColor: getFlagColor(intel.action_required), color: getContrastTextColor(getFlagColor(intel.action_required)), fontWeight: 'bold' }}>
                   {intel.action_required}
-                </Badge>
+                </span>
               </Card.Header>
               <Card.Body>
                 {intel.action_required === 'discuss urgently' && (

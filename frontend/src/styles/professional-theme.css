@@ -151,11 +151,8 @@ body {
   font-weight: 500;
 }
 
-/* Keep vivid colors only for performance badges */
-.badge.bg-success { background-color: var(--bs-success) !important; }
-.badge.bg-warning { background-color: var(--bs-warning) !important; }
-/* Commented out to allow custom flag colors */
-/* .badge.bg-danger { background-color: var(--bs-danger) !important; } */
+/* Badge colors are now handled by inline styles and color utility functions
+   Removed !important overrides to allow proper dynamic coloring */
 
 /* Special performance badge colors */
 .badge.bg-gold { 
@@ -954,44 +951,8 @@ body {
   border: none;
 }
 
-/* Report type badges - Primary red theme */
-.badge.report-type-badge,
-.badge.bg-primary {
-  background-color: var(--bs-primary, Green);
-  color: white;
-}
-
-/* Scouting type badges - Secondary gray theme */
-.badge.scouting-type-badge,
-.badge.bg-secondary {
-  background-color: var(--bs-secondary, #6b7280);
-  color: white;
-}
-
-/* Purpose badges - Info blue theme */
-.badge.purpose-badge,
-.badge.bg-info {
-  background-color: #0ea5e9;
-  color: white;
-}
-
-/* Success badges - Green theme */
-.badge.bg-success {
-  background-color: var(--bs-success, #16a34a);
-  color: white;
-}
-
-/* Warning badges - Orange theme */
-.badge.bg-warning {
-  background-color: var(--bs-warning, #d97706);
-  color: white;
-}
-
-/* Danger badges - Red theme */
-.badge.bg-danger {
-  background-color: var(--bs-danger, #dc2626);
-  color: white;
-}
+/* Note: Badge colors are now handled dynamically by inline styles using color utility functions
+   Removed static color overrides to allow proper color scaling for performance/attribute scores */
 
 /* Light badges - Light gray theme */
 .badge.bg-light {
@@ -1015,29 +976,114 @@ body {
   border: none;
 }
 
-/* Flag badges - Consistent with modal */
+/* Flag badges - Updated with new color specifications */
 .badge.flag-positive {
-  background-color: #16a34a;
-  color: #fff;
+  background-color: #22c55e !important; /* Green (score 7 equivalent) */
+  color: #fff !important;
   border: none;
 }
 
 .badge.flag-neutral {
-  background-color: #6b7280;
-  color: #fff;
+  background-color: #6b7280 !important; /* Grey as specified */
+  color: #fff !important;
   border: none;
 }
 
 .badge.flag-negative {
-  background-color: var(--bs-danger, #dc2626);
-  color: #fff;
+  background-color: #ef4444 !important; /* Red (score 2 equivalent) */
+  color: #fff !important;
   border: none;
 }
 
 .badge.flag-default {
-  background-color: #fbbf24;
-  color: #000;
+  background-color: #6b7280 !important; /* Default to neutral grey */
+  color: #fff !important;
   border: none;
+}
+
+/* ================================
+   NEUTRAL BADGE STYLES
+   ================================ */
+
+/* Neutral grey badge for all type badges (report types, scouting types, etc.) */
+.badge-neutral-grey {
+  background-color: #6b7280 !important;
+  color: #fff !important;
+  border: none;
+  font-weight: 500;
+}
+
+/* Position text styling (replaces position badges) */
+.position-text {
+  font-weight: 600;
+  color: var(--color-text, #374151);
+  font-size: 0.875rem;
+}
+
+/* ================================
+   ACTION BUTTON STYLES
+   ================================ */
+
+/* Black outline circle action buttons */
+.btn-action-circle {
+  border: 2px solid #000000 !important;
+  background-color: transparent !important;
+  color: #000000 !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  font-size: 14px !important;
+}
+
+.btn-action-circle:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-action-circle:focus {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Specific action button variants with black outlines */
+.btn-action-view {
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+.btn-action-view:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.btn-action-edit {
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+.btn-action-edit:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.btn-action-delete {
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+.btn-action-delete:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
 }
 
 /* ================================
@@ -1362,3 +1408,192 @@ body {
     border: 1px solid #000 !important;
   }
 }
+
+/* ================================
+   PDF EXPORT OPTIMIZATION STYLES
+   ================================ */
+
+/* PDF Export specific styles for html2canvas rendering */
+.pdf-export-optimized {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+
+  /* Force specific dimensions for A4 landscape with more height */
+  width: 1122px !important; /* A4 landscape width at 96 DPI */
+  min-height: 800px !important; /* Ensure adequate height */
+  max-width: none !important;
+  padding: 15px !important; /* Reduced padding for more content space */
+  margin: 0 !important;
+  background: white !important;
+  overflow: visible !important;
+}
+
+.pdf-export-optimized .modal-body {
+  padding: 15px !important; /* Reduced padding */
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  min-height: 750px !important; /* Ensure adequate height */
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Optimize layout for landscape A4 */
+.pdf-export-optimized .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.pdf-export-optimized .col,
+.pdf-export-optimized [class*="col-"] {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.pdf-export-optimized .card {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+  box-shadow: none !important;
+  border: 1px solid #dee2e6 !important;
+  margin-bottom: 15px !important;
+}
+
+.pdf-export-optimized .card-header {
+  padding: 12px 16px !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+.pdf-export-optimized .card-body {
+  padding: 16px !important; /* Better spacing for readability */
+  font-size: 16px !important;
+  line-height: 1.4 !important; /* Better line height for readability */
+}
+
+/* Scout Analysis section specific adjustments */
+.pdf-export-optimized .scout-analysis-section {
+  margin-bottom: 0 !important; /* Remove bottom margin */
+}
+
+.pdf-export-optimized .scout-analysis-section .card-body {
+  padding: 14px !important; /* Better spacing */
+  font-size: 15px !important;
+}
+
+/* Optimize badges for print */
+.pdf-export-optimized .badge {
+  print-color-adjust: exact !important;
+  -webkit-print-color-adjust: exact !important;
+  color-adjust: exact !important;
+  font-size: 14px !important;
+  padding: 6px 12px !important;
+  margin: 2px !important;
+}
+
+/* Optimize polar chart container */
+.pdf-export-optimized .polar-chart-container {
+  image-rendering: -webkit-optimize-contrast !important;
+  image-rendering: optimize-contrast !important;
+  image-rendering: crisp-edges !important;
+}
+
+/* Better polar chart sizing for PDF export */
+.pdf-export-optimized [style*="480px"] {
+  width: 460px !important;
+  height: 460px !important;
+}
+
+/* Enhanced card spacing for better PDF readability */
+.pdf-export-optimized .card {
+  margin-bottom: 20px !important;
+  border: 2px solid #dee2e6 !important;
+}
+
+/* Default performance score styling */
+.performance-score-large {
+  font-size: 24px !important;
+  padding: 8px 16px !important;
+  font-weight: 700 !important;
+}
+
+/* Specific layout adjustments for A4 landscape */
+.pdf-export-optimized .performance-score-large {
+  font-size: 60px !important; /* Much larger for PDF visibility */
+  padding: 18px 30px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+/* Even stronger rules for PDF export - using highest specificity */
+.pdf-export-optimized .badge.performance-badge.performance-score-large {
+  font-size: 60px !important;
+  padding: 18px 30px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  display: inline-block !important;
+  min-width: 120px !important;
+  text-align: center !important;
+}
+
+.pdf-export-optimized .attribute-metrics .badge {
+  font-size: 16px !important;
+  padding: 8px 12px !important;
+}
+
+.pdf-export-optimized small {
+  font-size: 14px !important;
+}
+
+.pdf-export-optimized h6 {
+  font-size: 20px !important;
+  margin-bottom: 12px !important;
+}
+
+.pdf-export-optimized p {
+  margin-bottom: 10px !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+}
+
+.pdf-export-optimized strong {
+  font-weight: 600 !important;
+}
+
+.pdf-export-optimized * {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+/* High DPI rendering improvements */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .pdf-export-optimized {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+  }
+
+  .pdf-export-optimized .badge {
+    font-size: 14px !important;
+    padding: 6px 12px !important;
+  }
+
+  .pdf-export-optimized h6 {
+    font-size: 20px !important;
+  }
+}
+
+/* ================================
+   BADGE OVERRIDE PREVENTION RULES
+   ================================ */
+
+/* CSS Override Prevention - Allow inline styles for performance/attribute badges */
+
+span.badge.badge-neutral-grey {
+  background-color: #6c757d !important;
+  color: white !important;
+  font-weight: 500 !important;
+}
+
+/* Ensure inline styles work properly - no Bootstrap class interference */
