@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Collapse, Alert, Modal } from 'react-bootstrap';
+import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Collapse, Alert, Modal, Dropdown } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import PlayerReportModal from '../components/PlayerReportModal';
@@ -62,9 +62,10 @@ const ScoutingPage: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   
   // Advanced filters
-  const [performanceFilter, setPerformanceFilter] = useState('');
-  const [attributeFilter, setAttributeFilter] = useState('');
+  const [performanceScores, setPerformanceScores] = useState<number[]>([]);
   const [scoutNameFilter, setScoutNameFilter] = useState('');
+  const [minAge, setMinAge] = useState('');
+  const [maxAge, setMaxAge] = useState('');
   const [playerNameFilter, setPlayerNameFilter] = useState('');
   const [dateFromFilter, setDateFromFilter] = useState('');
   const [dateToFilter, setDateToFilter] = useState('');
@@ -348,28 +349,19 @@ const ScoutingPage: React.FC = () => {
   const getFilteredReports = () => {
     let filtered = scoutReports;
 
-    // Performance score filter
-    if (performanceFilter) {
-      const [min, max] = performanceFilter.split('-').map(Number);
-      if (max) {
-        filtered = filtered.filter(report => report.performance_score >= min && report.performance_score <= max);
-      } else {
-        // Single value filter (like "9" or "10")
-        const score = parseInt(performanceFilter);
-        filtered = filtered.filter(report => report.performance_score === score);
-      }
+    // Performance score filter - individual scores
+    if (performanceScores.length > 0) {
+      filtered = filtered.filter(report => performanceScores.includes(report.performance_score));
     }
 
-    // Attribute score filter
-    if (attributeFilter) {
-      const [min, max] = attributeFilter.split('-').map(Number);
-      if (max) {
-        filtered = filtered.filter(report => report.attribute_score >= min && report.attribute_score <= max);
-      } else {
-        // Single value filter
-        const score = parseInt(attributeFilter);
-        filtered = filtered.filter(report => report.attribute_score === score);
-      }
+    // Age range filter
+    if (minAge || maxAge) {
+      filtered = filtered.filter(report => {
+        if (!report.age) return false;
+        const min = minAge ? parseInt(minAge) : 0;
+        const max = maxAge ? parseInt(maxAge) : 100;
+        return report.age >= min && report.age <= max;
+      });
     }
 
     // Scout name filter
@@ -435,7 +427,7 @@ const ScoutingPage: React.FC = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [performanceFilter, attributeFilter, scoutNameFilter, playerNameFilter, dateFromFilter, dateToFilter, reportTypeFilter, scoutingTypeFilter, positionFilter]);
+  }, [performanceScores, minAge, maxAge, scoutNameFilter, playerNameFilter, dateFromFilter, dateToFilter, reportTypeFilter, scoutingTypeFilter, positionFilter]);
 
   return (
     <Container className="mt-4">
@@ -540,12 +532,25 @@ const ScoutingPage: React.FC = () => {
       {/* Pagination and Filters Row */}
       <Row className="mb-3 align-items-center">
         <Col md={4}>
+          <Form.Select
+            size="sm"
+            value={recencyFilter}
+            onChange={e => { setRecencyFilter(e.target.value); setCurrentPage(1); }}
+            style={{ maxWidth: '150px' }}
+          >
+            <option value="all">All Time</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </Form.Select>
+        </Col>
+        <Col md={4} className="text-center">
           {filteredTotalPages > 1 && (
-            <div className="d-flex align-items-center">
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={() => handlePageChange(currentPage - 1)} 
+            <div className="d-flex align-items-center justify-content-center">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1 || loading}
                 className="me-2"
               >
@@ -554,29 +559,16 @@ const ScoutingPage: React.FC = () => {
               <small className="text-muted mx-2">
                 Page {currentPage} of {filteredTotalPages}
               </small>
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={() => handlePageChange(currentPage + 1)} 
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= filteredTotalPages || loading}
               >
                 ›
               </Button>
             </div>
           )}
-        </Col>
-        <Col md={4} className="text-center">
-          <Form.Select 
-            size="sm" 
-            value={recencyFilter} 
-            onChange={e => { setRecencyFilter(e.target.value); setCurrentPage(1); }}
-            style={{ maxWidth: '150px', display: 'inline-block' }}
-          >
-            <option value="all">All Time</option>
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="90">Last 90 Days</option>
-          </Form.Select>
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
@@ -602,36 +594,83 @@ const ScoutingPage: React.FC = () => {
           </div>
         </Card.Header>
         <Collapse in={showFilters}>
-          <Card.Body>
-            <Row>
-              <Col md={3}>
-                <Form.Group className="mb-3">
+          <Card.Body className="filter-section-improved">
+            {/* Row 1: Player Name, Position, Performance Score */}
+            <Row className="mb-3">
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Player Name</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="Enter player name"
+                    value={playerNameFilter}
+                    onChange={(e) => setPlayerNameFilter(e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Position</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="e.g. GK, CM, ST"
+                    value={positionFilter}
+                    onChange={(e) => setPositionFilter(e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
                   <Form.Label className="small fw-bold">Performance Score</Form.Label>
-                  <Form.Select size="sm" value={performanceFilter} onChange={(e) => setPerformanceFilter(e.target.value)}>
-                    <option value="">All Scores</option>
-                    <option value="1-3">1-3 (Poor)</option>
-                    <option value="4-6">4-6 (Average)</option>
-                    <option value="7-8">7-8 (Good)</option>
-                    <option value="9">9 (Excellent)</option>
-                    <option value="10">10 (Outstanding)</option>
-                  </Form.Select>
+                  <Dropdown>
+                    <Dropdown.Toggle variant="outline-secondary" size="sm" className="w-100 text-start">
+                      {performanceScores.length > 0
+                        ? `${performanceScores.length} score${performanceScores.length > 1 ? 's' : ''} selected`
+                        : 'Select scores'
+                      }
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu className="p-2" style={{ minWidth: '200px' }}>
+                      {[1,2,3,4,5,6,7,8,9,10].map(score => (
+                        <div key={score} className="px-2 py-1">
+                          <Form.Check
+                            type="checkbox"
+                            id={`perf-${score}`}
+                            label={`${score}`}
+                            checked={performanceScores.includes(score)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setPerformanceScores([...performanceScores, score]);
+                              } else {
+                                setPerformanceScores(performanceScores.filter(s => s !== score));
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
                 </Form.Group>
               </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Attribute Score</Form.Label>
-                  <Form.Select size="sm" value={attributeFilter} onChange={(e) => setAttributeFilter(e.target.value)}>
-                    <option value="">All Scores</option>
-                    <option value="0-20">0-20 (Very Low)</option>
-                    <option value="21-40">21-40 (Low)</option>
-                    <option value="41-60">41-60 (Average)</option>
-                    <option value="61-75">61-75 (Good)</option>
-                    <option value="76-80">76-80 (Excellent)</option>
-                  </Form.Select>
+            </Row>
+
+            {/* Row 2: Scout Name, Report Type, Scouting Type */}
+            <Row className="mb-3">
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Scout Name</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="Enter scout name"
+                    value={scoutNameFilter}
+                    onChange={(e) => setScoutNameFilter(e.target.value)}
+                  />
                 </Form.Group>
               </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
+              <Col md={4}>
+                <Form.Group>
                   <Form.Label className="small fw-bold">Report Type</Form.Label>
                   <Form.Select size="sm" value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)}>
                     <option value="">All Types</option>
@@ -641,8 +680,8 @@ const ScoutingPage: React.FC = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
+              <Col md={4}>
+                <Form.Group>
                   <Form.Label className="small fw-bold">Scouting Type</Form.Label>
                   <Form.Select size="sm" value={scoutingTypeFilter} onChange={(e) => setScoutingTypeFilter(e.target.value)}>
                     <option value="">All Types</option>
@@ -652,57 +691,80 @@ const ScoutingPage: React.FC = () => {
                 </Form.Group>
               </Col>
             </Row>
-            <Row>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Scout Name</Form.Label>
-                  <Form.Control size="sm" type="text" placeholder="Enter scout name" value={scoutNameFilter} onChange={(e) => setScoutNameFilter(e.target.value)} />
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Player Name</Form.Label>
-                  <Form.Control size="sm" type="text" placeholder="Enter player name" value={playerNameFilter} onChange={(e) => setPlayerNameFilter(e.target.value)} />
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Position</Form.Label>
-                  <Form.Control size="sm" type="text" placeholder="e.g. GK, CM, ST" value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)} />
-                </Form.Group>
-              </Col>
-              <Col md={3}>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Date Range</Form.Label>
-                  <div className="d-flex gap-1">
-                    <Form.Control size="sm" type="date" value={dateFromFilter} onChange={(e) => setDateFromFilter(e.target.value)} placeholder="From" />
-                    <Form.Control size="sm" type="date" value={dateToFilter} onChange={(e) => setDateToFilter(e.target.value)} placeholder="To" />
+
+            {/* Row 3: Age Range, Date Range, Clear Filters & Report Count */}
+            <Row className="mb-3">
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Age Range</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control
+                      size="sm"
+                      type="number"
+                      placeholder="Min"
+                      value={minAge}
+                      onChange={(e) => setMinAge(e.target.value)}
+                      min="16"
+                      max="50"
+                      style={{ width: '80px' }}
+                    />
+                    <span className="range-separator">to</span>
+                    <Form.Control
+                      size="sm"
+                      type="number"
+                      placeholder="Max"
+                      value={maxAge}
+                      onChange={(e) => setMaxAge(e.target.value)}
+                      min="16"
+                      max="50"
+                      style={{ width: '80px' }}
+                    />
                   </div>
                 </Form.Group>
               </Col>
-            </Row>
-            <Row>
-              <Col>
-                <Button 
-                  variant="outline-secondary" 
-                  size="sm" 
-                  onClick={() => {
-                    setPerformanceFilter('');
-                    setAttributeFilter('');
-                    setScoutNameFilter('');
-                    setPlayerNameFilter('');
-                    setDateFromFilter('');
-                    setDateToFilter('');
-                    setReportTypeFilter('');
-                    setScoutingTypeFilter('');
-                    setPositionFilter('');
-                  }}
-                >
-                  🔄 Clear All Filters
-                </Button>
-                <small className="text-muted ms-3">
-                  Showing {filteredReports.length} of {scoutReports.length} reports
-                </small>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Date Range</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={dateFromFilter}
+                      onChange={(e) => setDateFromFilter(e.target.value)}
+                    />
+                    <span className="range-separator">to</span>
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={dateToFilter}
+                      onChange={(e) => setDateToFilter(e.target.value)}
+                    />
+                  </div>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={() => {
+                      setPerformanceScores([]);
+                      setMinAge('');
+                      setMaxAge('');
+                      setScoutNameFilter('');
+                      setPlayerNameFilter('');
+                      setDateFromFilter('');
+                      setDateToFilter('');
+                      setReportTypeFilter('');
+                      setScoutingTypeFilter('');
+                      setPositionFilter('');
+                    }}
+                    className="w-100"
+                  >
+                    🔄 Clear All Filters
+                  </Button>
+                </Form.Group>
               </Col>
             </Row>
           </Card.Body>
@@ -717,18 +779,18 @@ const ScoutingPage: React.FC = () => {
         <>
           {viewMode === 'table' ? (
             <div className="table-responsive">
-              <Table responsive hover className="table-modern">
+              <Table responsive hover striped className="table-compact table-sm">
                 <thead className="table-dark">
                   <tr>
                     <th>Report Date</th>
                     <th>Player</th>
+                    <th>Age</th>
                     <th>Position</th>
                     <th>Fixture Date</th>
                     <th>Fixture</th>
                     <th>Scout</th>
                     <th>Type</th>
                     <th>Performance</th>
-                    <th>Attributes</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -740,6 +802,9 @@ const ScoutingPage: React.FC = () => {
                         <Button variant="link" onClick={() => navigate(`/player/${report.player_id}`)}>
                           {report.player_name}
                         </Button>
+                      </td>
+                      <td>
+                        <span className="age-text">{report.age || 'N/A'}</span>
                       </td>
                       <td>
                         <span className="position-text">{report.position_played || 'N/A'}</span>
@@ -762,7 +827,6 @@ const ScoutingPage: React.FC = () => {
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                       </td>
                       <td><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
-                      <td><span className="badge" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: getContrastTextColor(getAttributeScoreColor(report.attribute_score)), fontWeight: 'bold', border: 'none' }}>{report.attribute_score}</span></td>
                       <td>
                         <div className="btn-group">
                           <Button size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="btn-action-circle btn-action-view">
@@ -787,10 +851,10 @@ const ScoutingPage: React.FC = () => {
                     <Card.Header className="border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
                       <div className="d-flex justify-content-between align-items-start">
                         <div>
-                          <Button 
-                            variant="link" 
-                            className="p-0 text-decoration-none fw-bold h5 mb-1" 
-                            style={{ color: '#212529' }} 
+                          <Button
+                            variant="link"
+                            className="p-0 text-decoration-none fw-bold h5 mb-1"
+                            style={{ color: '#212529' }}
                             onClick={() => navigate(`/player/${report.player_id}`)}
                           >
                             {report.player_name}
@@ -858,7 +922,7 @@ const ScoutingPage: React.FC = () => {
                       )}
                     </Card.Body>
                     <Card.Footer className="bg-transparent border-0 pt-0">
-                      <div className="d-grid gap-2 d-md-flex">
+                      <div className="d-flex justify-content-end gap-2">
                         <Button
                           size="sm"
                           className="btn-action-circle btn-action-view"
@@ -868,15 +932,58 @@ const ScoutingPage: React.FC = () => {
                         >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
-                        <Button size="sm" className="btn-action-circle btn-action-edit" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id}>
+                        <Button
+                          size="sm"
+                          className="btn-action-circle btn-action-edit"
+                          title="Edit"
+                          onClick={() => handleEditReport(report.report_id)}
+                          disabled={loadingReportId === report.report_id}
+                        >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
                         </Button>
-                        <Button size="sm" className="btn-action-circle btn-action-delete" title="Delete" onClick={() => handleDeleteReport(report.report_id)}>🗑️</Button>
+                        <Button
+                          size="sm"
+                          className="btn-action-circle btn-action-delete"
+                          title="Delete"
+                          onClick={() => handleDeleteReport(report.report_id)}
+                        >
+                          🗑️
+                        </Button>
                       </div>
                     </Card.Footer>
                   </Card>
                 </Col>
               ))}
+            </Row>
+          )}
+
+          {/* Bottom Pagination */}
+          {filteredTotalPages > 1 && (
+            <Row className="mt-3 justify-content-center">
+              <Col md={6}>
+                <div className="d-flex align-items-center justify-content-center">
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                    className="me-2"
+                  >
+                    ‹
+                  </Button>
+                  <small className="text-muted mx-2">
+                    Page {currentPage} of {filteredTotalPages}
+                  </small>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= filteredTotalPages || loading}
+                  >
+                    ›
+                  </Button>
+                </div>
+              </Col>
             </Row>
           )}
         </>
