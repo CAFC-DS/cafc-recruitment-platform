@@ -98,9 +98,9 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
             // Ensure the PDF styles are applied in the cloned document
             const modalBody = clonedDoc.querySelector('.modal-body');
             if (modalBody) {
-              (modalBody as HTMLElement).style.width = '1260px';
+              (modalBody as HTMLElement).style.width = '900px';
               (modalBody as HTMLElement).style.maxWidth = 'none';
-              (modalBody as HTMLElement).style.minHeight = '850px';
+              (modalBody as HTMLElement).style.minHeight = '1200px';
               (modalBody as HTMLElement).style.overflow = 'visible';
               (modalBody as HTMLElement).style.padding = '20px';
               (modalBody as HTMLElement).style.boxSizing = 'border-box';
@@ -133,16 +133,16 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
           }
         });
 
-        // Create PDF in A4 landscape format
+        // Create PDF in A4 portrait format
         const pdf = new jsPDF({
-          orientation: 'landscape',
+          orientation: 'portrait',
           unit: 'mm',
           format: 'a4'
         });
 
         const imgData = canvas.toDataURL('image/jpeg', 0.95); // High quality JPEG for smaller file size
-        const pdfWidth = 297; // A4 landscape width in mm
-        const pdfHeight = 210; // A4 landscape height in mm
+        const pdfWidth = 210; // A4 portrait width in mm
+        const pdfHeight = 297; // A4 portrait height in mm
         const margin = 5; // Minimal margins for maximum content space
 
         // Calculate dimensions with proper aspect ratio for A4 page
