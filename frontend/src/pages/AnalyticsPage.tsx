@@ -207,7 +207,7 @@ const AnalyticsPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>📊 Analytics Dashboard</h2>
         <div className="d-flex align-items-center gap-3">
-          <Badge bg="info">Player Coverage Analytics</Badge>
+          <span className="badge badge-neutral-grey">Player Coverage Analytics</span>
         </div>
       </div>
 
@@ -298,7 +298,7 @@ const AnalyticsPage: React.FC = () => {
                         <td style={{ fontSize: '0.85rem' }}>{game.match}</td>
                         <td style={{ fontSize: '0.85rem' }}>{new Date(game.date).toLocaleDateString()}</td>
                         <td className="text-center">
-                          <Badge bg="success" className="fs-6">{game.players_covered}</Badge>
+                          <span className="badge badge-neutral-grey fs-6">{game.players_covered}</span>
                         </td>
                       </tr>
                     ))}
@@ -318,25 +318,25 @@ const AnalyticsPage: React.FC = () => {
             <Card.Body>
               <div>
                 <h6 style={{ color: '#dc3545', marginBottom: '15px' }}>ALL GAMES</h6>
-                <div className="mb-2"><strong>Total Games with Coverage:</strong> <Badge bg="secondary">{data.all_games_stats.total_games}</Badge></div>
-                <div className="mb-2"><strong>Total Players Covered:</strong> <Badge bg="secondary">{data.all_games_stats.total_players_covered}</Badge></div>
-                <div className="mb-2"><strong>Total Scout Reports:</strong> <Badge bg="secondary">{data.all_games_stats.total_reports}</Badge></div>
-                <div className="mb-3"><strong>Average Players per Game:</strong> <Badge bg="danger">{data.all_games_stats.average_players_per_game}</Badge></div>
+                <div className="mb-2"><strong>Total Games with Coverage:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.total_games}</span></div>
+                <div className="mb-2"><strong>Total Players Covered:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.total_players_covered}</span></div>
+                <div className="mb-2"><strong>Total Scout Reports:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.total_reports}</span></div>
+                <div className="mb-3"><strong>Average Players per Game:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.average_players_per_game}</span></div>
 
                 <hr style={{ margin: '20px 0' }} />
 
                 <h6 style={{ color: '#28a745', marginBottom: '15px' }}>LIVE SCOUTING ONLY</h6>
-                <div className="mb-2"><strong>Total Live Games:</strong> <Badge bg="secondary">{data.live_games_stats.total_games}</Badge></div>
-                <div className="mb-2"><strong>Total Players Covered:</strong> <Badge bg="secondary">{data.live_games_stats.total_players_covered}</Badge></div>
-                <div className="mb-2"><strong>Total Scout Reports:</strong> <Badge bg="secondary">{data.live_games_stats.total_reports}</Badge></div>
-                <div className="mb-3"><strong>Average Players per Game:</strong> <Badge bg="success">{data.live_games_stats.average_players_per_game || 'N/A'}</Badge></div>
+                <div className="mb-2"><strong>Total Live Games:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.total_games}</span></div>
+                <div className="mb-2"><strong>Total Players Covered:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.total_players_covered}</span></div>
+                <div className="mb-2"><strong>Total Scout Reports:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.total_reports}</span></div>
+                <div className="mb-3"><strong>Average Players per Game:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.average_players_per_game || 'N/A'}</span></div>
 
                 <hr style={{ margin: '20px 0' }} />
 
                 <h6 style={{ color: '#ffc107', marginBottom: '15px' }}>DATABASE OVERVIEW</h6>
-                <div className="mb-2"><strong>Total Matches in Database:</strong> <Badge bg="secondary">{data.database_overview.total_matches_in_database}</Badge></div>
-                <div className="mb-2"><strong>Matches with Scout Reports:</strong> <Badge bg="secondary">{data.database_overview.matches_with_scout_reports}</Badge></div>
-                <div className="mb-2"><strong>Coverage Percentage:</strong> <Badge bg="warning">{data.database_overview.coverage_percentage}%</Badge></div>
+                <div className="mb-2"><strong>Total Matches in Database:</strong> <span className="badge badge-neutral-grey">{data.database_overview.total_matches_in_database}</span></div>
+                <div className="mb-2"><strong>Matches with Scout Reports:</strong> <span className="badge badge-neutral-grey">{data.database_overview.matches_with_scout_reports}</span></div>
+                <div className="mb-2"><strong>Coverage Percentage:</strong> <span className="badge badge-neutral-grey">{data.database_overview.coverage_percentage}%</span></div>
               </div>
             </Card.Body>
           </Card>
@@ -537,9 +537,9 @@ const AnalyticsPage: React.FC = () => {
                               <span style={{ fontWeight: '600' }}>
                                 {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {scout.name}
                               </span>
-                              <Badge bg={index === 0 ? 'warning' : index === 1 ? 'info' : index === 2 ? 'success' : 'secondary'}>
+                              <span className="badge badge-neutral-grey">
                                 {scout.reports} reports
-                              </Badge>
+                              </span>
                             </div>
                           </Col>
                         ))}

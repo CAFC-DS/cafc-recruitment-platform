@@ -283,15 +283,15 @@ const IntelPage: React.FC = () => {
   const getActionRequiredBadge = (action: string) => {
     switch (action) {
       case 'beyond us':
-        return <Badge className="badge-cafc-black">Beyond Us</Badge>;
+        return <Badge className="badge-neutral-grey">Beyond Us</Badge>;
       case 'discuss urgently':
-        return <Badge className="badge-cafc-black">Discuss Urgently</Badge>;
+        return <Badge className="badge-neutral-grey">Discuss Urgently</Badge>;
       case 'monitor':
-        return <Badge className="badge-cafc-black">Monitor</Badge>;
+        return <Badge className="badge-neutral-grey">Monitor</Badge>;
       case 'no action':
-        return <Badge className="badge-cafc-black">No Action</Badge>;
+        return <Badge className="badge-neutral-grey">No Action</Badge>;
       default:
-        return <Badge className="badge-cafc-black">{action}</Badge>;
+        return <Badge className="badge-neutral-grey">{action}</Badge>;
     }
   };
 
@@ -442,7 +442,7 @@ const IntelPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h3>Player Intel Reports</h3>
         <div className="d-flex align-items-center gap-3">
-          <Badge className="badge-cafc-black">{totalReports} reports</Badge>
+          <Badge className="badge-neutral-grey">{totalReports} reports</Badge>
           <div className="btn-group" role="group">
             <Button
               variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
@@ -623,7 +623,7 @@ const IntelPage: React.FC = () => {
                         </h5>
                       )}
                       <div className="mb-2">
-                        <Badge className="badge-cafc-black">🕵️ Intel Report</Badge>
+                        <Badge className="badge-neutral-grey">🕵️ Intel Report</Badge>
                       </div>
                     </div>
                     <div className="text-end">

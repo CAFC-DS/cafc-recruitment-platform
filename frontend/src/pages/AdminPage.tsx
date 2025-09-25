@@ -255,9 +255,9 @@ const AdminPage: React.FC = () => {
                     <td>{user.firstname} {user.lastname}</td>
                     <td>{user.email}</td>
                     <td>
-                      <Badge bg={getRoleBadgeVariant(user.role)}>
+                      <span className="badge badge-neutral-grey">
                         {user.role}
-                      </Badge>
+                      </span>
                     </td>
                     <td>
                       <Form.Select

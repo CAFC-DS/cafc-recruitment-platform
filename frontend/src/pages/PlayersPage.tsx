@@ -64,7 +64,7 @@ const PlayersPage: React.FC = () => {
   
   // Status badge - simplified for now
   const getStatusBadge = () => {
-    return <Badge className="badge-cafc-black">Scouted</Badge>;
+    return <Badge className="badge-neutral-grey">Scouted</Badge>;
   };
 
   const fetchPlayers = useCallback(async (page = 1) => {
@@ -241,7 +241,7 @@ const PlayersPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>👥 Players Database</h2>
         <div className="d-flex align-items-center gap-3">
-          <Badge className="badge-cafc-black">{pagination.total_count} players (Page {pagination.current_page} of {pagination.total_pages})</Badge>
+          <Badge className="badge-neutral-grey">{pagination.total_count} players (Page {pagination.current_page} of {pagination.total_pages})</Badge>
           <div className="btn-group" role="group">
             <Button
               variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
@@ -400,7 +400,7 @@ const PlayersPage: React.FC = () => {
               <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
                 <Card.Header className="d-flex justify-content-between align-items-start border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
                   <div>
-                    <Badge className="badge-cafc-black">{player.position}</Badge>
+                    <span className="position-text">{player.position}</span>
                     <small className="ms-2 text-muted">Age: {player.age || 'Unknown'}</small>
                   </div>
                   <small className="text-muted">
@@ -436,7 +436,7 @@ const PlayersPage: React.FC = () => {
                     </Row>
                   </div>
                   <div className="text-center mb-3">
-                    <Badge className="badge-cafc-black">🔍 Scouted</Badge>
+                    <Badge className="badge-neutral-grey">🔍 Scouted</Badge>
                   </div>
                 </Card.Body>
                 <Card.Footer className="bg-transparent border-0 pt-0">
@@ -482,15 +482,15 @@ const PlayersPage: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <Badge className="badge-cafc-black">{player.position}</Badge>
+                    <span className="position-text">{player.position}</span>
                   </td>
                   <td>{player.squad_name}</td>
                   <td>{player.age || 'Unknown'}</td>
                   <td className="text-center">
-                    <Badge className="badge-cafc-black fs-6">{player.scout_reports_count}</Badge>
+                    <Badge className="badge-neutral-grey fs-6">{player.scout_reports_count}</Badge>
                   </td>
                   <td className="text-center">
-                    <Badge className="badge-cafc-black fs-6">{player.intel_reports_count}</Badge>
+                    <Badge className="badge-neutral-grey fs-6">{player.intel_reports_count}</Badge>
                   </td>
                   <td><Badge className="badge-cafc-black">🔍 Scouted</Badge></td>
                   <td>

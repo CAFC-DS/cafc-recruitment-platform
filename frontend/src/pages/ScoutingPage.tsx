@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Badge, Collapse, Alert, Modal } from 'react-bootstrap';
+import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Collapse, Alert, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosInstance';
 import PlayerReportModal from '../components/PlayerReportModal';
@@ -8,6 +8,7 @@ import AddFixtureModal from '../components/AddFixtureModal';
 import ScoutingAssessmentModal from '../components/ScoutingAssessmentModal';
 import { useAuth } from '../App';
 import { useViewMode } from '../contexts/ViewModeContext';
+import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
 
 interface ScoutReport {
@@ -303,30 +304,7 @@ const ScoutingPage: React.FC = () => {
     }
   };
 
-  const getPerformanceScoreVariant = (score: number) => {
-    // Red-green gradient for 1-10 scale
-    return 'performance-score';
-  };
-
-  // FORCE CACHE REFRESH - Red-green gradient scoring
-  const getPerformanceScoreColor = (score: number) => {
-    // Red (1) to Green (10) gradient
-    const red = Math.max(0, 255 - (score - 1) * 28.33);
-    const green = Math.min(255, (score - 1) * 28.33);
-    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
-  };
-
-  const getAttributeScoreVariant = (score: number) => {
-    // Red-green gradient for 0-100 scale
-    return 'attribute-score';
-  };
-
-  const getAttributeScoreColor = (score: number) => {
-    // Red (0) to Green (100) gradient
-    const red = Math.max(0, 255 - score * 2.55);
-    const green = Math.min(255, score * 2.55);
-    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
-  };
+  // Note: Color functions now imported from utils/colorUtils.ts for consistency
 
   const getReportTypeBadge = (reportType: string, _scoutingType: string, flagType?: string) => {
     switch (reportType.toLowerCase()) {
@@ -334,55 +312,33 @@ const ScoutingPage: React.FC = () => {
       case 'flag assessment':
         return getFlagBadge(flagType);
       case 'clips':
-        return <Badge className="badge-cafc-black">Clips</Badge>;
+        return <span className="badge badge-neutral-grey">Clips</span>;
       case 'player assessment':
       case 'player':
-        return <Badge className="badge-cafc-black">Player Assessment</Badge>;
+        return <span className="badge badge-neutral-grey">Player Assessment</span>;
       default:
-        return <Badge className="badge-cafc-black">{reportType}</Badge>;
+        return <span className="badge badge-neutral-grey">{reportType}</span>;
     }
   };
 
   const getFlagBadge = (flagType?: string) => {
-    switch (flagType?.toLowerCase()) {
-      case 'positive':
-        return <Badge className="badge-flag-positive">Positive</Badge>;
-      case 'negative':
-        return <Badge className="badge-flag-negative">Negative</Badge>;
-      case 'neutral':
-        return <Badge className="badge-flag-neutral">Neutral</Badge>;
-      default:
-        return <Badge className="badge-flag-neutral">Flag</Badge>;
-    }
+    const flagColor = getFlagColor(flagType || '');
+    const textColor = getContrastTextColor(flagColor);
+
+    return (
+      <span
+        className="badge"
+        style={{ backgroundColor: flagColor, color: textColor, border: 'none' }}
+      >
+        {flagType || 'Flag'}
+      </span>
+    );
   };
 
   const getScoutingTypeBadge = (scoutingType: string) => {
-    switch (scoutingType.toLowerCase()) {
-      case 'live':
-        return <Badge className="badge-cafc-black">Live</Badge>;
-      case 'video':
-        return <Badge className="badge-cafc-black">Video</Badge>;
-      default:
-        return <Badge className="badge-cafc-black">{scoutingType}</Badge>;
-    }
+    return <span className="badge badge-neutral-grey">{scoutingType}</span>;
   };
 
-  const getPurposeBadge = (purpose: string | null) => {
-    if (!purpose) return null;
-
-    switch (purpose.toLowerCase()) {
-      case 'player report':
-        return <Badge className="badge-cafc-black">Player Report</Badge>;
-      case 'loan report':
-        return <Badge className="badge-cafc-black">Loan Report</Badge>;
-      case 'player assessment':
-        return <Badge className="badge-cafc-black">Player Report</Badge>;
-      case 'loan assessment':
-        return <Badge className="badge-cafc-black">Loan Report</Badge>;
-      default:
-        return <Badge className="badge-cafc-black">{purpose}</Badge>;
-    }
-  };
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -786,7 +742,7 @@ const ScoutingPage: React.FC = () => {
                         </Button>
                       </td>
                       <td>
-                        <Badge className="badge-cafc-black">{report.position_played || 'N/A'}</Badge>
+                        <span className="position-text">{report.position_played || 'N/A'}</span>
                       </td>
                       <td>
                         {report.fixture_date && report.fixture_date !== 'N/A' ? 
@@ -804,19 +760,18 @@ const ScoutingPage: React.FC = () => {
                       <td>
                         {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
-                        {report.purpose && <span className="ms-1">{getPurposeBadge(report.purpose)}</span>}
                       </td>
-                      <td><Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }}>{report.performance_score}</Badge></td>
-                      <td><Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>{report.attribute_score}</Badge></td>
+                      <td><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
+                      <td><span className="badge" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: getContrastTextColor(getAttributeScoreColor(report.attribute_score)), fontWeight: 'bold', border: 'none' }}>{report.attribute_score}</span></td>
                       <td>
                         <div className="btn-group">
-                          <Button variant="outline-dark" size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="rounded-circle" style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Button size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="btn-action-circle btn-action-view">
                             {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                           </Button>
-                          <Button variant="outline-secondary" size="sm" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id} className="rounded-circle" style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Button size="sm" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id} className="btn-action-circle btn-action-edit">
                             {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
                           </Button>
-                          <Button variant="outline-danger" size="sm" title="Delete" onClick={() => handleDeleteReport(report.report_id)} className="rounded-circle" style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</Button>
+                          <Button size="sm" title="Delete" onClick={() => handleDeleteReport(report.report_id)} className="btn-action-circle btn-action-delete">🗑️</Button>
                         </div>
                       </td>
                     </tr>
@@ -843,8 +798,7 @@ const ScoutingPage: React.FC = () => {
                           <div className="mb-2">
                             {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                             {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
-                            {report.purpose && <span className="ms-1">{getPurposeBadge(report.purpose)}</span>}
-                          </div>
+                              </div>
                         </div>
                         <div className="text-end">
                           <small className="text-muted d-block">{new Date(report.created_at).toLocaleDateString()}</small>
@@ -870,17 +824,17 @@ const ScoutingPage: React.FC = () => {
                           <Col xs={6}>
                             <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
                               <div className="fw-bold text-muted small mb-1">PERFORMANCE</div>
-                              <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="fs-6">
+                              <span className="badge fs-6" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>
                                 {report.performance_score}
-                              </Badge>
+                              </span>
                             </div>
                           </Col>
                           <Col xs={6}>
                             <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
                               <div className="fw-bold text-muted small mb-1">ATTRIBUTES</div>
-                              <Badge  style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="fs-6">
+                              <span className="badge fs-6" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: getContrastTextColor(getAttributeScoreColor(report.attribute_score)), fontWeight: 'bold', border: 'none' }}>
                                 {report.attribute_score}
-                              </Badge>
+                              </span>
                             </div>
                           </Col>
                         </Row>
@@ -906,20 +860,18 @@ const ScoutingPage: React.FC = () => {
                     <Card.Footer className="bg-transparent border-0 pt-0">
                       <div className="d-grid gap-2 d-md-flex">
                         <Button
-                          variant="outline-dark"
                           size="sm"
-                          className="rounded-circle"
+                          className="btn-action-circle btn-action-view"
                           onClick={() => handleOpenReportModal(report.report_id)}
                           disabled={loadingReportId === report.report_id}
                           title="View Report"
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
-                        <Button variant="outline-secondary" size="sm" className="rounded-circle" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id} style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Button size="sm" className="btn-action-circle btn-action-edit" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id}>
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
                         </Button>
-                        <Button variant="outline-danger" size="sm" className="rounded-circle" title="Delete" onClick={() => handleDeleteReport(report.report_id)} style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</Button>
+                        <Button size="sm" className="btn-action-circle btn-action-delete" title="Delete" onClick={() => handleDeleteReport(report.report_id)}>🗑️</Button>
                       </div>
                     </Card.Footer>
                   </Card>

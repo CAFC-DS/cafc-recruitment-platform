@@ -5,6 +5,7 @@ import axiosInstance from '../axiosInstance';
 import PlayerReportModal from '../components/PlayerReportModal';
 import IntelReportModal from '../components/IntelReportModal';
 import PitchView from '../components/PitchView';
+import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 
 interface PlayerProfile {
   player_id: number;
@@ -83,7 +84,7 @@ const PlayerProfilePage: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   
   const getStatusBadge = (status: string) => {
-    return <Badge bg="secondary">🔍 Scouted</Badge>;
+    return <span className="badge badge-neutral-grey">🔍 Scouted</span>;
   };
   
   const pipelineStatuses = [];
@@ -305,17 +306,17 @@ const PlayerProfilePage: React.FC = () => {
                           })}
                         </div>
                         {report.overall_rating && (
-                          <Badge style={{ backgroundColor: getPerformanceScoreColor(report.overall_rating), color: 'white', fontWeight: 'bold' }} className="timeline-rating">
+                          <span className="badge timeline-rating" style={{ backgroundColor: getPerformanceScoreColor(report.overall_rating), color: 'white', fontWeight: 'bold' }}>
                             {report.overall_rating}
-                          </Badge>
+                          </span>
                         )}
                       </div>
                       
                       <div className="timeline-card-body">
                         <div className="timeline-card-type">
-                          <Badge bg="secondary" className="type-badge">
+                          <span className="badge badge-neutral-grey type-badge">
                             {report.report_type || 'Scout Report'}
-                          </Badge>
+                          </span>
                         </div>
                         
                         <div className="timeline-card-fixture">
@@ -465,8 +466,8 @@ const PlayerProfilePage: React.FC = () => {
                             <div key={report.report_id} className="report-card">
                               <div className="report-header">
                                 <div className="report-badges">
-                                  <Badge bg="dark" className="clean-badge">{report.report_type}</Badge>
-                                  {report.scouting_type && <Badge bg="secondary" className="clean-badge">{report.scouting_type}</Badge>}
+                                  <span className="badge badge-neutral-grey clean-badge">{report.report_type}</span>
+                                  {report.scouting_type && <span className="badge badge-neutral-grey clean-badge">{report.scouting_type}</span>}
                                 </div>
                                 <span className="report-date">{new Date(report.created_at).toLocaleDateString()}</span>
                               </div>
@@ -475,14 +476,14 @@ const PlayerProfilePage: React.FC = () => {
                                 <span className="report-scout">by {report.scout_name}</span>
                                 <div className="report-scores">
                                   {report.performance_score && (
-                                    <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
+                                    <span className="badge score-badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }}>
                                       {report.performance_score}
-                                    </Badge>
+                                    </span>
                                   )}
                                   {report.attribute_score && (
-                                    <Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
+                                    <span className="badge score-badge" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>
                                       {report.attribute_score}
-                                    </Badge>
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -524,11 +525,9 @@ const PlayerProfilePage: React.FC = () => {
                               </div>
                               <p className="report-summary">{intel.conversation_notes}</p>
                               <div className="report-footer">
-                                <Badge bg={intel.action_required === 'discuss urgently' ? 'danger' : 
-                                           intel.action_required === 'monitor' ? 'warning' : 'secondary'}
-                                       className="clean-badge">
+                                <span className="badge clean-badge" style={{ backgroundColor: getFlagColor(intel.action_required), color: getContrastTextColor(getFlagColor(intel.action_required)), fontWeight: 'bold' }}>
                                   {intel.action_required}
-                                </Badge>
+                                </span>
                                 {intel.transfer_fee && <span className="transfer-fee">Fee: {intel.transfer_fee}</span>}
                               </div>
                               <Button 
@@ -573,21 +572,21 @@ const PlayerProfilePage: React.FC = () => {
                           <tr key={report.report_id}>
                             <td>{new Date(report.created_at).toLocaleDateString()}</td>
                             <td>
-                              <Badge bg="dark" className="clean-badge">{report.report_type}</Badge>
+                              <span className="badge badge-neutral-grey clean-badge">{report.report_type}</span>
                             </td>
                             <td>{report.scout_name}</td>
                             <td>
                               {report.performance_score ? (
-                                <Badge style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
+                                <span className="badge score-badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }}>
                                   {report.performance_score}
-                                </Badge>
+                                </span>
                               ) : '-'}
                             </td>
                             <td>
                               {report.attribute_score ? (
-                                <Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="score-badge">
+                                <span className="badge score-badge" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>
                                   {report.attribute_score}
-                                </Badge>
+                                </span>
                               ) : '-'}
                             </td>
                             <td className="summary-cell">{report.summary}</td>
@@ -637,7 +636,7 @@ const PlayerProfilePage: React.FC = () => {
                           <div className="note-header">
                             <div className="note-author">
                               <strong>{note.author}</strong>
-                              {note.is_private && <Badge bg="warning" className="private-badge">Private</Badge>}
+                              {note.is_private && <span className="badge badge-neutral-grey private-badge">Private</span>}
                             </div>
                             <span className="note-date">{new Date(note.created_at).toLocaleString()}</span>
                           </div>

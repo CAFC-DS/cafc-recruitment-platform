@@ -5,6 +5,7 @@ import axiosInstance from '../axiosInstance';
 import { useAuth } from '../App';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import PlayerReportModal from '../components/PlayerReportModal';
+import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 
 interface ScoutReport {
   report_id: number;
@@ -140,20 +141,7 @@ const HomePage: React.FC = () => {
     setSelectedReport(null);
   };
 
-  // FORCE CACHE REFRESH - Red-green gradient color functions for scoring
-  const getPerformanceScoreColor = (score: number) => {
-    // Scale from 1-10 to red-green gradient
-    const red = Math.max(0, 255 - (score - 1) * 28.33);
-    const green = Math.min(255, (score - 1) * 28.33);
-    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
-  };
-
-  const getAttributeScoreColor = (score: number) => {
-    // Scale from 0-100 to red-green gradient
-    const red = Math.max(0, 255 - score * 2.55);
-    const green = Math.min(255, score * 2.55);
-    return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
-  };
+  // Note: Color functions now imported from utils/colorUtils.ts for consistency across the platform
 
 
   if (loading) {
@@ -255,14 +243,12 @@ const HomePage: React.FC = () => {
                   <div key={report.report_id} className="border-bottom pb-2 mb-2">
                     <div className="d-flex justify-content-between align-items-start">
                       <div className="d-flex align-items-start">
-                        <Button 
-                          variant="outline-dark" 
-                          size="sm" 
-                          onClick={() => handleOpenReportModal(report.report_id)} 
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenReportModal(report.report_id)}
                           disabled={loadingReportId === report.report_id}
                           title="View Report"
-                          className="me-2 mt-1 rounded-circle"
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          className="btn-action-circle btn-action-view me-2 mt-1"
                         >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
@@ -280,12 +266,28 @@ const HomePage: React.FC = () => {
                       </div>
                       <div className="text-end">
                         <div className="mb-1">
-                          <Badge  style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }} className="me-1">
+                          <span
+                            className="badge me-1"
+                            style={{
+                              backgroundColor: getPerformanceScoreColor(report.performance_score),
+                              color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)),
+                              fontWeight: 'bold',
+                              border: 'none'
+                            }}
+                          >
                             {report.performance_score}
-                          </Badge>
-                          <Badge  style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>
+                          </span>
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor: getAttributeScoreColor(report.attribute_score),
+                              color: getContrastTextColor(getAttributeScoreColor(report.attribute_score)),
+                              fontWeight: 'bold',
+                              border: 'none'
+                            }}
+                          >
                             {report.attribute_score}
-                          </Badge>
+                          </span>
                         </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
@@ -346,9 +348,9 @@ const HomePage: React.FC = () => {
                         <div className="small text-muted">by {report.contact_name}</div>
                       </div>
                       <div className="text-end">
-                        <Badge className="badge-cafc-black">
+                        <span className="badge badge-neutral-grey">
                           {report.action_required}
-                        </Badge>
+                        </span>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
                         </div>
@@ -385,14 +387,12 @@ const HomePage: React.FC = () => {
                     <div className="d-flex justify-content-between align-items-start">
                       <div className="d-flex align-items-center">
                         <span className="badge bg-secondary me-2">#{index + 1}</span>
-                        <Button 
-                          variant="outline-dark" 
-                          size="sm" 
-                          onClick={() => handleOpenReportModal(report.report_id)} 
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenReportModal(report.report_id)}
                           disabled={loadingReportId === report.report_id}
                           title="View Report"
-                          className="me-2 rounded-circle"
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          className="btn-action-circle btn-action-view me-2"
                         >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
@@ -410,9 +410,17 @@ const HomePage: React.FC = () => {
                       </div>
                       <div className="text-end">
                         <div className="mb-1">
-                          <Badge style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }} className="fs-6">
+                          <span
+                            className="badge fs-6"
+                            style={{
+                              backgroundColor: getAttributeScoreColor(report.attribute_score),
+                              color: getContrastTextColor(getAttributeScoreColor(report.attribute_score)),
+                              fontWeight: 'bold',
+                              border: 'none'
+                            }}
+                          >
                             {report.attribute_score}
-                          </Badge>
+                          </span>
                         </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
@@ -449,14 +457,12 @@ const HomePage: React.FC = () => {
                   <div key={report.report_id} className="border-bottom pb-2 mb-2">
                     <div className="d-flex justify-content-between align-items-start">
                       <div className="d-flex align-items-start">
-                        <Button 
-                          variant="outline-dark" 
-                          size="sm" 
-                          onClick={() => handleOpenReportModal(report.report_id)} 
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenReportModal(report.report_id)}
                           disabled={loadingReportId === report.report_id}
                           title="View Report"
-                          className="me-2 mt-1 rounded-circle"
-                          style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          className="btn-action-circle btn-action-view me-2 mt-1"
                         >
                           {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                         </Button>
@@ -474,11 +480,11 @@ const HomePage: React.FC = () => {
                       </div>
                       <div className="text-end">
                         <div className="mb-1">
-                          <Badge className={`flag-${(report.flag_category?.toLowerCase() || 'default')}`}>
+                          <span className="badge" style={{ backgroundColor: getFlagColor(report.flag_category || 'neutral'), color: getContrastTextColor(getFlagColor(report.flag_category || 'neutral')), fontWeight: 'bold' }}>
                             {report.flag_category === 'Positive' ? 'Positive' :
                              report.flag_category === 'Negative' ? 'Negative' :
                              report.flag_category === 'Neutral' ? 'Neutral' : 'Not specified'}
-                          </Badge>
+                          </span>
                         </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
