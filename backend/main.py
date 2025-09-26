@@ -306,11 +306,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
+        # Truncate if >72 bytes in utf-8
         password_bytes = plain_password.encode('utf-8')
         if len(password_bytes) > 72:
-            password_bytes = password_bytes[:72]  # keep as bytes, do NOT decode
-        # passlib's verify can accept bytes
-        return pwd_context.verify(password_bytes, hashed_password)
+            plain_password = password_bytes[:72].decode('utf-8', 'ignore')  # truncate to 72 bytes
+        return pwd_context.verify(plain_password, hashed_password)  # pass string
     except Exception as e:
         print(f"Password verification error: {e}")
         raise e
@@ -318,8 +318,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     password_bytes = password.encode('utf-8')
     if len(password_bytes) > 72:
-        password_bytes = password_bytes[:72]
-    return pwd_context.hash(password_bytes)
+        password = password_bytes[:72].decode('utf-8', 'ignore')
+    return pwd_context.hash(password)  # pass string
+
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
