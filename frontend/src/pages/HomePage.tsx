@@ -301,56 +301,58 @@ const HomePage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Top Right: Recent Intel Reports */}
+        {/* Top Right: Recent Flag Reports */}
         <Col md={6}>
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🕵️ {userRole === 'scout' ? 'Your Recent Intel Reports' : 'Recent Intel Reports'} ({recentIntelReports.length})</h5>
-                <Button 
-                  variant="outline-dark" 
+                <h5 className="mb-0">🚩 {userRole === 'scout' ? 'Your Recent Flag Reports' : 'Recent Flag Reports'} ({recentFlagReports.length})</h5>
+                <Button
+                  variant="outline-dark"
                   size="sm"
-                  onClick={() => navigate('/intel')}
+                  onClick={() => navigate('/scouting')}
                 >
                   View All
                 </Button>
               </div>
             </Card.Header>
             <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {recentIntelReports.length === 0 ? (
-                <div className="text-center">
-                  <p className="text-muted">No intel reports yet</p>
-                  <Button 
-                    variant="outline-secondary" 
-                    size="sm"
-                    onClick={() => navigate('/intel')}
-                  >
-                    Create First Intel Report
-                  </Button>
-                </div>
+              {recentFlagReports.length === 0 ? (
+                <p className="text-muted text-center">No recent flag reports</p>
               ) : (
-                recentIntelReports.map((report) => (
-                  <div key={report.intel_id} className="border-bottom pb-2 mb-2">
+                recentFlagReports.map((report) => (
+                  <div key={report.report_id} className="border-bottom pb-2 mb-2">
                     <div className="d-flex justify-content-between align-items-start">
-                      <div>
-                        {report.player_id ? (
-                          <Button 
-                            variant="link" 
+                      <div className="d-flex align-items-start">
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenReportModal(report.report_id)}
+                          disabled={loadingReportId === report.report_id}
+                          title="View Report"
+                          className="btn-action-circle btn-action-view me-2 mt-1"
+                        >
+                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
+                        </Button>
+                        <div>
+                          <Button
+                            variant="link"
                             className="p-0 text-decoration-none text-start fw-bold"
                             style={{ color: 'inherit' }}
                             onClick={() => navigate(`/player/${report.player_id}`)}
                           >
                             {report.player_name}
                           </Button>
-                        ) : (
-                          <span className="fw-bold">{report.player_name}</span>
-                        )}
-                        <div className="small text-muted">by {report.contact_name}</div>
+                          <div className="small text-muted">by {report.scout_name}</div>
+                        </div>
                       </div>
                       <div className="text-end">
-                        <span className="badge badge-neutral-grey">
-                          {report.action_required}
-                        </span>
+                        <div className="mb-1">
+                          <span className="badge" style={{ backgroundColor: getFlagColor(report.flag_category || 'neutral'), color: getContrastTextColor(getFlagColor(report.flag_category || 'neutral')), fontWeight: 'bold' }}>
+                            {report.flag_category === 'Positive' ? 'Positive' :
+                             report.flag_category === 'Negative' ? 'Negative' :
+                             report.flag_category === 'Neutral' ? 'Neutral' : 'Not specified'}
+                          </span>
+                        </div>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
                         </div>
@@ -434,58 +436,56 @@ const HomePage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Bottom Right: Recent Flag Reports */}
+        {/* Bottom Right: Recent Intel Reports */}
         <Col md={6}>
           <Card className="h-100">
             <Card.Header className="bg-light border-bottom">
               <div className="d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">🚩 {userRole === 'scout' ? 'Your Recent Flag Reports' : 'Recent Flag Reports'} ({recentFlagReports.length})</h5>
-                <Button 
-                  variant="outline-dark" 
+                <h5 className="mb-0">🕵️ {userRole === 'scout' ? 'Your Recent Intel Reports' : 'Recent Intel Reports'} ({recentIntelReports.length})</h5>
+                <Button
+                  variant="outline-dark"
                   size="sm"
-                  onClick={() => navigate('/scouting')}
+                  onClick={() => navigate('/intel')}
                 >
                   View All
                 </Button>
               </div>
             </Card.Header>
             <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {recentFlagReports.length === 0 ? (
-                <p className="text-muted text-center">No recent flag reports</p>
+              {recentIntelReports.length === 0 ? (
+                <div className="text-center">
+                  <p className="text-muted">No intel reports yet</p>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={() => navigate('/intel')}
+                  >
+                    Create First Intel Report
+                  </Button>
+                </div>
               ) : (
-                recentFlagReports.map((report) => (
-                  <div key={report.report_id} className="border-bottom pb-2 mb-2">
+                recentIntelReports.map((report) => (
+                  <div key={report.intel_id} className="border-bottom pb-2 mb-2">
                     <div className="d-flex justify-content-between align-items-start">
-                      <div className="d-flex align-items-start">
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenReportModal(report.report_id)}
-                          disabled={loadingReportId === report.report_id}
-                          title="View Report"
-                          className="btn-action-circle btn-action-view me-2 mt-1"
-                        >
-                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
-                        </Button>
-                        <div>
-                          <Button 
-                            variant="link" 
+                      <div>
+                        {report.player_id ? (
+                          <Button
+                            variant="link"
                             className="p-0 text-decoration-none text-start fw-bold"
                             style={{ color: 'inherit' }}
                             onClick={() => navigate(`/player/${report.player_id}`)}
                           >
                             {report.player_name}
                           </Button>
-                          <div className="small text-muted">by {report.scout_name}</div>
-                        </div>
+                        ) : (
+                          <span className="fw-bold">{report.player_name}</span>
+                        )}
+                        <div className="small text-muted">by {report.contact_name}</div>
                       </div>
                       <div className="text-end">
-                        <div className="mb-1">
-                          <span className="badge" style={{ backgroundColor: getFlagColor(report.flag_category || 'neutral'), color: getContrastTextColor(getFlagColor(report.flag_category || 'neutral')), fontWeight: 'bold' }}>
-                            {report.flag_category === 'Positive' ? 'Positive' :
-                             report.flag_category === 'Negative' ? 'Negative' :
-                             report.flag_category === 'Neutral' ? 'Neutral' : 'Not specified'}
-                          </span>
-                        </div>
+                        <span className="badge badge-neutral-grey">
+                          {report.action_required}
+                        </span>
                         <div className="small text-muted">
                           {new Date(report.created_at).toLocaleDateString()}
                         </div>
