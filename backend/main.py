@@ -547,6 +547,10 @@ async def get_user_by_id(user_id: int):
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    raw_pw = form_data.password
+    print("DEBUG: Received password string:", raw_pw)
+    print("DEBUG: Password length (chars):", len(raw_pw))
+    print("DEBUG: Password length (bytes):", len(raw_pw.encode("utf-8")))
     user = await get_user(form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(

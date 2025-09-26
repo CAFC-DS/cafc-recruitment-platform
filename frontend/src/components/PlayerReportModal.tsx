@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Modal, Row, Col, Badge, Card, Button } from 'react-bootstrap';
-import { getFlagColor, getContrastTextColor } from '../utils/colorUtils';
+import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 import axiosInstance from '../axiosInstance';
 import { PolarArea } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -40,13 +40,41 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   // Fetch player data when modal opens
   useEffect(() => {
     const fetchPlayerData = async () => {
-      if (show && report && report.player_name) {
+      if (show && report && (report.player_id || report.player_name)) {
         setLoadingPlayerData(true);
         try {
-          // Try to fetch player by name - adjust endpoint as needed
-          const response = await axiosInstance.get(`/players?search=${encodeURIComponent(report.player_name)}`);
-          if (response.data && response.data.length > 0) {
-            setPlayerData(response.data[0]); // Take first match
+          let playerResponse = null;
+
+          // First try to get player by ID if available
+          if (report.player_id) {
+            try {
+              playerResponse = await axiosInstance.get(`/players/${report.player_id}/profile`);
+            } catch (error) {
+              console.warn('Could not fetch player by ID:', error);
+            }
+          }
+
+          // If ID fetch failed, try search by name as fallback
+          if (!playerResponse && report.player_name) {
+            const searchResponse = await axiosInstance.get(`/players/search?query=${encodeURIComponent(report.player_name)}`);
+            if (searchResponse.data && searchResponse.data.length > 0) {
+              // Try to get profile for the first search result
+              const searchResult = searchResponse.data[0];
+              if (searchResult.player_id) {
+                try {
+                  playerResponse = await axiosInstance.get(`/players/${searchResult.player_id}/profile`);
+                } catch (error) {
+                  // Use search result data if profile fetch fails
+                  setPlayerData(searchResult);
+                }
+              } else {
+                setPlayerData(searchResult);
+              }
+            }
+          }
+
+          if (playerResponse) {
+            setPlayerData(playerResponse.data);
           }
         } catch (error) {
           console.warn('Could not fetch player data:', error);
@@ -62,6 +90,61 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   if (!report) {
     return null;
   }
+
+  // Function to get birth date from available data sources
+  const getBirthDate = () => {
+    // Try different potential field names for birth date
+    const possibleBirthDate = playerData?.birth_date ||      // From profile endpoint
+                             playerData?.date_of_birth ||
+                             playerData?.dateOfBirth ||
+                             playerData?.birthDate ||     // camelCase version from API
+                             playerData?.BIRTHDATE ||     // uppercase version from database
+                             report.player_birth_date ||
+                             report.birth_date ||
+                             report.date_of_birth ||
+                             report.birthDate ||          // camelCase version
+                             report.BIRTHDATE;            // uppercase version
+
+    if (!possibleBirthDate) {
+      return null;
+    }
+
+    const birthDate = new Date(possibleBirthDate);
+    return isNaN(birthDate.getTime()) ? null : birthDate;
+  };
+
+  // Function to calculate age at fixture date
+  const calculateAgeAtFixture = () => {
+    const fixtureDate = new Date(report.fixture_date);
+    const birthDate = getBirthDate();
+
+    if (!birthDate) {
+      return null;
+    }
+
+    const ageInMs = fixtureDate.getTime() - birthDate.getTime();
+    const ageInYears = Math.floor(ageInMs / (365.25 * 24 * 60 * 60 * 1000));
+
+    return ageInYears;
+  };
+
+  // Function to format birth date with age
+  const formatBirthDateWithAge = () => {
+    const birthDate = getBirthDate();
+    const calculatedAge = calculateAgeAtFixture();
+    const reportAge = report.age; // Use age from report if available
+
+    if (birthDate) {
+      // If we have birth date, show it with calculated age
+      const formattedDate = birthDate.toLocaleDateString('en-GB');
+      return calculatedAge !== null ? `${formattedDate} (${calculatedAge})` : formattedDate;
+    } else if (reportAge) {
+      // If we have age from report but no birth date, just show age
+      return `Age: ${reportAge}`;
+    } else {
+      return 'N/A';
+    }
+  };
 
   const handleExportPDF = async () => {
     try {
@@ -86,51 +169,14 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         // Wait for layout to settle after CSS changes
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Capture the modal content with optimized settings for full content
+        // Capture the modal content with true-to-platform settings
         const canvas = await html2canvas(modalContentRef.current, {
-          scale: 2.5, // Balanced scale for quality and file size
+          scale: 1.0, // Use 1:1 scale to match platform appearance exactly
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
-          // Remove fixed dimensions to capture full content
-          onclone: (clonedDoc) => {
-            // Ensure the PDF styles are applied in the cloned document
-            const modalBody = clonedDoc.querySelector('.modal-body');
-            if (modalBody) {
-              (modalBody as HTMLElement).style.width = '900px';
-              (modalBody as HTMLElement).style.maxWidth = 'none';
-              (modalBody as HTMLElement).style.minHeight = '1200px';
-              (modalBody as HTMLElement).style.overflow = 'visible';
-              (modalBody as HTMLElement).style.padding = '20px';
-              (modalBody as HTMLElement).style.boxSizing = 'border-box';
-            }
-
-            // Force apply performance score styling directly
-            const performanceScore = clonedDoc.querySelector('.performance-score-large');
-            if (performanceScore) {
-              (performanceScore as HTMLElement).style.fontSize = '60px';
-              (performanceScore as HTMLElement).style.padding = '18px 30px';
-              (performanceScore as HTMLElement).style.fontWeight = '700';
-              (performanceScore as HTMLElement).style.lineHeight = '1';
-              (performanceScore as HTMLElement).style.display = 'inline-block';
-              (performanceScore as HTMLElement).style.minWidth = '120px';
-            }
-
-            // Force apply better text sizing for all content
-            const allText = clonedDoc.querySelectorAll('p, span:not(.performance-score-large), small');
-            allText.forEach(element => {
-              (element as HTMLElement).style.fontSize = '16px';
-              (element as HTMLElement).style.lineHeight = '1.4';
-            });
-
-            // Force apply chart container sizing
-            const chartContainers = clonedDoc.querySelectorAll('[style*="480px"]');
-            chartContainers.forEach(container => {
-              (container as HTMLElement).style.width = '460px';
-              (container as HTMLElement).style.height = '460px';
-            });
-          }
+          // Preserve original platform styling - no forced modifications
         });
 
         // Create PDF in A4 portrait format
@@ -143,7 +189,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         const imgData = canvas.toDataURL('image/jpeg', 0.95); // High quality JPEG for smaller file size
         const pdfWidth = 210; // A4 portrait width in mm
         const pdfHeight = 297; // A4 portrait height in mm
-        const margin = 5; // Minimal margins for maximum content space
+        const margin = 2; // Minimal margins for maximum content space
 
         // Calculate dimensions with proper aspect ratio for A4 page
         const availableWidth = pdfWidth - (margin * 2);
@@ -164,9 +210,9 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
           imgWidth = availableHeight * imgAspectRatio;
         }
 
-        // Center the image on the page
+        // Center horizontally, align to top with minimal margin
         const xOffset = (pdfWidth - imgWidth) / 2;
-        const yOffset = (pdfHeight - imgHeight) / 2;
+        const yOffset = margin;
 
         pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
 
@@ -189,9 +235,9 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   const getAttributeGroupColor = (attributeName: string) => {
     // Define attribute groups and their colors - Professional Teal/Coral/Purple palette
     const groupColors = {
-      'PHYSICAL / PSYCHOLOGICAL': '#20B2AA', // Teal - calm, balanced
-      'ATTACKING': '#FF7F7F', // Coral - energetic, forward-thinking  
-      'DEFENDING': '#9370DB', // Purple - strong, protective
+      'PHYSICAL / PSYCHOLOGICAL': '#009FB7', // Light blue   - calm, balanced
+      'ATTACKING': '#9370DB', // Purple - energetic, forward-thinking
+      'DEFENDING': '#7FC8F8', // Brown - strong, protective
     };
     
     // Map attributes to groups (this would ideally come from backend)
@@ -272,7 +318,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
   };
 
   const sortedAttributes = Object.entries(report.individual_attribute_scores)
-    .filter(([, value]) => (value as number) > 0) // Filter out 0 scores from polar chart
+    // Include all attributes, including those with 0 scores
     .sort(([a], [b]) => {
       const groupA = getAttributeGroup(a);
       const groupB = getAttributeGroup(b);
@@ -282,12 +328,24 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
       }
       return a.localeCompare(b);
     });
-  
+
   const chartLabels = sortedAttributes.map(([label]) => label);
-  const chartData = sortedAttributes.map(([, value]) => value);
-  const sortedColors = sortedAttributes.map(([attributeName]) => getAttributeGroupColor(attributeName));
+  const chartData = sortedAttributes.map(([, value]) => {
+    // Give zero-scored attributes a large value (10) so they appear as prominent grey segments
+    return (value as number) === 0 ? 10 : value;
+  });
+
+  // Keep track of actual values for tooltip display
+  const actualValues = sortedAttributes.map(([, value]) => value as number);
+  const sortedColors = sortedAttributes.map(([attributeName, value]) =>
+    (value as number) === 0 ? '#e0e0e0' : getAttributeGroupColor(attributeName)
+  );
   
   const sortedBorderColors = sortedColors.map(color => {
+    // Keep light grey for zero attributes, darken others
+    if (color === '#e0e0e0') {
+      return '#c0c0c0'; // Slightly darker grey for border
+    }
     // Simple darkening: convert hex to RGB, reduce values, convert back to hex
     let r = parseInt(color.slice(1, 3), 16);
     let g = parseInt(color.slice(3, 5), 16);
@@ -338,7 +396,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         pointLabels: {
           display: true,
           font: {
-            size: 8, // Smaller font for A4 printing
+            size: 12, // Larger font for better readability
             weight: 'bold'
           },
           color: '#212529',
@@ -376,20 +434,26 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
             return [
               {
                 text: 'Physical/Psychological',
-                fillStyle: '#20B2AA',
-                strokeStyle: '#189a96',
+                fillStyle: '#009FB7',
+                strokeStyle: '#009FB7',
                 lineWidth: 2,
               },
               {
                 text: 'Attacking', 
-                fillStyle: '#FF7F7F',
-                strokeStyle: '#e66666',
+                fillStyle: '#9370DB',
+                strokeStyle: '#9370DB',
                 lineWidth: 2,
               },
               {
                 text: 'Defending',
-                fillStyle: '#9370DB',
-                strokeStyle: '#7b5cb8',
+                fillStyle: '#7FC8F8',
+                strokeStyle: '#7FC8F8',
+                lineWidth: 2,
+              },
+              {
+                text: 'Attribute not scored',
+                fillStyle: '#e0e0e0',
+                strokeStyle: '#e0e0e0',
                 lineWidth: 2,
               }
             ];
@@ -402,20 +466,34 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
           weight: 'bold',
           size: 12,
         },
-        formatter: (value: any) => {
-          return value;
+        formatter: (value: any, context: any) => {
+          // Show actual score (0) for zero-scored attributes, not display value (10)
+          const actualValue = actualValues[context.dataIndex];
+          return actualValue;
         },
       },
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            // Show actual score (0) for zero-scored attributes, not display value (10)
+            const actualValue = actualValues[context.dataIndex];
+            return `${context.label}: ${actualValue}`;
+          }
+        }
+      }
     },
   };
 
   // Red-green gradient color functions for scoring
+  /*** REMOVE
   const getPerformanceScoreColor = (score: number) => {
     // Scale from 1-10 to red-green gradient
     const red = Math.max(0, 255 - (score - 1) * 28.33);
     const green = Math.min(255, (score - 1) * 28.33);
     return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
+
+  */
 
   const getPerformanceScoreVariant = (score: number) => {
     if (score === 10) return 'gold';
@@ -425,12 +503,14 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
     return 'danger'; // 1-3 red
   };
 
+  /** REMOVE
   const getAttributeScoreColor = (score: number) => {
     // Scale from 0-100 to red-green gradient
     const red = Math.max(0, 255 - score * 2.55);
     const green = Math.min(255, score * 2.55);
     return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
+  */
 
   const getAttributeScoreVariant = (score: number) => {
     if (score === 100) return 'gold';
@@ -506,7 +586,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                   </Col>
                   <Col md={6}>
                     <p><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
-                    <p><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
+                    <p><strong>Match:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
                     <p><strong>Flag Type:</strong>
                       <span className="ms-2">
                         {getFlagBadge(report.flag_category || 'Not specified')}
@@ -552,28 +632,33 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
           <>
             {/* Report Overview + Performance Score Split Row */}
             <Row className="mb-3">
-              <Col md={8}>
+              <Col md={9}>
                 <Card className="h-100">
                   <Card.Header className="py-2">
                     <h6 className="mb-0" style={{ fontSize: '14px' }}>📊 Report Overview</h6>
                   </Card.Header>
                   <Card.Body className="py-2">
                     <Row style={{ fontSize: '11px' }}>
-                      <Col md={6}>
-                        <p className="mb-1"><strong>Player:</strong> {report.player_name} | <strong>Squad:</strong> {playerData?.current_team || playerData?.squad || 'Loading...'}</p>
-                        <p className="mb-1"><strong>Position:</strong> {report.position_played || 'Not specified'} | <strong>Formation:</strong> {report.formation || 'Not specified'}</p>
-                        <p className="mb-0"><strong>Build:</strong> {report.build} | <strong>Height:</strong> {report.height}</p>
+                      <Col md={4}>
+                        <p className="mb-1"><strong>Player:</strong> {report.player_name}</p>
+                        <p className="mb-1"><strong>Team:</strong> {playerData?.squad_name || report.home_squad_name || report.away_squad_name || 'N/A'}</p>
+                        <p className="mb-0"><strong>Position:</strong> {report.position_played || 'Not specified'} | <strong>Formation:</strong> {report.formation || 'Not specified'}</p>
                       </Col>
-                      <Col md={6}>
+                      <Col md={4}>
+                        <p className="mb-1"><strong>Date of Birth (Age):</strong> {formatBirthDateWithAge()}</p>
+                        <p className="mb-1"><strong>Build:</strong> {report.build}</p>
+                        <p className="mb-0"><strong>Height:</strong> {report.height}</p>
+                      </Col>
+                      <Col md={4}>
                         <p className="mb-1"><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
-                        <p className="mb-1"><strong>Report Date:</strong> {new Date(report.created_at).toLocaleDateString('en-GB')} | <strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
-                        <p className="mb-0"><strong>Scout:</strong> {report.scout_name}</p>
+                        <p className="mb-1"><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')} | <strong>Report Date:</strong> {new Date(report.created_at).toLocaleDateString('en-GB')}</p>
+                        <p className="mb-0"><strong>Scout:</strong> {report.scout_name} | <strong>Live or Video:</strong> {report.source_type || report.viewing_method || report.scouting_type || 'Live'}</p>
                       </Col>
                     </Row>
                   </Card.Body>
                 </Card>
               </Col>
-              <Col md={4}>
+              <Col md={3}>
                 <Card className="h-100">
                   <Card.Header className="py-2">
                     <h6 className="mb-0" style={{ fontSize: '14px' }}>🏆 Performance Score</h6>
@@ -602,16 +687,16 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                     {/* Split Layout: Chart Left, Cards Right */}
                     <Row>
                       {/* Left Column: Polar Chart - Increased size */}
-                      <Col md={7}>
-                        <div style={{ height: '500px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <div style={{ width: '480px', height: '480px' }}>
+                      <Col md={9}>
+                        <div style={{ height: '700px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ width: '680px', height: '680px' }}>
                             <PolarArea data={polarAreaChartData} options={polarAreaChartOptions} />
                           </div>
                         </div>
                       </Col>
 
-                      {/* Right Column: Metrics + Strengths & Weaknesses Cards - Slightly smaller */}
-                      <Col md={5} className="d-flex flex-column">
+                      {/* Right Column: Metrics + Strengths & Weaknesses Cards - Same size as performance section */}
+                      <Col md={3} className="d-flex flex-column">
                         {/* Attribute Metrics Section */}
                         <div className="text-center mb-3 attribute-metrics">
                           <div className="d-flex justify-content-center gap-4">
@@ -635,7 +720,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                         </div>
 
                         {/* Strengths Card */}
-                        <Card className="mb-3 flex-fill" style={{ backgroundColor: '#f0f9f0', border: '1px solid #d4edda' }}>
+                        <Card className="mb-3 flex-fill ms-3" style={{ backgroundColor: '#f0f9f0', border: '1px solid #d4edda' }}>
                           <Card.Header className="py-2 px-3" style={{ backgroundColor: '#e8f5e8', borderBottom: '1px solid #d4edda' }}>
                             <strong style={{ fontSize: '12px', color: '#155724' }}>✅ Strengths</strong>
                           </Card.Header>
@@ -655,7 +740,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                         </Card>
 
                         {/* Areas for Improvement Card */}
-                        <Card className="flex-fill" style={{ backgroundColor: '#fef8f0', border: '1px solid #fce4b3' }}>
+                        <Card className="flex-fill ms-3" style={{ backgroundColor: '#fef8f0', border: '1px solid #fce4b3' }}>
                           <Card.Header className="py-2 px-3" style={{ backgroundColor: '#fcf4e6', borderBottom: '1px solid #fce4b3' }}>
                             <strong style={{ fontSize: '12px', color: '#8b5a00' }}>⚠️ Areas for Improvement</strong>
                           </Card.Header>

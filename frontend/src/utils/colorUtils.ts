@@ -16,7 +16,7 @@ export const getPerformanceScoreColor = (score: number): string => {
   if (score <= 4) return '#f97316'; // Orange-ish
   if (score <= 5) return '#f59e0b'; // Amber
   if (score <= 6) return '#84cc16'; // Light green
-  if (score <= 7) return '#22c55e'; // Green
+  if (score <= 7) return '#1ebc58ff'; // Green
   if (score <= 8) return '#16a34a'; // Darker green
   if (score <= 9) return '#15803d'; // Dark green
   return '#166534'; // Darkest green for 10
@@ -32,13 +32,13 @@ export const getPerformanceScoreColor = (score: number): string => {
 export const getAttributeScoreColor = (score: number): string => {
   if (score <= 0) return '#ef4444'; // Red for invalid scores
 
-  if (score <= 10) return '#dc2626'; // Darkest red
-  if (score <= 20) return '#ef4444'; // Red
-  if (score <= 30) return '#f87171'; // Light red
-  if (score <= 40) return '#f59e0b'; // Amber
-  if (score <= 50) return '#fbbf24'; // Light amber
+  if (score <= 10) return '#991b1b'; // Darkest red
+  if (score <= 20) return '#dc2626'; // Red
+  if (score <= 30) return '#ef4444'; // Light red
+  if (score <= 40) return '#f97316'; // Amber
+  if (score <= 50) return '#f59e0b'; // Light amber
   if (score <= 60) return '#84cc16'; // Light green
-  if (score <= 70) return '#22c55e'; // Green
+  if (score <= 70) return '#1ebc58ff'; // Green
   if (score <= 80) return '#16a34a'; // Darker green
   if (score <= 90) return '#15803d'; // Dark green
   return '#166534'; // Darkest green for 90-100
