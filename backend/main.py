@@ -7,6 +7,11 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# Passlib debugging
+passlib_log = logging.getLogger("passlib")
+passlib_log.addHandler(logging.StreamHandler())
+passlib_log.setLevel(logging.DEBUG)
+
 from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
