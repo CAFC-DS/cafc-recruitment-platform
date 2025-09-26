@@ -185,8 +185,8 @@ if ENVIRONMENT == "production":
         CORSMiddleware,
         allow_origins=cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Accept"],
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 else:
     # Development CORS - more permissive
@@ -304,24 +304,23 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 120
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-def verify_password(plain_password, hashed_password):
-    # Bcrypt has a 72 byte limit, truncate if necessary
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         password_bytes = plain_password.encode('utf-8')
         if len(password_bytes) > 72:
-            print(f"Password too long ({len(password_bytes)} bytes), truncating to 72 bytes")
-            plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
-        print("Using updated verify_password function with bcrypt length protection")
-        return pwd_context.verify(plain_password, hashed_password)
+            password_bytes = password_bytes[:72]  # keep as bytes, do NOT decode
+        # passlib's verify can accept bytes
+        return pwd_context.verify(password_bytes, hashed_password)
     except Exception as e:
         print(f"Password verification error: {e}")
         raise e
 
-def get_password_hash(password):
-    # Bcrypt has a 72 byte limit, truncate if necessary
-    if len(password.encode('utf-8')) > 72:
-        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    return pwd_context.hash(password)
+def get_password_hash(password: str) -> str:
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    return pwd_context.hash(password_bytes)
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
