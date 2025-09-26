@@ -169,17 +169,27 @@ async def test_snowflake_connection():
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,https://cafc-recruitment-platform.vercel.app").split(",")
 
+# Debug logging for CORS configuration
+print(f"=== CORS Configuration Debug ===")
+print(f"Environment: {ENVIRONMENT}")
+print(f"Raw CORS_ORIGINS env var: {os.getenv('CORS_ORIGINS', 'NOT SET - using defaults')}")
+print(f"Parsed CORS Origins: {[origin.strip() for origin in CORS_ORIGINS]}")
+print(f"===============================")
+
 if ENVIRONMENT == "production":
     # Production CORS - more restrictive
+    cors_origins = [origin.strip() for origin in CORS_ORIGINS]
+    print(f"Production CORS enabled with origins: {cors_origins}")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[origin.strip() for origin in CORS_ORIGINS],
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 else:
-    # Development CORS - more permissive  
+    # Development CORS - more permissive
+    print("Development CORS enabled with localhost origins")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],
