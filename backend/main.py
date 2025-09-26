@@ -169,12 +169,13 @@ async def test_snowflake_connection():
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,https://cafc-recruitment-platform.vercel.app").split(",")
 
-# Debug logging for CORS configuration
-print(f"=== CORS Configuration Debug ===")
+# Debug logging for CORS configuration and version
+print(f"=== CAFC Recruitment Platform Debug ===")
+print(f"Version: BCRYPT_FIX_v2 - 2025-09-26")
 print(f"Environment: {ENVIRONMENT}")
 print(f"Raw CORS_ORIGINS env var: {os.getenv('CORS_ORIGINS', 'NOT SET - using defaults')}")
 print(f"Parsed CORS Origins: {[origin.strip() for origin in CORS_ORIGINS]}")
-print(f"===============================")
+print(f"========================================")
 
 if ENVIRONMENT == "production":
     # Production CORS - more restrictive
@@ -305,9 +306,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def verify_password(plain_password, hashed_password):
     # Bcrypt has a 72 byte limit, truncate if necessary
-    if len(plain_password.encode('utf-8')) > 72:
-        plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) > 72:
+            print(f"Password too long ({len(password_bytes)} bytes), truncating to 72 bytes")
+            plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+        print("Using updated verify_password function with bcrypt length protection")
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        print(f"Password verification error: {e}")
+        raise e
 
 def get_password_hash(password):
     # Bcrypt has a 72 byte limit, truncate if necessary
