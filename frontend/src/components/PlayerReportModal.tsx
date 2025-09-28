@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Modal, Row, Col, Badge, Card, Button } from 'react-bootstrap';
-import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
+import { getPerformanceScoreColor, getAttributeScoreColor, getAverageAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 import axiosInstance from '../axiosInstance';
 import { PolarArea } from 'react-chartjs-2';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
@@ -163,58 +163,70 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         if (modalBackdrop) (modalBackdrop as HTMLElement).style.display = 'none';
         if (modalFooter) (modalFooter as HTMLElement).style.display = 'none';
 
-        // Apply PDF optimization class and set dimensions for A4 landscape
-        modalContentRef.current.className += ' pdf-export-optimized';
+        // Wait for layout to settle before capture
+        await new Promise(resolve => setTimeout(resolve, 200));
 
-        // Wait for layout to settle after CSS changes
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // Capture the modal content with true-to-platform settings
+        // Capture the modal content with original settings
         const canvas = await html2canvas(modalContentRef.current, {
-          scale: 1.0, // Use 1:1 scale to match platform appearance exactly
+          scale: 2.0, // Higher quality capture
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false,
-          // Preserve original platform styling - no forced modifications
         });
 
-        // Create PDF in A4 portrait format
+        // Create PDF based on the actual content dimensions to avoid stretching
+        const imgData = canvas.toDataURL('image/png', 1.0); // High quality PNG
+
+        // Calculate PDF dimensions based on canvas aspect ratio
+        const canvasAspectRatio = canvas.width / canvas.height;
+        let pdfWidth, pdfHeight;
+
+        if (canvasAspectRatio > 1) {
+          // Landscape oriented content
+          pdfWidth = 297; // A4 landscape width
+          pdfHeight = 210; // A4 landscape height
+        } else {
+          // Portrait oriented content
+          pdfWidth = 210; // A4 portrait width
+          pdfHeight = 297; // A4 portrait height
+        }
+
         const pdf = new jsPDF({
-          orientation: 'portrait',
+          orientation: canvasAspectRatio > 1 ? 'landscape' : 'portrait',
           unit: 'mm',
           format: 'a4'
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95); // High quality JPEG for smaller file size
-        const pdfWidth = 210; // A4 portrait width in mm
-        const pdfHeight = 297; // A4 portrait height in mm
-        const margin = 2; // Minimal margins for maximum content space
-
-        // Calculate dimensions with proper aspect ratio for A4 page
+        // Use minimal margins and scale up to fill more of the page
+        const margin = 3;
         const availableWidth = pdfWidth - (margin * 2);
         const availableHeight = pdfHeight - (margin * 2);
 
-        const imgAspectRatio = canvas.width / canvas.height;
-        const availableAspectRatio = availableWidth / availableHeight;
+        // Convert canvas pixels to mm (96 DPI standard)
+        const pixelsToMm = 25.4 / 96 / 2; // Divided by 2 because we used scale 2.0
+        const canvasWidthMm = canvas.width * pixelsToMm;
+        const canvasHeightMm = canvas.height * pixelsToMm;
 
-        let imgWidth, imgHeight;
+        // Calculate scale to fit the content better, prioritizing height usage
+        const scaleToFitWidth = availableWidth / canvasWidthMm;
+        const scaleToFitHeight = availableHeight / canvasHeightMm;
 
-        if (imgAspectRatio > availableAspectRatio) {
-          // Image is wider than available space - fit to width
-          imgWidth = availableWidth;
-          imgHeight = availableWidth / imgAspectRatio;
-        } else {
-          // Image is taller than available space - fit to height
-          imgHeight = availableHeight;
-          imgWidth = availableHeight * imgAspectRatio;
-        }
+        // Use the larger scale that still fits to minimize margins
+        const scale = Math.min(scaleToFitWidth, scaleToFitHeight);
 
-        // Center horizontally, align to top with minimal margin
+        // If content is much shorter than page, scale it up more aggressively
+        const heightRatio = canvasHeightMm / availableHeight;
+        const adjustedScale = heightRatio < 0.7 ? scale * 1.3 : scale;
+
+        const imgWidth = canvasWidthMm * adjustedScale;
+        const imgHeight = canvasHeightMm * adjustedScale;
+
+        // Center horizontally and vertically with slight bias toward top
         const xOffset = (pdfWidth - imgWidth) / 2;
-        const yOffset = margin;
+        const yOffset = margin + (availableHeight - imgHeight) * 0.3; // 30% from top to balance margins
 
-        pdf.addImage(imgData, 'JPEG', xOffset, yOffset, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
 
         // Save the PDF
         const fileName = `${report.player_name}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -337,14 +349,32 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
 
   // Keep track of actual values for tooltip display
   const actualValues = sortedAttributes.map(([, value]) => value as number);
+
+  // Function to convert score to level description
+  const getScoreLevel = (score: number) => {
+    if (score === 0) return '0';
+    switch (score) {
+      case 10: return 'Mid Prem & Above';
+      case 9: return 'Bottom Prem';
+      case 8: return 'Top Champ';
+      case 7: return 'Average Champ';
+      case 6: return 'Top L1';
+      case 5: return 'Average L1';
+      case 4: return 'Top L2';
+      case 3: return 'Average L2';
+      case 2: return 'National League';
+      case 1: return 'Step 2 & Below';
+      default: return score.toString();
+    }
+  };
   const sortedColors = sortedAttributes.map(([attributeName, value]) =>
-    (value as number) === 0 ? '#e0e0e0' : getAttributeGroupColor(attributeName)
+    (value as number) === 0 ? 'rgba(224, 224, 224, 0.5)' : getAttributeGroupColor(attributeName)
   );
   
   const sortedBorderColors = sortedColors.map(color => {
     // Keep light grey for zero attributes, darken others
-    if (color === '#e0e0e0') {
-      return '#c0c0c0'; // Slightly darker grey for border
+    if (color.includes('rgba(224, 224, 224')) {
+      return 'rgba(192, 192, 192, 0.5)'; // Slightly darker grey for border with transparency
     }
     // Simple darkening: convert hex to RGB, reduce values, convert back to hex
     let r = parseInt(color.slice(1, 3), 16);
@@ -452,8 +482,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
               },
               {
                 text: 'Attribute not scored',
-                fillStyle: '#e0e0e0',
-                strokeStyle: '#e0e0e0',
+                fillStyle: 'rgba(224, 224, 224, 0.5)',
+                strokeStyle: 'rgba(192, 192, 192, 0.8)',
                 lineWidth: 2,
               }
             ];
@@ -469,7 +499,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
         formatter: (value: any, context: any) => {
           // Show actual score (0) for zero-scored attributes, not display value (10)
           const actualValue = actualValues[context.dataIndex];
-          return actualValue;
+          return actualValue === 0 ? 'N/A' : actualValue;
         },
       },
       tooltip: {
@@ -477,7 +507,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
           label: (context: any) => {
             // Show actual score (0) for zero-scored attributes, not display value (10)
             const actualValue = actualValues[context.dataIndex];
-            return `${context.label}: ${actualValue}`;
+            const levelDescription = getScoreLevel(actualValue);
+            return actualValue === 0 ? 'N/A' : `${actualValue}: ${levelDescription}`;
           }
         }
       }
@@ -640,19 +671,19 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                   <Card.Body className="py-2">
                     <Row style={{ fontSize: '11px' }}>
                       <Col md={4}>
-                        <p className="mb-1"><strong>Player:</strong> {report.player_name}</p>
-                        <p className="mb-1"><strong>Team:</strong> {playerData?.squad_name || report.home_squad_name || report.away_squad_name || 'N/A'}</p>
-                        <p className="mb-0"><strong>Position:</strong> {report.position_played || 'Not specified'} | <strong>Formation:</strong> {report.formation || 'Not specified'}</p>
+                        <p className="mb-1"><strong>Player | Team:</strong> {report.player_name} | {playerData?.squad_name || report.home_squad_name || report.away_squad_name || 'N/A'}</p>
+                        <p className="mb-1"><strong>Date of Birth | Age:</strong> {formatBirthDateWithAge()}</p>
+                        <p className="mb-0"><strong>Build | Height:</strong> {report.build || 'N/A'} | {report.height || 'N/A'}</p>
                       </Col>
                       <Col md={4}>
-                        <p className="mb-1"><strong>Date of Birth (Age):</strong> {formatBirthDateWithAge()}</p>
-                        <p className="mb-1"><strong>Build:</strong> {report.build}</p>
-                        <p className="mb-0"><strong>Height:</strong> {report.height}</p>
+                        <p className="mb-1"><strong>Position | Formation:</strong> {report.position_played || 'Not specified'} | {report.formation || 'Not specified'}</p>
+                        <p className="mb-1"><strong>Build | Height:</strong> {report.build || 'N/A'} | {report.height || 'N/A'}</p>
+                        <p className="mb-0"><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
                       </Col>
                       <Col md={4}>
-                        <p className="mb-1"><strong>Fixture:</strong> {report.home_squad_name} vs {report.away_squad_name}</p>
-                        <p className="mb-1"><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')} | <strong>Report Date:</strong> {new Date(report.created_at).toLocaleDateString('en-GB')}</p>
-                        <p className="mb-0"><strong>Scout:</strong> {report.scout_name} | <strong>Live or Video:</strong> {report.source_type || report.viewing_method || report.scouting_type || 'Live'}</p>
+                        <p className="mb-1"><strong>Fixture Date:</strong> {new Date(report.fixture_date).toLocaleDateString('en-GB')}</p>
+                        <p className="mb-1"><strong>Report Date:</strong> {new Date(report.created_at).toLocaleDateString('en-GB')}</p>
+                        <p className="mb-0"><strong>Scout:</strong> {report.scout_name} | {report.source_type || report.viewing_method || report.scouting_type || 'Live'}</p>
                       </Col>
                     </Row>
                   </Card.Body>
@@ -702,7 +733,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({ show, onHide, rep
                           <div className="d-flex justify-content-center gap-4">
                             <div className="text-center">
                               <div className="mb-1">
-                                <span className="badge" style={{ backgroundColor: getAttributeScoreColor(report.average_attribute_score), color: 'white', fontSize: '14px', padding: '8px 12px', fontWeight: 'bold' }}>
+                                <span className="badge" style={{ backgroundColor: getAverageAttributeScoreColor(report.average_attribute_score), color: 'white', fontSize: '14px', padding: '8px 12px', fontWeight: 'bold' }}>
                                   {report.average_attribute_score}
                                 </span>
                               </div>

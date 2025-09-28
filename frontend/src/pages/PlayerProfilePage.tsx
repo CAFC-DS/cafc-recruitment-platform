@@ -1,11 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Badge, Button, Table, Tab, Tabs, Form, Alert, Spinner, Modal, ProgressBar } from 'react-bootstrap';
+import { Container, Row, Col, Card, Badge, Button, Form, Alert, Spinner, Modal, ProgressBar } from 'react-bootstrap';
+import { PolarArea } from 'react-chartjs-2';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import {
+  Chart as ChartJS,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import axiosInstance from '../axiosInstance';
 import PlayerReportModal from '../components/PlayerReportModal';
 import IntelReportModal from '../components/IntelReportModal';
 import PitchView from '../components/PitchView';
 import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
+
+ChartJS.register(
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+  ArcElement,
+  ChartDataLabels
+);
 
 interface PlayerProfile {
   player_id: number;
@@ -82,7 +105,13 @@ const PlayerProfilePage: React.FC = () => {
   const [addingNote, setAddingNote] = useState(false);
 
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  
+
+  // Position filter for radar charts
+  const [selectedPosition, setSelectedPosition] = useState<string>('');
+  const [positionAttributes, setPositionAttributes] = useState<string[]>([]);
+  const [positionAttributeScores, setPositionAttributeScores] = useState<{ [key: string]: number }>({});
+  const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+
   const getStatusBadge = (status: string) => {
     return <span className="badge badge-neutral-grey">🔍 Scouted</span>;
   };
@@ -108,6 +137,217 @@ const PlayerProfilePage: React.FC = () => {
     return `rgb(${Math.round(red)}, ${Math.round(green)}, 0)`;
   };
 
+  // Group-based color mapping using same colors as PlayerReportModal
+  const getAttributeGroupColor = (groupName: string) => {
+    // Define attribute groups and their colors - Professional Teal/Purple/Blue palette
+    const groupColors = {
+      'PHYSICAL / PSYCHOLOGICAL': '#009FB7', // Light blue - calm, balanced
+      'ATTACKING': '#9370DB', // Purple - energetic, forward-thinking
+      'DEFENDING': '#7FC8F8', // Light blue - strong, protective
+    };
+
+    // Map common group names to our color categories
+    const normalizedName = groupName.toUpperCase();
+    if (normalizedName.includes('PHYSICAL') || normalizedName.includes('MENTAL') || normalizedName.includes('PSYCHOLOGICAL')) {
+      return groupColors['PHYSICAL / PSYCHOLOGICAL'];
+    }
+    if (normalizedName.includes('ATTACKING') || normalizedName.includes('TECHNICAL') || normalizedName.includes('OFFENSIVE')) {
+      return groupColors['ATTACKING'];
+    }
+    if (normalizedName.includes('DEFENDING') || normalizedName.includes('DEFENSIVE')) {
+      return groupColors['DEFENDING'];
+    }
+
+    // Default fallback color
+    return '#6c757d';
+  };
+
+  // Position options from ScoutingAssessmentModal
+  const playerPositions = ["GK", "RB", "RWB", "RCB(3)", "RCB(2)", "CCB(3)", "LCB(2)", "LCB(3)", "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW", "Target Man CF", "In Behind CF"];
+
+  // Get available positions from scout reports
+  const getAvailablePositions = () => {
+    if (!profile?.scout_reports) return [];
+    const positions = profile.scout_reports
+      .map(report => report.position_played)
+      .filter(pos => pos && pos.trim() !== '')
+      .filter((pos, index, arr) => arr.indexOf(pos) === index);
+    return positions;
+  };
+
+  // Handle position change like ScoutingAssessmentModal
+  const handlePositionChange = async (position: string) => {
+    setSelectedPosition(position);
+    if (position) {
+      try {
+        const response = await axiosInstance.get(`/attributes/${position}`);
+        setPositionAttributes(response.data);
+
+        // Calculate average scores for this position's attributes
+        const positionScores: { [key: string]: number } = {};
+
+        if (attributes && attributes.attribute_groups) {
+          // Flatten all attributes from all groups to find matches
+          const allAttributes = Object.values(attributes.attribute_groups).flat();
+
+          response.data.forEach((attr: string) => {
+            const matchingAttribute = allAttributes.find((a: AttributeData) => a.name === attr);
+            positionScores[attr] = matchingAttribute ? matchingAttribute.average_score : 0;
+          });
+        }
+
+        setPositionAttributeScores(positionScores);
+      } catch (error) {
+        console.error('Error fetching attributes:', error);
+        setPositionAttributes([]);
+        setPositionAttributeScores({});
+      }
+    } else {
+      setPositionAttributes([]);
+      setPositionAttributeScores({});
+    }
+  };
+
+
+  // Helper functions for attribute grouping (copied from PlayerReportModal)
+  const getAttributeGroup = (attributeName: string) => {
+    const physicalPsychological = [
+      'Athleticism & Pace', 'Stamina & Work Rate', 'Strength & Physicality',
+      'Size & Physicality', 'Proactive', 'Movement',
+      'Communication, Leadership & Organisation', 'Technical Ability'
+    ];
+
+    const attacking = [
+      'Distribution', 'Attacking Transitions & Impact', 'Crossing',
+      'Ball Progression', 'Composure', 'Starting & Building Attacks',
+      'Receiving & Ball Carrying', 'Attacking Movement', 'Attacking Creativity',
+      'Finishing', 'Ball Carrying', 'Ball Carrying & Attacking 1v1',
+      'Final Third Movement', 'Chance Creation', 'Link Play / Ball Retention',
+      'Hold-Up Play / Ball Retention', 'Aerial Ability',
+      'Distribution - Short / Building Attacks', 'Distribution – Long / Starting Attacks'
+    ];
+
+    const defending = [
+      'Aerial & Defending The Box', 'Defensive Positioning & Anticipation',
+      'Defending In Wide Areas', 'Defensive Transitions & Recovery',
+      'Aggressive & Front Footed', 'Defensive Positioning',
+      'Anticipation / Sense of Danger', 'Defending The Box',
+      'Starting Position', 'Command of The Box', 'Shot Stopping', 'Handling',
+      'Defensive Transitions & Impact'
+    ];
+
+    if (physicalPsychological.some(attr => attributeName.includes(attr))) {
+      return { group: 'PHYSICAL / PSYCHOLOGICAL', order: 1 };
+    } else if (attacking.some(attr => attributeName.includes(attr))) {
+      return { group: 'ATTACKING', order: 2 };
+    } else if (defending.some(attr => attributeName.includes(attr))) {
+      return { group: 'DEFENDING', order: 3 };
+    }
+    return { group: 'PHYSICAL / PSYCHOLOGICAL', order: 1 }; // Default
+  };
+
+  const getPositionAttributeGroupColor = (attributeName: string) => {
+    // Group-based color mapping using exact colors from PlayerReportModal
+    const groupColors: { [key: string]: string } = {
+      'PHYSICAL / PSYCHOLOGICAL': '#009FB7', // Light blue   - calm, balanced
+      'ATTACKING': '#9370DB', // Purple - energetic, forward-thinking
+      'DEFENDING': '#7FC8F8', // Brown - strong, protective
+    };
+
+    const group = getAttributeGroup(attributeName);
+    return groupColors[group.group] || '#009FB7'; // Fallback to default color
+  };
+
+  // Function to convert score to level description (from PlayerReportModal)
+  const getScoreLevel = (score: number) => {
+    if (score === 0) return '0';
+    switch (score) {
+      case 10: return 'Mid Prem & Above';
+      case 9: return 'Bottom Prem';
+      case 8: return 'Top Champ';
+      case 7: return 'Average Champ';
+      case 6: return 'Top L1';
+      case 5: return 'Average L1';
+      case 4: return 'Top L2';
+      case 3: return 'Average L2';
+      case 2: return 'National League';
+      case 1: return 'Step 2 & Below';
+      default: return score.toString();
+    }
+  };
+
+  // Get polar area chart data using exact logic from PlayerReportModal
+  const getPolarAreaChartData = (position: string) => {
+    if (!positionAttributes.length || !positionAttributeScores) return null;
+
+    // Sort attributes by group like PlayerReportModal
+    const sortedAttributes = positionAttributes
+      .map(attr => [attr, positionAttributeScores[attr] || 0])
+      .sort(([a], [b]) => {
+        const groupA = getAttributeGroup(a as string);
+        const groupB = getAttributeGroup(b as string);
+        // First sort by group order, then alphabetically within group
+        if (groupA.order !== groupB.order) {
+          return groupA.order - groupB.order;
+        }
+        return (a as string).localeCompare(b as string);
+      });
+
+    const chartLabels = sortedAttributes.map(([label]) => label as string);
+    const chartData = sortedAttributes.map(([, value]) => {
+      // Give zero-scored attributes a large value (10) so they appear as prominent grey segments
+      return (value as number) === 0 ? 10 : value;
+    });
+
+    // Keep track of actual values for tooltip display
+    const actualValues = sortedAttributes.map(([, value]) => value as number);
+
+    const sortedColors = sortedAttributes.map(([attributeName, value]) =>
+      (value as number) === 0 ? 'rgba(224, 224, 224, 0.5)' : getPositionAttributeGroupColor(attributeName as string)
+    );
+
+    const sortedBorderColors = sortedColors.map(color => {
+      // Keep light grey for zero attributes, darken others
+      if (color.includes('rgba(224, 224, 224')) {
+        return 'rgba(192, 192, 192, 0.5)'; // Slightly darker grey for border with transparency
+      }
+      // Simple darkening: convert hex to RGB, reduce values, convert back to hex
+      let r = parseInt(color.slice(1, 3), 16);
+      let g = parseInt(color.slice(3, 5), 16);
+      let b = parseInt(color.slice(5, 7), 16);
+      r = Math.max(0, r - 40);
+      g = Math.max(0, g - 40);
+      b = Math.max(0, b - 40);
+      return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    });
+
+    return {
+      labels: chartLabels,
+      datasets: [{
+        label: 'Attribute Score',
+        data: chartData,
+        backgroundColor: sortedColors,
+        borderColor: sortedBorderColors,
+        borderWidth: 2,
+      }],
+      actualValues // Store actual values for tooltips
+    };
+  };
+
+  // Calculate average performance score from scout reports
+  const calculateAveragePerformanceScore = () => {
+    if (!profile?.scout_reports || profile.scout_reports.length === 0) {
+      return null;
+    }
+
+    const reportsWithScores = profile.scout_reports.filter(report => report.performance_score && report.performance_score > 0);
+    if (reportsWithScores.length === 0) {
+      return null;
+    }
+
+    const total = reportsWithScores.reduce((sum, report) => sum + report.performance_score, 0);
+    return Math.round((total / reportsWithScores.length) * 10) / 10; // Round to 1 decimal place
+  };
 
   useEffect(() => {
     if (actualPlayerId) {
@@ -116,6 +356,17 @@ const PlayerProfilePage: React.FC = () => {
       fetchScoutReports();
     }
   }, [actualPlayerId]);
+
+  // Update available positions when profile changes
+  useEffect(() => {
+    if (profile) {
+      const positions = getAvailablePositions();
+      setAvailablePositions(positions);
+      if (positions.length > 0 && !selectedPosition) {
+        setSelectedPosition(positions[0]); // Default to first position
+      }
+    }
+  }, [profile]);
 
   const fetchPlayerProfile = async () => {
     if (!actualPlayerId) {
@@ -249,10 +500,29 @@ const PlayerProfilePage: React.FC = () => {
                 </div>
                 <h1 className="player-lastname">{profile.last_name}</h1>
                 <div className="player-meta">
-                  <span className="club-badge">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span>
                   <span className="club-name">{profile.squad_name}</span>
-                  <span className="position-age">{profile.position} {profile.age} {profile.age && profile.age > 1 ? 'years old' : 'year old'}</span>
+                  <span className="position-age">{profile.position} | Age: {profile.age} | Born: {profile.birth_date ? new Date(profile.birth_date).toLocaleDateString() : 'N/A'}</span>
                 </div>
+                {(() => {
+                  const avgScore = calculateAveragePerformanceScore();
+                  return avgScore && (
+                    <div className="average-performance-score mt-2">
+                      <span className="score-label">Average Performance:</span>
+                      <span
+                        className="badge score-badge ms-2"
+                        style={{
+                          backgroundColor: getPerformanceScoreColor(avgScore),
+                          color: 'white',
+                          fontWeight: 'bold',
+                          fontSize: '1rem',
+                          padding: '0.4rem 0.8rem'
+                        }}
+                      >
+                        {avgScore}/10
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             
@@ -409,20 +679,32 @@ const PlayerProfilePage: React.FC = () => {
                 
                 return (
                   <Col lg={4} md={6} key={groupName}>
-                    <div className="attribute-section-compact mb-3">
-                      <h5 className="section-title-compact">{groupEmojis[groupName] || '📊'} {groupName.split(' // ')[0]}</h5>
+                    <div className="attribute-section-compact mb-3" style={{
+                      borderLeft: `6px solid ${getAttributeGroupColor(groupName)}`,
+                      backgroundColor: `${getAttributeGroupColor(groupName)}15`,
+                      border: `1px solid ${getAttributeGroupColor(groupName)}40`,
+                      borderRadius: '8px',
+                      padding: '12px'
+                    }}>
+                      <h5 className="section-title-compact" style={{
+                        color: getAttributeGroupColor(groupName),
+                        fontWeight: 'bold',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
+                      }}>
+                        {groupEmojis[groupName] || '📊'} {groupName.split(' // ')[0]}
+                      </h5>
                       <div className="attribute-grid-compact">
                         {groupAttributes.map((attr) => (
                           <div key={attr.name} className="attribute-row-compact">
                             <span className="attribute-name-compact">{attr.name}</span>
                             <div className="dots-compact">
                               {[...Array(10)].map((_, i) => (
-                                <span 
+                                <span
                                   key={i}
                                   className={`dot-mini ${i < Math.round(attr.average_score) ? 'filled' : 'empty'}`}
                                 ></span>
                               ))}
-                              <span className="score-compact">{Math.round(attr.average_score)}</span>
+                              <span className="score-compact">{attr.average_score.toFixed(2)}</span>
                             </div>
                           </div>
                         ))}
@@ -447,209 +729,198 @@ const PlayerProfilePage: React.FC = () => {
           </div>
         )}
 
-        {/* Clean Tabs */}
-        <div className="tabs-section mt-4">
-          <Tabs defaultActiveKey="overview" className="clean-tabs">
-            <Tab eventKey="overview" title="Overview">
-              <div className="tab-content-wrapper">
+        {/* Position-Filterable Radar Charts */}
+        <div className="radar-charts-section mt-4 mb-4">
+          <div className="radar-header mb-3">
+            <h4>📊 Position Analysis</h4>
+            <div className="d-flex align-items-center gap-3">
+              <Form.Select
+                value={selectedPosition}
+                onChange={(e) => handlePositionChange(e.target.value)}
+                style={{ width: '200px' }}
+              >
+                <option value="">Select Position</option>
+                {playerPositions.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </Form.Select>
+              <small className="text-muted">
+                Available positions: {availablePositions.length > 0 ? availablePositions.join(', ') : 'Using default positions'}
+              </small>
+            </div>
+          </div>
+
+            {selectedPosition && (() => {
+              const chartData = getPolarAreaChartData(selectedPosition);
+              if (!chartData || !chartData.labels.length) {
+                return (
+                  <div className="text-center py-4">
+                    <p className="text-muted">No attribute data available for {selectedPosition} position.</p>
+                  </div>
+                );
+              }
+
+              // Exact polar area chart options from PlayerReportModal
+              const polarAreaChartOptions: any = {
+                responsive: true,
+                maintainAspectRatio: false,
+                // Configure for better label alignment
+                rotation: 0, // Start at 3 o'clock position
+                circumference: 360, // Full circle
+                scales: {
+                  r: {
+                    display: true,
+                    min: 0,
+                    max: 10,
+                    ticks: {
+                      display: true, // Show the radial axis numbers
+                      stepSize: 2,
+                      font: {
+                        size: 10
+                      }
+                    },
+                    grid: {
+                      display: true, // Show the grid lines
+                    },
+                    angleLines: {
+                      display: true, // Show the angle lines radiating from center
+                    },
+                    pointLabels: {
+                      display: true,
+                      font: {
+                        size: 12, // Larger font for better readability
+                        weight: 'bold'
+                      },
+                      color: '#212529',
+                      padding: 15, // Reduced padding for compact A4 layout
+                      centerPointLabels: true, // Center labels on their segments
+                      callback: function(value: any, index: number) {
+                        // Handle line wrapping for long labels
+                        if (Array.isArray(chartData.labels[index])) {
+                          return chartData.labels[index];
+                        }
+                        // Split long labels that are still strings
+                        if (typeof chartData.labels[index] === 'string' && chartData.labels[index].length > 12) {
+                          const label = chartData.labels[index] as string;
+                          const words = label.split(' ');
+                          if (words.length > 2) {
+                            const midPoint = Math.ceil(words.length / 2);
+                            return [
+                              words.slice(0, midPoint).join(' '),
+                              words.slice(midPoint).join(' ')
+                            ];
+                          } else if (words.length === 2) {
+                            return words; // Return each word on separate line
+                          }
+                        }
+                        return chartData.labels[index];
+                      }
+                    }
+                  },
+                },
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: {
+                      generateLabels: () => {
+                        return [
+                          {
+                            text: 'Physical/Psychological',
+                            fillStyle: '#009FB7',
+                            strokeStyle: '#009FB7',
+                            lineWidth: 2,
+                          },
+                          {
+                            text: 'Attacking',
+                            fillStyle: '#9370DB',
+                            strokeStyle: '#9370DB',
+                            lineWidth: 2,
+                          },
+                          {
+                            text: 'Defending',
+                            fillStyle: '#7FC8F8',
+                            strokeStyle: '#7FC8F8',
+                            lineWidth: 2,
+                          },
+                          {
+                            text: 'Attribute not scored',
+                            fillStyle: 'rgba(224, 224, 224, 0.5)',
+                            strokeStyle: 'rgba(192, 192, 192, 0.8)',
+                            lineWidth: 2,
+                          }
+                        ];
+                      }
+                    }
+                  },
+                  datalabels: {
+                    color: '#ffffff',
+                    font: {
+                      weight: 'bold',
+                      size: 12,
+                    },
+                    formatter: (value: any, context: any) => {
+                      // Show actual score (0) for zero-scored attributes, not display value (10)
+                      const actualValue = chartData.actualValues[context.dataIndex];
+                      return actualValue === 0 ? 'N/A' : actualValue;
+                    },
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: (context: any) => {
+                        // Show actual score (0) for zero-scored attributes, not display value (10)
+                        const actualValue = chartData.actualValues[context.dataIndex];
+                        const levelDescription = getScoreLevel(actualValue);
+                        return actualValue === 0 ? 'N/A' : `${actualValue}: ${levelDescription}`;
+                      }
+                    }
+                  }
+                },
+              };
+
+              return (
                 <Row>
-                  <Col md={6}>
-                    <div className="report-section">
-                      <h4 className="report-title">Scout Reports ({profile.scout_reports.length})</h4>
-                      {profile.scout_reports.length === 0 ? (
-                        <div className="empty-state">
-                          <p>No scout reports yet.</p>
-                        </div>
-                      ) : (
-                        <div className="report-list">
-                          {profile.scout_reports.map((report) => (
-                            <div key={report.report_id} className="report-card">
-                              <div className="report-header">
-                                <div className="report-badges">
-                                  <span className="badge badge-neutral-grey clean-badge">{report.report_type}</span>
-                                  {report.scouting_type && <span className="badge badge-neutral-grey clean-badge">{report.scouting_type}</span>}
-                                </div>
-                                <span className="report-date">{new Date(report.created_at).toLocaleDateString()}</span>
-                              </div>
-                              <p className="report-summary">{report.summary}</p>
-                              <div className="report-footer">
-                                <span className="report-scout">by {report.scout_name}</span>
-                                <div className="report-scores">
-                                  {report.performance_score && (
-                                    <span className="badge score-badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }}>
-                                      {report.performance_score}
-                                    </span>
-                                  )}
-                                  {report.attribute_score && (
-                                    <span className="badge score-badge" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>
-                                      {report.attribute_score}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline-dark" 
-                                className="view-report-btn"
-                                onClick={() => handleOpenReportModal(report.report_id)}
-                                disabled={loadingReportId === report.report_id}
-                              >
-                                {loadingReportId === report.report_id ? 
-                                  <Spinner animation="border" size="sm" /> : 
-                                  'View Full Report'
-                                }
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <Col lg={9}>
+                    <div style={{ height: '700px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '680px', height: '680px' }}>
+                        <PolarArea data={chartData} options={polarAreaChartOptions} />
+                      </div>
                     </div>
                   </Col>
-                  <Col md={6}>
-                    <div className="report-section">
-                      <h4 className="report-title">Intel Reports ({profile.intel_reports.length})</h4>
-                      {profile.intel_reports.length === 0 ? (
-                        <div className="empty-state">
-                          <p>No intel reports yet.</p>
-                        </div>
-                      ) : (
-                        <div className="report-list">
-                          {profile.intel_reports.map((intel) => (
-                            <div key={intel.intel_id} className="report-card">
-                              <div className="report-header">
-                                <div>
-                                  <strong>{intel.contact_name}</strong>
-                                  <span className="contact-org">{intel.contact_organisation}</span>
-                                </div>
-                                <span className="report-date">{new Date(intel.created_at).toLocaleDateString()}</span>
-                              </div>
-                              <p className="report-summary">{intel.conversation_notes}</p>
-                              <div className="report-footer">
-                                <span className="badge clean-badge" style={{ backgroundColor: getFlagColor(intel.action_required), color: getContrastTextColor(getFlagColor(intel.action_required)), fontWeight: 'bold' }}>
-                                  {intel.action_required}
+                  <Col lg={3} className="d-flex flex-column">
+                    <Card className="shadow-sm flex-fill" style={{ borderRadius: '12px' }}>
+                      <Card.Header style={{ backgroundColor: '#f8f9fa', color: '#495057' }}>
+                        <h6 className="mb-0">📋 Attribute Breakdown</h6>
+                      </Card.Header>
+                      <Card.Body>
+                        <div className="attribute-breakdown">
+                          {chartData.labels.map((label, index) => (
+                            <div key={label} className="attribute-breakdown-item mb-2">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <span className="attribute-name" style={{ fontSize: '0.85rem' }}>{label}</span>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    backgroundColor: chartData.datasets[0].backgroundColor[index],
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.75rem',
+                                    border: `2px solid ${chartData.datasets[0].borderColor[index]}`
+                                  }}
+                                >
+                                  {chartData.actualValues[index] === 0 ? 'N/A' : `${chartData.actualValues[index].toFixed(2)}/10`}
                                 </span>
-                                {intel.transfer_fee && <span className="transfer-fee">Fee: {intel.transfer_fee}</span>}
                               </div>
-                              <Button 
-                                size="sm" 
-                                variant="outline-dark" 
-                                className="view-report-btn"
-                                onClick={() => handleOpenIntelModal(intel.intel_id)}
-                              >
-                                View Full Report
-                              </Button>
                             </div>
                           ))}
                         </div>
-                      )}
-                    </div>
+                      </Card.Body>
+                    </Card>
                   </Col>
                 </Row>
-              </div>
-            </Tab>
+              );
+            })()}
+          </div>
 
-            <Tab eventKey="reports" title="All Reports">
-              <div className="tab-content-wrapper">
-                <div className="data-table">
-                  <h4 className="section-title">All Scout Reports</h4>
-                  {profile.scout_reports.length === 0 ? (
-                    <div className="empty-state">No scout reports available.</div>
-                  ) : (
-                    <Table responsive className="clean-table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Type</th>
-                          <th>Scout</th>
-                          <th>Performance</th>
-                          <th>Attributes</th>
-                          <th>Summary</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {profile.scout_reports.map((report) => (
-                          <tr key={report.report_id}>
-                            <td>{new Date(report.created_at).toLocaleDateString()}</td>
-                            <td>
-                              <span className="badge badge-neutral-grey clean-badge">{report.report_type}</span>
-                            </td>
-                            <td>{report.scout_name}</td>
-                            <td>
-                              {report.performance_score ? (
-                                <span className="badge score-badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: 'white', fontWeight: 'bold' }}>
-                                  {report.performance_score}
-                                </span>
-                              ) : '-'}
-                            </td>
-                            <td>
-                              {report.attribute_score ? (
-                                <span className="badge score-badge" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: 'white', fontWeight: 'bold' }}>
-                                  {report.attribute_score}
-                                </span>
-                              ) : '-'}
-                            </td>
-                            <td className="summary-cell">{report.summary}</td>
-                            <td>
-                              <Button 
-                                size="sm" 
-                                variant="outline-dark"
-                                className="table-action-btn"
-                                onClick={() => handleOpenReportModal(report.report_id)}
-                                disabled={loadingReportId === report.report_id}
-                              >
-                                {loadingReportId === report.report_id ? 
-                                  <Spinner animation="border" size="sm" /> : 
-                                  'View'
-                                }
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </Table>
-                  )}
-                </div>
-              </div>
-            </Tab>
-
-            <Tab eventKey="notes" title="Notes">
-              <div className="tab-content-wrapper">
-                <div className="notes-section">
-                  <div className="notes-header">
-                    <h4 className="section-title">Player Notes ({profile.notes.length})</h4>
-                    <Button 
-                      variant="dark" 
-                      size="sm"
-                      className="add-note-btn"
-                      onClick={() => setShowAddNoteModal(true)}
-                    >
-                      + Add Note
-                    </Button>
-                  </div>
-                  {profile.notes.length === 0 ? (
-                    <div className="empty-state">No notes yet. Add the first note above.</div>
-                  ) : (
-                    <div className="notes-list">
-                      {profile.notes.map((note) => (
-                        <div key={note.id} className="note-card">
-                          <div className="note-header">
-                            <div className="note-author">
-                              <strong>{note.author}</strong>
-                              {note.is_private && <span className="badge badge-neutral-grey private-badge">Private</span>}
-                            </div>
-                            <span className="note-date">{new Date(note.created_at).toLocaleString()}</span>
-                          </div>
-                          <p className="note-content">{note.content}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Tab>
-          </Tabs>
-        </div>
       </Container>
 
       {/* Add Note Modal */}

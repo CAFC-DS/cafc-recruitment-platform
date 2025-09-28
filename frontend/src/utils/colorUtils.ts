@@ -5,7 +5,8 @@
  * 1-3: Red variants (darkest red for 1)
  * 4-5: Amber/Orange
  * 6-8: Green variants
- * 9-10: Dark green (darkest green for 10)
+ * 9: Silver
+ * 10: Gold
  */
 export const getPerformanceScoreColor = (score: number): string => {
   if (score <= 0) return '#ef4444'; // Red for invalid scores
@@ -18,8 +19,9 @@ export const getPerformanceScoreColor = (score: number): string => {
   if (score <= 6) return '#84cc16'; // Light green
   if (score <= 7) return '#1ebc58ff'; // Green
   if (score <= 8) return '#16a34a'; // Darker green
-  if (score <= 9) return '#15803d'; // Dark green
-  return '#166534'; // Darkest green for 10
+  if (score === 9) return '#c4c4c4'; // Proper silver
+  if (score === 10) return '#EFBF04'; // Proper gold
+  return '#166534'; // Fallback green
 };
 
 /**
@@ -41,6 +43,21 @@ export const getAttributeScoreColor = (score: number): string => {
   if (score <= 70) return '#1ebc58ff'; // Green
   if (score <= 80) return '#16a34a'; // Darker green
   if (score <= 90) return '#15803d'; // Dark green
+  return '#166534'; // Darkest green for 90-100
+};
+
+export const getAverageAttributeScoreColor = (score: number): string => {
+  if (score <= 0) return '#ef4444'; // Red for invalid scores
+
+  if (score <= 1) return '#991b1b'; // Darkest red
+  if (score <= 2) return '#dc2626'; // Red
+  if (score <= 3) return '#ef4444'; // Light red
+  if (score <= 4) return '#f97316'; // Amber
+  if (score <= 5) return '#f59e0b'; // Light amber
+  if (score <= 6) return '#84cc16'; // Light green
+  if (score <= 7) return '#1ebc58ff'; // Green
+  if (score <= 8) return '#16a34a'; // Darker green
+  if (score <= 9) return '#15803d'; // Dark green
   return '#166534'; // Darkest green for 90-100
 };
 
@@ -96,9 +113,9 @@ export const getFlagColor = (flagType: string): string => {
 export const getContrastTextColor = (backgroundColor: string): string => {
   // Convert hex to RGB and calculate brightness
   const hex = backgroundColor.replace('#', '');
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
 
   // Calculate brightness using relative luminance formula
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;

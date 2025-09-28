@@ -155,8 +155,8 @@ body {
    Removed !important overrides to allow proper dynamic coloring */
 
 /* Special performance badge colors */
-.badge.bg-gold { 
-  background: linear-gradient(135deg, #FFD700, #FFA500) !important; 
+.badge.bg-gold {
+  background: linear-gradient(135deg, #D4AF37, #B8860B) !important;
   color: #1a1a1a !important;
   font-weight: 600;
   text-shadow: 0 1px 1px rgba(0,0,0,0.1);
@@ -1052,7 +1052,7 @@ body {
 
 /* Gold and Silver performance badges */
 .badge.bg-gold {
-  background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
   color: #000;
   font-weight: 600;
   border: none;
