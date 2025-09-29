@@ -18,32 +18,6 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVariant, setToastVariant] = useState('success');
-  
-  // Dropdown data states
-  const [teams, setTeams] = useState<string[]>([]);
-  const [loadingTeams, setLoadingTeams] = useState(false);
-
-  // Load teams when component mounts or modal opens
-  useEffect(() => {
-    if (show) {
-      loadTeams();
-    }
-  }, [show]);
-
-  const loadTeams = async () => {
-    try {
-      setLoadingTeams(true);
-      const response = await axiosInstance.get('/teams');
-      setTeams(response.data.teams);
-    } catch (error) {
-      console.error('Error loading teams:', error);
-      setToastMessage('Error loading teams. Please try again.');
-      setToastVariant('warning');
-      setShowToast(true);
-    } finally {
-      setLoadingTeams(false);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -88,31 +62,11 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3" controlId="homeTeam">
               <Form.Label>Home Team</Form.Label>
-              <Form.Select name="homeTeam" value={formData.homeTeam} onChange={handleChange} required disabled={loadingTeams}>
-                <option value="">
-                  {loadingTeams ? 'Loading teams...' : 'Select home team'}
-                </option>
-                {teams.map((team) => (
-                  <option key={`home-${team}`} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </Form.Select>
+              <Form.Control type="text" name="homeTeam" value={formData.homeTeam} onChange={handleChange} placeholder="Enter home team name" required />
             </Form.Group>
             <Form.Group className="mb-3" controlId="awayTeam">
               <Form.Label>Away Team</Form.Label>
-              <Form.Select name="awayTeam" value={formData.awayTeam} onChange={handleChange} required disabled={loadingTeams}>
-                <option value="">
-                  {loadingTeams ? 'Loading teams...' : 'Select away team'}
-                </option>
-                {teams
-                  .filter(team => team !== formData.homeTeam) // Prevent same team playing itself
-                  .map((team) => (
-                    <option key={`away-${team}`} value={team}>
-                      {team}
-                    </option>
-                  ))}
-              </Form.Select>
+              <Form.Control type="text" name="awayTeam" value={formData.awayTeam} onChange={handleChange} placeholder="Enter away team name" required />
             </Form.Group>
             <Form.Group className="mb-3" controlId="date">
               <Form.Label>Date</Form.Label>

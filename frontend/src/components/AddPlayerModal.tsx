@@ -15,67 +15,15 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
     birthDate: '',
     squadName: '',
     position: '',
-    league: '', // Add league field
+    league: '',
   });
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastVariant, setToastVariant] = useState('success');
   
-  // Dropdown data states
-  const [leagues, setLeagues] = useState<string[]>([]);
-  const [clubs, setClubs] = useState<string[]>([]);
-  const [loadingDropdowns, setLoadingDropdowns] = useState(false);
-  
   // Position options (same as assessment form)
   const playerPositions = ["GK", "RB", "RWB", "RCB(3)", "RCB(2)", "CCB(3)", "LCB(2)", "LCB(3)", "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW", "Target Man CF", "In Behind CF"];
-
-  // Load leagues when component mounts or modal opens
-  useEffect(() => {
-    if (show) {
-      loadLeagues();
-    }
-  }, [show]);
-
-  // Load clubs when league changes
-  useEffect(() => {
-    if (formData.league) {
-      loadClubs(formData.league);
-    } else {
-      setClubs([]);
-      setFormData(prev => ({ ...prev, squadName: '' })); // Clear squad when no league
-    }
-  }, [formData.league]);
-
-  const loadLeagues = async () => {
-    try {
-      setLoadingDropdowns(true);
-      const response = await axiosInstance.get('/leagues');
-      setLeagues(response.data.leagues);
-    } catch (error) {
-      console.error('Error loading leagues:', error);
-      setToastMessage('Error loading leagues. Please try again.');
-      setToastVariant('warning');
-      setShowToast(true);
-    } finally {
-      setLoadingDropdowns(false);
-    }
-  };
-
-  const loadClubs = async (league: string) => {
-    try {
-      setLoadingDropdowns(true);
-      const response = await axiosInstance.get(`/clubs?league=${encodeURIComponent(league)}`);
-      setClubs(response.data.clubs);
-    } catch (error) {
-      console.error('Error loading clubs:', error);
-      setToastMessage('Error loading clubs. Please try again.');
-      setToastVariant('warning');
-      setShowToast(true);
-    } finally {
-      setLoadingDropdowns(false);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -91,7 +39,6 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
       position: '',
       league: '',
     });
-    setClubs([]);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -136,29 +83,11 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
             </Form.Group>
             <Form.Group className="mb-3" controlId="league">
               <Form.Label>League</Form.Label>
-              <Form.Select name="league" value={formData.league} onChange={handleChange} required disabled={loadingDropdowns}>
-                <option value="">
-                  {loadingDropdowns ? 'Loading leagues...' : 'Select a league'}
-                </option>
-                {leagues.map((league) => (
-                  <option key={league} value={league}>
-                    {league}
-                  </option>
-                ))}
-              </Form.Select>
+              <Form.Control type="text" name="league" value={formData.league} onChange={handleChange} placeholder="Enter league name" required />
             </Form.Group>
             <Form.Group className="mb-3" controlId="squadName">
               <Form.Label>Squad Name</Form.Label>
-              <Form.Select name="squadName" value={formData.squadName} onChange={handleChange} required disabled={!formData.league || loadingDropdowns}>
-                <option value="">
-                  {!formData.league ? 'Select a league first' : loadingDropdowns ? 'Loading clubs...' : 'Select a club'}
-                </option>
-                {clubs.map((club) => (
-                  <option key={club} value={club}>
-                    {club}
-                  </option>
-                ))}
-              </Form.Select>
+              <Form.Control type="text" name="squadName" value={formData.squadName} onChange={handleChange} placeholder="Enter squad/club name" required />
             </Form.Group>
             <Form.Group className="mb-3" controlId="position">
               <Form.Label>Position</Form.Label>

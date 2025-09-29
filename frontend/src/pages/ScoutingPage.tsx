@@ -482,7 +482,7 @@ const ScoutingPage: React.FC = () => {
               </div>
             )}
           </Form.Group>
-          <Button className="mt-2" variant="danger" onClick={handleShowAssessmentModal} disabled={!selectedPlayer}>
+          <Button className="mt-2" variant="outline-secondary" onClick={handleShowAssessmentModal} disabled={!selectedPlayer}>
             Add Assessment
           </Button>
           <Button className="mt-2 ms-2" variant="outline-secondary" onClick={() => setShowAddPlayerModal(true)}>
@@ -528,10 +528,20 @@ const ScoutingPage: React.FC = () => {
         <h3>Scout Reports</h3>
         <div className="d-flex align-items-center gap-3">
           <div className="btn-group">
-            <Button variant={viewMode === 'cards' ? 'primary' : 'outline-primary'} size="sm" onClick={() => setViewMode('cards')}>
+            <Button
+              variant={viewMode === 'cards' ? 'secondary' : 'outline-secondary'}
+              size="sm"
+              onClick={() => setViewMode('cards')}
+              style={viewMode === 'cards' ? { backgroundColor: '#000000', borderColor: '#000000', color: 'white' } : { color: '#000000', borderColor: '#000000' }}
+            >
               Cards
             </Button>
-            <Button variant={viewMode === 'table' ? 'primary' : 'outline-primary'} size="sm" onClick={() => setViewMode('table')}>
+            <Button
+              variant={viewMode === 'table' ? 'secondary' : 'outline-secondary'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              style={viewMode === 'table' ? { backgroundColor: '#000000', borderColor: '#000000', color: 'white' } : { color: '#000000', borderColor: '#000000' }}
+            >
               Table
             </Button>
           </div>
@@ -855,111 +865,126 @@ const ScoutingPage: React.FC = () => {
           ) : (
             <Row>
               {paginatedReports.map((report) => (
-                <Col md={6} lg={4} key={report.report_id} className="mb-4">
-                  <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
-                    <Card.Header className="border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <Button
-                            variant="link"
-                            className="p-0 text-decoration-none fw-bold h5 mb-1"
-                            style={{ color: '#212529' }}
-                            onClick={() => navigate(`/player/${report.player_id}`)}
-                          >
-                            {report.player_name}
-                          </Button>
-                          <div className="mb-2">
+                <Col sm={6} md={4} lg={3} key={report.report_id} className="mb-4">
+                  <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                    <Card.Body className="p-3">
+                      {/* Top Row - 2 columns */}
+                      <Row className="mb-3 pb-2 border-bottom">
+                        {/* Left: Player Info */}
+                        <Col xs={6}>
+                          <div>
+                            <Button
+                              variant="link"
+                              className="p-0 text-decoration-none fw-bold d-block mb-1"
+                              style={{ color: '#212529', fontSize: '1rem', textAlign: 'left' }}
+                              onClick={() => navigate(`/player/${report.player_id}`)}
+                            >
+                              {report.player_name}
+                            </Button>
+                            <small className="text-muted d-block">Position: {report.position_played || 'N/A'}</small>
+                            <small className="text-muted d-block">Age: {report.age || 'N/A'}</small>
+                          </div>
+                        </Col>
+
+                        {/* Right: Scout Info */}
+                        <Col xs={6} className="text-end">
+                          <div>
+                            <small className="text-muted d-block">{report.scout_name}</small>
+                            <small className="text-muted d-block">Report Date: {new Date(report.created_at).toLocaleDateString()}</small>
+                          </div>
+                        </Col>
+                      </Row>
+
+                      {/* Middle Row - 2 columns */}
+                      <Row className="mb-3 pb-2 border-bottom">
+                        {/* Left: Fixture Info */}
+                        <Col xs={6}>
+                          <div>
+                            {report.fixture_date && report.fixture_date !== 'N/A' ? (
+                              <>
+                                <small className="text-muted d-block mb-1" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                                  <span className="fw-semibold">Fixture Date:</span> {new Date(report.fixture_date).toLocaleDateString()}
+                                </small>
+                                {report.fixture_details && report.fixture_details !== 'N/A' && (
+                                  <small className="text-muted d-block" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                                    <span className="fw-semibold">Fixture:</span> {report.fixture_details}
+                                  </small>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <small className="text-muted d-block mb-1" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                                  <span className="fw-semibold">Fixture Date:</span> N/A
+                                </small>
+                                <small className="text-muted d-block" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
+                                  <span className="fw-semibold">Fixture:</span> N/A
+                                </small>
+                              </>
+                            )}
+                          </div>
+                        </Col>
+
+                        {/* Right: Score */}
+                        <Col xs={6} className="text-end">
+                          <div>
+                            <small className="text-muted fw-semibold d-block">Score</small>
+                            {report.report_type?.toLowerCase() !== 'flag' && report.report_type?.toLowerCase() !== 'flag assessment' ? (
+                              <span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none', fontSize: '0.9rem' }}>
+                                {report.performance_score}
+                              </span>
+                            ) : (
+                              <div>
+                                {getFlagBadge((report as any).flag_category)}
+                              </div>
+                            )}
+                          </div>
+                        </Col>
+                      </Row>
+
+                      {/* Bottom Row - Tags and Actions */}
+                      <Row className="align-items-center">
+                        {/* Left: Tags */}
+                        <Col xs={6}>
+                          <div className="d-flex align-items-center gap-1">
+                            <small className="text-muted fw-semibold me-1">Tags:</small>
                             {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                             {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                           </div>
-                        </div>
-                        <div className="text-end">
-                          <small className="text-muted d-block">{new Date(report.created_at).toLocaleDateString()}</small>
-                          <small className="text-muted">by {report.scout_name}</small>
-                        </div>
-                      </div>
-                    </Card.Header>
-                    <Card.Body className="pb-2">
-                      {/* Conditional rendering based on report type */}
-                      {report.report_type?.toLowerCase() === 'flag' || report.report_type?.toLowerCase() === 'flag assessment' ? (
-                        /* Simplified Flag Report Layout */
-                        <Row className="mb-3">
-                          <Col xs={12}>
-                            <div className="text-center p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                              <div className="fw-bold text-muted small mb-2">FLAG TYPE</div>
-                              {getFlagBadge((report as any).flag_category)}
-                            </div>
-                          </Col>
-                        </Row>
-                      ) : (
-                        /* Regular Report Layout */
-                        <Row className="mb-3">
-                          <Col xs={6}>
-                            <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                              <div className="fw-bold text-muted small mb-1">SCORE</div>
-                              <span className="badge fs-6" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>
-                                {report.performance_score}
-                              </span>
-                            </div>
-                          </Col>
-                          <Col xs={6}>
-                            <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                              <div className="fw-bold text-muted small mb-1">ATTRIBUTES</div>
-                              <span className="badge fs-6" style={{ backgroundColor: getAttributeScoreColor(report.attribute_score), color: getContrastTextColor(getAttributeScoreColor(report.attribute_score)), fontWeight: 'bold', border: 'none' }}>
-                                {report.attribute_score}
-                              </span>
-                            </div>
-                          </Col>
-                        </Row>
-                      )}
-                      {report.fixture_date && report.fixture_date !== 'N/A' && (
-                        <div className="mb-2">
-                          <small className="text-muted">
-                            📅 <strong>Fixture:</strong> {new Date(report.fixture_date).toLocaleDateString()}
-                            {report.fixture_details && report.fixture_details !== 'N/A' && (
-                              <><br />🏟️ <strong>{report.fixture_details}</strong></>
-                            )}
-                          </small>
-                        </div>
-                      )}
-                      {report.position_played && (
-                        <div className="mb-2">
-                          <small className="text-muted">
-                            ⚽ <strong>Position:</strong> {report.position_played}
-                          </small>
-                        </div>
-                      )}
+                        </Col>
+
+                        {/* Right: Actions */}
+                        <Col xs={6} className="text-end">
+                          <div className="d-flex justify-content-end gap-1">
+                            <Button
+                              size="sm"
+                              className="btn-action-circle btn-action-view"
+                              onClick={() => handleOpenReportModal(report.report_id)}
+                              disabled={loadingReportId === report.report_id}
+                              title="View Report"
+                            >
+                              {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="btn-action-circle btn-action-edit"
+                              title="Edit"
+                              onClick={() => handleEditReport(report.report_id)}
+                              disabled={loadingReportId === report.report_id}
+                            >
+                              {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="btn-action-circle btn-action-delete"
+                              title="Delete"
+                              onClick={() => handleDeleteReport(report.report_id)}
+                            >
+                              🗑️
+                            </Button>
+                          </div>
+                        </Col>
+                      </Row>
                     </Card.Body>
-                    <Card.Footer className="bg-transparent border-0 pt-0">
-                      <div className="d-flex justify-content-end gap-2">
-                        <Button
-                          size="sm"
-                          className="btn-action-circle btn-action-view"
-                          onClick={() => handleOpenReportModal(report.report_id)}
-                          disabled={loadingReportId === report.report_id}
-                          title="View Report"
-                        >
-                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="btn-action-circle btn-action-edit"
-                          title="Edit"
-                          onClick={() => handleEditReport(report.report_id)}
-                          disabled={loadingReportId === report.report_id}
-                        >
-                          {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="btn-action-circle btn-action-delete"
-                          title="Delete"
-                          onClick={() => handleDeleteReport(report.report_id)}
-                        >
-                          🗑️
-                        </Button>
-                      </div>
-                    </Card.Footer>
                   </Card>
                 </Col>
               ))}

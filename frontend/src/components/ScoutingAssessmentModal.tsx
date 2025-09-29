@@ -318,7 +318,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
 
   const playerPositions = ["GK", "RB", "RWB", "RCB(3)", "RCB(2)", "CCB(3)", "LCB(2)", "LCB(3)", "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW", "Target Man CF", "In Behind CF"];
   const formations = ["3-5-2","3-4-3","4-1-2-1-2","4-2-2-2","4-2-3-1","4-3-2-1","4-3-3","4-4-1-1","4-4-2"];
-  const playerBuilds = ["Slight", "Lean", "Moderate", "Strong", "Heavy"];
+  const playerBuilds = ["Slight", "Lean", "Medium", "Strong", "Heavy"];
   const playerHeights = Array.from({ length: 16 }, (_, i) => 5 * 12 + 4 + i).map(inches => `${Math.floor(inches / 12)}'${inches % 12}"`);
   const allStrengths = ["Stature", "Strength", "Power", "Speed - Off The Ball", "Speed - On The Ball", "Acceleration", "Agility", "Leap", "Athleticism", "Aggression", "Stamina", "Intensity", "Work Rate", "Body Language", "Leadership", "Organisation", "Composure", "Creativity", "Decision Making", "Anticipation", "Game Awareness", "Two Footedness", 
     "Versatility","Technical Ability", "Ball Striking", "Attacking Transitions", "Attacking Scanning/Awareness", "Receiving", "Ball Manipulation", "Playing Under Pressure", "Passing", "Passing - Vision", "Passing - Ranges", "Long Passing", "Breaking Lines", "Creative Passing", "Ball Carrying", "Attacking 1v1", "Crossing", "Finding & Creating Space", 

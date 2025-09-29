@@ -123,7 +123,7 @@ class SchemaService:
                 "PLAYER_NAME": "Full name of the player",
                 "POSITION": "Primary playing position",
                 "HEIGHT": "Player height in feet and inches format",
-                "BUILD": "Physical build: Slight, Lean, Moderate, Strong, Heavy",
+                "BUILD": "Physical build: Slight, Lean, Medium, Strong, Heavy",
                 "SQUAD_NAME": "Current team/club name",
                 "DATE_OF_BIRTH": "Player's birth date",
                 "AGE": "Current age calculated from birth date"

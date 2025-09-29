@@ -507,7 +507,7 @@ const PlayerProfilePage: React.FC = () => {
                   const avgScore = calculateAveragePerformanceScore();
                   return avgScore && (
                     <div className="average-performance-score mt-2">
-                      <span className="score-label">Average Performance:</span>
+                      <span className="score-label">Average Performance Score:</span>
                       <span
                         className="badge score-badge ms-2"
                         style={{
