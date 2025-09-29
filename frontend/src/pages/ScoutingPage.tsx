@@ -788,55 +788,55 @@ const ScoutingPage: React.FC = () => {
         <>
           {viewMode === 'table' ? (
             <div className="table-responsive">
-              <Table responsive hover striped className="table-compact table-sm">
+              <Table responsive hover striped className="table-compact table-sm" style={{ textAlign: 'center' }}>
                 <thead className="table-dark">
                   <tr>
-                    <th style={{ textAlign: 'center' }}>Report Date</th>
-                    <th style={{ textAlign: 'center' }}>Player</th>
-                    <th style={{ textAlign: 'center' }}>Age</th>
-                    <th style={{ textAlign: 'center' }}>Position</th>
-                    <th style={{ textAlign: 'center' }}>Fixture Date</th>
-                    <th style={{ textAlign: 'center' }}>Fixture</th>
-                    <th style={{ textAlign: 'center' }}>Scout</th>
-                    <th style={{ textAlign: 'center' }}>Tag</th>
-                    <th style={{ textAlign: 'center' }}>Score</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
+                    <th>Report Date</th>
+                    <th>Player</th>
+                    <th>Age</th>
+                    <th>Position</th>
+                    <th>Fixture Date</th>
+                    <th>Fixture</th>
+                    <th>Scout</th>
+                    <th>Tag</th>
+                    <th>Score</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedReports.map((report) => (
                     <tr key={report.report_id}>
-                      <td style={{ textAlign: 'center' }}>{new Date(report.created_at).toLocaleDateString()}</td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td>{new Date(report.created_at).toLocaleDateString()}</td>
+                      <td>
                         <Button variant="link" onClick={() => navigate(`/player/${report.player_id}`)}>
                           {report.player_name}
                         </Button>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td>
                         <span className="age-text">{report.age || 'N/A'}</span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td>
                         <span className="position-text">{report.position_played || 'N/A'}</span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td>
                         {report.fixture_date && report.fixture_date !== 'N/A' ?
                           new Date(report.fixture_date).toLocaleDateString() :
                           'N/A'
                         }
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td>
                         {report.fixture_details && report.fixture_details !== 'N/A' ?
                           report.fixture_details :
                           'N/A'
                         }
                       </td>
-                      <td style={{ textAlign: 'center' }}>{report.scout_name}</td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td>{report.scout_name}</td>
+                      <td>
                         {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                       </td>
-                      <td style={{ textAlign: 'center' }}><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
+                      <td>
                         <div className="btn-group" style={{ justifyContent: 'center' }}>
                           <Button size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="btn-action-circle btn-action-view">
                             {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
