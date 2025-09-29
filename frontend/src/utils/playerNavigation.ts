@@ -2,13 +2,7 @@
  * Utility functions for handling player navigation with both external and manual players
  */
 
-export interface Player {
-  player_id?: number | null;
-  cafc_player_id?: number | null;
-  universal_id?: string;
-  player_name?: string;
-  // Add other common player fields as needed
-}
+import { Player } from '../types/Player';
 
 /**
  * Get the correct navigation path for a player based on their ID type
@@ -16,8 +10,8 @@ export interface Player {
 export const getPlayerProfilePath = (player: Player): string => {
   // If universal_id is available, parse it to determine the route
   if (player.universal_id) {
-    if (player.universal_id.startsWith('manual_')) {
-      const cafcId = player.universal_id.replace('manual_', '');
+    if (player.universal_id.startsWith('internal_')) {
+      const cafcId = player.universal_id.replace('internal_', '');
       return `/player-profile/${cafcId}`;
     } else if (player.universal_id.startsWith('external_')) {
       const playerId = player.universal_id.replace('external_', '');

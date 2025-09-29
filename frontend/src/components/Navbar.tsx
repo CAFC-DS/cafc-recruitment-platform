@@ -279,7 +279,7 @@ const AppNavbar: React.FC = () => {
 
                     return (
                       <div
-                        key={`player-${index}-${playerName}`}
+                        key={player.universal_id || `player-${index}-${playerName}`}
                         onClick={() => handlePlayerSelect(player)}
                         className="search-result-item"
                         style={{

@@ -18,6 +18,7 @@ import PlayerReportModal from '../components/PlayerReportModal';
 import IntelReportModal from '../components/IntelReportModal';
 import PitchView from '../components/PitchView';
 import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
+import { PlayerProfile, PlayerAttributes, AttributeData } from '../types/Player';
 
 ChartJS.register(
   RadialLinearScale,
@@ -30,36 +31,6 @@ ChartJS.register(
   ChartDataLabels
 );
 
-interface PlayerProfile {
-  player_id: number;
-  player_name: string;
-  first_name: string;
-  last_name: string;
-  age: number | null;
-  birth_date: string | null;
-  squad_name: string;
-  position: string;
-  recruitment_status: string;
-  scout_reports: any[];
-  intel_reports: any[];
-  notes: any[];
-}
-
-interface AttributeData {
-  name: string;
-  average_score: number;
-  report_count: number;
-  display_order: number;
-}
-
-interface PlayerAttributes {
-  player_id: number;
-  player_position: string;
-  attribute_group: string;
-  attribute_groups: { [key: string]: AttributeData[] };
-  total_reports: number;
-  total_attributes: number;
-}
 
 interface ScoutReport {
   report_id: number;
@@ -654,7 +625,7 @@ const PlayerProfilePage: React.FC = () => {
               <span>Loading attributes...</span>
             </div>
           </div>
-        ) : attributes && attributes.total_attributes > 0 ? (
+        ) : attributes && attributes.total_attributes && attributes.total_attributes > 0 ? (
           <div className="attributes-section-compact mt-3 mb-3">
             {/* Compact Legend */}
             <div className="attributes-legend-compact mb-2">
@@ -666,7 +637,7 @@ const PlayerProfilePage: React.FC = () => {
 
             {/* Compact Attribute Data */}
             <Row>
-              {Object.entries(attributes.attribute_groups).map(([groupName, groupAttributes]) => {
+              {Object.entries(attributes.attribute_groups || {}).map(([groupName, groupAttributes]) => {
                 // Get emoji for group
                 const groupEmojis: { [key: string]: string } = {
                   'Physical': '💪',
@@ -720,7 +691,7 @@ const PlayerProfilePage: React.FC = () => {
             <div className="no-attributes-content">
               <h4>📊 Player Attributes</h4>
               <p>
-                {profile.scout_reports.length === 0 
+                {(profile.scout_reports || []).length === 0 
                   ? "No scout reports available yet. Attributes will appear here once scout assessments are submitted."
                   : "No attribute data found in the existing scout reports. Attributes may not have been assessed yet."
                 }

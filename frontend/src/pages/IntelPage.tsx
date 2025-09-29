@@ -7,6 +7,7 @@ import IntelReportModal from '../components/IntelReportModal';
 import { useAuth } from '../App';
 import { useViewMode } from '../contexts/ViewModeContext';
 import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
+import { Player } from '../types/Player';
 
 interface IntelReport {
   intel_id: number;
@@ -31,8 +32,8 @@ const IntelPage: React.FC = () => {
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const [playerSearch, setPlayerSearch] = useState('');
-  const [players, setPlayers] = useState<any[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [intelReports, setIntelReports] = useState<IntelReport[]>([]);
   const [modalKey, setModalKey] = useState(0);
@@ -68,7 +69,7 @@ const IntelPage: React.FC = () => {
   
   // Add debouncing and caching for player search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchCacheRef = useRef<Record<string, any[]>>({});
+  const searchCacheRef = useRef<Record<string, Player[]>>({});
   const [showDropdown, setShowDropdown] = useState(false);
   
   // Advanced filters for Intel
@@ -239,9 +240,11 @@ const IntelPage: React.FC = () => {
     }, 300); // 300ms delay
   };
 
-  const handlePlayerSelect = (player: any) => {
+  const handlePlayerSelect = (player: Player) => {
     setSelectedPlayer(player);
-    setPlayerSearch(`${player.player_name} (${player.team})`);
+    const playerName = player.player_name || player.name || player.playername || 'Unknown Player';
+    const team = player.team || player.club || player.current_team || player.squad_name || 'Unknown Team';
+    setPlayerSearch(`${playerName} (${team})`);
     setPlayers([]);
     setShowDropdown(false);
     setPlayerSearchError('');
@@ -376,7 +379,7 @@ const IntelPage: React.FC = () => {
               <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
                 {players.map((player, index) => (
                   <ListGroup.Item 
-                    key={`${player.player_id || player.id || index}-${player.player_name}`} 
+                    key={player.universal_id || `fallback-${index}-${player.player_name}`} 
                     action 
                     onClick={() => handlePlayerSelect(player)}
                     className="d-flex justify-content-between align-items-center"

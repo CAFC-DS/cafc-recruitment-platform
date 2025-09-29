@@ -10,6 +10,7 @@ import { useAuth } from '../App';
 import { useViewMode } from '../contexts/ViewModeContext';
 import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
 import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
+import { Player } from '../types/Player';
 
 interface ScoutReport {
   report_id: number;
@@ -35,8 +36,8 @@ const ScoutingPage: React.FC = () => {
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const [playerSearch, setPlayerSearch] = useState('');
-  const [players, setPlayers] = useState<any[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showAddFixtureModal, setShowAddFixtureModal] = useState(false);
@@ -463,7 +464,7 @@ const ScoutingPage: React.FC = () => {
               <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
                 {players.map((player, index) => (
                   <ListGroup.Item 
-                    key={`${player.player_id || player.id || index}-${player.player_name}`} 
+                    key={player.universal_id || `fallback-${index}-${player.player_name}`} 
                     action 
                     onClick={() => handlePlayerSelect(player)}
                     className="d-flex justify-content-between align-items-center"

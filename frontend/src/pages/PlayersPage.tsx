@@ -6,20 +6,7 @@ import { useAuth } from '../App';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
 import { getPlayerProfilePath } from '../utils/playerNavigation';
-
-interface Player {
-  player_id: number;
-  player_name: string;
-  first_name: string;
-  last_name: string;
-  age: number | null;
-  squad_name: string;
-  position: string;
-  scout_reports_count: number;
-  intel_reports_count: number;
-  last_report_date: string | null;
-  recruitment_status: string;
-}
+import { Player } from '../types/Player';
 
 interface PaginationInfo {
   current_page: number;
@@ -203,8 +190,9 @@ const PlayersPage: React.FC = () => {
   const displayPlayers = players;
 
   const uniqueTeams = players.reduce((teams: string[], player) => {
-    if (!teams.includes(player.squad_name)) {
-      teams.push(player.squad_name);
+    const teamName = player.squad_name || player.team || player.club || player.current_team || 'Unknown Team';
+    if (!teams.includes(teamName)) {
+      teams.push(teamName);
     }
     return teams;
   }, []).sort();
@@ -285,7 +273,7 @@ const PlayersPage: React.FC = () => {
               <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
                 {searchResults.map((player, index) => (
                   <ListGroup.Item 
-                    key={`${player.player_id || index}-${player.player_name}`} 
+                    key={player.universal_id || `fallback-${index}-${player.player_name}`} 
                     action 
                     onClick={() => handlePlayerSelect(player)}
                     className="d-flex justify-content-between align-items-center"
@@ -396,7 +384,7 @@ const PlayersPage: React.FC = () => {
       ) : viewMode === 'cards' ? (
         <Row>
           {displayPlayers.map((player) => (
-            <Col key={player.player_id} lg={6} xl={4} className="mb-3">
+            <Col key={player.universal_id} lg={6} xl={4} className="mb-3">
               <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
                 <Card.Header className="d-flex justify-content-between align-items-start border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
                   <div>
@@ -473,7 +461,7 @@ const PlayersPage: React.FC = () => {
             </thead>
             <tbody>
               {displayPlayers.map((player) => (
-                <tr key={player.player_id} className="align-middle">
+                <tr key={player.universal_id} className="align-middle">
                   <td>
                     <div>
                       <strong>{player.player_name}</strong>

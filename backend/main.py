@@ -17,7 +17,7 @@ from snowflake.connector.connection import SnowflakeConnection
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 import datetime
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -48,21 +48,21 @@ def normalize_text(text: str) -> str:
 def get_player_universal_id(player_row):
     """Get the appropriate ID based on data source"""
     if player_row.get('DATA_SOURCE') == 'internal':
-        return f"manual_{player_row['CAFC_PLAYER_ID']}"
+        return f"internal_{player_row['CAFC_PLAYER_ID']}"
     else:
         return f"external_{player_row['PLAYERID']}"
 
 def get_match_universal_id(match_row):
     """Get the appropriate ID based on data source"""
     if match_row.get('DATA_SOURCE') == 'internal':
-        return f"manual_{match_row['CAFC_MATCH_ID']}"
+        return f"internal_{match_row['CAFC_MATCH_ID']}"
     else:
         return f"external_{match_row['ID']}"
 
 def resolve_player_lookup(universal_id):
     """Convert universal ID to database query"""
-    if universal_id.startswith('manual_'):
-        cafc_id = int(universal_id[7:])
+    if universal_id.startswith('internal_'):
+        cafc_id = int(universal_id[9:])
         return "CAFC_PLAYER_ID = %s AND DATA_SOURCE = 'internal'", [cafc_id]
     else:
         player_id = int(universal_id[9:])
@@ -70,8 +70,8 @@ def resolve_player_lookup(universal_id):
 
 def resolve_match_lookup(universal_id):
     """Convert universal ID to database query"""
-    if universal_id.startswith('manual_'):
-        cafc_id = int(universal_id[7:])
+    if universal_id.startswith('internal_'):
+        cafc_id = int(universal_id[9:])
         return "CAFC_MATCH_ID = %s AND DATA_SOURCE = 'internal'", [cafc_id]
     else:
         match_id = int(universal_id[9:])
@@ -408,7 +408,7 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 class ScoutReport(BaseModel):
-    player_id: int
+    player_id: Union[int, str]
     selectedMatch: Optional[int] = None
     playerPosition: str
     formation: Optional[str] = None
@@ -438,7 +438,7 @@ class Match(BaseModel):
     date: str
 
 class IntelReport(BaseModel):
-    player_id: int
+    player_id: Union[int, str]
     contact_name: str
     contact_organisation: str
     date_of_information: str
@@ -2436,7 +2436,7 @@ async def get_matches_by_date(fixture_date: str, current_user: User = Depends(ge
         match_list = []
         for row in matches:
             match_id, home_team, away_team, scheduled_date, data_source, id_type = row
-            universal_id = get_match_universal_id({'ID': match_id if id_type == 'external' else None, 'CAFC_MATCH_ID': match_id if id_type == 'manual' else None, 'DATA_SOURCE': data_source})
+            universal_id = get_match_universal_id({'ID': match_id if id_type == 'external' else None, 'CAFC_MATCH_ID': match_id if id_type == 'internal' else None, 'DATA_SOURCE': data_source})
             match_list.append({
                 "match_id": match_id,
                 "home_team": home_team,
@@ -3583,10 +3583,10 @@ async def create_intel_report(report: IntelReport, current_user: User = Depends(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Validate and resolve player_id using dual ID lookup
+        # Validate and resolve player_id using universal ID or dual ID lookup
         if report.player_id:
             print(f"🔍 DEBUG: About to validate player_id={report.player_id}")
-            player_data, player_data_source = find_player_by_any_id(report.player_id, cursor)
+            player_data, player_data_source = find_player_by_universal_or_legacy_id(report.player_id, cursor)
             if not player_data:
                 raise HTTPException(status_code=404, detail=f"Player with ID {report.player_id} not found")
             # Use the actual database player ID for the insert

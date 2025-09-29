@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Row, Col, OverlayTrigger, Tooltip, Spinner, Toast, ToastContainer } from 'react-bootstrap';
 import axiosInstance from '../axiosInstance';
 import Select from 'react-select';
+import { Player } from '../types/Player';
 
 interface ScoutingAssessmentModalProps {
   show: boolean;
   onHide: () => void;
-  selectedPlayer: any;
+  selectedPlayer: Player | null;
   onAssessmentSubmitSuccess: () => void;
   editMode?: boolean;
   reportId?: number | null;
@@ -231,7 +232,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
     setLoading(true);
     try {
       const payload: any = {
-        player_id: selectedPlayer.universal_id,
+        player_id: selectedPlayer?.universal_id,
         reportType: assessmentType,
       };
 
