@@ -316,7 +316,7 @@ const ScoutingPage: React.FC = () => {
         return <span className="badge badge-neutral-grey">Clips</span>;
       case 'player assessment':
       case 'player':
-        return <span className="badge badge-neutral-grey">Player Assessment</span>;
+        return null; // Remove Player Assessment badge
       default:
         return <span className="badge badge-neutral-grey">{reportType}</span>;
     }
@@ -324,20 +324,29 @@ const ScoutingPage: React.FC = () => {
 
   const getFlagBadge = (flagType?: string) => {
     const flagColor = getFlagColor(flagType || '');
-    const textColor = getContrastTextColor(flagColor);
 
     return (
       <span
         className="badge"
-        style={{ backgroundColor: flagColor, color: textColor, border: 'none' }}
+        style={{ backgroundColor: flagColor, border: 'none', cursor: 'pointer' }}
+        title={`Flag: ${flagType || 'Unknown'}`}
       >
-        {flagType || 'Flag'}
+        🚩
       </span>
     );
   };
 
   const getScoutingTypeBadge = (scoutingType: string) => {
-    return <span className="badge badge-neutral-grey">{scoutingType}</span>;
+    const icon = scoutingType.toLowerCase() === 'live' ? '🔍' : '💻';
+    return (
+      <span
+        className="badge badge-neutral-grey"
+        style={{ cursor: 'pointer' }}
+        title={`Scouting Type: ${scoutingType}`}
+      >
+        {icon}
+      </span>
+    );
   };
 
 
@@ -782,53 +791,53 @@ const ScoutingPage: React.FC = () => {
               <Table responsive hover striped className="table-compact table-sm">
                 <thead className="table-dark">
                   <tr>
-                    <th>Report Date</th>
-                    <th>Player</th>
-                    <th>Age</th>
-                    <th>Position</th>
-                    <th>Fixture Date</th>
-                    <th>Fixture</th>
-                    <th>Scout</th>
-                    <th>Type</th>
-                    <th>Performance</th>
-                    <th>Actions</th>
+                    <th style={{ textAlign: 'center' }}>Report Date</th>
+                    <th style={{ textAlign: 'center' }}>Player</th>
+                    <th style={{ textAlign: 'center' }}>Age</th>
+                    <th style={{ textAlign: 'center' }}>Position</th>
+                    <th style={{ textAlign: 'center' }}>Fixture Date</th>
+                    <th style={{ textAlign: 'center' }}>Fixture</th>
+                    <th style={{ textAlign: 'center' }}>Scout</th>
+                    <th style={{ textAlign: 'center' }}>Tag</th>
+                    <th style={{ textAlign: 'center' }}>Score</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedReports.map((report) => (
                     <tr key={report.report_id}>
-                      <td>{new Date(report.created_at).toLocaleDateString()}</td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>{new Date(report.created_at).toLocaleDateString()}</td>
+                      <td style={{ textAlign: 'center' }}>
                         <Button variant="link" onClick={() => navigate(`/player/${report.player_id}`)}>
                           {report.player_name}
                         </Button>
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <span className="age-text">{report.age || 'N/A'}</span>
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <span className="position-text">{report.position_played || 'N/A'}</span>
                       </td>
-                      <td>
-                        {report.fixture_date && report.fixture_date !== 'N/A' ? 
-                          new Date(report.fixture_date).toLocaleDateString() : 
+                      <td style={{ textAlign: 'center' }}>
+                        {report.fixture_date && report.fixture_date !== 'N/A' ?
+                          new Date(report.fixture_date).toLocaleDateString() :
                           'N/A'
                         }
                       </td>
-                      <td>
-                        {report.fixture_details && report.fixture_details !== 'N/A' ? 
-                          report.fixture_details : 
+                      <td style={{ textAlign: 'center' }}>
+                        {report.fixture_details && report.fixture_details !== 'N/A' ?
+                          report.fixture_details :
                           'N/A'
                         }
                       </td>
-                      <td>{report.scout_name}</td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>{report.scout_name}</td>
+                      <td style={{ textAlign: 'center' }}>
                         {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                         {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
                       </td>
-                      <td><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
-                      <td>
-                        <div className="btn-group">
+                      <td style={{ textAlign: 'center' }}><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div className="btn-group" style={{ justifyContent: 'center' }}>
                           <Button size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="btn-action-circle btn-action-view">
                             {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
                           </Button>
@@ -862,7 +871,7 @@ const ScoutingPage: React.FC = () => {
                           <div className="mb-2">
                             {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
                             {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
-                              </div>
+                          </div>
                         </div>
                         <div className="text-end">
                           <small className="text-muted d-block">{new Date(report.created_at).toLocaleDateString()}</small>
@@ -887,7 +896,7 @@ const ScoutingPage: React.FC = () => {
                         <Row className="mb-3">
                           <Col xs={6}>
                             <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                              <div className="fw-bold text-muted small mb-1">PERFORMANCE</div>
+                              <div className="fw-bold text-muted small mb-1">SCORE</div>
                               <span className="badge fs-6" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>
                                 {report.performance_score}
                               </span>

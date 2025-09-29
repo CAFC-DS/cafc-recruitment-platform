@@ -301,7 +301,18 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
 
   const renderTooltip = (props: any) => (
     <Tooltip id="button-tooltip" {...props}>
-      0: Very Poor, 5: Average, 10: Excellent
+      <div style={{ textAlign: 'left', fontSize: '11px' }}>
+        10 - Mid Prem & Above<br/>
+        9 - Bottom Prem<br/>
+        8 - Top Champ<br/>
+        7 - Average Champ<br/>
+        6 - Top L1<br/>
+        5 - Average L1<br/>
+        4 - Top L2<br/>
+        3 - Average L2<br/>
+        2 - National League<br/>
+        1 - Step 2 & Below
+      </div>
     </Tooltip>
   );
 
@@ -652,6 +663,84 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
       <style>{`
         .modal-header-dark .btn-close {
           filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        /* Override dark mode styling for range sliders */
+        .form-range {
+          background: transparent !important;
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          height: 6px !important;
+          border-radius: 5px !important;
+          background: linear-gradient(to right, #dee2e6 0%, #dee2e6 100%) !important;
+          outline: none !important;
+        }
+
+        .form-range::-webkit-slider-track {
+          background: #dee2e6 !important;
+          height: 6px !important;
+          border-radius: 5px !important;
+          border: none !important;
+        }
+
+        .form-range::-webkit-slider-thumb {
+          -webkit-appearance: none !important;
+          appearance: none !important;
+          height: 20px !important;
+          width: 20px !important;
+          border-radius: 50% !important;
+          background: #0d6efd !important;
+          cursor: pointer !important;
+          border: none !important;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+
+        .form-range::-moz-range-track {
+          background: #dee2e6 !important;
+          height: 6px !important;
+          border-radius: 5px !important;
+          border: none !important;
+        }
+
+        .form-range::-moz-range-thumb {
+          height: 20px !important;
+          width: 20px !important;
+          border-radius: 50% !important;
+          background: #0d6efd !important;
+          cursor: pointer !important;
+          border: none !important;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+
+        /* Force light appearance for range sliders regardless of theme */
+        [data-bs-theme="dark"] .form-range,
+        body.dark .form-range,
+        .dark .form-range {
+          background: linear-gradient(to right, #dee2e6 0%, #dee2e6 100%) !important;
+        }
+
+        [data-bs-theme="dark"] .form-range::-webkit-slider-track,
+        body.dark .form-range::-webkit-slider-track,
+        .dark .form-range::-webkit-slider-track {
+          background: #dee2e6 !important;
+        }
+
+        [data-bs-theme="dark"] .form-range::-webkit-slider-thumb,
+        body.dark .form-range::-webkit-slider-thumb,
+        .dark .form-range::-webkit-slider-thumb {
+          background: #0d6efd !important;
+        }
+
+        [data-bs-theme="dark"] .form-range::-moz-range-track,
+        body.dark .form-range::-moz-range-track,
+        .dark .form-range::-moz-range-track {
+          background: #dee2e6 !important;
+        }
+
+        [data-bs-theme="dark"] .form-range::-moz-range-thumb,
+        body.dark .form-range::-moz-range-thumb,
+        .dark .form-range::-moz-range-thumb {
+          background: #0d6efd !important;
         }
       `}</style>
     </>

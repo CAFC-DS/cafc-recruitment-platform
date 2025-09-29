@@ -17,7 +17,7 @@ from snowflake.connector.connection import SnowflakeConnection
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import datetime
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -26,6 +26,11 @@ import asyncio
 from functools import lru_cache
 import unicodedata
 import re
+
+# Import chatbot services
+from services.sql_generator import SQLGeneratorService
+from services.schema_service import SchemaService
+from services.ollama_service import ollama_service
 
 # Load environment variables from .env file
 load_dotenv()
@@ -304,6 +309,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 120
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# Global SQL Generator Service (initialized on first use)
+sql_generator_service = None
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         # Truncate if >72 bytes in utf-8
@@ -416,6 +424,29 @@ class IntelReport(BaseModel):
     expected_wages: Optional[str] = None
     conversation_notes: str
     action_required: str
+
+# --- Chatbot Models ---
+class ChatbotQuery(BaseModel):
+    query: str
+    conversation_history: Optional[List[Dict[str, str]]] = None
+
+class ChatbotResponse(BaseModel):
+    success: bool
+    response: Optional[str] = None
+    sql_query: Optional[str] = None
+    results: Optional[List[Dict[str, Any]]] = None
+    row_count: Optional[int] = None
+    execution_time: Optional[float] = None
+    columns: Optional[List[str]] = None
+    error: Optional[str] = None
+    suggestion: Optional[str] = None
+    timestamp: str
+
+class ChatbotHealthCheck(BaseModel):
+    ollama_available: bool
+    ai_model_loaded: bool
+    database_accessible: bool
+    status: str
 
 # --- User Database Operations ---
 async def get_user(username: str):
@@ -4338,6 +4369,135 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
     finally:
         if conn:
             conn.close()
+
+# --- AI Chatbot Endpoints ---
+
+def get_sql_generator_service() -> SQLGeneratorService:
+    """Get or create SQL generator service instance"""
+    global sql_generator_service
+    if sql_generator_service is None:
+        conn = get_snowflake_connection()
+        sql_generator_service = SQLGeneratorService(conn)
+    return sql_generator_service
+
+@app.get("/chatbot/health", response_model=ChatbotHealthCheck)
+async def check_chatbot_health(current_user: User = Depends(get_current_user)):
+    """Check health status of AI chatbot components"""
+    if not current_user or current_user.role not in ["manager", "admin"]:
+        raise HTTPException(status_code=403, detail="Access denied. Manager or admin role required.")
+
+    try:
+        # Check Ollama availability
+        ollama_available = await ollama_service.check_ollama_health()
+
+        # Check if models are available
+        models = await ollama_service.list_available_models()
+        model_loaded = len(models) > 0 and any("llama" in model.lower() for model in models)
+
+        # Check database connectivity
+        database_accessible = True
+        try:
+            conn = get_snowflake_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            conn.close()
+        except Exception:
+            database_accessible = False
+
+        # Determine overall status
+        if ollama_available and model_loaded and database_accessible:
+            status = "All systems operational"
+        elif not ollama_available:
+            status = "Ollama service unavailable - please ensure Ollama is running"
+        elif not model_loaded:
+            status = "No compatible AI models found - please install llama3.1:8b or similar"
+        elif not database_accessible:
+            status = "Database connection issues"
+        else:
+            status = "Partial functionality available"
+
+        return ChatbotHealthCheck(
+            ollama_available=ollama_available,
+            ai_model_loaded=model_loaded,
+            database_accessible=database_accessible,
+            status=status
+        )
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+@app.post("/chatbot/query", response_model=ChatbotResponse)
+async def process_chatbot_query(
+    query_data: ChatbotQuery,
+    current_user: User = Depends(get_current_user)
+):
+    """Process natural language query using AI chatbot"""
+    if not current_user or current_user.role not in ["manager", "admin"]:
+        raise HTTPException(status_code=403, detail="Access denied. Manager or admin role required.")
+
+    try:
+        # Get SQL generator service
+        service = get_sql_generator_service()
+
+        # Process the query
+        result = await service.process_natural_language_query(
+            user_query=query_data.query,
+            conversation_history=query_data.conversation_history,
+            user_role=current_user.role
+        )
+
+        return ChatbotResponse(
+            success=result["success"],
+            response=result.get("query_summary"),
+            sql_query=result.get("sql_query"),
+            results=result.get("results"),
+            row_count=result.get("row_count"),
+            execution_time=result.get("execution_time"),
+            columns=result.get("columns"),
+            error=result.get("error"),
+            suggestion=result.get("suggestion"),
+            timestamp=result.get("timestamp", datetime.now().isoformat())
+        )
+
+    except Exception as e:
+        logging.exception(e)
+        return ChatbotResponse(
+            success=False,
+            error="Query processing failed",
+            suggestion="Please try rephrasing your question or check if Ollama is running",
+            timestamp=datetime.now().isoformat()
+        )
+
+@app.get("/chatbot/suggestions")
+async def get_suggested_queries(current_user: User = Depends(get_current_user)):
+    """Get list of suggested queries for users"""
+    if not current_user or current_user.role not in ["manager", "admin"]:
+        raise HTTPException(status_code=403, detail="Access denied. Manager or admin role required.")
+
+    try:
+        service = get_sql_generator_service()
+        suggestions = await service.get_suggested_queries()
+        return {"suggestions": suggestions}
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail="Failed to get suggestions")
+
+@app.get("/chatbot/schema")
+async def get_schema_summary(current_user: User = Depends(get_current_user)):
+    """Get summary of available data for chatbot queries"""
+    if not current_user or current_user.role not in ["manager", "admin"]:
+        raise HTTPException(status_code=403, detail="Access denied. Manager or admin role required.")
+
+    try:
+        service = get_sql_generator_service()
+        summary = service.get_schema_summary()
+        return {"summary": summary}
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail="Failed to get schema information")
 
 if __name__ == "__main__":
     import uvicorn

@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import axiosInstance from '../axiosInstance';
+import AnalyticsChatbot from '../components/AnalyticsChatbot';
 
 ChartJS.register(
   CategoryScale,
@@ -555,6 +556,13 @@ const AnalyticsPage: React.FC = () => {
               )}
             </Card.Body>
           </Card>
+        </Col>
+      </Row>
+
+      {/* AI Analytics Chatbot */}
+      <Row className="mt-4">
+        <Col>
+          <AnalyticsChatbot />
         </Col>
       </Row>
 
