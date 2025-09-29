@@ -231,7 +231,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({ show,
     setLoading(true);
     try {
       const payload: any = {
-        player_id: selectedPlayer.player_id || selectedPlayer.cafc_player_id,
+        player_id: selectedPlayer.universal_id,
         reportType: assessmentType,
       };
 

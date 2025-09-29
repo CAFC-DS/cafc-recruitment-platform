@@ -80,22 +80,11 @@ def resolve_match_lookup(universal_id):
 # Universal lookup functions for dual ID system
 def find_player_by_any_id(player_id: int, cursor):
     """
-    Find player by trying external ID first, then CAFC_PLAYER_ID
+    Find player by trying CAFC_PLAYER_ID first (internal), then external ID
+    This prevents ID collision between internal and external players
     Returns: (player_data, source) or (None, None) if not found
     """
-    # Try external ID first (most common case)
-    cursor.execute("""
-        SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
-               BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
-        FROM players
-        WHERE PLAYERID = %s AND DATA_SOURCE = 'external'
-    """, (player_id,))
-    result = cursor.fetchone()
-
-    if result:
-        return result, 'external'
-
-    # Try CAFC_PLAYER_ID (internal/manual records)
+    # Try CAFC_PLAYER_ID first (internal/manual records) - these take priority
     cursor.execute("""
         SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
                BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
@@ -107,7 +96,44 @@ def find_player_by_any_id(player_id: int, cursor):
     if result:
         return result, 'internal'
 
+    # Then try external ID (backwards compatibility)
+    cursor.execute("""
+        SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+               BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+        FROM players
+        WHERE PLAYERID = %s AND DATA_SOURCE = 'external'
+    """, (player_id,))
+    result = cursor.fetchone()
+
+    if result:
+        return result, 'external'
+
     return None, None
+
+def find_player_by_universal_or_legacy_id(player_id, cursor):
+    """
+    Universal player lookup that handles both universal IDs and legacy integer IDs
+    Returns: (player_data, source) or (None, None) if not found
+    """
+    if isinstance(player_id, str) and ('internal_' in player_id or 'external_' in player_id):
+        # Handle universal ID format
+        where_clause, params = resolve_player_lookup(player_id)
+        cursor.execute(f"""
+            SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+                   BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+            FROM players
+            WHERE {where_clause}
+        """, params)
+        player_data = cursor.fetchone()
+        data_source = 'internal' if 'internal_' in player_id else 'external'
+        return player_data, data_source
+    else:
+        # Fallback to legacy dual ID lookup for backwards compatibility
+        try:
+            player_id_int = int(player_id)
+            return find_player_by_any_id(player_id_int, cursor)
+        except ValueError:
+            return None, None
 
 def find_match_by_any_id(match_id: int, cursor):
     """
@@ -1833,17 +1859,43 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
         elif report_type == 'Clips':
             pass # All relevant fields are already prepared or optional
 
-        # Validate and resolve player_id using dual ID lookup
+        # Validate and resolve player_id using universal ID or dual ID lookup
         if player_id:
             print(f"🔍 DEBUG: Validating player_id={player_id}")
-            player_data, player_data_source = find_player_by_any_id(player_id, cursor)
-            print(f"🔍 DEBUG: Player lookup result: player_data={player_data}, source={player_data_source}")
-            if not player_data:
-                print(f"❌ DEBUG: Player with ID {player_id} not found!")
-                raise HTTPException(status_code=404, detail=f"Player with ID {player_id} not found")
-            # Use the actual database player ID for the insert
-            actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
-            print(f"🔍 DEBUG: Using actual_player_id={actual_player_id} for database insert")
+
+            # Check if player_id is universal ID format (string with internal_/external_ prefix)
+            if isinstance(player_id, str) and ('internal_' in player_id or 'external_' in player_id):
+                print(f"🔍 DEBUG: Universal ID detected: {player_id}")
+                # Use universal ID resolution
+                where_clause, params = resolve_player_lookup(player_id)
+                cursor.execute(f"""
+                    SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+                           BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+                    FROM players
+                    WHERE {where_clause}
+                """, params)
+                player_data = cursor.fetchone()
+
+                if not player_data:
+                    print(f"❌ DEBUG: Player with universal ID {player_id} not found!")
+                    raise HTTPException(status_code=404, detail=f"Player with universal ID {player_id} not found")
+
+                # Determine data source and actual ID
+                player_data_source = 'internal' if 'internal_' in player_id else 'external'
+                actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
+                print(f"🔍 DEBUG: Universal ID resolved - source={player_data_source}, actual_player_id={actual_player_id}")
+
+            else:
+                # Fallback to legacy dual ID lookup for backwards compatibility
+                print(f"🔍 DEBUG: Legacy ID format detected, using dual lookup")
+                player_data, player_data_source = find_player_by_any_id(player_id, cursor)
+                print(f"🔍 DEBUG: Player lookup result: player_data={player_data}, source={player_data_source}")
+                if not player_data:
+                    print(f"❌ DEBUG: Player with ID {player_id} not found!")
+                    raise HTTPException(status_code=404, detail=f"Player with ID {player_id} not found")
+                # Use the actual database player ID for the insert
+                actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
+                print(f"🔍 DEBUG: Using actual_player_id={actual_player_id} for database insert")
         else:
             actual_player_id = None
             print(f"🔍 DEBUG: No player_id provided")
@@ -2649,6 +2701,14 @@ async def get_all_scout_reports(
                 away_team = row[5] if row[5] else "Unknown"
                 fixture_details = f"{home_team} vs {away_team}"
             
+            # Generate universal_id for navigation using existing helper function
+            player_row = {
+                'CAFC_PLAYER_ID': row[16],  # cafc_player_id
+                'PLAYERID': row[13],        # player_id
+                'DATA_SOURCE': row[17]      # data_source
+            }
+            nav_universal_id = get_player_universal_id(player_row)
+
             report_list.append({
                 "created_at": str(row[0]),
                 "player_name": row[1],
@@ -2664,11 +2724,12 @@ async def get_all_scout_reports(
                 "report_type": row[10],
                 "scouting_type": row[11],
                 "scout_name": row[12] if row[12] else "Unknown Scout",
-                "player_id": row[13],
+                "player_id": nav_universal_id,  # Use universal ID for collision-safe navigation
                 "flag_category": row[14],
                 "purpose": row[15] if row[15] else None,
                 "cafc_player_id": row[16],
-                "data_source": row[17]
+                "data_source": row[17],
+                "universal_id": nav_universal_id  # Also include separately for clarity
             })
         return {
             "total_reports": total_reports,
@@ -2798,14 +2859,14 @@ class PlayerNote(BaseModel):
 # PlayerPipelineStatus removed - will be added later
 
 @app.get("/players/{player_id}/profile")
-async def get_player_profile(player_id: int, current_user: User = Depends(get_current_user)):
+async def get_player_profile(player_id: str, current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Get player basic info using dual ID lookup
-        player_data, data_source = find_player_by_any_id(player_id, cursor)
+        # Get player basic info using universal ID or dual ID lookup
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
 
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
@@ -2950,15 +3011,15 @@ async def get_player_profile(player_id: int, current_user: User = Depends(get_cu
             conn.close()
 
 @app.get("/players/{player_id}/attributes")
-async def get_player_attributes(player_id: int, current_user: User = Depends(get_current_user)):
+async def get_player_attributes(player_id: str, current_user: User = Depends(get_current_user)):
     """Get player attribute averages grouped by categories from all scout reports"""
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        
-        # Check if player exists using dual ID lookup
-        player_data, data_source = find_player_by_any_id(player_id, cursor)
+
+        # Check if player exists using universal ID or dual ID lookup
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
 
@@ -3101,15 +3162,15 @@ async def get_player_attributes(player_id: int, current_user: User = Depends(get
             conn.close()
 
 @app.get("/players/{player_id}/scout-reports")
-async def get_player_scout_reports(player_id: int, current_user: User = Depends(get_current_user)):
+async def get_player_scout_reports(player_id: str, current_user: User = Depends(get_current_user)):
     """Get scout reports timeline for a player"""
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         
-        # Check if player exists using dual ID lookup
-        player_data, data_source = find_player_by_any_id(player_id, cursor)
+        # Check if player exists using universal ID or dual ID lookup
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
 
@@ -3342,15 +3403,15 @@ async def get_all_players(
             conn.close()
 
 @app.get("/players/{player_id}/export-pdf")
-async def export_player_pdf(player_id: int, current_user: User = Depends(get_current_user)):
+async def export_player_pdf(player_id: str, current_user: User = Depends(get_current_user)):
     """Generate a printable HTML report for the player that can be converted to PDF"""
     try:
         # Get player profile data
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check if player exists using dual ID lookup
-        player_lookup_result, data_source = find_player_by_any_id(player_id, cursor)
+        # Check if player exists using universal ID or dual ID lookup
+        player_lookup_result, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
         if not player_lookup_result:
             raise HTTPException(status_code=404, detail="Player not found")
 
