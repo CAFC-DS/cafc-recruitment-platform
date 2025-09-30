@@ -1898,6 +1898,7 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
                 print(f"🔍 DEBUG: Using actual_player_id={actual_player_id} for database insert")
         else:
             actual_player_id = None
+            player_data_source = None
             print(f"🔍 DEBUG: No player_id provided")
 
         # Validate and resolve match_id using dual ID lookup if provided
@@ -1909,18 +1910,23 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
             # Use the actual database match ID for the insert
             actual_match_id = match_data[0] if match_data_source == 'external' else match_data[1]
 
+        # Determine which column to populate based on player source
+        external_player_id = actual_player_id if player_data_source == 'external' else None
+        internal_player_id = actual_player_id if player_data_source == 'internal' else None
+
         # Try to insert with USER_ID first, fallback to without USER_ID if column doesn't exist
         try:
             sql = """
                 INSERT INTO scout_reports (
-                    PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES, 
-                    SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, 
+                    PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
+                    SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
                     PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, USER_ID
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            
+
             values = (
-                actual_player_id,
+                external_player_id,
+                internal_player_id,
                 position,
                 build,
                 height,
@@ -1945,14 +1951,15 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
             if "invalid identifier 'USER_ID'" in str(e) or "USER_ID" in str(e):
                 sql = """
                     INSERT INTO scout_reports (
-                        PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES, 
-                        SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, 
+                        PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
+                        SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
                         PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
-                
+
                 values = (
-                    actual_player_id,
+                    external_player_id,
+                    internal_player_id,
                     position,
                     build,
                     height,
@@ -1974,23 +1981,37 @@ async def create_scout_report(report: ScoutReport, request: Request, current_use
             else:
                 raise e
         
-        # Get the ID of the report just inserted
+        # Get the ID of the report just inserted using dual column approach
+        print(f"🔍 DEBUG: Retrieving report ID using player_data_source={player_data_source}, actual_player_id={actual_player_id}")
         if use_user_id:
-            cursor.execute(
-                "SELECT ID FROM scout_reports WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
-                (player_id, current_user.id, summary, report_type)
-            )
+            if player_data_source == 'external':
+                cursor.execute(
+                    "SELECT ID FROM scout_reports WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    (actual_player_id, current_user.id, summary, report_type)
+                )
+            else:
+                cursor.execute(
+                    "SELECT ID FROM scout_reports WHERE CAFC_PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    (actual_player_id, current_user.id, summary, report_type)
+                )
         else:
-            cursor.execute(
-                "SELECT ID FROM scout_reports WHERE PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
-                (player_id, summary, report_type)
-            )
+            if player_data_source == 'external':
+                cursor.execute(
+                    "SELECT ID FROM scout_reports WHERE PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    (actual_player_id, summary, report_type)
+                )
+            else:
+                cursor.execute(
+                    "SELECT ID FROM scout_reports WHERE CAFC_PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    (actual_player_id, summary, report_type)
+                )
         report_id_row = cursor.fetchone()
 
         if not report_id_row:
             raise Exception("Failed to retrieve report ID after insert. The report may not have been saved.")
         
         report_id = report_id_row[0]
+        print(f"🔍 DEBUG: Report created successfully with ID={report_id}")
 
         # Batch insert individual attribute scores for better performance
         if report_type == 'Player Assessment' and report.attributeScores:
@@ -2040,9 +2061,37 @@ async def update_scout_report(report_id: int, report: ScoutReport, current_user:
         
         report_type = report.reportType
         
-        # Prepare common fields
+        # Prepare common fields and resolve player ID
         player_id = report.player_id
         position = report.playerPosition
+
+        # Resolve player_id using the same logic as create endpoint
+        if player_id:
+            if isinstance(player_id, str) and ('internal_' in player_id or 'external_' in player_id):
+                # Universal ID resolution
+                where_clause, params = resolve_player_lookup(player_id)
+                cursor.execute(f"""
+                    SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+                           BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+                    FROM players
+                    WHERE {where_clause}
+                """, params)
+                player_data = cursor.fetchone()
+
+                if not player_data:
+                    raise HTTPException(status_code=404, detail=f"Player with universal ID {player_id} not found")
+
+                player_data_source = 'internal' if 'internal_' in player_id else 'external'
+                actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
+            else:
+                # Legacy lookup
+                player_data, player_data_source = find_player_by_any_id(player_id, cursor)
+                if not player_data:
+                    raise HTTPException(status_code=404, detail=f"Player with ID {player_id} not found")
+                actual_player_id = player_data[0] if player_data_source == 'external' else player_data[1]
+        else:
+            actual_player_id = None
+            player_data_source = None
         build = report.playerBuild
         height = report.playerHeight
         summary = report.assessmentSummary
@@ -2072,17 +2121,21 @@ async def update_scout_report(report_id: int, report: ScoutReport, current_user:
         elif report_type == 'Clips':
             pass
         
-        # Update the scout report
+        # Determine which columns to update based on player source
+        external_player_id = actual_player_id if player_data_source == 'external' else None
+        internal_player_id = actual_player_id if player_data_source == 'internal' else None
+
+        # Update the scout report with dual column approach
         sql = """
-            UPDATE scout_reports SET 
-                PLAYER_ID = %s, POSITION = %s, BUILD = %s, HEIGHT = %s, STRENGTHS = %s, WEAKNESSES = %s,
+            UPDATE scout_reports SET
+                PLAYER_ID = %s, CAFC_PLAYER_ID = %s, POSITION = %s, BUILD = %s, HEIGHT = %s, STRENGTHS = %s, WEAKNESSES = %s,
                 SUMMARY = %s, JUSTIFICATION = %s, ATTRIBUTE_SCORE = %s, PERFORMANCE_SCORE = %s,
                 PURPOSE = %s, SCOUTING_TYPE = %s, FLAG_CATEGORY = %s, REPORT_TYPE = %s, MATCH_ID = %s, FORMATION = %s
             WHERE ID = %s
         """
-        
+
         values = (
-            player_id, position, build, height, strengths, weaknesses, summary, 
+            external_player_id, internal_player_id, position, build, height, strengths, weaknesses, summary,
             justification_rationale, attribute_score, performance_score, purpose_of_assessment,
             scouting_type, flag_category, report_type, match_id, formation, report_id
         )
@@ -2170,12 +2223,15 @@ async def get_scout_report(report_id: int, current_user: User = Depends(get_curr
         
         # Get the scout report with all details
         cursor.execute("""
-            SELECT sr.ID, sr.PLAYER_ID, sr.POSITION, sr.BUILD, sr.HEIGHT, sr.STRENGTHS, sr.WEAKNESSES,
+            SELECT sr.ID, sr.PLAYER_ID, sr.CAFC_PLAYER_ID, sr.POSITION, sr.BUILD, sr.HEIGHT, sr.STRENGTHS, sr.WEAKNESSES,
                    sr.SUMMARY, sr.JUSTIFICATION, sr.ATTRIBUTE_SCORE, sr.PERFORMANCE_SCORE, sr.PURPOSE,
                    sr.SCOUTING_TYPE, sr.FLAG_CATEGORY, sr.REPORT_TYPE, sr.MATCH_ID, sr.FORMATION,
-                   p.PLAYERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, DATE(m.SCHEDULEDDATE) as FIXTURE_DATE
+                   p.PLAYERNAME, p.DATA_SOURCE, m.HOMESQUADNAME, m.AWAYSQUADNAME, DATE(m.SCHEDULEDDATE) as FIXTURE_DATE
             FROM scout_reports sr
-            LEFT JOIN players p ON (sr.PLAYER_ID = p.PLAYERID OR sr.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             WHERE sr.ID = %s
         """, (report_id,))
@@ -2197,27 +2253,40 @@ async def get_scout_report(report_id: int, current_user: User = Depends(get_curr
         strengths = [s.strip() for s in report[5].split(',')] if report[5] else []
         weaknesses = [w.strip() for w in report[6].split(',')] if report[6] else []
         
+        # Determine the universal player ID based on data source
+        external_player_id = report[1]  # sr.PLAYER_ID
+        internal_player_id = report[2]  # sr.CAFC_PLAYER_ID
+        data_source = report[18]  # p.DATA_SOURCE
+
+        if data_source == 'internal' and internal_player_id:
+            universal_player_id = f"internal_{internal_player_id}"
+        elif data_source == 'external' and external_player_id:
+            universal_player_id = f"external_{external_player_id}"
+        else:
+            # Fallback for legacy data or edge cases
+            universal_player_id = external_player_id or internal_player_id
+
         report_data = {
             "report_id": report[0],
-            "player_id": report[1],
-            "playerPosition": report[2],
-            "playerBuild": report[3],
-            "playerHeight": report[4],
+            "player_id": universal_player_id,
+            "playerPosition": report[3],
+            "playerBuild": report[4],
+            "playerHeight": report[5],
             "strengths": strengths,
             "weaknesses": weaknesses,
-            "assessmentSummary": report[7],
-            "justificationRationale": report[8],
-            "performanceScore": report[10],
-            "purposeOfAssessment": report[11],
-            "scoutingType": report[12],
-            "flagCategory": report[13],
-            "reportType": report[14],
-            "selectedMatch": report[15],
-            "formation": report[16],
+            "assessmentSummary": report[8],
+            "justificationRationale": report[9],
+            "performanceScore": report[11],
+            "purposeOfAssessment": report[12],
+            "scoutingType": report[13],
+            "flagCategory": report[14],
+            "reportType": report[15],
+            "selectedMatch": report[16],
+            "formation": report[17],
             "attributeScores": attribute_scores,
-            "player_name": report[17],
-            "fixtureDate": str(report[20]) if report[20] else None,
-            "matchLabel": f"{report[18]} vs {report[19]}" if report[18] and report[19] else None
+            "player_name": report[18],
+            "fixtureDate": str(report[22]) if report[22] else None,
+            "matchLabel": f"{report[20]} vs {report[21]}" if report[20] and report[21] else None
         }
         
         return report_data
@@ -2607,10 +2676,13 @@ async def get_all_scout_reports(
 
         offset = (page - 1) * limit
 
-        # Base SQL query for fetching reports - updated to handle both external and manual players
+        # Base SQL query for fetching reports - dual column approach for player separation
         base_sql = """
             FROM scout_reports sr
-            LEFT JOIN players p ON (sr.PLAYER_ID = p.PLAYERID OR sr.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN users u ON sr.USER_ID = u.ID
         """
@@ -2776,7 +2848,10 @@ async def get_single_scout_report(report_id: int, current_user: User = Depends(g
                 sr.REPORT_TYPE,
                 sr.FLAG_CATEGORY
             FROM scout_reports sr
-            LEFT JOIN players p ON (sr.PLAYER_ID = p.PLAYERID OR sr.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN users u ON sr.USER_ID = u.ID
             WHERE sr.ID = %s
