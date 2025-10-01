@@ -98,6 +98,7 @@ const PlayerProfilePage: React.FC = () => {
     [key: string]: number;
   }>({});
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
+  const [positionCounts, setPositionCounts] = useState<Array<{position: string, report_count: number}>>([]);
 
   // Red-green gradient color functions for scoring (now using utility)
 
@@ -398,6 +399,7 @@ const PlayerProfilePage: React.FC = () => {
       fetchPlayerProfile();
       fetchPlayerAttributes();
       fetchScoutReports();
+      fetchPositionCounts();
     }
   }, [actualPlayerId]);
 
@@ -467,6 +469,21 @@ const PlayerProfilePage: React.FC = () => {
       // Don't set main error - scout reports are optional
     } finally {
       setScoutReportsLoading(false);
+    }
+  };
+
+  const fetchPositionCounts = async () => {
+    if (!actualPlayerId) {
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.get(
+        `/players/${actualPlayerId}/position-counts`,
+      );
+      setPositionCounts(response.data.position_counts || []);
+    } catch (error: any) {
+      console.error("Error fetching position counts:", error);
     }
   };
 
@@ -845,6 +862,16 @@ const PlayerProfilePage: React.FC = () => {
         <div className="radar-charts-section mt-4 mb-4">
           <div className="radar-header mb-3">
             <h4>📊 Position Analysis</h4>
+            <div className="position-disclaimer mb-3 p-3" style={{
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffc107",
+              borderRadius: "8px",
+              fontSize: "0.9rem"
+            }}>
+              <strong>⚠️ Note:</strong> Players may not have been assessed in all positions.
+              Attribute scores shown are averages across all reports and may not be representative
+              of the player's ability in specific positions where they have limited or no assessments.
+            </div>
             <div className="d-flex align-items-center gap-3">
               <Form.Select
                 value={selectedPosition}
@@ -1072,6 +1099,54 @@ const PlayerProfilePage: React.FC = () => {
                         </div>
                       </Card.Body>
                     </Card>
+
+                    {/* Position Report Counts Table */}
+                    {positionCounts.length > 0 && (
+                      <Card
+                        className="shadow-sm mt-3"
+                        style={{ borderRadius: "12px" }}
+                      >
+                        <Card.Header
+                          style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
+                        >
+                          <h6 className="mb-0">📍 Reports by Position</h6>
+                        </Card.Header>
+                        <Card.Body>
+                          <div className="position-counts-table">
+                            {positionCounts.map((posCount) => (
+                              <div
+                                key={posCount.position}
+                                className="position-count-row mb-2 pb-2"
+                                style={{ borderBottom: "1px solid #f0f0f0" }}
+                              >
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <span
+                                    className="position-name"
+                                    style={{
+                                      fontSize: "0.85rem",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    {posCount.position}
+                                  </span>
+                                  <span
+                                    className="badge bg-secondary"
+                                    style={{
+                                      fontSize: "0.75rem",
+                                    }}
+                                  >
+                                    {posCount.report_count}{" "}
+                                    {posCount.report_count === 1
+                                      ? "report"
+                                      : "reports"}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    )}
                   </Col>
                 </Row>
               );

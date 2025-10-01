@@ -32,6 +32,7 @@ import {
   containsAccentInsensitive,
 } from "../utils/textNormalization";
 import { Player } from "../types/Player";
+import { getPlayerProfilePath } from "../utils/playerNavigation";
 
 interface ScoutReport {
   report_id: number;
@@ -50,6 +51,7 @@ interface ScoutReport {
   scouting_type: string;
   player_id: number;
   purpose: string | null;
+  universal_id?: string;
 }
 
 const ScoutingPage: React.FC = () => {
@@ -994,7 +996,7 @@ const ScoutingPage: React.FC = () => {
                         <Button
                           variant="link"
                           onClick={() =>
-                            navigate(`/player/${report.player_id}`)
+                            navigate(getPlayerProfilePath(report as any))
                           }
                         >
                           {report.player_name}
@@ -1131,7 +1133,7 @@ const ScoutingPage: React.FC = () => {
                                 textAlign: "left",
                               }}
                               onClick={() =>
-                                navigate(`/player/${report.player_id}`)
+                                navigate(getPlayerProfilePath(report as any))
                               }
                             >
                               {report.player_name}

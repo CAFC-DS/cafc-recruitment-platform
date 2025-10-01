@@ -3613,14 +3613,20 @@ async def get_player_attributes(
 
         # Get all scout report attribute scores for this player
         # Apply role-based filtering for scout reports
-        base_query = """
-            SELECT 
+        # Use correct column based on data source
+        if data_source == "external":
+            where_clause = "sr.PLAYER_ID = %s"
+        else:
+            where_clause = "sr.CAFC_PLAYER_ID = %s"
+
+        base_query = f"""
+            SELECT
                 sras.ATTRIBUTE_NAME,
                 AVG(CAST(sras.ATTRIBUTE_SCORE AS FLOAT)) as avg_score,
                 COUNT(sras.ATTRIBUTE_SCORE) as report_count
             FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
             JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
-            WHERE sr.PLAYER_ID = %s AND sras.ATTRIBUTE_SCORE > 0
+            WHERE {where_clause} AND sras.ATTRIBUTE_SCORE > 0
         """
 
         query_params = [actual_player_id]
@@ -3666,19 +3672,19 @@ async def get_player_attributes(
         # and look up their ATTRIBUTE_GROUP from POSITION_ATTRIBUTES table
         # Use MIN(DISPLAY_ORDER) to avoid duplicates when same attribute has multiple display orders
         cursor.execute(
-            """
+            f"""
             SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
             FROM POSITION_ATTRIBUTES pa
             WHERE pa.ATTRIBUTE_NAME IN (
-                SELECT DISTINCT sras.ATTRIBUTE_NAME 
-                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras 
-                JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID 
-                WHERE sr.PLAYER_ID = %s
+                SELECT DISTINCT sras.ATTRIBUTE_NAME
+                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+                JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
+                WHERE {where_clause}
             )
             GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
             ORDER BY pa.ATTRIBUTE_GROUP, display_order
         """,
-            (player_id,),
+            (actual_player_id,),
         )
         position_attributes = cursor.fetchall()
 
@@ -3715,14 +3721,14 @@ async def get_player_attributes(
 
         # DEBUG: Get what attributes exist in scout reports for this player
         cursor.execute(
-            """
-            SELECT DISTINCT sras.ATTRIBUTE_NAME 
-            FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras 
-            JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID 
-            WHERE sr.PLAYER_ID = %s
+            f"""
+            SELECT DISTINCT sras.ATTRIBUTE_NAME
+            FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+            JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
+            WHERE {where_clause}
             ORDER BY sras.ATTRIBUTE_NAME
         """,
-            (player_id,),
+            (actual_player_id,),
         )
         scout_report_attributes = [row[0] for row in cursor.fetchall()]
 
@@ -3786,8 +3792,14 @@ async def get_player_scout_reports(
         )
 
         # Get scout reports with role-based filtering
-        base_query = """
-            SELECT 
+        # Use correct column based on data source
+        if data_source == "external":
+            where_clause = "sr.PLAYER_ID = %s"
+        else:
+            where_clause = "sr.CAFC_PLAYER_ID = %s"
+
+        base_query = f"""
+            SELECT
                 sr.ID as report_id,
                 sr.CREATED_AT as report_date,
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name,
@@ -3801,7 +3813,7 @@ async def get_player_scout_reports(
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN SCOUT_REPORT_ATTRIBUTE_SCORES sras ON sr.ID = sras.SCOUT_REPORT_ID
-            WHERE sr.PLAYER_ID = %s
+            WHERE {where_clause}
         """
 
         query_params = [actual_player_id]
@@ -3861,6 +3873,90 @@ async def get_player_scout_reports(
         logging.exception(e)
         raise HTTPException(
             status_code=500, detail=f"Error fetching scout reports: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/players/{player_id}/position-counts")
+async def get_player_position_counts(
+    player_id: str, current_user: User = Depends(get_current_user)
+):
+    """Get count of scout reports by position for a player"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if player exists using universal ID or dual ID lookup
+        player_data, data_source = find_player_by_universal_or_legacy_id(
+            player_id, cursor
+        )
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Extract the actual player ID for queries
+        actual_player_id = (
+            player_data[0] if data_source == "external" else player_data[1]
+        )
+
+        # Get position counts with role-based filtering
+        # Use correct column based on data source
+        if data_source == "external":
+            where_clause = "sr.PLAYER_ID = %s"
+        else:
+            where_clause = "sr.CAFC_PLAYER_ID = %s"
+
+        base_query = f"""
+            SELECT
+                sr.POSITION as position,
+                COUNT(*) as report_count
+            FROM scout_reports sr
+            WHERE {where_clause}
+        """
+
+        query_params = [actual_player_id]
+
+        # Apply role-based filtering for scout users
+        try:
+            test_cursor = conn.cursor()
+            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            if current_user.role == "scout":
+                base_query += " AND sr.USER_ID = %s"
+                query_params.append(current_user.id)
+        except:
+            pass
+
+        base_query += """
+            GROUP BY sr.POSITION
+            ORDER BY report_count DESC, sr.POSITION
+        """
+
+        cursor.execute(base_query, query_params)
+        positions = cursor.fetchall()
+
+        position_counts = []
+        for position_row in positions:
+            position_name, count = position_row
+            if position_name and position_name.strip():  # Only include non-empty positions
+                position_counts.append(
+                    {
+                        "position": position_name,
+                        "report_count": count,
+                    }
+                )
+
+        return {
+            "player_id": player_id,
+            "position_counts": position_counts,
+            "total_positions": len(position_counts),
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching position counts: {e}"
         )
     finally:
         if conn:
