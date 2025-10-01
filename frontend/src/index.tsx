@@ -5,7 +5,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/professional-theme.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import axios from 'axios'; // Import axios
 
 // axios.defaults.baseURL = 'http://localhost:8000'; // Set base URL for axios
 

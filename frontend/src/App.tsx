@@ -1,8 +1,10 @@
 // FORCE CACHE REFRESH - UI REDESIGN COMPLETE
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
+
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ViewModeProvider } from './contexts/ViewModeContext';
+import { useCurrentUser } from './hooks/useCurrentUser';
 import AppNavbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import ScoutingPage from './pages/ScoutingPage';
@@ -12,7 +14,6 @@ import PlayerProfilePage from './pages/PlayerProfilePage';
 import PlayersPage from './pages/PlayersPage';
 import AdminPage from './pages/AdminPage';
 import AnalyticsPage from './pages/AnalyticsPage';
-import { useCurrentUser } from './hooks/useCurrentUser';
 
 interface AuthContextType {
   token: string | null;

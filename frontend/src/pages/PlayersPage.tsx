@@ -1,12 +1,25 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Row, Col, Card, Form, Button, Badge, Table, Spinner, Alert, ListGroup, Collapse } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../axiosInstance';
-import { useAuth } from '../App';
-import { useCurrentUser } from '../hooks/useCurrentUser';
-import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
-import { getPlayerProfilePath } from '../utils/playerNavigation';
-import { Player } from '../types/Player';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Badge,
+  Table,
+  Spinner,
+  Alert,
+  ListGroup,
+  Collapse,
+} from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../axiosInstance";
+import { useAuth } from "../App";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import { normalizeText } from "../utils/textNormalization";
+import { getPlayerProfilePath } from "../utils/playerNavigation";
+import { Player } from "../types/Player";
 
 interface PaginationInfo {
   current_page: number;
@@ -19,7 +32,7 @@ interface PaginationInfo {
 
 const PlayersPage: React.FC = () => {
   const { token } = useAuth();
-  const { user, loading: userLoading, canAccessPlayers } = useCurrentUser();
+  const { loading: userLoading, canAccessPlayers } = useCurrentUser();
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -28,54 +41,72 @@ const PlayersPage: React.FC = () => {
     total_count: 0,
     limit: 20,
     has_next: false,
-    has_prev: false
+    has_prev: false,
   });
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [positionFilter, setPositionFilter] = useState('');
-  const [teamFilter, setTeamFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [positionFilter, setPositionFilter] = useState("");
+  const [teamFilter, setTeamFilter] = useState("");
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   // Advanced search functionality
-  const [playerSearch, setPlayerSearch] = useState('');
+  const [playerSearch, setPlayerSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Player[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [playerSearchError, setPlayerSearchError] = useState('');
+  const [playerSearchError, setPlayerSearchError] = useState("");
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Record<string, Player[]>>({});
 
-  const positions = ["GK", "RB", "RWB", "RCB", "LCB", "LCB(3)", "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW", "Target Man CF", "In Behind CF"];
-  
-  // Status badge - simplified for now
-  const getStatusBadge = () => {
-    return <Badge className="badge-neutral-grey">Scouted</Badge>;
-  };
+  const positions = [
+    "GK",
+    "RB",
+    "RWB",
+    "RCB",
+    "LCB",
+    "LCB(3)",
+    "LWB",
+    "LB",
+    "DM",
+    "CM",
+    "RAM",
+    "AM",
+    "LAM",
+    "RW",
+    "LW",
+    "Target Man CF",
+    "In Behind CF",
+  ];
 
-  const fetchPlayers = useCallback(async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '20'
-      });
-      
-      if (searchTerm) params.append('search', searchTerm);
-      if (positionFilter) params.append('position', positionFilter);
-      if (teamFilter) params.append('team', teamFilter);
-      
-      const response = await axiosInstance.get(`/players/all?${params}`);
-      setPlayers(response.data.players);
-      setPagination(response.data.pagination);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error('Error fetching players:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [searchTerm, positionFilter, teamFilter]);
+  // Status badge - simplified for now
+
+  const fetchPlayers = useCallback(
+    async (page = 1) => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: "20",
+        });
+
+        if (searchTerm) params.append("search", searchTerm);
+        if (positionFilter) params.append("position", positionFilter);
+        if (teamFilter) params.append("team", teamFilter);
+
+        const response = await axiosInstance.get(`/players/all?${params}`);
+        setPlayers(response.data.players);
+        setPagination(response.data.pagination);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Error fetching players:", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [searchTerm, positionFilter, teamFilter],
+  );
 
   useEffect(() => {
     if (token) {
@@ -94,38 +125,40 @@ const PlayersPage: React.FC = () => {
   const performPlayerSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim();
     const normalizedQuery = normalizeText(trimmedQuery);
-    
+
     // Check cache first using normalized query
     if (searchCacheRef.current[normalizedQuery]) {
       setSearchResults(searchCacheRef.current[normalizedQuery]);
-      setPlayerSearchError('');
+      setPlayerSearchError("");
       setPlayerSearchLoading(false);
       setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
       return;
     }
-    
+
     try {
       setPlayerSearchLoading(true);
       // Backend now handles comprehensive accent-insensitive search
-      const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(trimmedQuery)}`);
+      const response = await axiosInstance.get(
+        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
+      );
       let results = response.data || [];
-      
+
       // Cache the results using normalized query
       searchCacheRef.current[normalizedQuery] = results;
-      
+
       setSearchResults(results);
       setShowDropdown(results.length > 0);
-      
+
       if (results.length === 0) {
-        setPlayerSearchError('No players found.');
+        setPlayerSearchError("No players found.");
       } else {
-        setPlayerSearchError('');
+        setPlayerSearchError("");
       }
     } catch (error) {
-      console.error('Error searching players:', error);
+      console.error("Error searching players:", error);
       setSearchResults([]);
       setShowDropdown(false);
-      setPlayerSearchError('Error searching for players.');
+      setPlayerSearchError("Error searching for players.");
     } finally {
       setPlayerSearchLoading(false);
     }
@@ -134,25 +167,25 @@ const PlayersPage: React.FC = () => {
   const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setPlayerSearch(query);
-    
+
     // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Clear error immediately when user starts typing
-    setPlayerSearchError('');
-    
+    setPlayerSearchError("");
+
     if (query.length <= 2) {
       setSearchResults([]);
       setShowDropdown(false);
       setPlayerSearchLoading(false);
       return;
     }
-    
+
     // Set loading immediately for better UX
     setPlayerSearchLoading(true);
-    
+
     // Debounce the actual search
     searchTimeoutRef.current = setTimeout(() => {
       performPlayerSearch(query);
@@ -162,7 +195,7 @@ const PlayersPage: React.FC = () => {
   const handlePlayerSelect = (player: Player) => {
     navigate(getPlayerProfilePath(player));
   };
-  
+
   // Close dropdown when clicking outside
   const handleInputBlur = () => {
     // Small delay to allow click on dropdown items
@@ -170,13 +203,13 @@ const PlayersPage: React.FC = () => {
       setShowDropdown(false);
     }, 200);
   };
-  
+
   const handleInputFocus = () => {
     if (searchResults.length > 0) {
       setShowDropdown(true);
     }
   };
-  
+
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -189,13 +222,20 @@ const PlayersPage: React.FC = () => {
   // Server-side filtering eliminates need for client-side filtering
   const displayPlayers = players;
 
-  const uniqueTeams = players.reduce((teams: string[], player) => {
-    const teamName = player.squad_name || player.team || player.club || player.current_team || 'Unknown Team';
-    if (!teams.includes(teamName)) {
-      teams.push(teamName);
-    }
-    return teams;
-  }, []).sort();
+  const uniqueTeams = players
+    .reduce((teams: string[], player) => {
+      const teamName =
+        player.squad_name ||
+        player.team ||
+        player.club ||
+        player.current_team ||
+        "Unknown Team";
+      if (!teams.includes(teamName)) {
+        teams.push(teamName);
+      }
+      return teams;
+    }, [])
+    .sort();
 
   if (loading || userLoading) {
     return (
@@ -212,10 +252,10 @@ const PlayersPage: React.FC = () => {
         <Alert variant="danger">
           <Alert.Heading>Access Denied</Alert.Heading>
           <p>
-            You don't have permission to view the players database. 
-            This page is only accessible to managers and administrators.
+            You don't have permission to view the players database. This page is
+            only accessible to managers and administrators.
           </p>
-          <Button variant="outline-danger" onClick={() => navigate('/')}>
+          <Button variant="outline-danger" onClick={() => navigate("/")}>
             Return to Home
           </Button>
         </Alert>
@@ -229,19 +269,22 @@ const PlayersPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>👥 Players Database</h2>
         <div className="d-flex align-items-center gap-3">
-          <Badge className="badge-neutral-grey">{pagination.total_count} players (Page {pagination.current_page} of {pagination.total_pages})</Badge>
+          <Badge className="badge-neutral-grey">
+            {pagination.total_count} players (Page {pagination.current_page} of{" "}
+            {pagination.total_pages})
+          </Badge>
           <div className="btn-group" role="group">
             <Button
-              variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
+              variant={viewMode === "cards" ? "primary" : "outline-primary"}
               size="sm"
-              onClick={() => setViewMode('cards')}
+              onClick={() => setViewMode("cards")}
             >
               🔳 Cards
             </Button>
             <Button
-              variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
+              variant={viewMode === "table" ? "primary" : "outline-primary"}
               size="sm"
-              onClick={() => setViewMode('table')}
+              onClick={() => setViewMode("table")}
             >
               📊 Table
             </Button>
@@ -264,23 +307,40 @@ const PlayersPage: React.FC = () => {
                 onFocus={handleInputFocus}
               />
               {playerSearchLoading && (
-                <div className="position-absolute top-50 end-0 translate-middle-y me-3" style={{ zIndex: 10 }}>
+                <div
+                  className="position-absolute top-50 end-0 translate-middle-y me-3"
+                  style={{ zIndex: 10 }}
+                >
                   <Spinner animation="border" size="sm" />
                 </div>
               )}
             </div>
             {showDropdown && searchResults.length > 0 && (
-              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
+              <ListGroup
+                className="mt-2"
+                style={{
+                  position: "absolute",
+                  zIndex: 1000,
+                  width: "calc(100% - 30px)",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}
+              >
                 {searchResults.map((player, index) => (
-                  <ListGroup.Item 
-                    key={player.universal_id || `fallback-${index}-${player.player_name}`} 
-                    action 
+                  <ListGroup.Item
+                    key={
+                      player.universal_id ||
+                      `fallback-${index}-${player.player_name}`
+                    }
+                    action
                     onClick={() => handlePlayerSelect(player)}
                     className="d-flex justify-content-between align-items-center"
                   >
                     <div>
                       <strong>{player.player_name}</strong>
-                      <small className="text-muted ms-2">{player.position}</small>
+                      <small className="text-muted ms-2">
+                        {player.position}
+                      </small>
                     </div>
                     <small className="text-muted">({player.squad_name})</small>
                   </ListGroup.Item>
@@ -300,75 +360,75 @@ const PlayersPage: React.FC = () => {
 
       {/* Advanced Filters */}
       <Card className="mb-4">
-        <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
+        <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
           <div className="d-flex justify-content-between align-items-center">
             <h6 className="mb-0 text-white">🔧 Advanced Filters</h6>
-            <Button 
-              variant="outline-secondary" 
-              size="sm" 
+            <Button
+              variant="outline-secondary"
+              size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              style={{ color: 'white', borderColor: 'white' }}
+              style={{ color: "white", borderColor: "white" }}
             >
-              {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+              {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
             </Button>
           </div>
         </Card.Header>
         <Collapse in={showFilters}>
           <Card.Body>
-          <Row>
-            <Col md={4} className="mb-3">
-              <Form.Group>
-                <Form.Label className="small fw-bold">Position</Form.Label>
-                <Form.Select
+            <Row>
+              <Col md={4} className="mb-3">
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Position</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={positionFilter}
+                    onChange={(e) => setPositionFilter(e.target.value)}
+                  >
+                    <option value="">All Positions</option>
+                    {positions.map((pos) => (
+                      <option key={pos} value={pos}>
+                        {pos}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4} className="mb-3">
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Team</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={teamFilter}
+                    onChange={(e) => setTeamFilter(e.target.value)}
+                  >
+                    <option value="">All Teams</option>
+                    {uniqueTeams.map((team) => (
+                      <option key={team} value={team}>
+                        {team}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4} className="mb-3 d-flex align-items-end">
+                <Button
+                  variant="outline-secondary"
                   size="sm"
-                  value={positionFilter}
-                  onChange={(e) => setPositionFilter(e.target.value)}
+                  onClick={() => {
+                    setSearchTerm("");
+                    setPositionFilter("");
+                    setTeamFilter("");
+                    fetchPlayers(1);
+                  }}
+                  className="me-2"
                 >
-                  <option value="">All Positions</option>
-                  {positions.map(pos => (
-                    <option key={pos} value={pos}>{pos}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={4} className="mb-3">
-              <Form.Group>
-                <Form.Label className="small fw-bold">Team</Form.Label>
-                <Form.Select
-                  size="sm"
-                  value={teamFilter}
-                  onChange={(e) => setTeamFilter(e.target.value)}
-                >
-                  <option value="">All Teams</option>
-                  {uniqueTeams.map(team => (
-                    <option key={team} value={team}>{team}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={4} className="mb-3 d-flex align-items-end">
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={() => {
-                  setSearchTerm('');
-                  setPositionFilter('');
-                  setTeamFilter('');
-                  fetchPlayers(1);
-                }}
-                className="me-2"
-              >
-                🔄 Clear Filters
-              </Button>
-              <Button 
-                variant="primary" 
-                size="sm" 
-                onClick={handleSearch}
-              >
-                Apply Filters
-              </Button>
-            </Col>
-          </Row>
+                  🔄 Clear Filters
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleSearch}>
+                  Apply Filters
+                </Button>
+              </Col>
+            </Row>
           </Card.Body>
         </Collapse>
       </Card>
@@ -381,21 +441,32 @@ const PlayersPage: React.FC = () => {
             <p className="text-muted">Try adjusting your search criteria.</p>
           </Card.Body>
         </Card>
-      ) : viewMode === 'cards' ? (
+      ) : viewMode === "cards" ? (
         <Row>
           {displayPlayers.map((player) => (
             <Col key={player.universal_id} lg={6} xl={4} className="mb-3">
-              <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
-                <Card.Header className="d-flex justify-content-between align-items-start border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', borderRadius: '12px 12px 0 0' }}>
+              <Card
+                className="h-100 shadow-sm hover-card"
+                style={{ borderRadius: "12px", border: "2px solid #dc3545" }}
+              >
+                <Card.Header
+                  className="d-flex justify-content-between align-items-start border-0 bg-gradient"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)",
+                    borderRadius: "12px 12px 0 0",
+                  }}
+                >
                   <div>
                     <span className="position-text">{player.position}</span>
-                    <small className="ms-2 text-muted">Age: {player.age || 'Unknown'}</small>
+                    <small className="ms-2 text-muted">
+                      Age: {player.age || "Unknown"}
+                    </small>
                   </div>
                   <small className="text-muted">
-                    {player.last_report_date ? 
-                      new Date(player.last_report_date).toLocaleDateString() : 
-                      'No reports'
-                    }
+                    {player.last_report_date
+                      ? new Date(player.last_report_date).toLocaleDateString()
+                      : "No reports"}
                   </small>
                 </Card.Header>
                 <Card.Body>
@@ -411,14 +482,22 @@ const PlayersPage: React.FC = () => {
                     <Row className="text-center">
                       <Col xs={6}>
                         <div className="border-end">
-                          <strong className="text-success">{player.scout_reports_count}</strong>
-                          <div><small className="text-muted">Scout Reports</small></div>
+                          <strong className="text-success">
+                            {player.scout_reports_count}
+                          </strong>
+                          <div>
+                            <small className="text-muted">Scout Reports</small>
+                          </div>
                         </div>
                       </Col>
                       <Col xs={6}>
                         <div>
-                          <strong className="text-info">{player.intel_reports_count}</strong>
-                          <div><small className="text-muted">Intel Reports</small></div>
+                          <strong className="text-info">
+                            {player.intel_reports_count}
+                          </strong>
+                          <div>
+                            <small className="text-muted">Intel Reports</small>
+                          </div>
                         </div>
                       </Col>
                     </Row>
@@ -466,27 +545,34 @@ const PlayersPage: React.FC = () => {
                     <div>
                       <strong>{player.player_name}</strong>
                       <br />
-                      <small className="text-muted">{player.first_name} {player.last_name}</small>
+                      <small className="text-muted">
+                        {player.first_name} {player.last_name}
+                      </small>
                     </div>
                   </td>
                   <td>
                     <span className="position-text">{player.position}</span>
                   </td>
                   <td>{player.squad_name}</td>
-                  <td>{player.age || 'Unknown'}</td>
+                  <td>{player.age || "Unknown"}</td>
                   <td className="text-center">
-                    <Badge className="badge-neutral-grey fs-6">{player.scout_reports_count}</Badge>
+                    <Badge className="badge-neutral-grey fs-6">
+                      {player.scout_reports_count}
+                    </Badge>
                   </td>
                   <td className="text-center">
-                    <Badge className="badge-neutral-grey fs-6">{player.intel_reports_count}</Badge>
+                    <Badge className="badge-neutral-grey fs-6">
+                      {player.intel_reports_count}
+                    </Badge>
                   </td>
-                  <td><Badge className="badge-cafc-black">🔍 Scouted</Badge></td>
+                  <td>
+                    <Badge className="badge-cafc-black">🔍 Scouted</Badge>
+                  </td>
                   <td>
                     <small>
-                      {player.last_report_date ? 
-                        new Date(player.last_report_date).toLocaleDateString() : 
-                        'No reports'
-                      }
+                      {player.last_report_date
+                        ? new Date(player.last_report_date).toLocaleDateString()
+                        : "No reports"}
                     </small>
                   </td>
                   <td>
@@ -512,10 +598,10 @@ const PlayersPage: React.FC = () => {
         <Row className="mt-4">
           <Col md={4}>
             <div className="d-flex align-items-center">
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={() => handlePageChange(currentPage - 1)} 
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
                 disabled={!pagination.has_prev || loading}
                 className="me-2"
               >
@@ -524,9 +610,9 @@ const PlayersPage: React.FC = () => {
               <small className="text-muted mx-2">
                 Page {currentPage} of {pagination.total_pages}
               </small>
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
+              <Button
+                variant="outline-secondary"
+                size="sm"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={!pagination.has_next || loading}
                 className="ms-2"

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Modal, Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import axiosInstance from '../axiosInstance';
-import { Player } from '../types/Player';
+import React, { useState } from "react";
+import { Modal, Form, Button, Row, Col, Alert, Spinner } from "react-bootstrap";
+import axiosInstance from "../axiosInstance";
+import { Player } from "../types/Player";
 
 interface IntelModalProps {
   show: boolean;
@@ -10,97 +10,109 @@ interface IntelModalProps {
   onIntelSubmitSuccess: () => void;
 }
 
-const IntelModal: React.FC<IntelModalProps> = ({ show, onHide, selectedPlayer, onIntelSubmitSuccess }) => {
+const IntelModal: React.FC<IntelModalProps> = ({
+  show,
+  onHide,
+  selectedPlayer,
+  onIntelSubmitSuccess,
+}) => {
   const [formData, setFormData] = useState({
-    contactName: '',
-    contactOrganisation: '',
-    dateOfInformation: '',
-    confirmedContractExpiry: '',
-    contractOptions: '',
+    contactName: "",
+    contactOrganisation: "",
+    dateOfInformation: "",
+    confirmedContractExpiry: "",
+    contractOptions: "",
     potentialDealTypes: [] as string[],
-    transferFee: '',
-    currentWages: '',
-    expectedWages: '',
-    conversationNotes: '',
-    actionRequired: 'monitor'
+    transferFee: "",
+    currentWages: "",
+    expectedWages: "",
+    conversationNotes: "",
+    actionRequired: "monitor",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const dealTypeOptions = [
-    { value: 'free', label: 'Free Transfer' },
-    { value: 'permanent', label: 'Permanent Transfer' },
-    { value: 'loan', label: 'Loan' },
-    { value: 'loan_with_option', label: 'Loan with Option' }
+    { value: "free", label: "Free Transfer" },
+    { value: "permanent", label: "Permanent Transfer" },
+    { value: "loan", label: "Loan" },
+    { value: "loan_with_option", label: "Loan with Option" },
   ];
 
   const actionOptions = [
-    { value: 'beyond us', label: 'Beyond Us' },
-    { value: 'discuss urgently', label: 'Discuss Urgently' },
-    { value: 'monitor', label: 'Monitor' },
-    { value: 'no action', label: 'No Action' }
+    { value: "beyond us", label: "Beyond Us" },
+    { value: "discuss urgently", label: "Discuss Urgently" },
+    { value: "monitor", label: "Monitor" },
+    { value: "no action", label: "No Action" },
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleNumericInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     // Allow numbers, decimals, commas, currency symbols, and common wage/fee formats
     const numericRegex = /^[0-9.,€£$k/weeM\s]*$/;
-    if (value === '' || numericRegex.test(value)) {
-      setFormData(prev => ({ ...prev, [name]: value }));
+    if (value === "" || numericRegex.test(value)) {
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
   const handleDealTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      potentialDealTypes: checked 
+      potentialDealTypes: checked
         ? [...prev.potentialDealTypes, value]
-        : prev.potentialDealTypes.filter(type => type !== value)
+        : prev.potentialDealTypes.filter((type) => type !== value),
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError('');
+    setError("");
 
     // Validate required fields
     if (!formData.contactName.trim()) {
-      setError('Contact Name is required');
+      setError("Contact Name is required");
       setIsSubmitting(false);
       return;
     }
     if (!formData.contactOrganisation.trim()) {
-      setError('Contact Organisation is required');
+      setError("Contact Organisation is required");
       setIsSubmitting(false);
       return;
     }
     if (!formData.dateOfInformation) {
-      setError('Date of Information is required');
+      setError("Date of Information is required");
       setIsSubmitting(false);
       return;
     }
     if (formData.potentialDealTypes.length === 0) {
-      setError('At least one Potential Deal Type must be selected');
+      setError("At least one Potential Deal Type must be selected");
       setIsSubmitting(false);
       return;
     }
     if (!formData.conversationNotes.trim()) {
-      setError('Conversation Notes are required');
+      setError("Conversation Notes are required");
       setIsSubmitting(false);
       return;
     }
 
     try {
       const payload = {
-        player_id: selectedPlayer?.universal_id || selectedPlayer?.player_id || selectedPlayer?.cafc_player_id,
+        player_id:
+          selectedPlayer?.universal_id ||
+          selectedPlayer?.player_id ||
+          selectedPlayer?.cafc_player_id,
         contact_name: formData.contactName,
         contact_organisation: formData.contactOrganisation,
         date_of_information: formData.dateOfInformation,
@@ -111,14 +123,17 @@ const IntelModal: React.FC<IntelModalProps> = ({ show, onHide, selectedPlayer, o
         current_wages: formData.currentWages || null,
         expected_wages: formData.expectedWages || null,
         conversation_notes: formData.conversationNotes,
-        action_required: formData.actionRequired
+        action_required: formData.actionRequired,
       };
 
-      await axiosInstance.post('/intel_reports', payload);
+      await axiosInstance.post("/intel_reports", payload);
       onIntelSubmitSuccess();
     } catch (error: any) {
-      console.error('Error submitting intel report:', error);
-      setError(error.response?.data?.detail || 'Failed to submit intel report. Please try again.');
+      console.error("Error submitting intel report:", error);
+      setError(
+        error.response?.data?.detail ||
+          "Failed to submit intel report. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -126,30 +141,35 @@ const IntelModal: React.FC<IntelModalProps> = ({ show, onHide, selectedPlayer, o
 
   const resetForm = () => {
     setFormData({
-      contactName: '',
-      contactOrganisation: '',
-      dateOfInformation: '',
-      confirmedContractExpiry: '',
-      contractOptions: '',
+      contactName: "",
+      contactOrganisation: "",
+      dateOfInformation: "",
+      confirmedContractExpiry: "",
+      contractOptions: "",
       potentialDealTypes: [],
-      transferFee: '',
-      currentWages: '',
-      expectedWages: '',
-      conversationNotes: '',
-      actionRequired: 'monitor'
+      transferFee: "",
+      currentWages: "",
+      expectedWages: "",
+      conversationNotes: "",
+      actionRequired: "monitor",
     });
-    setError('');
+    setError("");
   };
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered onExited={resetForm}>
-      <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }} className="modal-header-dark">
+      <Modal.Header
+        closeButton
+        style={{ backgroundColor: "#000000", color: "white" }}
+        className="modal-header-dark"
+      >
         <Modal.Title>🕵️ Player Intel Report</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {selectedPlayer && (
           <Alert variant="info" className="mb-3">
-            <strong>Player:</strong> {selectedPlayer.player_name} ({selectedPlayer.team})
+            <strong>Player:</strong> {selectedPlayer.player_name} (
+            {selectedPlayer.team})
           </Alert>
         )}
 
@@ -325,7 +345,11 @@ const IntelModal: React.FC<IntelModalProps> = ({ show, onHide, selectedPlayer, o
           </Form.Group>
 
           <div className="d-flex justify-content-end gap-2">
-            <Button variant="secondary" onClick={onHide} disabled={isSubmitting}>
+            <Button
+              variant="secondary"
+              onClick={onHide}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button type="submit" variant="primary" disabled={isSubmitting}>
@@ -335,7 +359,7 @@ const IntelModal: React.FC<IntelModalProps> = ({ show, onHide, selectedPlayer, o
                   Submitting...
                 </>
               ) : (
-                'Submit Intel Report'
+                "Submit Intel Report"
               )}
             </Button>
           </div>

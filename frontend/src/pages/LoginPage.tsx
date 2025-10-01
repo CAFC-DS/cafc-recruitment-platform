@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { Container, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
-import axiosInstance from '../axiosInstance';
-import axios from 'axios'; // Import axios for isAxiosError
-import { useNavigate } from 'react-router-dom';
-import ForgotPasswordModal from '../components/ForgotPasswordModal';
+import React, { useState } from "react";
+import { Container, Form, Button, Card, Alert, Spinner } from "react-bootstrap";
+import axiosInstance from "../axiosInstance";
+import axios from "axios"; // Import axios for isAxiosError
+import { useNavigate } from "react-router-dom";
+import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 interface LoginPageProps {
   onLoginSuccess: (token: string) => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -23,25 +23,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     try {
       const response = await axiosInstance.post(
-        '/token',
+        "/token",
         new URLSearchParams({
           username: username,
           password: password,
         }),
         {
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
           },
-        }
+        },
       );
       const { access_token } = response.data;
       onLoginSuccess(access_token);
-      navigate('/'); // Redirect to homepage on successful login
+      navigate("/"); // Redirect to homepage on successful login
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Login failed');
+        setError(err.response.data.detail || "Login failed");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     } finally {
       setLoading(false);
@@ -49,8 +49,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
-      <Card style={{ width: '25rem' }}>
+    <Container
+      className="d-flex justify-content-center align-items-center"
+      style={{ minHeight: "100vh" }}
+    >
+      <Card style={{ width: "25rem" }}>
         <Card.Body>
           <Card.Title className="text-center mb-4">Login</Card.Title>
           {error && <Alert variant="danger">{error}</Alert>}
@@ -77,21 +80,26 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               />
             </Form.Group>
 
-            <Button variant="primary" type="submit" className="w-100" disabled={loading}>
+            <Button
+              variant="primary"
+              type="submit"
+              className="w-100"
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Spinner animation="border" size="sm" className="me-2" />
                   Logging in...
                 </>
               ) : (
-                'Login'
+                "Login"
               )}
             </Button>
           </Form>
-          
+
           <div className="text-center mt-3">
-            <Button 
-              variant="link" 
+            <Button
+              variant="link"
               className="p-0"
               onClick={() => setShowForgotPassword(true)}
             >
@@ -100,8 +108,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
         </Card.Body>
       </Card>
-      
-      <ForgotPasswordModal 
+
+      <ForgotPasswordModal
         show={showForgotPassword}
         onHide={() => setShowForgotPassword(false)}
       />

@@ -1,6 +1,6 @@
-import React from 'react';
-import { Button } from 'react-bootstrap';
-import { useTheme } from '../contexts/ThemeContext';
+import React from "react";
+import { Button } from "react-bootstrap";
+import { useTheme } from "../contexts/ThemeContext";
 
 const DarkModeToggle: React.FC = () => {
   const { theme, toggleDarkMode } = useTheme();
@@ -11,9 +11,9 @@ const DarkModeToggle: React.FC = () => {
       size="sm"
       onClick={toggleDarkMode}
       className="d-flex align-items-center"
-      style={{ 
-        border: 'none',
-        backgroundColor: 'transparent'
+      style={{
+        border: "none",
+        backgroundColor: "transparent",
       }}
     >
       {theme.isDark ? (

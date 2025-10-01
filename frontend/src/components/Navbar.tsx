@@ -1,21 +1,28 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Navbar, Nav, Container, Button, Form, InputGroup } from 'react-bootstrap';
-import { useAuth } from '../App'; // Import useAuth
-import { useTheme } from '../contexts/ThemeContext';
-import DarkModeToggle from './DarkModeToggle';
-import { useCurrentUser } from '../hooks/useCurrentUser';
-import axiosInstance from '../axiosInstance';
-import logo from '../assets/logo.png';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Navbar,
+  Nav,
+  Container,
+  Button,
+  Form,
+  InputGroup,
+} from "react-bootstrap";
+import { useAuth } from "../App"; // Import useAuth
+import { useTheme } from "../contexts/ThemeContext";
+import DarkModeToggle from "./DarkModeToggle";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import axiosInstance from "../axiosInstance";
+import logo from "../assets/logo.png";
 
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme } = useTheme();
-  const { isAdmin, canAccessPlayers, canAccessAnalytics, user } = useCurrentUser();
+  const { isAdmin, canAccessPlayers, canAccessAnalytics } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -27,21 +34,24 @@ const AppNavbar: React.FC = () => {
   // Close search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
         setShowSearchResults(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
   // Clear search state when user logs out
   useEffect(() => {
     if (!token) {
-      setSearchQuery('');
+      setSearchQuery("");
       setSearchResults([]);
       setShowSearchResults(false);
       setIsSearching(false);
@@ -69,7 +79,9 @@ const AppNavbar: React.FC = () => {
 
     setIsSearching(true);
     try {
-      const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(query)}`);
+      const response = await axiosInstance.get(
+        `/players/search?query=${encodeURIComponent(query)}`,
+      );
       const results = response.data || [];
 
       // Cache the results
@@ -85,7 +97,7 @@ const AppNavbar: React.FC = () => {
       setShowSearchResults(results.length > 0);
       setSelectedIndex(-1);
     } catch (error) {
-      console.error('Search API error:', error);
+      console.error("Search API error:", error);
       setSearchResults([]);
       setShowSearchResults(false);
     } finally {
@@ -94,35 +106,37 @@ const AppNavbar: React.FC = () => {
   }, []);
 
   // Debounced search handler
-  const handleSearch = useCallback((query: string) => {
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+  const handleSearch = useCallback(
+    (query: string) => {
+      // Clear previous timeout
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
 
-    // Set new timeout for debouncing
-    searchTimeoutRef.current = setTimeout(() => {
-      performSearch(query);
-    }, 300);
-  }, [performSearch]);
-
+      // Set new timeout for debouncing
+      searchTimeoutRef.current = setTimeout(() => {
+        performSearch(query);
+      }, 300);
+    },
+    [performSearch],
+  );
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!showSearchResults || searchResults.length === 0) return;
 
     switch (e.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         e.preventDefault();
-        setSelectedIndex(prev =>
-          prev < Math.min(searchResults.length, 8) - 1 ? prev + 1 : prev
+        setSelectedIndex((prev) =>
+          prev < Math.min(searchResults.length, 8) - 1 ? prev + 1 : prev,
         );
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
-      case 'Escape':
+      case "Escape":
         setShowSearchResults(false);
         setSelectedIndex(-1);
         break;
@@ -140,16 +154,16 @@ const AppNavbar: React.FC = () => {
       navigate(`/players?search=${encodeURIComponent(player.playername)}`);
     }
     setShowSearchResults(false);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   return (
-    <Navbar 
-      expand="lg" 
+    <Navbar
+      expand="lg"
       sticky="top"
       style={{
         backgroundColor: theme.colors.headerBg,
-        borderBottom: `1px solid ${theme.colors.border}`
+        borderBottom: `1px solid ${theme.colors.border}`,
       }}
       variant="dark"
     >
@@ -161,8 +175,7 @@ const AppNavbar: React.FC = () => {
             height="30"
             className="d-inline-block align-top"
             alt="Charlton Athletic Logo"
-          />
-          {' '}
+          />{" "}
           Charlton Athletic
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
@@ -170,17 +183,29 @@ const AppNavbar: React.FC = () => {
           <Nav className="me-auto">
             {token && ( // Only show links if authenticated
               <>
-                <Nav.Link as={Link} to="/">Home</Nav.Link>
-                <Nav.Link as={Link} to="/scouting">⚽ Scouting</Nav.Link>
-                <Nav.Link as={Link} to="/intel">🕵️ Intel</Nav.Link>
+                <Nav.Link as={Link} to="/">
+                  Home
+                </Nav.Link>
+                <Nav.Link as={Link} to="/scouting">
+                  ⚽ Scouting
+                </Nav.Link>
+                <Nav.Link as={Link} to="/intel">
+                  🕵️ Intel
+                </Nav.Link>
                 {canAccessAnalytics && (
-                  <Nav.Link as={Link} to="/analytics">📊 Analytics</Nav.Link>
+                  <Nav.Link as={Link} to="/analytics">
+                    📊 Analytics
+                  </Nav.Link>
                 )}
                 {canAccessPlayers && (
-                  <Nav.Link as={Link} to="/players">👥 Players</Nav.Link>
+                  <Nav.Link as={Link} to="/players">
+                    👥 Players
+                  </Nav.Link>
                 )}
                 {isAdmin && (
-                  <Nav.Link as={Link} to="/admin">🔧 Admin</Nav.Link>
+                  <Nav.Link as={Link} to="/admin">
+                    🔧 Admin
+                  </Nav.Link>
                 )}
               </>
             )}
@@ -188,7 +213,11 @@ const AppNavbar: React.FC = () => {
 
           {/* Search Bar - only show when authenticated */}
           {token && (
-            <div ref={searchContainerRef} className="d-flex align-items-center me-3" style={{ position: 'relative', minWidth: '280px' }}>
+            <div
+              ref={searchContainerRef}
+              className="d-flex align-items-center me-3"
+              style={{ position: "relative", minWidth: "280px" }}
+            >
               <Form className="w-100">
                 <InputGroup size="sm">
                   <Form.Control
@@ -201,12 +230,12 @@ const AppNavbar: React.FC = () => {
                     }}
                     onKeyDown={handleKeyDown}
                     style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                      color: '#374151',
-                      fontWeight: '500',
-                      paddingLeft: '0.75rem',
-                      fontSize: '0.875rem'
+                      backgroundColor: "rgba(255, 255, 255, 0.95)",
+                      borderColor: "rgba(255, 255, 255, 0.3)",
+                      color: "#374151",
+                      fontWeight: "500",
+                      paddingLeft: "0.75rem",
+                      fontSize: "0.875rem",
                     }}
                     className="navbar-search-input"
                   />
@@ -216,124 +245,158 @@ const AppNavbar: React.FC = () => {
                     size="sm"
                     disabled={isSearching}
                     style={{
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      color: 'white',
-                      borderLeft: 'none'
+                      borderColor: "rgba(255, 255, 255, 0.3)",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                      color: "white",
+                      borderLeft: "none",
                     }}
                   >
-                    {isSearching ? '⏳' : '🔍'}
+                    {isSearching ? "⏳" : "🔍"}
                   </Button>
                 </InputGroup>
               </Form>
 
               {/* Search Results Dropdown - Always show when search is active */}
-              {(showSearchResults || (searchQuery.length >= 2 && !isSearching)) && (
+              {(showSearchResults ||
+                (searchQuery.length >= 2 && !isSearching)) && (
                 <div
                   className="navbar-search-dropdown"
                   style={{
-                    position: 'absolute',
-                    top: '100%',
+                    position: "absolute",
+                    top: "100%",
                     left: 0,
                     right: 0,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
                     zIndex: 9999,
-                    maxHeight: '350px',
-                    overflowY: 'auto',
-                    marginTop: '4px'
+                    maxHeight: "350px",
+                    overflowY: "auto",
+                    marginTop: "4px",
                   }}
                 >
                   {isSearching && (
-                    <div style={{
-                      padding: '16px',
-                      textAlign: 'center',
-                      color: '#6b7280'
-                    }}>
+                    <div
+                      style={{
+                        padding: "16px",
+                        textAlign: "center",
+                        color: "#6b7280",
+                      }}
+                    >
                       🔄 Searching...
                     </div>
                   )}
 
-                  {!isSearching && searchResults.length === 0 && searchQuery.length >= 2 && (
-                    <div style={{
-                      padding: '16px',
-                      textAlign: 'center',
-                      color: '#6b7280'
-                    }}>
-                      No players found for "{searchQuery}"
-                    </div>
-                  )}
+                  {!isSearching &&
+                    searchResults.length === 0 &&
+                    searchQuery.length >= 2 && (
+                      <div
+                        style={{
+                          padding: "16px",
+                          textAlign: "center",
+                          color: "#6b7280",
+                        }}
+                      >
+                        No players found for "{searchQuery}"
+                      </div>
+                    )}
 
                   {!isSearching && searchResults.length > 0 && (
-                    <div style={{ padding: '8px', fontSize: '12px', color: '#666', borderBottom: '1px solid #eee' }}>
+                    <div
+                      style={{
+                        padding: "8px",
+                        fontSize: "12px",
+                        color: "#666",
+                        borderBottom: "1px solid #eee",
+                      }}
+                    >
                       Found {searchResults.length} results
                     </div>
                   )}
-                  {!isSearching && searchResults.length > 0 && searchResults.slice(0, 8).map((player, index) => {
-                    // Try different possible field names for player name
-                    const playerName = player.playername || player.name || player.player_name || player.fullname || player.full_name || 'Unknown Player';
-                    const team = player.team || player.club || player.current_team || '';
-                    const position = player.position || player.pos || '';
+                  {!isSearching &&
+                    searchResults.length > 0 &&
+                    searchResults.slice(0, 8).map((player, index) => {
+                      // Try different possible field names for player name
+                      const playerName =
+                        player.playername ||
+                        player.name ||
+                        player.player_name ||
+                        player.fullname ||
+                        player.full_name ||
+                        "Unknown Player";
+                      const team =
+                        player.team || player.club || player.current_team || "";
+                      const position = player.position || player.pos || "";
 
-                    return (
-                      <div
-                        key={player.universal_id || `player-${index}-${playerName}`}
-                        onClick={() => handlePlayerSelect(player)}
-                        className="search-result-item"
-                        style={{
-                          padding: '12px 16px',
-                          cursor: 'pointer',
-                          borderBottom: index < Math.min(searchResults.length, 8) - 1 ? '1px solid #f3f4f6' : 'none',
-                          backgroundColor: selectedIndex === index ? '#f0f9ff' : 'white',
-                          color: '#000000',
-                          fontSize: '14px',
-                          fontWeight: '600'
-                        }}
-                        onMouseEnter={() => setSelectedIndex(index)}
-                        onMouseLeave={() => setSelectedIndex(-1)}
-                      >
-                        <div style={{
-                          color: '#000000',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          marginBottom: '4px'
-                        }}>
-                          {playerName}
-                        </div>
-                        {(team || position) && (
-                          <div style={{
-                            color: '#666666',
-                            fontSize: '12px',
-                            fontWeight: '500'
-                          }}>
-                            {[team, position].filter(Boolean).join(' • ')}
+                      return (
+                        <div
+                          key={
+                            player.universal_id ||
+                            `player-${index}-${playerName}`
+                          }
+                          onClick={() => handlePlayerSelect(player)}
+                          className="search-result-item"
+                          style={{
+                            padding: "12px 16px",
+                            cursor: "pointer",
+                            borderBottom:
+                              index < Math.min(searchResults.length, 8) - 1
+                                ? "1px solid #f3f4f6"
+                                : "none",
+                            backgroundColor:
+                              selectedIndex === index ? "#f0f9ff" : "white",
+                            color: "#000000",
+                            fontSize: "14px",
+                            fontWeight: "600",
+                          }}
+                          onMouseEnter={() => setSelectedIndex(index)}
+                          onMouseLeave={() => setSelectedIndex(-1)}
+                        >
+                          <div
+                            style={{
+                              color: "#000000",
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            {playerName}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {(team || position) && (
+                            <div
+                              style={{
+                                color: "#666666",
+                                fontSize: "12px",
+                                fontWeight: "500",
+                              }}
+                            >
+                              {[team, position].filter(Boolean).join(" • ")}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   {searchResults.length > 8 && (
                     <div
                       style={{
-                        padding: '10px 16px',
-                        textAlign: 'center',
-                        fontSize: '12px',
-                        color: '#6b7280',
-                        borderTop: '1px solid #f3f4f6',
-                        backgroundColor: '#f9fafb',
-                        fontWeight: '500'
+                        padding: "10px 16px",
+                        textAlign: "center",
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        borderTop: "1px solid #f3f4f6",
+                        backgroundColor: "#f9fafb",
+                        fontWeight: "500",
                       }}
                     >
-                      +{searchResults.length - 8} more results - press Enter to see all
+                      +{searchResults.length - 8} more results - press Enter to
+                      see all
                     </div>
                   )}
                 </div>
               )}
             </div>
           )}
-
 
           <Nav className="d-flex align-items-center">
             <DarkModeToggle />
@@ -351,7 +414,7 @@ const AppNavbar: React.FC = () => {
                 variant="outline-light"
                 size="sm"
                 className="ms-2 rounded-pill"
-                onClick={() => navigate('/login')}
+                onClick={() => navigate("/login")}
               >
                 Login
               </Button>

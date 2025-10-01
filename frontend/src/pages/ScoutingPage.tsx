@@ -1,16 +1,37 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Table, Collapse, Alert, Modal, Dropdown } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../axiosInstance';
-import PlayerReportModal from '../components/PlayerReportModal';
-import AddPlayerModal from '../components/AddPlayerModal';
-import AddFixtureModal from '../components/AddFixtureModal';
-import ScoutingAssessmentModal from '../components/ScoutingAssessmentModal';
-import { useAuth } from '../App';
-import { useViewMode } from '../contexts/ViewModeContext';
-import { getPerformanceScoreColor, getAttributeScoreColor, getFlagColor, getContrastTextColor } from '../utils/colorUtils';
-import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
-import { Player } from '../types/Player';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Container,
+  Form,
+  Button,
+  Row,
+  Col,
+  ListGroup,
+  Card,
+  Spinner,
+  Table,
+  Collapse,
+  Alert,
+  Modal,
+  Dropdown,
+} from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../axiosInstance";
+import PlayerReportModal from "../components/PlayerReportModal";
+import AddPlayerModal from "../components/AddPlayerModal";
+import AddFixtureModal from "../components/AddFixtureModal";
+import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
+import { useAuth } from "../App";
+import { useViewMode } from "../contexts/ViewModeContext";
+import {
+  getPerformanceScoreColor,
+  getFlagColor,
+  getContrastTextColor,
+} from "../utils/colorUtils";
+import {
+  normalizeText,
+  containsAccentInsensitive,
+} from "../utils/textNormalization";
+import { Player } from "../types/Player";
 
 interface ScoutReport {
   report_id: number;
@@ -35,7 +56,7 @@ const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
-  const [playerSearch, setPlayerSearch] = useState('');
+  const [playerSearch, setPlayerSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
@@ -50,34 +71,34 @@ const ScoutingPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
   const [itemsPerPage] = useState(20);
-  const [recencyFilter, setRecencyFilter] = useState<string>('7');
+  const [recencyFilter, setRecencyFilter] = useState<string>("7");
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [playerSearchError, setPlayerSearchError] = useState('');
+  const [playerSearchError, setPlayerSearchError] = useState("");
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
-  
+
   // Add debouncing and caching for player search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Record<string, any[]>>({});
   const [showDropdown, setShowDropdown] = useState(false);
-  
+
   // Advanced filters
   const [performanceScores, setPerformanceScores] = useState<number[]>([]);
-  const [scoutNameFilter, setScoutNameFilter] = useState('');
-  const [minAge, setMinAge] = useState('');
-  const [maxAge, setMaxAge] = useState('');
-  const [playerNameFilter, setPlayerNameFilter] = useState('');
-  const [dateFromFilter, setDateFromFilter] = useState('');
-  const [dateToFilter, setDateToFilter] = useState('');
-  const [reportTypeFilter, setReportTypeFilter] = useState('');
-  const [scoutingTypeFilter, setScoutingTypeFilter] = useState('');
-  const [positionFilter, setPositionFilter] = useState('');
-  
+  const [scoutNameFilter, setScoutNameFilter] = useState("");
+  const [minAge, setMinAge] = useState("");
+  const [maxAge, setMaxAge] = useState("");
+  const [playerNameFilter, setPlayerNameFilter] = useState("");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
+  const [reportTypeFilter, setReportTypeFilter] = useState("");
+  const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
+  const [positionFilter, setPositionFilter] = useState("");
+
   // Role-based permissions
-  const [userRole, setUserRole] = useState('');
-  const [currentUsername, setCurrentUsername] = useState('');
-  
+  const [userRole, setUserRole] = useState("");
+  const [currentUsername, setCurrentUsername] = useState("");
+
   // Edit and delete functionality
   const [editMode, setEditMode] = useState(false);
   const [editReportId, setEditReportId] = useState<number | null>(null);
@@ -86,61 +107,73 @@ const ScoutingPage: React.FC = () => {
   const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchScoutReports = useCallback(async (recency: string) => {
-    setLoading(true);
-    setErrorReports(null);
-    try {
-      const params: any = {
-        page: 1,
-        limit: 1000, // Load all reports for client-side filtering and pagination
-      };
-      if (recency !== 'all') {
-        params.recency_days = parseInt(recency);
+  const fetchScoutReports = useCallback(
+    async (recency: string) => {
+      setLoading(true);
+      setErrorReports(null);
+      try {
+        const params: any = {
+          page: 1,
+          limit: 1000, // Load all reports for client-side filtering and pagination
+        };
+        if (recency !== "all") {
+          params.recency_days = parseInt(recency);
+        }
+        const response = await axiosInstance.get("/scout_reports/all", {
+          params,
+        });
+        let reports = response.data.reports || [];
+
+        // Role-based filtering is now handled by the backend
+        // The backend already filters scout reports by USER_ID for scout users
+
+        setScoutReports(reports);
+        setTotalReports(reports.length); // Use actual loaded reports count
+      } catch (error) {
+        console.error("Error fetching scout reports:", error);
+        setErrorReports("Failed to load scout reports. Please try again.");
+        setScoutReports([]);
+        setTotalReports(0);
+      } finally {
+        setLoading(false);
       }
-      const response = await axiosInstance.get('/scout_reports/all', { params });
-      let reports = response.data.reports || [];
-      
-      // Role-based filtering is now handled by the backend
-      // The backend already filters scout reports by USER_ID for scout users
-      
-      setScoutReports(reports);
-      setTotalReports(reports.length); // Use actual loaded reports count
-    } catch (error) {
-      console.error('Error fetching scout reports:', error);
-      setErrorReports('Failed to load scout reports. Please try again.');
-      setScoutReports([]);
-      setTotalReports(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [userRole, currentUsername]);
+    },
+    [userRole, currentUsername],
+  );
 
   // Fetch user role and username
   const fetchUserInfo = useCallback(async () => {
     try {
-      const response = await axiosInstance.get('/users/me');
-      setUserRole(response.data.role || 'scout');
-      setCurrentUsername(response.data.username || '');
+      const response = await axiosInstance.get("/users/me");
+      setUserRole(response.data.role || "scout");
+      setCurrentUsername(response.data.username || "");
       // Initialize user's view mode preference
       if (response.data.id || response.data.username) {
-        initializeUserViewMode(response.data.id?.toString() || response.data.username);
+        initializeUserViewMode(
+          response.data.id?.toString() || response.data.username,
+        );
       }
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      console.error("Error fetching user info:", error);
     }
   }, [initializeUserViewMode]);
 
   const handleEditReport = async (reportId: number) => {
     try {
       setLoadingReportId(reportId);
-      const response = await axiosInstance.get(`/scout_reports/details/${reportId}`);
+      const response = await axiosInstance.get(
+        `/scout_reports/details/${reportId}`,
+      );
       setEditReportData(response.data);
       setEditReportId(reportId);
-      setSelectedPlayer({ player_id: response.data.player_id, player_name: response.data.player_name });
+      setSelectedPlayer({
+        player_id: response.data.player_id,
+        player_name: response.data.player_name,
+      });
       setEditMode(true);
       setShowAssessmentModal(true);
     } catch (error) {
-      console.error('Error fetching report for edit:', error);
+      console.error("Error fetching report for edit:", error);
     } finally {
       setLoadingReportId(null);
     }
@@ -153,7 +186,7 @@ const ScoutingPage: React.FC = () => {
 
   const confirmDeleteReport = async () => {
     if (!deleteReportId) return;
-    
+
     try {
       setDeleteLoading(true);
       await axiosInstance.delete(`/scout_reports/${deleteReportId}`);
@@ -161,7 +194,7 @@ const ScoutingPage: React.FC = () => {
       setDeleteReportId(null);
       fetchScoutReports(recencyFilter);
     } catch (error) {
-      console.error('Error deleting report:', error);
+      console.error("Error deleting report:", error);
     } finally {
       setDeleteLoading(false);
     }
@@ -185,41 +218,43 @@ const ScoutingPage: React.FC = () => {
   const performPlayerSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim();
     const normalizedQuery = normalizeText(trimmedQuery);
-    
+
     // Check cache first using normalized query
     if (searchCacheRef.current[normalizedQuery]) {
       setPlayers(searchCacheRef.current[normalizedQuery]);
-      setPlayerSearchError('');
+      setPlayerSearchError("");
       setPlayerSearchLoading(false);
       setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
       return;
     }
-    
+
     try {
       setPlayerSearchLoading(true);
       // Backend now handles comprehensive accent-insensitive search
-      const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(trimmedQuery)}`);
+      const response = await axiosInstance.get(
+        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
+      );
       let results = response.data || [];
-      
+
       // Backend already handles accent-insensitive search and sorting
       // No need for additional client-side filtering
-      
+
       // Cache the results using normalized query
       searchCacheRef.current[normalizedQuery] = results;
-      
+
       setPlayers(results);
       setShowDropdown(results.length > 0);
-      
+
       if (results.length === 0) {
-        setPlayerSearchError('No players found.');
+        setPlayerSearchError("No players found.");
       } else {
-        setPlayerSearchError('');
+        setPlayerSearchError("");
       }
     } catch (error) {
-      console.error('Error searching players:', error);
+      console.error("Error searching players:", error);
       setPlayers([]);
       setShowDropdown(false);
-      setPlayerSearchError('Error searching for players.');
+      setPlayerSearchError("Error searching for players.");
     } finally {
       setPlayerSearchLoading(false);
     }
@@ -228,25 +263,25 @@ const ScoutingPage: React.FC = () => {
   const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setPlayerSearch(query);
-    
+
     // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Clear error immediately when user starts typing
-    setPlayerSearchError('');
-    
+    setPlayerSearchError("");
+
     if (query.length <= 2) {
       setPlayers([]);
       setShowDropdown(false);
       setPlayerSearchLoading(false);
       return;
     }
-    
+
     // Set loading immediately for better UX
     setPlayerSearchLoading(true);
-    
+
     // Debounce the actual search
     searchTimeoutRef.current = setTimeout(() => {
       performPlayerSearch(query);
@@ -258,9 +293,9 @@ const ScoutingPage: React.FC = () => {
     setPlayerSearch(`${player.player_name} (${player.squad_name})`);
     setPlayers([]);
     setShowDropdown(false);
-    setPlayerSearchError('');
+    setPlayerSearchError("");
   };
-  
+
   // Close dropdown when clicking outside
   const handleInputBlur = () => {
     // Small delay to allow click on dropdown items
@@ -268,13 +303,13 @@ const ScoutingPage: React.FC = () => {
       setShowDropdown(false);
     }, 200);
   };
-  
+
   const handleInputFocus = () => {
     if (players.length > 0) {
       setShowDropdown(true);
     }
   };
-  
+
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -288,10 +323,9 @@ const ScoutingPage: React.FC = () => {
     if (selectedPlayer) {
       setShowAssessmentModal(true);
     } else {
-      alert('Please select a player first.');
+      alert("Please select a player first.");
     }
   };
-
 
   const handleOpenReportModal = async (report_id: number) => {
     setLoadingReportId(report_id);
@@ -300,7 +334,7 @@ const ScoutingPage: React.FC = () => {
       setSelectedReport(response.data);
       setShowReportModal(true);
     } catch (error) {
-      console.error('Error fetching single scout report:', error);
+      console.error("Error fetching single scout report:", error);
     } finally {
       setLoadingReportId(null);
     }
@@ -308,15 +342,19 @@ const ScoutingPage: React.FC = () => {
 
   // Note: Color functions now imported from utils/colorUtils.ts for consistency
 
-  const getReportTypeBadge = (reportType: string, _scoutingType: string, flagType?: string) => {
+  const getReportTypeBadge = (
+    reportType: string,
+    _scoutingType: string,
+    flagType?: string,
+  ) => {
     switch (reportType.toLowerCase()) {
-      case 'flag':
-      case 'flag assessment':
+      case "flag":
+      case "flag assessment":
         return getFlagBadge(flagType);
-      case 'clips':
+      case "clips":
         return <span className="badge badge-neutral-grey">Clips</span>;
-      case 'player assessment':
-      case 'player':
+      case "player assessment":
+      case "player":
         return null; // Remove Player Assessment badge
       default:
         return <span className="badge badge-neutral-grey">{reportType}</span>;
@@ -324,13 +362,17 @@ const ScoutingPage: React.FC = () => {
   };
 
   const getFlagBadge = (flagType?: string) => {
-    const flagColor = getFlagColor(flagType || '');
+    const flagColor = getFlagColor(flagType || "");
 
     return (
       <span
         className="badge"
-        style={{ backgroundColor: flagColor, border: 'none', cursor: 'pointer' }}
-        title={`Flag: ${flagType || 'Unknown'}`}
+        style={{
+          backgroundColor: flagColor,
+          border: "none",
+          cursor: "pointer",
+        }}
+        title={`Flag: ${flagType || "Unknown"}`}
       >
         🚩
       </span>
@@ -338,18 +380,17 @@ const ScoutingPage: React.FC = () => {
   };
 
   const getScoutingTypeBadge = (scoutingType: string) => {
-    const icon = scoutingType.toLowerCase() === 'live' ? '🔍' : '💻';
+    const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
     return (
       <span
         className="badge badge-neutral-grey"
-        style={{ cursor: 'pointer' }}
+        style={{ cursor: "pointer", fontSize: "16px" }}
         title={`Scouting Type: ${scoutingType}`}
       >
         {icon}
       </span>
     );
   };
-
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
@@ -361,12 +402,14 @@ const ScoutingPage: React.FC = () => {
 
     // Performance score filter - individual scores
     if (performanceScores.length > 0) {
-      filtered = filtered.filter(report => performanceScores.includes(report.performance_score));
+      filtered = filtered.filter((report) =>
+        performanceScores.includes(report.performance_score),
+      );
     }
 
     // Age range filter
     if (minAge || maxAge) {
-      filtered = filtered.filter(report => {
+      filtered = filtered.filter((report) => {
         if (!report.age) return false;
         const min = minAge ? parseInt(minAge) : 0;
         const max = maxAge ? parseInt(maxAge) : 100;
@@ -376,45 +419,57 @@ const ScoutingPage: React.FC = () => {
 
     // Scout name filter
     if (scoutNameFilter) {
-      filtered = filtered.filter(report => 
-        report.scout_name.toLowerCase().includes(scoutNameFilter.toLowerCase())
+      filtered = filtered.filter((report) =>
+        report.scout_name.toLowerCase().includes(scoutNameFilter.toLowerCase()),
       );
     }
 
     // Player name filter
     if (playerNameFilter) {
-      filtered = filtered.filter(report => 
-        containsAccentInsensitive(report.player_name, playerNameFilter)
+      filtered = filtered.filter((report) =>
+        containsAccentInsensitive(report.player_name, playerNameFilter),
       );
     }
 
     // Report type filter
     if (reportTypeFilter) {
-      filtered = filtered.filter(report => 
-        report.report_type.toLowerCase().includes(reportTypeFilter.toLowerCase())
+      filtered = filtered.filter((report) =>
+        report.report_type
+          .toLowerCase()
+          .includes(reportTypeFilter.toLowerCase()),
       );
     }
 
     // Scouting type filter
     if (scoutingTypeFilter) {
-      filtered = filtered.filter(report => 
-        report.scouting_type.toLowerCase() === scoutingTypeFilter.toLowerCase()
+      filtered = filtered.filter(
+        (report) =>
+          report.scouting_type.toLowerCase() ===
+          scoutingTypeFilter.toLowerCase(),
       );
     }
 
     // Position filter
     if (positionFilter) {
-      filtered = filtered.filter(report => 
-        report.position_played && report.position_played.toLowerCase().includes(positionFilter.toLowerCase())
+      filtered = filtered.filter(
+        (report) =>
+          report.position_played &&
+          report.position_played
+            .toLowerCase()
+            .includes(positionFilter.toLowerCase()),
       );
     }
 
     // Date range filter
     if (dateFromFilter || dateToFilter) {
-      filtered = filtered.filter(report => {
+      filtered = filtered.filter((report) => {
         const reportDate = new Date(report.created_at);
-        const fromDate = dateFromFilter ? new Date(dateFromFilter) : new Date('1900-01-01');
-        const toDate = dateToFilter ? new Date(dateToFilter) : new Date('2100-12-31');
+        const fromDate = dateFromFilter
+          ? new Date(dateFromFilter)
+          : new Date("1900-01-01");
+        const toDate = dateToFilter
+          ? new Date(dateToFilter)
+          : new Date("2100-12-31");
         return reportDate >= fromDate && reportDate <= toDate;
       });
     }
@@ -423,21 +478,32 @@ const ScoutingPage: React.FC = () => {
   };
 
   const filteredReports = getFilteredReports();
-  
+
   // Client-side pagination for filtered results
   const getPaginatedReports = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredReports.slice(startIndex, endIndex);
   };
-  
+
   const paginatedReports = getPaginatedReports();
   const filteredTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
-  
+
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [performanceScores, minAge, maxAge, scoutNameFilter, playerNameFilter, dateFromFilter, dateToFilter, reportTypeFilter, scoutingTypeFilter, positionFilter]);
+  }, [
+    performanceScores,
+    minAge,
+    maxAge,
+    scoutNameFilter,
+    playerNameFilter,
+    dateFromFilter,
+    dateToFilter,
+    reportTypeFilter,
+    scoutingTypeFilter,
+    positionFilter,
+  ]);
 
   return (
     <Container className="mt-4">
@@ -455,17 +521,32 @@ const ScoutingPage: React.FC = () => {
                 onFocus={handleInputFocus}
               />
               {playerSearchLoading && (
-                <div className="position-absolute top-50 end-0 translate-middle-y me-3" style={{ zIndex: 10 }}>
+                <div
+                  className="position-absolute top-50 end-0 translate-middle-y me-3"
+                  style={{ zIndex: 10 }}
+                >
                   <Spinner animation="border" size="sm" />
                 </div>
               )}
             </div>
             {showDropdown && players.length > 0 && (
-              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
+              <ListGroup
+                className="mt-2"
+                style={{
+                  position: "absolute",
+                  zIndex: 1000,
+                  width: "calc(100% - 30px)",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}
+              >
                 {players.map((player, index) => (
-                  <ListGroup.Item 
-                    key={player.universal_id || `fallback-${index}-${player.player_name}`} 
-                    action 
+                  <ListGroup.Item
+                    key={
+                      player.universal_id ||
+                      `fallback-${index}-${player.player_name}`
+                    }
+                    action
                     onClick={() => handlePlayerSelect(player)}
                     className="d-flex justify-content-between align-items-center"
                   >
@@ -483,20 +564,39 @@ const ScoutingPage: React.FC = () => {
               </div>
             )}
           </Form.Group>
-          <Button className="mt-2" variant="outline-secondary" onClick={handleShowAssessmentModal} disabled={!selectedPlayer}>
+          <Button
+            className="mt-2"
+            variant="outline-secondary"
+            onClick={handleShowAssessmentModal}
+            disabled={!selectedPlayer}
+          >
             Add Assessment
           </Button>
-          <Button className="mt-2 ms-2" variant="outline-secondary" onClick={() => setShowAddPlayerModal(true)}>
+          <Button
+            className="mt-2 ms-2"
+            variant="outline-secondary"
+            onClick={() => setShowAddPlayerModal(true)}
+          >
             Add Player
           </Button>
-          <Button className="mt-2 ms-2" variant="outline-secondary" onClick={() => setShowAddFixtureModal(true)}>
+          <Button
+            className="mt-2 ms-2"
+            variant="outline-secondary"
+            onClick={() => setShowAddFixtureModal(true)}
+          >
             Add Fixture
           </Button>
         </Card.Body>
       </Card>
 
-      <AddPlayerModal show={showAddPlayerModal} onHide={() => setShowAddPlayerModal(false)} />
-      <AddFixtureModal show={showAddFixtureModal} onHide={() => setShowAddFixtureModal(false)} />
+      <AddPlayerModal
+        show={showAddPlayerModal}
+        onHide={() => setShowAddPlayerModal(false)}
+      />
+      <AddFixtureModal
+        show={showAddFixtureModal}
+        onHide={() => setShowAddFixtureModal(false)}
+      />
       <ScoutingAssessmentModal
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
@@ -509,18 +609,30 @@ const ScoutingPage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
-        <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }}>
+        <Modal.Header
+          closeButton
+          style={{ backgroundColor: "#000000", color: "white" }}
+        >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete this scout report? This action cannot be undone.
+          Are you sure you want to delete this scout report? This action cannot
+          be undone.
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={confirmDeleteReport} disabled={deleteLoading}>
-            {deleteLoading ? <Spinner animation="border" size="sm" /> : 'Delete'}
+          <Button
+            variant="danger"
+            onClick={confirmDeleteReport}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? (
+              <Spinner animation="border" size="sm" />
+            ) : (
+              "Delete"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -530,18 +642,34 @@ const ScoutingPage: React.FC = () => {
         <div className="d-flex align-items-center gap-3">
           <div className="btn-group">
             <Button
-              variant={viewMode === 'cards' ? 'secondary' : 'outline-secondary'}
+              variant={viewMode === "cards" ? "secondary" : "outline-secondary"}
               size="sm"
-              onClick={() => setViewMode('cards')}
-              style={viewMode === 'cards' ? { backgroundColor: '#000000', borderColor: '#000000', color: 'white' } : { color: '#000000', borderColor: '#000000' }}
+              onClick={() => setViewMode("cards")}
+              style={
+                viewMode === "cards"
+                  ? {
+                      backgroundColor: "#000000",
+                      borderColor: "#000000",
+                      color: "white",
+                    }
+                  : { color: "#000000", borderColor: "#000000" }
+              }
             >
               Cards
             </Button>
             <Button
-              variant={viewMode === 'table' ? 'secondary' : 'outline-secondary'}
+              variant={viewMode === "table" ? "secondary" : "outline-secondary"}
               size="sm"
-              onClick={() => setViewMode('table')}
-              style={viewMode === 'table' ? { backgroundColor: '#000000', borderColor: '#000000', color: 'white' } : { color: '#000000', borderColor: '#000000' }}
+              onClick={() => setViewMode("table")}
+              style={
+                viewMode === "table"
+                  ? {
+                      backgroundColor: "#000000",
+                      borderColor: "#000000",
+                      color: "white",
+                    }
+                  : { color: "#000000", borderColor: "#000000" }
+              }
             >
               Table
             </Button>
@@ -555,8 +683,11 @@ const ScoutingPage: React.FC = () => {
           <Form.Select
             size="sm"
             value={recencyFilter}
-            onChange={e => { setRecencyFilter(e.target.value); setCurrentPage(1); }}
-            style={{ maxWidth: '150px' }}
+            onChange={(e) => {
+              setRecencyFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{ maxWidth: "150px" }}
           >
             <option value="all">All Time</option>
             <option value="7">Last 7 Days</option>
@@ -592,24 +723,27 @@ const ScoutingPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {Math.min(paginatedReports.length, itemsPerPage)} of {filteredReports.length} filtered results
-            {filteredReports.length !== totalReports && <span> ({totalReports} total)</span>}
+            Showing {Math.min(paginatedReports.length, itemsPerPage)} of{" "}
+            {filteredReports.length} filtered results
+            {filteredReports.length !== totalReports && (
+              <span> ({totalReports} total)</span>
+            )}
           </small>
         </Col>
       </Row>
 
       {/* Advanced Filters */}
       <Card className="mb-3">
-        <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
+        <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
           <div className="d-flex justify-content-between align-items-center">
             <h6 className="mb-0 text-white">🔍 Advanced Filters</h6>
-            <Button 
-              variant="outline-secondary" 
-              size="sm" 
+            <Button
+              variant="outline-secondary"
+              size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              style={{ color: 'white', borderColor: 'white' }}
+              style={{ color: "white", borderColor: "white" }}
             >
-              {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+              {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
             </Button>
           </div>
         </Card.Header>
@@ -643,16 +777,24 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold">Performance Score</Form.Label>
+                  <Form.Label className="small fw-bold">
+                    Performance Score
+                  </Form.Label>
                   <Dropdown>
-                    <Dropdown.Toggle variant="outline-secondary" size="sm" className="w-100 text-start">
+                    <Dropdown.Toggle
+                      variant="outline-secondary"
+                      size="sm"
+                      className="w-100 text-start"
+                    >
                       {performanceScores.length > 0
-                        ? `${performanceScores.length} score${performanceScores.length > 1 ? 's' : ''} selected`
-                        : 'Select scores'
-                      }
+                        ? `${performanceScores.length} score${performanceScores.length > 1 ? "s" : ""} selected`
+                        : "Select scores"}
                     </Dropdown.Toggle>
-                    <Dropdown.Menu className="p-2" style={{ minWidth: '200px' }}>
-                      {[1,2,3,4,5,6,7,8,9,10].map(score => (
+                    <Dropdown.Menu
+                      className="p-2"
+                      style={{ minWidth: "200px" }}
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
                         <div key={score} className="px-2 py-1">
                           <Form.Check
                             type="checkbox"
@@ -661,9 +803,14 @@ const ScoutingPage: React.FC = () => {
                             checked={performanceScores.includes(score)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setPerformanceScores([...performanceScores, score]);
+                                setPerformanceScores([
+                                  ...performanceScores,
+                                  score,
+                                ]);
                               } else {
-                                setPerformanceScores(performanceScores.filter(s => s !== score));
+                                setPerformanceScores(
+                                  performanceScores.filter((s) => s !== score),
+                                );
                               }
                             }}
                           />
@@ -692,7 +839,11 @@ const ScoutingPage: React.FC = () => {
               <Col md={4}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">Report Type</Form.Label>
-                  <Form.Select size="sm" value={reportTypeFilter} onChange={(e) => setReportTypeFilter(e.target.value)}>
+                  <Form.Select
+                    size="sm"
+                    value={reportTypeFilter}
+                    onChange={(e) => setReportTypeFilter(e.target.value)}
+                  >
                     <option value="">All Types</option>
                     <option value="player assessment">Player Assessment</option>
                     <option value="flag">Flag</option>
@@ -702,8 +853,14 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold">Scouting Type</Form.Label>
-                  <Form.Select size="sm" value={scoutingTypeFilter} onChange={(e) => setScoutingTypeFilter(e.target.value)}>
+                  <Form.Label className="small fw-bold">
+                    Scouting Type
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={scoutingTypeFilter}
+                    onChange={(e) => setScoutingTypeFilter(e.target.value)}
+                  >
                     <option value="">All Types</option>
                     <option value="live">Live</option>
                     <option value="video">Video</option>
@@ -726,7 +883,7 @@ const ScoutingPage: React.FC = () => {
                       onChange={(e) => setMinAge(e.target.value)}
                       min="16"
                       max="50"
-                      style={{ width: '80px' }}
+                      style={{ width: "80px" }}
                     />
                     <span className="range-separator">to</span>
                     <Form.Control
@@ -737,7 +894,7 @@ const ScoutingPage: React.FC = () => {
                       onChange={(e) => setMaxAge(e.target.value)}
                       min="16"
                       max="50"
-                      style={{ width: '80px' }}
+                      style={{ width: "80px" }}
                     />
                   </div>
                 </Form.Group>
@@ -764,21 +921,26 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
+                  <Form.Label
+                    className="small fw-bold"
+                    style={{ visibility: "hidden" }}
+                  >
+                    Placeholder
+                  </Form.Label>
                   <Button
                     variant="outline-secondary"
                     size="sm"
                     onClick={() => {
                       setPerformanceScores([]);
-                      setMinAge('');
-                      setMaxAge('');
-                      setScoutNameFilter('');
-                      setPlayerNameFilter('');
-                      setDateFromFilter('');
-                      setDateToFilter('');
-                      setReportTypeFilter('');
-                      setScoutingTypeFilter('');
-                      setPositionFilter('');
+                      setMinAge("");
+                      setMaxAge("");
+                      setScoutNameFilter("");
+                      setPlayerNameFilter("");
+                      setDateFromFilter("");
+                      setDateToFilter("");
+                      setReportTypeFilter("");
+                      setScoutingTypeFilter("");
+                      setPositionFilter("");
                     }}
                     className="w-100"
                   >
@@ -792,14 +954,22 @@ const ScoutingPage: React.FC = () => {
       </Card>
 
       {loading ? (
-        <div className="text-center"><Spinner animation="border" /></div>
+        <div className="text-center">
+          <Spinner animation="border" />
+        </div>
       ) : errorReports ? (
         <Alert variant="danger">{errorReports}</Alert>
       ) : (
         <>
-          {viewMode === 'table' ? (
+          {viewMode === "table" ? (
             <div className="table-responsive">
-              <Table responsive hover striped className="table-compact table-sm" style={{ textAlign: 'center' }}>
+              <Table
+                responsive
+                hover
+                striped
+                className="table-compact table-sm"
+                style={{ textAlign: "center" }}
+              >
                 <thead className="table-dark">
                   <tr>
                     <th>Report Date</th>
@@ -817,45 +987,114 @@ const ScoutingPage: React.FC = () => {
                 <tbody>
                   {paginatedReports.map((report) => (
                     <tr key={report.report_id}>
-                      <td>{new Date(report.created_at).toLocaleDateString()}</td>
                       <td>
-                        <Button variant="link" onClick={() => navigate(`/player/${report.player_id}`)}>
+                        {new Date(report.created_at).toLocaleDateString()}
+                      </td>
+                      <td>
+                        <Button
+                          variant="link"
+                          onClick={() =>
+                            navigate(`/player/${report.player_id}`)
+                          }
+                        >
                           {report.player_name}
                         </Button>
                       </td>
                       <td>
-                        <span className="age-text">{report.age || 'N/A'}</span>
+                        <span className="age-text">{report.age || "N/A"}</span>
                       </td>
                       <td>
-                        <span className="position-text">{report.position_played || 'N/A'}</span>
+                        <span className="position-text">
+                          {report.position_played || "N/A"}
+                        </span>
                       </td>
                       <td>
-                        {report.fixture_date && report.fixture_date !== 'N/A' ?
-                          new Date(report.fixture_date).toLocaleDateString() :
-                          'N/A'
-                        }
+                        {report.fixture_date && report.fixture_date !== "N/A"
+                          ? new Date(report.fixture_date).toLocaleDateString()
+                          : "N/A"}
                       </td>
                       <td>
-                        {report.fixture_details && report.fixture_details !== 'N/A' ?
-                          report.fixture_details :
-                          'N/A'
-                        }
+                        {report.fixture_details &&
+                        report.fixture_details !== "N/A"
+                          ? report.fixture_details
+                          : "N/A"}
                       </td>
                       <td>{report.scout_name}</td>
                       <td>
-                        {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
-                        {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
+                        {getReportTypeBadge(
+                          report.report_type,
+                          report.scouting_type,
+                          (report as any).flag_category,
+                        )}
+                        {report.scouting_type && (
+                          <span className="ms-1">
+                            {getScoutingTypeBadge(report.scouting_type)}
+                          </span>
+                        )}
                       </td>
-                      <td><span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none' }}>{report.performance_score}</span></td>
                       <td>
-                        <div className="btn-group" style={{ justifyContent: 'center' }}>
-                          <Button size="sm" onClick={() => handleOpenReportModal(report.report_id)} disabled={loadingReportId === report.report_id} title="View Report" className="btn-action-circle btn-action-view">
-                            {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
+                        <span
+                          className={`badge ${
+                            report.performance_score === 9 ? 'performance-score-9' :
+                            report.performance_score === 10 ? 'performance-score-10' : ''
+                          }`}
+                          style={{
+                            backgroundColor: getPerformanceScoreColor(
+                              report.performance_score,
+                            ),
+                            color: getContrastTextColor(
+                              getPerformanceScoreColor(
+                                report.performance_score,
+                              ),
+                            ),
+                            fontWeight: "bold",
+                            ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
+                          }}
+                        >
+                          {report.performance_score}
+                        </span>
+                      </td>
+                      <td>
+                        <div
+                          className="btn-group"
+                          style={{ justifyContent: "center" }}
+                        >
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              handleOpenReportModal(report.report_id)
+                            }
+                            disabled={loadingReportId === report.report_id}
+                            title="View Report"
+                            className="btn-action-circle btn-action-view"
+                          >
+                            {loadingReportId === report.report_id ? (
+                              <Spinner as="span" animation="border" size="sm" />
+                            ) : (
+                              "👁️"
+                            )}
                           </Button>
-                          <Button size="sm" title="Edit" onClick={() => handleEditReport(report.report_id)} disabled={loadingReportId === report.report_id} className="btn-action-circle btn-action-edit">
-                            {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
+                          <Button
+                            size="sm"
+                            title="Edit"
+                            onClick={() => handleEditReport(report.report_id)}
+                            disabled={loadingReportId === report.report_id}
+                            className="btn-action-circle btn-action-edit"
+                          >
+                            {loadingReportId === report.report_id ? (
+                              <Spinner as="span" animation="border" size="sm" />
+                            ) : (
+                              "✏️"
+                            )}
                           </Button>
-                          <Button size="sm" title="Delete" onClick={() => handleDeleteReport(report.report_id)} className="btn-action-circle btn-action-delete">🗑️</Button>
+                          <Button
+                            size="sm"
+                            title="Delete"
+                            onClick={() => handleDeleteReport(report.report_id)}
+                            className="btn-action-circle btn-action-delete"
+                          >
+                            🗑️
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -866,8 +1105,17 @@ const ScoutingPage: React.FC = () => {
           ) : (
             <Row>
               {paginatedReports.map((report) => (
-                <Col sm={6} md={4} lg={3} key={report.report_id} className="mb-4">
-                  <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                <Col
+                  sm={6}
+                  md={4}
+                  lg={3}
+                  key={report.report_id}
+                  className="mb-4"
+                >
+                  <Card
+                    className="h-100 shadow-sm hover-card"
+                    style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                  >
                     <Card.Body className="p-3">
                       {/* Top Row - 2 columns */}
                       <Row className="mb-3 pb-2 border-bottom">
@@ -877,21 +1125,36 @@ const ScoutingPage: React.FC = () => {
                             <Button
                               variant="link"
                               className="p-0 text-decoration-none fw-bold d-block mb-1"
-                              style={{ color: '#212529', fontSize: '1rem', textAlign: 'left' }}
-                              onClick={() => navigate(`/player/${report.player_id}`)}
+                              style={{
+                                color: "#212529",
+                                fontSize: "1rem",
+                                textAlign: "left",
+                              }}
+                              onClick={() =>
+                                navigate(`/player/${report.player_id}`)
+                              }
                             >
                               {report.player_name}
                             </Button>
-                            <small className="text-muted d-block">Position: {report.position_played || 'N/A'}</small>
-                            <small className="text-muted d-block">Age: {report.age || 'N/A'}</small>
+                            <small className="text-muted d-block">
+                              Position: {report.position_played || "N/A"}
+                            </small>
+                            <small className="text-muted d-block">
+                              Age: {report.age || "N/A"}
+                            </small>
                           </div>
                         </Col>
 
                         {/* Right: Scout Info */}
                         <Col xs={6} className="text-end">
                           <div>
-                            <small className="text-muted d-block">{report.scout_name}</small>
-                            <small className="text-muted d-block">Report Date: {new Date(report.created_at).toLocaleDateString()}</small>
+                            <small className="text-muted d-block">
+                              {report.scout_name}
+                            </small>
+                            <small className="text-muted d-block">
+                              Report Date:{" "}
+                              {new Date(report.created_at).toLocaleDateString()}
+                            </small>
                           </div>
                         </Col>
                       </Row>
@@ -901,24 +1164,62 @@ const ScoutingPage: React.FC = () => {
                         {/* Left: Fixture Info */}
                         <Col xs={6}>
                           <div>
-                            {report.fixture_date && report.fixture_date !== 'N/A' ? (
+                            {report.fixture_date &&
+                            report.fixture_date !== "N/A" ? (
                               <>
-                                <small className="text-muted d-block mb-1" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-                                  <span className="fw-semibold">Fixture Date:</span> {new Date(report.fixture_date).toLocaleDateString()}
+                                <small
+                                  className="text-muted d-block mb-1"
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    lineHeight: "1.2",
+                                  }}
+                                >
+                                  <span className="fw-semibold">
+                                    Fixture Date:
+                                  </span>{" "}
+                                  {new Date(
+                                    report.fixture_date,
+                                  ).toLocaleDateString()}
                                 </small>
-                                {report.fixture_details && report.fixture_details !== 'N/A' && (
-                                  <small className="text-muted d-block" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-                                    <span className="fw-semibold">Fixture:</span> {report.fixture_details}
-                                  </small>
-                                )}
+                                {report.fixture_details &&
+                                  report.fixture_details !== "N/A" && (
+                                    <small
+                                      className="text-muted d-block"
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        lineHeight: "1.2",
+                                      }}
+                                    >
+                                      <span className="fw-semibold">
+                                        Fixture:
+                                      </span>{" "}
+                                      {report.fixture_details}
+                                    </small>
+                                  )}
                               </>
                             ) : (
                               <>
-                                <small className="text-muted d-block mb-1" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-                                  <span className="fw-semibold">Fixture Date:</span> N/A
+                                <small
+                                  className="text-muted d-block mb-1"
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    lineHeight: "1.2",
+                                  }}
+                                >
+                                  <span className="fw-semibold">
+                                    Fixture Date:
+                                  </span>{" "}
+                                  N/A
                                 </small>
-                                <small className="text-muted d-block" style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
-                                  <span className="fw-semibold">Fixture:</span> N/A
+                                <small
+                                  className="text-muted d-block"
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    lineHeight: "1.2",
+                                  }}
+                                >
+                                  <span className="fw-semibold">Fixture:</span>{" "}
+                                  N/A
                                 </small>
                               </>
                             )}
@@ -928,9 +1229,31 @@ const ScoutingPage: React.FC = () => {
                         {/* Right: Score */}
                         <Col xs={6} className="text-end">
                           <div>
-                            <small className="text-muted fw-semibold d-block">Score</small>
-                            {report.report_type?.toLowerCase() !== 'flag' && report.report_type?.toLowerCase() !== 'flag assessment' ? (
-                              <span className="badge" style={{ backgroundColor: getPerformanceScoreColor(report.performance_score), color: getContrastTextColor(getPerformanceScoreColor(report.performance_score)), fontWeight: 'bold', border: 'none', fontSize: '0.9rem' }}>
+                            <small className="text-muted fw-semibold d-block">
+                              Score
+                            </small>
+                            {report.report_type?.toLowerCase() !== "flag" &&
+                            report.report_type?.toLowerCase() !==
+                              "flag assessment" ? (
+                              <span
+                                className={`badge ${
+                                  report.performance_score === 9 ? 'performance-score-9' :
+                                  report.performance_score === 10 ? 'performance-score-10' : ''
+                                }`}
+                                style={{
+                                  backgroundColor: getPerformanceScoreColor(
+                                    report.performance_score,
+                                  ),
+                                  color: getContrastTextColor(
+                                    getPerformanceScoreColor(
+                                      report.performance_score,
+                                    ),
+                                  ),
+                                  fontWeight: "bold",
+                                  fontSize: "0.9rem",
+                                  ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
+                                }}
+                              >
                                 {report.performance_score}
                               </span>
                             ) : (
@@ -947,9 +1270,19 @@ const ScoutingPage: React.FC = () => {
                         {/* Left: Tags */}
                         <Col xs={6}>
                           <div className="d-flex align-items-center gap-1">
-                            <small className="text-muted fw-semibold me-1">Tags:</small>
-                            {getReportTypeBadge(report.report_type, report.scouting_type, (report as any).flag_category)}
-                            {report.scouting_type && <span className="ms-1">{getScoutingTypeBadge(report.scouting_type)}</span>}
+                            <small className="text-muted fw-semibold me-1">
+                              Tags:
+                            </small>
+                            {getReportTypeBadge(
+                              report.report_type,
+                              report.scouting_type,
+                              (report as any).flag_category,
+                            )}
+                            {report.scouting_type && (
+                              <span className="ms-1">
+                                {getScoutingTypeBadge(report.scouting_type)}
+                              </span>
+                            )}
                           </div>
                         </Col>
 
@@ -959,11 +1292,21 @@ const ScoutingPage: React.FC = () => {
                             <Button
                               size="sm"
                               className="btn-action-circle btn-action-view"
-                              onClick={() => handleOpenReportModal(report.report_id)}
+                              onClick={() =>
+                                handleOpenReportModal(report.report_id)
+                              }
                               disabled={loadingReportId === report.report_id}
                               title="View Report"
                             >
-                              {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '👁️'}
+                              {loadingReportId === report.report_id ? (
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                />
+                              ) : (
+                                "👁️"
+                              )}
                             </Button>
                             <Button
                               size="sm"
@@ -972,13 +1315,23 @@ const ScoutingPage: React.FC = () => {
                               onClick={() => handleEditReport(report.report_id)}
                               disabled={loadingReportId === report.report_id}
                             >
-                              {loadingReportId === report.report_id ? <Spinner as="span" animation="border" size="sm" /> : '✏️'}
+                              {loadingReportId === report.report_id ? (
+                                <Spinner
+                                  as="span"
+                                  animation="border"
+                                  size="sm"
+                                />
+                              ) : (
+                                "✏️"
+                              )}
                             </Button>
                             <Button
                               size="sm"
                               className="btn-action-circle btn-action-delete"
                               title="Delete"
-                              onClick={() => handleDeleteReport(report.report_id)}
+                              onClick={() =>
+                                handleDeleteReport(report.report_id)
+                              }
                             >
                               🗑️
                             </Button>
@@ -1024,9 +1377,11 @@ const ScoutingPage: React.FC = () => {
         </>
       )}
 
-      <PlayerReportModal show={showReportModal} onHide={() => setShowReportModal(false)} report={selectedReport} />
-
-      
+      <PlayerReportModal
+        show={showReportModal}
+        onHide={() => setShowReportModal(false)}
+        report={selectedReport}
+      />
     </Container>
   );
 };

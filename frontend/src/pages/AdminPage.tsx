@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Card, Table, Button, Modal, Form, Alert, Spinner, Badge } from 'react-bootstrap';
-import axiosInstance from '../axiosInstance';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Card,
+  Table,
+  Button,
+  Modal,
+  Form,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
+import axiosInstance from "../axiosInstance";
+import axios from "axios";
 
 interface User {
   id: number;
@@ -26,16 +35,16 @@ const AdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+
   // Create User Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<CreateUserForm>({
-    username: '',
-    email: '',
-    password: '',
-    role: 'scout',
-    firstname: '',
-    lastname: ''
+    username: "",
+    email: "",
+    password: "",
+    role: "scout",
+    firstname: "",
+    lastname: "",
   });
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -51,13 +60,13 @@ const AdminPage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get('/admin/users');
+      const response = await axiosInstance.get("/admin/users");
       setUsers(response.data.users);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to fetch users');
+        setError(err.response.data.detail || "Failed to fetch users");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     } finally {
       setLoading(false);
@@ -71,16 +80,23 @@ const AdminPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      await axiosInstance.post('/admin/users', createForm);
+      await axiosInstance.post("/admin/users", createForm);
       setSuccess(`User '${createForm.username}' created successfully`);
       setShowCreateModal(false);
-      setCreateForm({ username: '', email: '', password: '', role: 'scout', firstname: '', lastname: '' });
+      setCreateForm({
+        username: "",
+        email: "",
+        password: "",
+        role: "scout",
+        firstname: "",
+        lastname: "",
+      });
       fetchUsers(); // Refresh the list
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to create user');
+        setError(err.response.data.detail || "Failed to create user");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     } finally {
       setCreateLoading(false);
@@ -89,7 +105,7 @@ const AdminPage: React.FC = () => {
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
-    
+
     setDeleteLoading(true);
     setError(null);
     setSuccess(null);
@@ -102,9 +118,9 @@ const AdminPage: React.FC = () => {
       fetchUsers(); // Refresh the list
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to delete user');
+        setError(err.response.data.detail || "Failed to delete user");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     } finally {
       setDeleteLoading(false);
@@ -116,14 +132,16 @@ const AdminPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      await axiosInstance.put(`/admin/users/${userId}/role?new_role=${newRole}`);
+      await axiosInstance.put(
+        `/admin/users/${userId}/role?new_role=${newRole}`,
+      );
       setSuccess(`User role updated to '${newRole}'`);
       fetchUsers(); // Refresh the list
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to update role');
+        setError(err.response.data.detail || "Failed to update role");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     }
   };
@@ -133,14 +151,14 @@ const AdminPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await axiosInstance.post('/admin/add-email-column');
+      const response = await axiosInstance.post("/admin/add-email-column");
       setSuccess(response.data.message);
       fetchUsers(); // Refresh the list
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to add email column');
+        setError(err.response.data.detail || "Failed to add email column");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     }
   };
@@ -150,13 +168,15 @@ const AdminPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await axiosInstance.post('/admin/setup-cafc-player-ids');
-      setSuccess(`CAFC Player ID system setup completed! Results: ${response.data.results.join(', ')}`);
+      const response = await axiosInstance.post("/admin/setup-cafc-player-ids");
+      setSuccess(
+        `CAFC Player ID system setup completed! Results: ${response.data.results.join(", ")}`,
+      );
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to setup CAFC Player IDs');
+        setError(err.response.data.detail || "Failed to setup CAFC Player IDs");
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
     }
   };
@@ -166,23 +186,20 @@ const AdminPage: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await axiosInstance.post('/admin/migrate-purpose-values');
-      setSuccess(`Purpose values migration completed! ${response.data.message}. Total updates: ${response.data.total_updates}`);
+      const response = await axiosInstance.post(
+        "/admin/migrate-purpose-values",
+      );
+      setSuccess(
+        `Purpose values migration completed! ${response.data.message}. Total updates: ${response.data.total_updates}`,
+      );
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || 'Failed to migrate purpose values');
+        setError(
+          err.response.data.detail || "Failed to migrate purpose values",
+        );
       } else {
-        setError('An unexpected error occurred');
+        setError("An unexpected error occurred");
       }
-    }
-  };
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin': return 'danger';
-      case 'manager': return 'warning';
-      case 'scout': return 'info';
-      default: return 'secondary';
     }
   };
 
@@ -193,32 +210,32 @@ const AdminPage: React.FC = () => {
           <div className="d-flex justify-content-between align-items-center">
             <h4>👥 User Management</h4>
             <div>
-              <Button 
-                variant="outline-secondary" 
+              <Button
+                variant="outline-secondary"
                 onClick={addEmailColumn}
                 className="me-2"
                 size="sm"
               >
                 Add Email Column
               </Button>
-              <Button 
-                variant="outline-warning" 
+              <Button
+                variant="outline-warning"
                 onClick={setupCafcPlayerIds}
                 className="me-2"
                 size="sm"
               >
                 🔄 Setup CAFC Player IDs
               </Button>
-              <Button 
-                variant="outline-info" 
+              <Button
+                variant="outline-info"
                 onClick={migratePurposeValues}
                 className="me-2"
                 size="sm"
               >
                 📋 Migrate Purpose Values
               </Button>
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 onClick={() => setShowCreateModal(true)}
               >
                 ➕ Create User
@@ -227,9 +244,21 @@ const AdminPage: React.FC = () => {
           </div>
         </Card.Header>
         <Card.Body>
-          {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
-          {success && <Alert variant="success" dismissible onClose={() => setSuccess(null)}>{success}</Alert>}
-          
+          {error && (
+            <Alert variant="danger" dismissible onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert
+              variant="success"
+              dismissible
+              onClose={() => setSuccess(null)}
+            >
+              {success}
+            </Alert>
+          )}
+
           {loading ? (
             <div className="text-center">
               <Spinner animation="border" />
@@ -252,7 +281,9 @@ const AdminPage: React.FC = () => {
                   <tr key={user.id}>
                     <td>{user.id}</td>
                     <td>{user.username}</td>
-                    <td>{user.firstname} {user.lastname}</td>
+                    <td>
+                      {user.firstname} {user.lastname}
+                    </td>
                     <td>{user.email}</td>
                     <td>
                       <span className="badge badge-neutral-grey">
@@ -263,9 +294,11 @@ const AdminPage: React.FC = () => {
                       <Form.Select
                         size="sm"
                         value={user.role}
-                        onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                        onChange={(e) =>
+                          handleRoleChange(user.id, e.target.value)
+                        }
                         className="d-inline-block me-2"
-                        style={{ width: 'auto' }}
+                        style={{ width: "auto" }}
                       >
                         <option value="scout">Scout</option>
                         <option value="manager">Manager</option>
@@ -302,7 +335,9 @@ const AdminPage: React.FC = () => {
               <Form.Control
                 type="text"
                 value={createForm.username}
-                onChange={(e) => setCreateForm({...createForm, username: e.target.value})}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, username: e.target.value })
+                }
                 required
               />
             </Form.Group>
@@ -312,7 +347,9 @@ const AdminPage: React.FC = () => {
               <Form.Control
                 type="text"
                 value={createForm.firstname}
-                onChange={(e) => setCreateForm({...createForm, firstname: e.target.value})}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, firstname: e.target.value })
+                }
                 required
               />
             </Form.Group>
@@ -322,40 +359,46 @@ const AdminPage: React.FC = () => {
               <Form.Control
                 type="text"
                 value={createForm.lastname}
-                onChange={(e) => setCreateForm({...createForm, lastname: e.target.value})}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, lastname: e.target.value })
+                }
                 required
               />
             </Form.Group>
-            
+
             <Form.Group className="mb-3">
               <Form.Label>Email</Form.Label>
               <Form.Control
                 type="email"
                 value={createForm.email}
-                onChange={(e) => setCreateForm({...createForm, email: e.target.value})}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, email: e.target.value })
+                }
                 required
               />
             </Form.Group>
-            
+
             <Form.Group className="mb-3">
               <Form.Label>Password</Form.Label>
               <Form.Control
                 type="password"
                 value={createForm.password}
-                onChange={(e) => setCreateForm({...createForm, password: e.target.value})}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, password: e.target.value })
+                }
                 required
                 minLength={8}
               />
-              <Form.Text className="text-muted">
-                Minimum 8 characters
-              </Form.Text>
+              <Form.Text className="text-muted">Minimum 8 characters</Form.Text>
             </Form.Group>
-            
+
             <Form.Group className="mb-3">
               <Form.Label>Role</Form.Label>
               <Form.Select
                 value={createForm.role}
-                onChange={(e) => setCreateForm({...createForm, role: e.target.value})}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, role: e.target.value })
+                }
               >
                 <option value="scout">Scout</option>
                 <option value="manager">Manager</option>
@@ -368,8 +411,8 @@ const AdminPage: React.FC = () => {
           <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
             Cancel
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleCreateUser}
             disabled={createLoading}
           >
@@ -379,7 +422,7 @@ const AdminPage: React.FC = () => {
                 Creating...
               </>
             ) : (
-              'Create User'
+              "Create User"
             )}
           </Button>
         </Modal.Footer>
@@ -391,7 +434,8 @@ const AdminPage: React.FC = () => {
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete user <strong>{userToDelete?.username}</strong>?
+          Are you sure you want to delete user{" "}
+          <strong>{userToDelete?.username}</strong>?
           <br />
           <small className="text-muted">This action cannot be undone.</small>
         </Modal.Body>
@@ -399,8 +443,8 @@ const AdminPage: React.FC = () => {
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
             Cancel
           </Button>
-          <Button 
-            variant="danger" 
+          <Button
+            variant="danger"
             onClick={handleDeleteUser}
             disabled={deleteLoading}
           >
@@ -410,7 +454,7 @@ const AdminPage: React.FC = () => {
                 Deleting...
               </>
             ) : (
-              'Delete User'
+              "Delete User"
             )}
           </Button>
         </Modal.Footer>

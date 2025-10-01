@@ -2,7 +2,7 @@
  * Utility functions for handling player navigation with both external and manual players
  */
 
-import { Player } from '../types/Player';
+import { Player } from "../types/Player";
 
 /**
  * Get the correct navigation path for a player based on their ID type
@@ -10,11 +10,11 @@ import { Player } from '../types/Player';
 export const getPlayerProfilePath = (player: Player): string => {
   // If universal_id is available, parse it to determine the route
   if (player.universal_id) {
-    if (player.universal_id.startsWith('internal_')) {
-      const cafcId = player.universal_id.replace('internal_', '');
+    if (player.universal_id.startsWith("internal_")) {
+      const cafcId = player.universal_id.replace("internal_", "");
       return `/player-profile/${cafcId}`;
-    } else if (player.universal_id.startsWith('external_')) {
-      const playerId = player.universal_id.replace('external_', '');
+    } else if (player.universal_id.startsWith("external_")) {
+      const playerId = player.universal_id.replace("external_", "");
       return `/player/${playerId}`;
     }
   }
@@ -27,7 +27,7 @@ export const getPlayerProfilePath = (player: Player): string => {
   }
 
   // Should not happen, but provide a fallback
-  console.warn('Unable to determine player profile path for:', player);
+  console.warn("Unable to determine player profile path for:", player);
   return `/player/${player.player_id || player.cafc_player_id || 0}`;
 };
 
@@ -43,7 +43,7 @@ export const getEffectivePlayerId = (player: Player): number | null => {
  */
 export const isManualPlayer = (player: Player): boolean => {
   if (player.universal_id) {
-    return player.universal_id.startsWith('manual_');
+    return player.universal_id.startsWith("manual_");
   }
   return Boolean(player.cafc_player_id && !player.player_id);
 };

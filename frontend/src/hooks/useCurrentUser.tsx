@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import axiosInstance from '../axiosInstance';
-import { useAuth } from '../App';
+import { useState, useEffect } from "react";
+import axiosInstance from "../axiosInstance";
+import { useAuth } from "../App";
 
 interface CurrentUser {
   id: number;
@@ -25,10 +25,10 @@ export const useCurrentUser = () => {
       }
 
       try {
-        const response = await axiosInstance.get('/users/me');
+        const response = await axiosInstance.get("/users/me");
         setUser(response.data);
       } catch (error) {
-        console.error('Failed to fetch current user:', error);
+        console.error("Failed to fetch current user:", error);
         setUser(null);
       } finally {
         setLoading(false);
@@ -41,9 +41,9 @@ export const useCurrentUser = () => {
   return {
     user,
     loading,
-    isAdmin: user?.role === 'admin',
-    isManager: user?.role === 'manager',
-    canAccessPlayers: user?.role === 'admin' || user?.role === 'manager',
-    canAccessAnalytics: user?.role === 'admin' || user?.role === 'manager'
+    isAdmin: user?.role === "admin",
+    isManager: user?.role === "manager",
+    canAccessPlayers: user?.role === "admin" || user?.role === "manager",
+    canAccessAnalytics: user?.role === "admin" || user?.role === "manager",
   };
 };

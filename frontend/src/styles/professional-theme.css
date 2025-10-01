@@ -11,12 +11,12 @@
   --bs-light-rgb: 248, 249, 250;
   --bs-dark: #4b5563;
   --bs-dark-rgb: 75, 85, 99;
-  
+
   /* Success, Warning, Danger - Keep vivid for performance indicators */
   --bs-success: #16a34a;
   --bs-warning: #d97706;
   --bs-danger: #dc2626;
-  
+
   /* Neutral colors for professional look */
   --bs-gray-100: #f8f9fa;
   --bs-gray-200: #e5e7eb;
@@ -28,7 +28,8 @@
 
 /* Professional body styling */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--color-background, #f8f9fa);
   color: var(--color-text, #374151);
   line-height: 1.5;
@@ -133,13 +134,15 @@ body {
 }
 
 /* Remove excessive colors from secondary buttons */
-.btn-secondary, .btn-outline-secondary {
+.btn-secondary,
+.btn-outline-secondary {
   background-color: transparent;
   border-color: var(--color-border, #e5e7eb);
   color: var(--color-text, #374151);
 }
 
-.btn-secondary:hover, .btn-outline-secondary:hover {
+.btn-secondary:hover,
+.btn-outline-secondary:hover {
   background-color: var(--color-background, #f8f9fa);
   border-color: var(--color-border, #e5e7eb);
   color: var(--color-text, #374151);
@@ -156,17 +159,17 @@ body {
 
 /* Special performance badge colors */
 .badge.bg-gold {
-  background: linear-gradient(135deg, #D4AF37, #B8860B) !important;
+  background: linear-gradient(135deg, #d4af37, #b8860b) !important;
   color: #1a1a1a !important;
   font-weight: 600;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
-.badge.bg-silver { 
-  background: linear-gradient(135deg, #C0C0C0, #A8A8A8) !important; 
+.badge.bg-silver {
+  background: linear-gradient(135deg, #c0c0c0, #a8a8a8) !important;
   color: #1a1a1a !important;
   font-weight: 600;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 /* Make other badges neutral - but allow custom overrides */
@@ -187,7 +190,8 @@ body {
 }
 
 /* Form styling */
-.form-control, .form-select {
+.form-control,
+.form-select {
   border: 1px solid var(--color-border, #e5e7eb);
   border-radius: 6px;
   background-color: var(--color-surface, #ffffff);
@@ -195,7 +199,8 @@ body {
   transition: border-color 0.2s ease;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus,
+.form-select:focus {
   border-color: var(--color-primary, #b91c1c);
   box-shadow: 0 0 0 0.2rem rgba(185, 28, 28, 0.1);
 }
@@ -261,7 +266,8 @@ body {
 }
 
 /* Container spacing */
-.container, .container-fluid {
+.container,
+.container-fluid {
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
@@ -392,7 +398,9 @@ body {
   max-height: 300px;
   overflow-y: auto;
   border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* Dark mode support for filters */
@@ -451,13 +459,17 @@ body {
 }
 
 .timeline-container::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 15px;
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, var(--bs-primary), var(--color-border, #e5e7eb));
+  background: linear-gradient(
+    to bottom,
+    var(--bs-primary),
+    var(--color-border, #e5e7eb)
+  );
 }
 
 .timeline-item {
@@ -490,7 +502,9 @@ body {
   padding: 1.5rem;
   flex: 1;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .timeline-content:hover {
@@ -539,9 +553,9 @@ body {
   color: var(--bs-primary);
 }
 
-.timeline-opposition, 
-.timeline-competition, 
-.timeline-game-date, 
+.timeline-opposition,
+.timeline-competition,
+.timeline-game-date,
 .timeline-attributes {
   color: var(--color-text-muted, #6b7280);
 }
@@ -565,23 +579,23 @@ body {
   .timeline-container {
     padding-left: 1rem;
   }
-  
+
   .timeline-marker {
     left: -1rem;
   }
-  
+
   .timeline-container::before {
     left: 8px;
   }
-  
+
   .summary-stats {
     gap: 1rem;
   }
-  
+
   .stat-number {
     font-size: 1.5rem;
   }
-  
+
   .timeline-header {
     flex-direction: column;
     align-items: flex-start;
@@ -768,18 +782,18 @@ body {
     gap: 1rem;
     padding: 0.75rem;
   }
-  
+
   .timeline-track {
     gap: 1rem;
     padding: 0 0.5rem;
   }
-  
+
   .timeline-card {
     min-width: 180px;
     max-width: 190px;
     padding: 0.75rem;
   }
-  
+
   .summary-stat {
     font-size: 0.85rem;
   }
@@ -926,25 +940,25 @@ body {
   .attributes-section-compact {
     padding: 1rem;
   }
-  
+
   .attribute-section-compact {
     padding: 0.75rem;
     margin-bottom: 1rem !important;
   }
-  
+
   .section-title-compact {
     font-size: 0.9rem;
   }
-  
+
   .attribute-name-compact {
     font-size: 0.75rem;
   }
-  
+
   .dot-mini {
     width: 5px;
     height: 5px;
   }
-  
+
   .score-compact {
     font-size: 0.7rem;
   }
@@ -1052,7 +1066,7 @@ body {
 
 /* Gold and Silver performance badges */
 .badge.bg-gold {
-  background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
+  background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
   color: #000;
   font-weight: 600;
   border: none;
@@ -1096,8 +1110,8 @@ body {
 
 /* Neutral grey badge for all type badges (report types, scouting types, etc.) */
 .badge-neutral-grey {
-  background-color: #6b7280 !important;
-  color: #fff !important;
+  background-color: transparent !important;
+  color: #374151 !important;
   border: none;
   font-weight: 500;
 }
@@ -1366,36 +1380,80 @@ body {
    ================================ */
 
 /* Consistent spacing utilities */
-.spacing-xs { padding: 0.25rem; }
-.spacing-sm { padding: 0.5rem; }
-.spacing-md { padding: 0.75rem; }
-.spacing-lg { padding: 1rem; }
-.spacing-xl { padding: 1.5rem; }
+.spacing-xs {
+  padding: 0.25rem;
+}
+.spacing-sm {
+  padding: 0.5rem;
+}
+.spacing-md {
+  padding: 0.75rem;
+}
+.spacing-lg {
+  padding: 1rem;
+}
+.spacing-xl {
+  padding: 1.5rem;
+}
 
-.margin-xs { margin: 0.25rem; }
-.margin-sm { margin: 0.5rem; }
-.margin-md { margin: 0.75rem; }
-.margin-lg { margin: 1rem; }
-.margin-xl { margin: 1.5rem; }
+.margin-xs {
+  margin: 0.25rem;
+}
+.margin-sm {
+  margin: 0.5rem;
+}
+.margin-md {
+  margin: 0.75rem;
+}
+.margin-lg {
+  margin: 1rem;
+}
+.margin-xl {
+  margin: 1.5rem;
+}
 
 /* Consistent text sizes */
-.text-2xs { font-size: 0.625rem; }
-.text-xs { font-size: 0.75rem; }
-.text-sm { font-size: 0.875rem; }
-.text-base { font-size: 1rem; }
-.text-lg { font-size: 1.125rem; }
-.text-xl { font-size: 1.25rem; }
+.text-2xs {
+  font-size: 0.625rem;
+}
+.text-xs {
+  font-size: 0.75rem;
+}
+.text-sm {
+  font-size: 0.875rem;
+}
+.text-base {
+  font-size: 1rem;
+}
+.text-lg {
+  font-size: 1.125rem;
+}
+.text-xl {
+  font-size: 1.25rem;
+}
 
 /* Consistent font weights */
-.font-light { font-weight: 300; }
-.font-normal { font-weight: 400; }
-.font-medium { font-weight: 500; }
-.font-semibold { font-weight: 600; }
-.font-bold { font-weight: 700; }
+.font-light {
+  font-weight: 300;
+}
+.font-normal {
+  font-weight: 400;
+}
+.font-medium {
+  font-weight: 500;
+}
+.font-semibold {
+  font-weight: 600;
+}
+.font-bold {
+  font-weight: 700;
+}
 
 /* Enhanced hover effects */
 .hover-lift {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .hover-lift:hover {
@@ -1404,11 +1462,21 @@ body {
 }
 
 /* Consistent border radius */
-.rounded-xs { border-radius: 0.125rem; }
-.rounded-sm { border-radius: 0.25rem; }
-.rounded-md { border-radius: 0.375rem; }
-.rounded-lg { border-radius: 0.5rem; }
-.rounded-xl { border-radius: 0.75rem; }
+.rounded-xs {
+  border-radius: 0.125rem;
+}
+.rounded-sm {
+  border-radius: 0.25rem;
+}
+.rounded-md {
+  border-radius: 0.375rem;
+}
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+.rounded-xl {
+  border-radius: 0.75rem;
+}
 
 /* Enhanced focus states for accessibility */
 .focus-ring:focus {
@@ -1418,9 +1486,15 @@ body {
 }
 
 /* Consistent animation durations */
-.transition-fast { transition: all 0.15s ease; }
-.transition-normal { transition: all 0.2s ease; }
-.transition-slow { transition: all 0.3s ease; }
+.transition-fast {
+  transition: all 0.15s ease;
+}
+.transition-normal {
+  transition: all 0.2s ease;
+}
+.transition-slow {
+  transition: all 0.3s ease;
+}
 
 /* Enhanced list styling */
 .list-enhanced li {
@@ -1439,15 +1513,27 @@ body {
 
 /* Responsive text adjustments */
 @media (max-width: 576px) {
-  .text-responsive-lg { font-size: 1rem; }
-  .text-responsive-xl { font-size: 1.125rem; }
-  .text-responsive-2xl { font-size: 1.25rem; }
+  .text-responsive-lg {
+    font-size: 1rem;
+  }
+  .text-responsive-xl {
+    font-size: 1.125rem;
+  }
+  .text-responsive-2xl {
+    font-size: 1.25rem;
+  }
 }
 
 @media (min-width: 577px) {
-  .text-responsive-lg { font-size: 1.125rem; }
-  .text-responsive-xl { font-size: 1.25rem; }
-  .text-responsive-2xl { font-size: 1.5rem; }
+  .text-responsive-lg {
+    font-size: 1.125rem;
+  }
+  .text-responsive-xl {
+    font-size: 1.25rem;
+  }
+  .text-responsive-2xl {
+    font-size: 1.5rem;
+  }
 }
 
 /* Dark mode consistency enhancements */
@@ -1504,7 +1590,8 @@ body {
 
 /* PDF Export specific styles for html2canvas rendering */
 .pdf-export-optimized {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
   text-rendering: optimizeLegibility !important;
@@ -1627,6 +1714,28 @@ body {
   text-align: center !important;
 }
 
+/* Special styling for performance scores 9 and 10 - make them "special" */
+.performance-badge:has-text("9"), .performance-badge:has-text("10"),
+.performance-badge[data-score="9"], .performance-badge[data-score="10"] {
+  border: 2px solid #000 !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Alternative approach using content selectors for scores 9 and 10 */
+.performance-badge.performance-score-large:contains("9"),
+.performance-badge.performance-score-large:contains("10") {
+  border: 2px solid #000 !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Specific classes for scores 9 and 10 (to be applied via JavaScript) */
+.performance-score-9, .performance-score-10,
+.badge.performance-score-9, .badge.performance-score-10,
+span.badge.performance-score-9, span.badge.performance-score-10 {
+  border: 2px solid #000 !important;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.3) inset !important;
+}
+
 .pdf-export-optimized .attribute-metrics .badge {
   font-size: 16px !important;
   padding: 8px 12px !important;
@@ -1681,8 +1790,8 @@ body {
 /* CSS Override Prevention - Allow inline styles for performance/attribute badges */
 
 span.badge.badge-neutral-grey {
-  background-color: #6c757d !important;
-  color: white !important;
+  background-color: transparent !important;
+  color: #374151 !important;
   font-weight: 500 !important;
 }
 

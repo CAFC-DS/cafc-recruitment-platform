@@ -1,13 +1,31 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Container, Form, Button, Row, Col, ListGroup, Card, Spinner, Badge, Toast, ToastContainer, Alert, Collapse, Table } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../axiosInstance';
-import IntelModal from '../components/IntelModal';
-import IntelReportModal from '../components/IntelReportModal';
-import { useAuth } from '../App';
-import { useViewMode } from '../contexts/ViewModeContext';
-import { normalizeText, containsAccentInsensitive } from '../utils/textNormalization';
-import { Player } from '../types/Player';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Container,
+  Form,
+  Button,
+  Row,
+  Col,
+  ListGroup,
+  Card,
+  Spinner,
+  Badge,
+  Toast,
+  ToastContainer,
+  Alert,
+  Collapse,
+  Table,
+} from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../axiosInstance";
+import IntelModal from "../components/IntelModal";
+import IntelReportModal from "../components/IntelReportModal";
+import { useAuth } from "../App";
+import { useViewMode } from "../contexts/ViewModeContext";
+import {
+  normalizeText,
+  containsAccentInsensitive,
+} from "../utils/textNormalization";
+import { Player } from "../types/Player";
 
 interface IntelReport {
   intel_id: number;
@@ -31,74 +49,81 @@ const IntelPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
-  const [playerSearch, setPlayerSearch] = useState('');
+  const [playerSearch, setPlayerSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [intelReports, setIntelReports] = useState<IntelReport[]>([]);
   const [modalKey, setModalKey] = useState(0);
-  
+
   // Pagination and filter states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
   const [itemsPerPage] = useState(20); // Corresponds to 'limit'
-  const [recencyFilter, setRecencyFilter] = useState<string>('7'); // '7', '30', '90', 'all'
+  const [recencyFilter, setRecencyFilter] = useState<string>("7"); // '7', '30', '90', 'all'
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
-  
+
   // Intel report viewing
   const [showIntelReportModal, setShowIntelReportModal] = useState(false);
   const [selectedIntelId, setSelectedIntelId] = useState<number | null>(null);
-  
+
   // Toast notifications
   const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastVariant, setToastVariant] = useState<'success' | 'danger' | 'info'>('success');
-  
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<
+    "success" | "danger" | "info"
+  >("success");
+
   // Admin functionality
   const [showAdminTools, setShowAdminTools] = useState(false);
-  const [userRole, setUserRole] = useState<string>('');
+  const [, setUserRole] = useState<string>("");
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
 
   // Filter collapse state
   const [showFilters, setShowFilters] = useState(false);
 
   // Player search error state
-  const [playerSearchError, setPlayerSearchError] = useState('');
+  const [playerSearchError, setPlayerSearchError] = useState("");
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
-  
+
   // Add debouncing and caching for player search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Record<string, Player[]>>({});
   const [showDropdown, setShowDropdown] = useState(false);
-  
+
   // Advanced filters for Intel
-  const [actionFilter, setActionFilter] = useState('');
-  const [contactNameFilter, setContactNameFilter] = useState('');
-  const [playerNameFilter, setPlayerNameFilter] = useState('');
-  const [dateFromFilter, setDateFromFilter] = useState('');
-  const [dateToFilter, setDateToFilter] = useState('');
-  
+  const [actionFilter, setActionFilter] = useState("");
+  const [contactNameFilter, setContactNameFilter] = useState("");
+  const [playerNameFilter, setPlayerNameFilter] = useState("");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
+
   // Role-based permissions
-  const [currentUsername, setCurrentUsername] = useState('');
+  const [, setCurrentUsername] = useState("");
 
   // Toast helper function
-  const showNotification = (message: string, variant: 'success' | 'danger' | 'info' = 'success') => {
+  const showNotification = (
+    message: string,
+    variant: "success" | "danger" | "info" = "success",
+  ) => {
     setToastMessage(message);
     setToastVariant(variant);
     setShowToast(true);
   };
 
-
   // Update intel table
   const updateIntelTable = async () => {
     setIsLoadingAdmin(true);
     try {
-      const response = await axiosInstance.post('/admin/update-intel-table');
-      showNotification(response.data.message, 'success');
+      const response = await axiosInstance.post("/admin/update-intel-table");
+      showNotification(response.data.message, "success");
       fetchIntelReports(currentPage, itemsPerPage, recencyFilter); // Re-fetch with current filters
     } catch (error: any) {
-      showNotification(error.response?.data?.detail || 'Failed to update intel table', 'danger');
+      showNotification(
+        error.response?.data?.detail || "Failed to update intel table",
+        "danger",
+      );
     } finally {
       setIsLoadingAdmin(false);
     }
@@ -108,56 +133,66 @@ const IntelPage: React.FC = () => {
   const optimizeDatabase = async () => {
     setIsLoadingAdmin(true);
     try {
-      const response = await axiosInstance.post('/admin/optimize-database');
-      showNotification(response.data.message, 'success');
+      const response = await axiosInstance.post("/admin/optimize-database");
+      showNotification(response.data.message, "success");
     } catch (error: any) {
-      showNotification(error.response?.data?.detail || 'Failed to optimize database', 'danger');
+      showNotification(
+        error.response?.data?.detail || "Failed to optimize database",
+        "danger",
+      );
     } finally {
       setIsLoadingAdmin(false);
     }
   };
 
-  const fetchIntelReports = useCallback(async (page: number, limit: number, recency: string) => {
-    setLoading(true);
-    setErrorReports(null);
-    try {
-      const params: any = {
-        page,
-        limit,
-      };
-      
-      // Only add recency_days if it's not 'all'
-      if (recency !== 'all') {
-        params.recency_days = parseInt(recency);
+  const fetchIntelReports = useCallback(
+    async (page: number, limit: number, recency: string) => {
+      setLoading(true);
+      setErrorReports(null);
+      try {
+        const params: any = {
+          page,
+          limit,
+        };
+
+        // Only add recency_days if it's not 'all'
+        if (recency !== "all") {
+          params.recency_days = parseInt(recency);
+        }
+
+        const response = await axiosInstance.get("/intel_reports/all", {
+          params,
+        });
+
+        setIntelReports(response.data.reports || []);
+        setTotalReports(response.data.total_intel_reports || 0);
+      } catch (error) {
+        console.error("Error fetching intel reports:", error);
+        setErrorReports("Failed to load intel reports. Please try again.");
+        setIntelReports([]);
+        setTotalReports(0);
+      } finally {
+        setLoading(false);
       }
-      
-      const response = await axiosInstance.get('/intel_reports/all', { params });
-      
-      setIntelReports(response.data.reports || []);
-      setTotalReports(response.data.total_intel_reports || 0);
-    } catch (error) {
-      console.error('Error fetching intel reports:', error);
-      setErrorReports('Failed to load intel reports. Please try again.');
-      setIntelReports([]);
-      setTotalReports(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Fetch user role and username for role-based filtering
   const fetchUserInfo = useCallback(async () => {
     try {
-      const response = await axiosInstance.get('/users/me');
-      setUserRole(response.data.role || 'scout');
-      setCurrentUsername(response.data.username || '');
-      setShowAdminTools(response.data.role === 'admin');
+      const response = await axiosInstance.get("/users/me");
+      setUserRole(response.data.role || "scout");
+      setCurrentUsername(response.data.username || "");
+      setShowAdminTools(response.data.role === "admin");
       // Initialize user's view mode preference
       if (response.data.id || response.data.username) {
-        initializeUserViewMode(response.data.id?.toString() || response.data.username);
+        initializeUserViewMode(
+          response.data.id?.toString() || response.data.username,
+        );
       }
     } catch (error) {
-      console.error('Error fetching user info:', error);
+      console.error("Error fetching user info:", error);
     }
   }, [initializeUserViewMode]);
 
@@ -167,46 +202,55 @@ const IntelPage: React.FC = () => {
         fetchIntelReports(currentPage, itemsPerPage, recencyFilter);
       });
     }
-  }, [token, currentPage, itemsPerPage, recencyFilter, fetchIntelReports, fetchUserInfo]);
+  }, [
+    token,
+    currentPage,
+    itemsPerPage,
+    recencyFilter,
+    fetchIntelReports,
+    fetchUserInfo,
+  ]);
 
   const performPlayerSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim();
     const normalizedQuery = normalizeText(trimmedQuery);
-    
+
     // Check cache first using normalized query
     if (searchCacheRef.current[normalizedQuery]) {
       setPlayers(searchCacheRef.current[normalizedQuery]);
-      setPlayerSearchError('');
+      setPlayerSearchError("");
       setPlayerSearchLoading(false);
       setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
       return;
     }
-    
+
     try {
       setPlayerSearchLoading(true);
       // Backend now handles comprehensive accent-insensitive search
-      const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(trimmedQuery)}`);
+      const response = await axiosInstance.get(
+        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
+      );
       let results = response.data || [];
-      
+
       // Backend already handles accent-insensitive search and sorting
       // No need for additional client-side filtering
-      
+
       // Cache the results using normalized query
       searchCacheRef.current[normalizedQuery] = results;
-      
+
       setPlayers(results);
       setShowDropdown(results.length > 0);
-      
+
       if (results.length === 0) {
-        setPlayerSearchError('No players found matching your search.');
+        setPlayerSearchError("No players found matching your search.");
       } else {
-        setPlayerSearchError('');
+        setPlayerSearchError("");
       }
     } catch (error) {
-      console.error('Error searching players:', error);
+      console.error("Error searching players:", error);
       setPlayers([]);
       setShowDropdown(false);
-      setPlayerSearchError('Error searching for players. Please try again.');
+      setPlayerSearchError("Error searching for players. Please try again.");
     } finally {
       setPlayerSearchLoading(false);
     }
@@ -215,25 +259,25 @@ const IntelPage: React.FC = () => {
   const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setPlayerSearch(query);
-    
+
     // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Clear error immediately when user starts typing
-    setPlayerSearchError('');
-    
+    setPlayerSearchError("");
+
     if (query.length <= 2) {
       setPlayers([]);
       setShowDropdown(false);
       setPlayerSearchLoading(false);
       return;
     }
-    
+
     // Set loading immediately for better UX
     setPlayerSearchLoading(true);
-    
+
     // Debounce the actual search
     searchTimeoutRef.current = setTimeout(() => {
       performPlayerSearch(query);
@@ -242,14 +286,23 @@ const IntelPage: React.FC = () => {
 
   const handlePlayerSelect = (player: Player) => {
     setSelectedPlayer(player);
-    const playerName = player.player_name || player.name || player.playername || 'Unknown Player';
-    const team = player.team || player.club || player.current_team || player.squad_name || 'Unknown Team';
+    const playerName =
+      player.player_name ||
+      player.name ||
+      player.playername ||
+      "Unknown Player";
+    const team =
+      player.team ||
+      player.club ||
+      player.current_team ||
+      player.squad_name ||
+      "Unknown Team";
     setPlayerSearch(`${playerName} (${team})`);
     setPlayers([]);
     setShowDropdown(false);
-    setPlayerSearchError('');
+    setPlayerSearchError("");
   };
-  
+
   // Close dropdown when clicking outside
   const handleInputBlur = () => {
     // Small delay to allow click on dropdown items
@@ -257,13 +310,13 @@ const IntelPage: React.FC = () => {
       setShowDropdown(false);
     }, 200);
   };
-  
+
   const handleInputFocus = () => {
     if (players.length > 0) {
       setShowDropdown(true);
     }
   };
-  
+
   // Clean up timeout on unmount
   useEffect(() => {
     return () => {
@@ -275,23 +328,22 @@ const IntelPage: React.FC = () => {
 
   const handleShowIntelModal = () => {
     if (selectedPlayer) {
-      setModalKey(prevKey => prevKey + 1);
+      setModalKey((prevKey) => prevKey + 1);
       setShowIntelModal(true);
     } else {
-      alert('Please select a player first.');
+      alert("Please select a player first.");
     }
   };
 
-
   const getActionRequiredBadge = (action: string) => {
     switch (action) {
-      case 'beyond us':
+      case "beyond us":
         return <Badge className="badge-neutral-grey">Beyond Us</Badge>;
-      case 'discuss urgently':
+      case "discuss urgently":
         return <Badge className="badge-neutral-grey">Discuss Urgently</Badge>;
-      case 'monitor':
+      case "monitor":
         return <Badge className="badge-neutral-grey">Monitor</Badge>;
-      case 'no action':
+      case "no action":
         return <Badge className="badge-neutral-grey">No Action</Badge>;
       default:
         return <Badge className="badge-neutral-grey">{action}</Badge>;
@@ -299,8 +351,8 @@ const IntelPage: React.FC = () => {
   };
 
   const formatDealTypes = (dealTypes: string[]) => {
-    if (!dealTypes || dealTypes.length === 0) return 'N/A';
-    return dealTypes.join(', ');
+    if (!dealTypes || dealTypes.length === 0) return "N/A";
+    return dealTypes.join(", ");
   };
 
   const handleViewIntelReport = (intelId: number) => {
@@ -318,31 +370,38 @@ const IntelPage: React.FC = () => {
 
     // Action required filter
     if (actionFilter) {
-      filtered = filtered.filter(report => 
-        report.action_required.toLowerCase() === actionFilter.toLowerCase()
+      filtered = filtered.filter(
+        (report) =>
+          report.action_required.toLowerCase() === actionFilter.toLowerCase(),
       );
     }
 
     // Contact name filter
     if (contactNameFilter) {
-      filtered = filtered.filter(report => 
-        report.contact_name.toLowerCase().includes(contactNameFilter.toLowerCase())
+      filtered = filtered.filter((report) =>
+        report.contact_name
+          .toLowerCase()
+          .includes(contactNameFilter.toLowerCase()),
       );
     }
 
     // Player name filter
     if (playerNameFilter) {
-      filtered = filtered.filter(report => 
-        containsAccentInsensitive(report.player_name, playerNameFilter)
+      filtered = filtered.filter((report) =>
+        containsAccentInsensitive(report.player_name, playerNameFilter),
       );
     }
 
     // Date range filter
     if (dateFromFilter || dateToFilter) {
-      filtered = filtered.filter(report => {
+      filtered = filtered.filter((report) => {
         const reportDate = new Date(report.created_at);
-        const fromDate = dateFromFilter ? new Date(dateFromFilter) : new Date('1900-01-01');
-        const toDate = dateToFilter ? new Date(dateToFilter) : new Date('2100-12-31');
+        const fromDate = dateFromFilter
+          ? new Date(dateFromFilter)
+          : new Date("1900-01-01");
+        const toDate = dateToFilter
+          ? new Date(dateToFilter)
+          : new Date("2100-12-31");
         return reportDate >= fromDate && reportDate <= toDate;
       });
     }
@@ -368,19 +427,37 @@ const IntelPage: React.FC = () => {
                 onFocus={handleInputFocus}
               />
               {playerSearchLoading && (
-                <div className="position-absolute top-50 end-0 translate-middle-y me-3" style={{ zIndex: 10 }}>
-                  <div className="spinner-border spinner-border-sm text-primary" role="status">
+                <div
+                  className="position-absolute top-50 end-0 translate-middle-y me-3"
+                  style={{ zIndex: 10 }}
+                >
+                  <div
+                    className="spinner-border spinner-border-sm text-primary"
+                    role="status"
+                  >
                     <span className="visually-hidden">Loading...</span>
                   </div>
                 </div>
               )}
             </div>
             {showDropdown && players.length > 0 && (
-              <ListGroup className="mt-2" style={{ position: 'absolute', zIndex: 1000, width: 'calc(100% - 30px)', maxHeight: '200px', overflowY: 'auto' }}>
+              <ListGroup
+                className="mt-2"
+                style={{
+                  position: "absolute",
+                  zIndex: 1000,
+                  width: "calc(100% - 30px)",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}
+              >
                 {players.map((player, index) => (
-                  <ListGroup.Item 
-                    key={player.universal_id || `fallback-${index}-${player.player_name}`} 
-                    action 
+                  <ListGroup.Item
+                    key={
+                      player.universal_id ||
+                      `fallback-${index}-${player.player_name}`
+                    }
+                    action
                     onClick={() => handlePlayerSelect(player)}
                     className="d-flex justify-content-between align-items-center"
                   >
@@ -398,7 +475,12 @@ const IntelPage: React.FC = () => {
               </div>
             )}
           </Form.Group>
-          <Button className="mt-2" variant="danger" onClick={handleShowIntelModal} disabled={!selectedPlayer}>
+          <Button
+            className="mt-2"
+            variant="danger"
+            onClick={handleShowIntelModal}
+            disabled={!selectedPlayer}
+          >
             Add Intel Report
           </Button>
         </Card.Body>
@@ -408,21 +490,32 @@ const IntelPage: React.FC = () => {
       {showAdminTools && (
         <Alert variant="info" className="mt-3">
           <Alert.Heading>🔧 Admin Tools</Alert.Heading>
-          <p>Update the player_information table to support role-based access and missing columns.</p>
+          <p>
+            Update the player_information table to support role-based access and
+            missing columns.
+          </p>
           <div className="d-flex gap-2 flex-wrap">
-            <Button 
-              variant="outline-primary" 
+            <Button
+              variant="outline-primary"
               onClick={updateIntelTable}
               disabled={isLoadingAdmin}
             >
-              {isLoadingAdmin ? <Spinner animation="border" size="sm" /> : '🔧 Update Intel Table'}
+              {isLoadingAdmin ? (
+                <Spinner animation="border" size="sm" />
+              ) : (
+                "🔧 Update Intel Table"
+              )}
             </Button>
-            <Button 
-              variant="outline-info" 
+            <Button
+              variant="outline-info"
               onClick={optimizeDatabase}
               disabled={isLoadingAdmin}
             >
-              {isLoadingAdmin ? <Spinner animation="border" size="sm" /> : '⚡ Optimize Database'}
+              {isLoadingAdmin ? (
+                <Spinner animation="border" size="sm" />
+              ) : (
+                "⚡ Optimize Database"
+              )}
             </Button>
           </div>
         </Alert>
@@ -436,7 +529,7 @@ const IntelPage: React.FC = () => {
           selectedPlayer={selectedPlayer}
           onIntelSubmitSuccess={() => {
             setShowIntelModal(false);
-            showNotification('Intel report submitted successfully!', 'success');
+            showNotification("Intel report submitted successfully!", "success");
             fetchIntelReports(currentPage, itemsPerPage, recencyFilter); // Re-fetch with current filters
           }}
         />
@@ -448,16 +541,16 @@ const IntelPage: React.FC = () => {
           <Badge className="badge-neutral-grey">{totalReports} reports</Badge>
           <div className="btn-group" role="group">
             <Button
-              variant={viewMode === 'cards' ? 'primary' : 'outline-primary'}
+              variant={viewMode === "cards" ? "primary" : "outline-primary"}
               size="sm"
-              onClick={() => setViewMode('cards')}
+              onClick={() => setViewMode("cards")}
             >
               🔳 Cards
             </Button>
             <Button
-              variant={viewMode === 'table' ? 'primary' : 'outline-primary'}
+              variant={viewMode === "table" ? "primary" : "outline-primary"}
               size="sm"
-              onClick={() => setViewMode('table')}
+              onClick={() => setViewMode("table")}
             >
               📊 Table
             </Button>
@@ -465,16 +558,15 @@ const IntelPage: React.FC = () => {
         </div>
       </div>
 
-
       {/* Pagination and Filters Row */}
       <Row className="mb-3 align-items-center">
         <Col md={4}>
           {totalReports > itemsPerPage && (
             <div className="d-flex align-items-center">
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={() => handlePageChange(currentPage - 1)} 
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1 || loading}
                 className="me-2"
               >
@@ -483,11 +575,14 @@ const IntelPage: React.FC = () => {
               <small className="text-muted mx-2">
                 Page {currentPage} of {Math.ceil(totalReports / itemsPerPage)}
               </small>
-              <Button 
-                variant="outline-secondary" 
-                size="sm" 
-                onClick={() => handlePageChange(currentPage + 1)} 
-                disabled={currentPage >= Math.ceil(totalReports / itemsPerPage) || loading}
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={
+                  currentPage >= Math.ceil(totalReports / itemsPerPage) ||
+                  loading
+                }
               >
                 ›
               </Button>
@@ -495,11 +590,14 @@ const IntelPage: React.FC = () => {
           )}
         </Col>
         <Col md={4} className="text-center">
-          <Form.Select 
-            size="sm" 
-            value={recencyFilter} 
-            onChange={(e) => { setRecencyFilter(e.target.value); setCurrentPage(1); }}
-            style={{ maxWidth: '150px', display: 'inline-block' }}
+          <Form.Select
+            size="sm"
+            value={recencyFilter}
+            onChange={(e) => {
+              setRecencyFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{ maxWidth: "150px", display: "inline-block" }}
           >
             <option value="all">All Time</option>
             <option value="7">Last 7 Days</option>
@@ -508,22 +606,24 @@ const IntelPage: React.FC = () => {
           </Form.Select>
         </Col>
         <Col md={4} className="text-end">
-          <small className="text-muted">Showing {filteredIntelReports.length} of {totalReports} reports</small>
+          <small className="text-muted">
+            Showing {filteredIntelReports.length} of {totalReports} reports
+          </small>
         </Col>
       </Row>
 
       {/* Advanced Filters */}
       <Card className="mb-3">
-        <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
+        <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
           <div className="d-flex justify-content-between align-items-center">
             <h6 className="mb-0 text-white">🔍 Advanced Filters</h6>
-            <Button 
-              variant="outline-secondary" 
-              size="sm" 
+            <Button
+              variant="outline-secondary"
+              size="sm"
               onClick={() => setShowFilters(!showFilters)}
-              style={{ color: 'white', borderColor: 'white' }}
+              style={{ color: "white", borderColor: "white" }}
             >
-              {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+              {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
             </Button>
           </div>
         </Card.Header>
@@ -532,8 +632,14 @@ const IntelPage: React.FC = () => {
             <Row>
               <Col md={3}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Action Required</Form.Label>
-                  <Form.Select size="sm" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+                  <Form.Label className="small fw-bold">
+                    Action Required
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={actionFilter}
+                    onChange={(e) => setActionFilter(e.target.value)}
+                  >
                     <option value="">All Actions</option>
                     <option value="beyond us">Beyond Us</option>
                     <option value="discuss urgently">Discuss Urgently</option>
@@ -544,37 +650,61 @@ const IntelPage: React.FC = () => {
               </Col>
               <Col md={3}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="small fw-bold">Contact Name</Form.Label>
-                  <Form.Control size="sm" type="text" placeholder="Enter contact name" value={contactNameFilter} onChange={(e) => setContactNameFilter(e.target.value)} />
+                  <Form.Label className="small fw-bold">
+                    Contact Name
+                  </Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="Enter contact name"
+                    value={contactNameFilter}
+                    onChange={(e) => setContactNameFilter(e.target.value)}
+                  />
                 </Form.Group>
               </Col>
               <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">Player Name</Form.Label>
-                  <Form.Control size="sm" type="text" placeholder="Enter player name" value={playerNameFilter} onChange={(e) => setPlayerNameFilter(e.target.value)} />
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="Enter player name"
+                    value={playerNameFilter}
+                    onChange={(e) => setPlayerNameFilter(e.target.value)}
+                  />
                 </Form.Group>
               </Col>
               <Col md={3}>
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">Date Range</Form.Label>
                   <div className="d-flex gap-1">
-                    <Form.Control size="sm" type="date" value={dateFromFilter} onChange={(e) => setDateFromFilter(e.target.value)} />
-                    <Form.Control size="sm" type="date" value={dateToFilter} onChange={(e) => setDateToFilter(e.target.value)} />
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={dateFromFilter}
+                      onChange={(e) => setDateFromFilter(e.target.value)}
+                    />
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={dateToFilter}
+                      onChange={(e) => setDateToFilter(e.target.value)}
+                    />
                   </div>
                 </Form.Group>
               </Col>
             </Row>
             <Row>
               <Col>
-                <Button 
-                  variant="outline-secondary" 
-                  size="sm" 
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
                   onClick={() => {
-                    setActionFilter('');
-                    setContactNameFilter('');
-                    setPlayerNameFilter('');
-                    setDateFromFilter('');
-                    setDateToFilter('');
+                    setActionFilter("");
+                    setContactNameFilter("");
+                    setPlayerNameFilter("");
+                    setDateFromFilter("");
+                    setDateToFilter("");
                   }}
                 >
                   🔄 Clear Filters
@@ -584,7 +714,7 @@ const IntelPage: React.FC = () => {
           </Card.Body>
         </Collapse>
       </Card>
-      
+
       {loading ? (
         <div className="text-center p-5">
           <Spinner animation="border" role="status">
@@ -600,39 +730,64 @@ const IntelPage: React.FC = () => {
         <Card className="text-center p-4">
           <Card.Body>
             <h5>No Intel Reports Yet</h5>
-            <p className="text-muted">Start by selecting a player and creating an intel report, or adjust your filters.</p>
+            <p className="text-muted">
+              Start by selecting a player and creating an intel report, or
+              adjust your filters.
+            </p>
           </Card.Body>
         </Card>
-      ) : viewMode === 'cards' ? (
+      ) : viewMode === "cards" ? (
         <Row>
           {filteredIntelReports.map((report) => (
             <Col key={report.intel_id} lg={6} xl={4} className="mb-4">
-              <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
-                <Card.Header className="border-0 bg-gradient" style={{ background: 'linear-gradient(135deg, #e8f4f8 0%, #d1ecf1 100%)', borderRadius: '12px 12px 0 0' }}>
+              <Card
+                className="h-100 shadow-sm hover-card"
+                style={{ borderRadius: "12px", border: "2px solid #dc3545" }}
+              >
+                <Card.Header
+                  className="border-0 bg-gradient"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #e8f4f8 0%, #d1ecf1 100%)",
+                    borderRadius: "12px 12px 0 0",
+                  }}
+                >
                   <div className="d-flex justify-content-between align-items-start">
                     <div>
                       {report.player_id ? (
-                        <Button 
-                          variant="link" 
+                        <Button
+                          variant="link"
                           className="p-0 text-decoration-none fw-bold h5 mb-1"
-                          style={{ color: '#212529' }}
-                          onClick={() => navigate(`/player/${report.player_id}`)}
+                          style={{ color: "#212529" }}
+                          onClick={() =>
+                            navigate(`/player/${report.player_id}`)
+                          }
                         >
                           {report.player_name}
                         </Button>
                       ) : (
-                        <h5 className="fw-bold mb-1" style={{ color: '#212529' }}>
+                        <h5
+                          className="fw-bold mb-1"
+                          style={{ color: "#212529" }}
+                        >
                           {report.player_name}
                         </h5>
                       )}
                       <div className="mb-2">
-                        <Badge className="badge-neutral-grey">🕵️ Intel Report</Badge>
+                        <Badge className="badge-neutral-grey">
+                          🕵️ Intel Report
+                        </Badge>
                       </div>
                     </div>
                     <div className="text-end">
-                      <small className="text-muted d-block">{new Date(report.created_at).toLocaleDateString()}</small>
+                      <small className="text-muted d-block">
+                        {new Date(report.created_at).toLocaleDateString()}
+                      </small>
                       <small className="text-muted">
-                        📅 {new Date(report.date_of_information).toLocaleDateString()}
+                        📅{" "}
+                        {new Date(
+                          report.date_of_information,
+                        ).toLocaleDateString()}
                       </small>
                     </div>
                   </div>
@@ -647,45 +802,64 @@ const IntelPage: React.FC = () => {
                     </div>
                     <div>
                       <div className="fw-bold">{report.contact_name}</div>
-                      <small className="text-muted">{report.contact_organisation}</small>
+                      <small className="text-muted">
+                        {report.contact_organisation}
+                      </small>
                     </div>
                   </div>
-                  
+
                   <div className="row mb-3">
                     {report.confirmed_contract_expiry && (
                       <div className="col-6">
-                        <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                          <div className="fw-bold text-muted small mb-1">CONTRACT</div>
+                        <div
+                          className="text-center p-2 rounded"
+                          style={{ backgroundColor: "#f8f9fa" }}
+                        >
+                          <div className="fw-bold text-muted small mb-1">
+                            CONTRACT
+                          </div>
                           <small className="fw-bold">
-                            {new Date(report.confirmed_contract_expiry).toLocaleDateString()}
+                            {new Date(
+                              report.confirmed_contract_expiry,
+                            ).toLocaleDateString()}
                           </small>
                         </div>
                       </div>
                     )}
                     {report.transfer_fee && (
                       <div className="col-6">
-                        <div className="text-center p-2 rounded" style={{ backgroundColor: '#f8f9fa' }}>
-                          <div className="fw-bold text-muted small mb-1">FEE</div>
-                          <small className="fw-bold">{report.transfer_fee}</small>
+                        <div
+                          className="text-center p-2 rounded"
+                          style={{ backgroundColor: "#f8f9fa" }}
+                        >
+                          <div className="fw-bold text-muted small mb-1">
+                            FEE
+                          </div>
+                          <small className="fw-bold">
+                            {report.transfer_fee}
+                          </small>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {report.potential_deal_types && report.potential_deal_types.length > 0 && (
-                    <div className="mb-3">
-                      <small className="text-muted">
-                        <strong>Deal Types:</strong> {formatDealTypes(report.potential_deal_types)}
-                      </small>
-                    </div>
-                  )}
+                  {report.potential_deal_types &&
+                    report.potential_deal_types.length > 0 && (
+                      <div className="mb-3">
+                        <small className="text-muted">
+                          <strong>Deal Types:</strong>{" "}
+                          {formatDealTypes(report.potential_deal_types)}
+                        </small>
+                      </div>
+                    )}
 
                   {report.conversation_notes && (
                     <div className="mb-2">
                       <small className="text-muted">
-                        <strong>Notes:</strong> {report.conversation_notes.length > 100 ? 
-                          `${report.conversation_notes.substring(0, 100)}...` : 
-                          report.conversation_notes}
+                        <strong>Notes:</strong>{" "}
+                        {report.conversation_notes.length > 100
+                          ? `${report.conversation_notes.substring(0, 100)}...`
+                          : report.conversation_notes}
                       </small>
                     </div>
                   )}
@@ -698,13 +872,20 @@ const IntelPage: React.FC = () => {
                       className="rounded-circle"
                       onClick={() => handleViewIntelReport(report.intel_id)}
                       title="View Details"
-                      style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        padding: "0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
                       👁️
                     </Button>
                     {report.player_id && (
-                      <Button 
-                        variant="outline-primary" 
+                      <Button
+                        variant="outline-primary"
                         size="sm"
                         className="rounded-pill"
                         onClick={() => navigate(`/player/${report.player_id}`)}
@@ -713,7 +894,14 @@ const IntelPage: React.FC = () => {
                         👤
                       </Button>
                     )}
-                    <Button variant="outline-secondary" size="sm" className="rounded-pill" title="Edit">✏️</Button>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      className="rounded-pill"
+                      title="Edit"
+                    >
+                      ✏️
+                    </Button>
                   </div>
                 </Card.Footer>
               </Card>
@@ -740,8 +928,8 @@ const IntelPage: React.FC = () => {
                   <td>{new Date(report.created_at).toLocaleDateString()}</td>
                   <td>
                     {report.player_id ? (
-                      <Button 
-                        variant="link" 
+                      <Button
+                        variant="link"
                         className="p-0 text-decoration-none text-start fw-bold"
                         onClick={() => navigate(`/player/${report.player_id}`)}
                       >
@@ -755,23 +943,26 @@ const IntelPage: React.FC = () => {
                     <div>
                       <strong>{report.contact_name}</strong>
                       <br />
-                      <small className="text-muted">{report.contact_organisation}</small>
+                      <small className="text-muted">
+                        {report.contact_organisation}
+                      </small>
                     </div>
                   </td>
                   <td>
                     <small>
-                      {report.confirmed_contract_expiry ? 
-                        new Date(report.confirmed_contract_expiry).toLocaleDateString() : 
-                        'N/A'
-                      }
+                      {report.confirmed_contract_expiry
+                        ? new Date(
+                            report.confirmed_contract_expiry,
+                          ).toLocaleDateString()
+                        : "N/A"}
                     </small>
                   </td>
                   <td>
-                    <small>{formatDealTypes(report.potential_deal_types)}</small>
+                    <small>
+                      {formatDealTypes(report.potential_deal_types)}
+                    </small>
                   </td>
-                  <td>
-                    {getActionRequiredBadge(report.action_required)}
-                  </td>
+                  <td>{getActionRequiredBadge(report.action_required)}</td>
                   <td>
                     <div className="btn-group">
                       <Button
@@ -780,21 +971,36 @@ const IntelPage: React.FC = () => {
                         onClick={() => handleViewIntelReport(report.intel_id)}
                         title="View Intel Report"
                         className="rounded-circle"
-                        style={{ width: '32px', height: '32px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          padding: "0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
                       >
                         👁️
                       </Button>
                       {report.player_id && (
-                        <Button 
-                          variant="outline-info" 
+                        <Button
+                          variant="outline-info"
                           size="sm"
-                          onClick={() => navigate(`/player/${report.player_id}`)}
+                          onClick={() =>
+                            navigate(`/player/${report.player_id}`)
+                          }
                           title="View Player Profile"
                         >
                           👤
                         </Button>
                       )}
-                      <Button variant="outline-secondary" size="sm" title="Edit">✏️</Button>
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        title="Edit"
+                      >
+                        ✏️
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -804,31 +1010,34 @@ const IntelPage: React.FC = () => {
         </div>
       )}
 
-
       {/* Intel Report Modal */}
-      <IntelReportModal 
-        show={showIntelReportModal} 
-        onHide={() => setShowIntelReportModal(false)} 
+      <IntelReportModal
+        show={showIntelReportModal}
+        onHide={() => setShowIntelReportModal(false)}
         intelId={selectedIntelId}
       />
-      
+
       {/* Toast Notifications */}
       <ToastContainer position="top-end" className="p-3">
-        <Toast 
-          show={showToast} 
-          onClose={() => setShowToast(false)} 
-          delay={4000} 
+        <Toast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          delay={4000}
           autohide
           bg={toastVariant}
         >
           <Toast.Header>
             <strong className="me-auto">
-              {toastVariant === 'success' ? '✅ Success' : 
-               toastVariant === 'danger' ? '❌ Error' : 
-               'ℹ️ Info'}
+              {toastVariant === "success"
+                ? "✅ Success"
+                : toastVariant === "danger"
+                  ? "❌ Error"
+                  : "ℹ️ Info"}
             </strong>
           </Toast.Header>
-          <Toast.Body className={toastVariant === 'success' ? 'text-white' : ''}>
+          <Toast.Body
+            className={toastVariant === "success" ? "text-white" : ""}
+          >
             {toastMessage}
           </Toast.Body>
         </Toast>

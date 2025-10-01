@@ -1,6 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Table, Spinner, Alert, Button, Form, Badge } from 'react-bootstrap';
-import { Line, Bar } from 'react-chartjs-2';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Table,
+  Spinner,
+  Alert,
+  Button,
+  Form,
+} from "react-bootstrap";
+import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,11 +21,11 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
-} from 'chart.js';
-import { useCurrentUser } from '../hooks/useCurrentUser';
-import axiosInstance from '../axiosInstance';
-import AnalyticsChatbot from '../components/AnalyticsChatbot';
+  Filler,
+} from "chart.js";
+import { useCurrentUser } from "../hooks/useCurrentUser";
+import axiosInstance from "../axiosInstance";
+import AnalyticsChatbot from "../components/AnalyticsChatbot";
 
 ChartJS.register(
   CategoryScale,
@@ -26,7 +36,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 );
 
 interface PlayerCoverageStats {
@@ -89,19 +99,21 @@ const AnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [timelineLoading, setTimelineLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [selectedScout, setSelectedScout] = useState<string>('ALL');
-  const [chartType, setChartType] = useState<string>('monthly');
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [selectedScout, setSelectedScout] = useState<string>("ALL");
+  const [chartType, setChartType] = useState<string>("monthly");
   const [dateRange, setDateRange] = useState<number>(30);
 
   // All hooks must be at the top before any conditional logic
   const fetchAnalyticsData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get('/analytics/player-coverage');
+      const response = await axiosInstance.get("/analytics/player-coverage");
       setData(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch analytics data');
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch analytics data",
+      );
     } finally {
       setLoading(false);
     }
@@ -110,11 +122,13 @@ const AnalyticsPage: React.FC = () => {
   const fetchTimelineData = useCallback(async () => {
     try {
       setTimelineLoading(true);
-      const response = await axiosInstance.get('/analytics/timeline');
+      const response = await axiosInstance.get("/analytics/timeline");
       setTimelineData(response.data);
     } catch (err) {
-      console.error('Timeline data error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch timeline data');
+      console.error("Timeline data error:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch timeline data",
+      );
     } finally {
       setTimelineLoading(false);
     }
@@ -123,13 +137,17 @@ const AnalyticsPage: React.FC = () => {
   const fetchDailyTimelineData = useCallback(async (days: number) => {
     try {
       setTimelineLoading(true);
-      const response = await axiosInstance.get('/analytics/timeline-daily', {
-        params: { days }
+      const response = await axiosInstance.get("/analytics/timeline-daily", {
+        params: { days },
       });
       setTimelineData(response.data);
     } catch (err) {
-      console.error('Daily timeline data error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch daily timeline data');
+      console.error("Daily timeline data error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch daily timeline data",
+      );
     } finally {
       setTimelineLoading(false);
     }
@@ -139,18 +157,29 @@ const AnalyticsPage: React.FC = () => {
     // Only fetch data if user has permission
     if (canAccessAnalytics && !userLoading) {
       fetchAnalyticsData();
-      if (chartType === 'monthly') {
+      if (chartType === "monthly") {
         fetchTimelineData();
       } else {
         fetchDailyTimelineData(dateRange);
       }
     }
-  }, [fetchAnalyticsData, fetchTimelineData, fetchDailyTimelineData, canAccessAnalytics, userLoading, chartType, dateRange]);
+  }, [
+    fetchAnalyticsData,
+    fetchTimelineData,
+    fetchDailyTimelineData,
+    canAccessAnalytics,
+    userLoading,
+    chartType,
+    dateRange,
+  ]);
 
   // Check permissions after all hooks
   if (userLoading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '50vh' }}>
+      <Container
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "50vh" }}
+      >
         <Spinner animation="border" role="status">
           <span className="visually-hidden">Loading...</span>
         </Spinner>
@@ -163,16 +192,21 @@ const AnalyticsPage: React.FC = () => {
       <Container>
         <Alert variant="danger">
           <Alert.Heading>Access Denied</Alert.Heading>
-          <p>You don't have permission to access analytics. This feature is only available to managers and administrators.</p>
+          <p>
+            You don't have permission to access analytics. This feature is only
+            available to managers and administrators.
+          </p>
         </Alert>
       </Container>
     );
   }
 
-
   if (loading) {
     return (
-      <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '50vh' }}>
+      <Container
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "50vh" }}
+      >
         <Spinner animation="border" role="status">
           <span className="visually-hidden">Loading...</span>
         </Spinner>
@@ -208,69 +242,160 @@ const AnalyticsPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>📊 Analytics Dashboard</h2>
         <div className="d-flex align-items-center gap-3">
-          <span className="badge badge-neutral-grey">Player Coverage Analytics</span>
+          <span className="badge badge-neutral-grey">
+            Player Coverage Analytics
+          </span>
         </div>
       </div>
 
       {/* Key Metrics Cards */}
       <Row className="mb-4">
         <Col md={3} className="mb-3">
-          <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
-            <Card.Header className="border-0" style={{ backgroundColor: '#f8f9fa', color: '#212529', borderRadius: '12px 12px 0 0', padding: '1rem' }}>
-              <Card.Title className="h6 mb-0 text-center" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Average Players Scouted Per Game (All Types)</Card.Title>
+          <Card
+            className="h-100 shadow-sm hover-card"
+            style={{ borderRadius: "12px", border: "2px solid #dc3545" }}
+          >
+            <Card.Header
+              className="border-0"
+              style={{
+                backgroundColor: "#f8f9fa",
+                color: "#212529",
+                borderRadius: "12px 12px 0 0",
+                padding: "1rem",
+              }}
+            >
+              <Card.Title
+                className="h6 mb-0 text-center"
+                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
+              >
+                Average Players Scouted Per Game (All Types)
+              </Card.Title>
             </Card.Header>
             <Card.Body className="text-center">
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#dc3545' }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  color: "#dc3545",
+                }}
+              >
                 {data.all_games_stats.average_players_per_game}
               </div>
               <small className="text-muted">
-                {data.all_games_stats.total_games} games | {data.all_games_stats.total_players_covered} total players
+                {data.all_games_stats.total_games} games |{" "}
+                {data.all_games_stats.total_players_covered} total players
               </small>
             </Card.Body>
           </Card>
         </Col>
         <Col md={3} className="mb-3">
-          <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #28a745' }}>
-            <Card.Header className="border-0" style={{ backgroundColor: '#f8f9fa', color: '#212529', borderRadius: '12px 12px 0 0', padding: '1rem' }}>
-              <Card.Title className="h6 mb-0 text-center" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Average Players Scouted Per Game (Live Scouting Only)</Card.Title>
+          <Card
+            className="h-100 shadow-sm hover-card"
+            style={{ borderRadius: "12px", border: "2px solid #28a745" }}
+          >
+            <Card.Header
+              className="border-0"
+              style={{
+                backgroundColor: "#f8f9fa",
+                color: "#212529",
+                borderRadius: "12px 12px 0 0",
+                padding: "1rem",
+              }}
+            >
+              <Card.Title
+                className="h6 mb-0 text-center"
+                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
+              >
+                Average Players Scouted Per Game (Live Scouting Only)
+              </Card.Title>
             </Card.Header>
             <Card.Body className="text-center">
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#28a745' }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  color: "#28a745",
+                }}
+              >
                 {data.live_games_stats.average_players_per_game || 0}
               </div>
               <small className="text-muted">
-                {data.live_games_stats.total_games} games | {data.live_games_stats.total_players_covered} total players
+                {data.live_games_stats.total_games} games |{" "}
+                {data.live_games_stats.total_players_covered} total players
               </small>
             </Card.Body>
           </Card>
         </Col>
         <Col md={3} className="mb-3">
-          <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #ffc107' }}>
-            <Card.Header className="border-0" style={{ backgroundColor: '#f8f9fa', color: '#212529', borderRadius: '12px 12px 0 0', padding: '1rem' }}>
-              <Card.Title className="h6 mb-0 text-center" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Database Coverage Percentage</Card.Title>
+          <Card
+            className="h-100 shadow-sm hover-card"
+            style={{ borderRadius: "12px", border: "2px solid #ffc107" }}
+          >
+            <Card.Header
+              className="border-0"
+              style={{
+                backgroundColor: "#f8f9fa",
+                color: "#212529",
+                borderRadius: "12px 12px 0 0",
+                padding: "1rem",
+              }}
+            >
+              <Card.Title
+                className="h6 mb-0 text-center"
+                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
+              >
+                Database Coverage Percentage
+              </Card.Title>
             </Card.Header>
             <Card.Body className="text-center">
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ffc107' }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  color: "#ffc107",
+                }}
+              >
                 {data.database_overview.coverage_percentage}%
               </div>
               <small className="text-muted">
-                {data.database_overview.matches_with_scout_reports} of {data.database_overview.total_matches_in_database} matches
+                {data.database_overview.matches_with_scout_reports} of{" "}
+                {data.database_overview.total_matches_in_database} matches
               </small>
             </Card.Body>
           </Card>
         </Col>
         <Col md={3} className="mb-3">
-          <Card className="h-100 shadow-sm hover-card" style={{ borderRadius: '12px', border: '2px solid #17a2b8' }}>
-            <Card.Header className="border-0" style={{ backgroundColor: '#f8f9fa', color: '#212529', borderRadius: '12px 12px 0 0', padding: '1rem' }}>
-              <Card.Title className="h6 mb-0 text-center" style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Total Scout Reports Generated</Card.Title>
+          <Card
+            className="h-100 shadow-sm hover-card"
+            style={{ borderRadius: "12px", border: "2px solid #17a2b8" }}
+          >
+            <Card.Header
+              className="border-0"
+              style={{
+                backgroundColor: "#f8f9fa",
+                color: "#212529",
+                borderRadius: "12px 12px 0 0",
+                padding: "1rem",
+              }}
+            >
+              <Card.Title
+                className="h6 mb-0 text-center"
+                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
+              >
+                Total Scout Reports Generated
+              </Card.Title>
             </Card.Header>
             <Card.Body className="text-center">
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#17a2b8' }}>
+              <div
+                style={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  color: "#17a2b8",
+                }}
+              >
                 {data.all_games_stats.total_reports}
               </div>
-              <small className="text-muted">
-                Across all games
-              </small>
+              <small className="text-muted">Across all games</small>
             </Card.Body>
           </Card>
         </Col>
@@ -279,11 +404,22 @@ const AnalyticsPage: React.FC = () => {
       <Row>
         {/* Top Covered Games */}
         <Col md={6} className="mb-4">
-          <Card className="shadow-sm" style={{ borderRadius: '12px', border: '2px solid #dc3545' }}>
-            <Card.Header style={{ backgroundColor: '#000000', color: 'white', borderRadius: '12px 12px 0 0' }}>
-              <h6 className="mb-0 text-white">🏆 Top 10 Most Covered Games (LIVE Scouting)</h6>
+          <Card
+            className="shadow-sm"
+            style={{ borderRadius: "12px", border: "2px solid #dc3545" }}
+          >
+            <Card.Header
+              style={{
+                backgroundColor: "#000000",
+                color: "white",
+                borderRadius: "12px 12px 0 0",
+              }}
+            >
+              <h6 className="mb-0 text-white">
+                🏆 Top 10 Most Covered Games (LIVE Scouting)
+              </h6>
             </Card.Header>
-            <Card.Body style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <Card.Body style={{ maxHeight: "400px", overflowY: "auto" }}>
               <div className="table-responsive">
                 <Table hover className="table-modern">
                   <thead className="table-dark">
@@ -296,10 +432,14 @@ const AnalyticsPage: React.FC = () => {
                   <tbody>
                     {data.top_covered_games.map((game, index) => (
                       <tr key={index} className="align-middle">
-                        <td style={{ fontSize: '0.85rem' }}>{game.match}</td>
-                        <td style={{ fontSize: '0.85rem' }}>{new Date(game.date).toLocaleDateString()}</td>
+                        <td style={{ fontSize: "0.85rem" }}>{game.match}</td>
+                        <td style={{ fontSize: "0.85rem" }}>
+                          {new Date(game.date).toLocaleDateString()}
+                        </td>
                         <td className="text-center">
-                          <span className="badge badge-neutral-grey fs-6">{game.players_covered}</span>
+                          <span className="badge badge-neutral-grey fs-6">
+                            {game.players_covered}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -312,32 +452,102 @@ const AnalyticsPage: React.FC = () => {
 
         {/* Raw Numbers Summary */}
         <Col md={6} className="mb-4">
-          <Card className="shadow-sm" style={{ borderRadius: '12px', border: '2px solid #17a2b8' }}>
-            <Card.Header style={{ backgroundColor: '#000000', color: 'white', borderRadius: '12px 12px 0 0' }}>
+          <Card
+            className="shadow-sm"
+            style={{ borderRadius: "12px", border: "2px solid #17a2b8" }}
+          >
+            <Card.Header
+              style={{
+                backgroundColor: "#000000",
+                color: "white",
+                borderRadius: "12px 12px 0 0",
+              }}
+            >
               <h6 className="mb-0 text-white">📋 Raw Numbers Summary</h6>
             </Card.Header>
             <Card.Body>
               <div>
-                <h6 style={{ color: '#dc3545', marginBottom: '15px' }}>ALL GAMES</h6>
-                <div className="mb-2"><strong>Total Games with Coverage:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.total_games}</span></div>
-                <div className="mb-2"><strong>Total Players Covered:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.total_players_covered}</span></div>
-                <div className="mb-2"><strong>Total Scout Reports:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.total_reports}</span></div>
-                <div className="mb-3"><strong>Average Players per Game:</strong> <span className="badge badge-neutral-grey">{data.all_games_stats.average_players_per_game}</span></div>
+                <h6 style={{ color: "#dc3545", marginBottom: "15px" }}>
+                  ALL GAMES
+                </h6>
+                <div className="mb-2">
+                  <strong>Total Games with Coverage:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.all_games_stats.total_games}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <strong>Total Players Covered:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.all_games_stats.total_players_covered}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <strong>Total Scout Reports:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.all_games_stats.total_reports}
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <strong>Average Players per Game:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.all_games_stats.average_players_per_game}
+                  </span>
+                </div>
 
-                <hr style={{ margin: '20px 0' }} />
+                <hr style={{ margin: "20px 0" }} />
 
-                <h6 style={{ color: '#28a745', marginBottom: '15px' }}>LIVE SCOUTING ONLY</h6>
-                <div className="mb-2"><strong>Total Live Games:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.total_games}</span></div>
-                <div className="mb-2"><strong>Total Players Covered:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.total_players_covered}</span></div>
-                <div className="mb-2"><strong>Total Scout Reports:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.total_reports}</span></div>
-                <div className="mb-3"><strong>Average Players per Game:</strong> <span className="badge badge-neutral-grey">{data.live_games_stats.average_players_per_game || 'N/A'}</span></div>
+                <h6 style={{ color: "#28a745", marginBottom: "15px" }}>
+                  LIVE SCOUTING ONLY
+                </h6>
+                <div className="mb-2">
+                  <strong>Total Live Games:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.live_games_stats.total_games}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <strong>Total Players Covered:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.live_games_stats.total_players_covered}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <strong>Total Scout Reports:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.live_games_stats.total_reports}
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <strong>Average Players per Game:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.live_games_stats.average_players_per_game || "N/A"}
+                  </span>
+                </div>
 
-                <hr style={{ margin: '20px 0' }} />
+                <hr style={{ margin: "20px 0" }} />
 
-                <h6 style={{ color: '#ffc107', marginBottom: '15px' }}>DATABASE OVERVIEW</h6>
-                <div className="mb-2"><strong>Total Matches in Database:</strong> <span className="badge badge-neutral-grey">{data.database_overview.total_matches_in_database}</span></div>
-                <div className="mb-2"><strong>Matches with Scout Reports:</strong> <span className="badge badge-neutral-grey">{data.database_overview.matches_with_scout_reports}</span></div>
-                <div className="mb-2"><strong>Coverage Percentage:</strong> <span className="badge badge-neutral-grey">{data.database_overview.coverage_percentage}%</span></div>
+                <h6 style={{ color: "#ffc107", marginBottom: "15px" }}>
+                  DATABASE OVERVIEW
+                </h6>
+                <div className="mb-2">
+                  <strong>Total Matches in Database:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.database_overview.total_matches_in_database}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <strong>Matches with Scout Reports:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.database_overview.matches_with_scout_reports}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <strong>Coverage Percentage:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.database_overview.coverage_percentage}%
+                  </span>
+                </div>
               </div>
             </Card.Body>
           </Card>
@@ -347,25 +557,44 @@ const AnalyticsPage: React.FC = () => {
       {/* Interactive Timeline Visualization */}
       <Row>
         <Col>
-          <Card className="shadow-sm" style={{ borderRadius: '12px', border: '2px solid #6c757d' }}>
-            <Card.Header style={{ backgroundColor: '#000000', color: 'white', borderRadius: '12px 12px 0 0' }}>
+          <Card
+            className="shadow-sm"
+            style={{ borderRadius: "12px", border: "2px solid #6c757d" }}
+          >
+            <Card.Header
+              style={{
+                backgroundColor: "#000000",
+                color: "white",
+                borderRadius: "12px 12px 0 0",
+              }}
+            >
               <div className="d-flex justify-content-between align-items-center">
                 <h6 className="mb-0 text-white">📊 Scout Reports Timeline</h6>
                 <div className="d-flex gap-2">
                   <Form.Select
                     value={chartType}
                     onChange={(e) => setChartType(e.target.value)}
-                    style={{ width: 'auto', backgroundColor: 'white', color: 'black', border: '1px solid #dee2e6' }}
+                    style={{
+                      width: "auto",
+                      backgroundColor: "white",
+                      color: "black",
+                      border: "1px solid #dee2e6",
+                    }}
                     size="sm"
                   >
                     <option value="monthly">Monthly View</option>
                     <option value="daily">Daily View</option>
                   </Form.Select>
-                  {chartType === 'daily' && (
+                  {chartType === "daily" && (
                     <Form.Select
                       value={dateRange}
                       onChange={(e) => setDateRange(Number(e.target.value))}
-                      style={{ width: 'auto', backgroundColor: 'white', color: 'black', border: '1px solid #dee2e6' }}
+                      style={{
+                        width: "auto",
+                        backgroundColor: "white",
+                        color: "black",
+                        border: "1px solid #dee2e6",
+                      }}
                       size="sm"
                     >
                       <option value={7}>Last 7 Days</option>
@@ -377,7 +606,12 @@ const AnalyticsPage: React.FC = () => {
                   <Form.Select
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    style={{ width: 'auto', backgroundColor: 'white', color: 'black', border: '1px solid #dee2e6' }}
+                    style={{
+                      width: "auto",
+                      backgroundColor: "white",
+                      color: "black",
+                      border: "1px solid #dee2e6",
+                    }}
                     size="sm"
                   >
                     <option value="ALL">All Scout Types</option>
@@ -387,18 +621,25 @@ const AnalyticsPage: React.FC = () => {
                   <Form.Select
                     value={selectedScout}
                     onChange={(e) => setSelectedScout(e.target.value)}
-                    style={{ width: 'auto', backgroundColor: 'white', color: 'black', border: '1px solid #dee2e6' }}
+                    style={{
+                      width: "auto",
+                      backgroundColor: "white",
+                      color: "black",
+                      border: "1px solid #dee2e6",
+                    }}
                     size="sm"
                   >
                     <option value="ALL">All Scouts</option>
-                    {timelineData?.topScouts.map(scout => (
-                      <option key={scout.name} value={scout.name}>{scout.name}</option>
+                    {timelineData?.topScouts.map((scout) => (
+                      <option key={scout.name} value={scout.name}>
+                        {scout.name}
+                      </option>
                     ))}
                   </Form.Select>
                 </div>
               </div>
             </Card.Header>
-            <Card.Body style={{ minHeight: '500px', padding: '2rem' }}>
+            <Card.Body style={{ minHeight: "500px", padding: "2rem" }}>
               {timelineLoading ? (
                 <div className="text-center py-5">
                   <Spinner animation="border" role="status">
@@ -408,113 +649,156 @@ const AnalyticsPage: React.FC = () => {
               ) : timelineData ? (
                 <>
                   {/* Timeline Chart */}
-                  <div style={{ height: '350px', marginBottom: '2rem' }}>
+                  <div style={{ height: "350px", marginBottom: "2rem" }}>
                     <Bar
                       data={{
-                        labels: timelineData.timeline.map(point => {
-                          if (chartType === 'daily' && point.day) {
-                            const date = new Date(point.day + 'T00:00:00');
-                            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        labels: timelineData.timeline.map((point) => {
+                          if (chartType === "daily" && point.day) {
+                            const date = new Date(point.day + "T00:00:00");
+                            return date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            });
                           } else if (point.month) {
-                            const date = new Date(point.month + '-01');
-                            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                            const date = new Date(point.month + "-01");
+                            return date.toLocaleDateString("en-US", {
+                              month: "short",
+                              year: "numeric",
+                            });
                           }
-                          return '';
+                          return "";
                         }),
                         datasets: [
                           {
-                            label: 'Total Reports',
-                            data: timelineData.timeline.map(point => point.totalReports),
-                            borderColor: '#dc3545',
-                            backgroundColor: 'rgba(220, 53, 69, 0.6)',
+                            label: "Total Reports",
+                            data: timelineData.timeline.map(
+                              (point) => point.totalReports,
+                            ),
+                            borderColor: "#dc3545",
+                            backgroundColor: "rgba(220, 53, 69, 0.6)",
                             borderWidth: 1,
                           },
                           {
-                            label: 'Live Scouting (by scouting type)',
-                            data: timelineData.timeline.map(point => point.liveReports),
-                            borderColor: '#28a745',
-                            backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                            label: "Live Scouting (by scouting type)",
+                            data: timelineData.timeline.map(
+                              (point) => point.liveReports,
+                            ),
+                            borderColor: "#28a745",
+                            backgroundColor: "rgba(40, 167, 69, 0.6)",
                             borderWidth: 1,
                           },
                           {
-                            label: 'Video Scouting (by scouting type)',
-                            data: timelineData.timeline.map(point => point.videoReports),
-                            borderColor: '#17a2b8',
-                            backgroundColor: 'rgba(23, 162, 184, 0.6)',
+                            label: "Video Scouting (by scouting type)",
+                            data: timelineData.timeline.map(
+                              (point) => point.videoReports,
+                            ),
+                            borderColor: "#17a2b8",
+                            backgroundColor: "rgba(23, 162, 184, 0.6)",
                             borderWidth: 1,
                           },
-                          ...(selectedScout !== 'ALL' ? [{
-                            label: `${selectedScout} Reports`,
-                            data: timelineData.timeline.map(point => point.scouts[selectedScout] || 0),
-                            borderColor: '#ffc107',
-                            backgroundColor: 'rgba(255, 193, 7, 0.6)',
-                            borderWidth: 2,
-                          }] : [])
-                        ]
+                          ...(selectedScout !== "ALL"
+                            ? [
+                                {
+                                  label: `${selectedScout} Reports`,
+                                  data: timelineData.timeline.map(
+                                    (point) => point.scouts[selectedScout] || 0,
+                                  ),
+                                  borderColor: "#ffc107",
+                                  backgroundColor: "rgba(255, 193, 7, 0.6)",
+                                  borderWidth: 2,
+                                },
+                              ]
+                            : []),
+                        ],
                       }}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
                         interaction: {
-                          mode: 'index' as const,
+                          mode: "index" as const,
                           intersect: false,
                         },
                         plugins: {
                           title: {
                             display: true,
-                            text: 'Scout Reports Timeline',
-                            font: { size: 16, weight: 'bold' },
-                            color: '#212529'
+                            text: "Scout Reports Timeline",
+                            font: { size: 16, weight: "bold" },
+                            color: "#212529",
                           },
                           legend: {
-                            position: 'top' as const,
-                            labels: { usePointStyle: true, padding: 20 }
+                            position: "top" as const,
+                            labels: { usePointStyle: true, padding: 20 },
                           },
                           tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            borderColor: '#dee2e6',
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            titleColor: "#fff",
+                            bodyColor: "#fff",
+                            borderColor: "#dee2e6",
                             borderWidth: 1,
                             cornerRadius: 8,
                             displayColors: true,
                             callbacks: {
                               title: (context) => {
-                                const dataPoint = timelineData.timeline[context[0].dataIndex];
-                                if (chartType === 'daily' && dataPoint.day) {
-                                  const date = new Date(dataPoint.day + 'T00:00:00');
-                                  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+                                const dataPoint =
+                                  timelineData.timeline[context[0].dataIndex];
+                                if (chartType === "daily" && dataPoint.day) {
+                                  const date = new Date(
+                                    dataPoint.day + "T00:00:00",
+                                  );
+                                  return date.toLocaleDateString("en-US", {
+                                    weekday: "long",
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  });
                                 } else if (dataPoint.month) {
-                                  const date = new Date(dataPoint.month + '-01');
-                                  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                                  const date = new Date(
+                                    dataPoint.month + "-01",
+                                  );
+                                  return date.toLocaleDateString("en-US", {
+                                    month: "long",
+                                    year: "numeric",
+                                  });
                                 }
-                                return 'Unknown Date';
+                                return "Unknown Date";
                               },
                               afterBody: (context) => {
-                                const dataPoint = timelineData.timeline[context[0].dataIndex];
+                                const dataPoint =
+                                  timelineData.timeline[context[0].dataIndex];
                                 const scouts = Object.entries(dataPoint.scouts);
                                 return [
-                                  '',
-                                  'Scout Breakdown:',
-                                  ...scouts.map(([name, count]) => `  ${name}: ${count} reports`)
+                                  "",
+                                  "Scout Breakdown:",
+                                  ...scouts.map(
+                                    ([name, count]) =>
+                                      `  ${name}: ${count} reports`,
+                                  ),
                                 ];
-                              }
-                            }
-                          }
+                              },
+                            },
+                          },
                         },
                         scales: {
                           x: {
                             display: true,
-                            title: { display: true, text: chartType === 'daily' ? 'Day' : 'Month', font: { weight: 'bold' } },
-                            grid: { color: 'rgba(0, 0, 0, 0.1)' }
+                            title: {
+                              display: true,
+                              text: chartType === "daily" ? "Day" : "Month",
+                              font: { weight: "bold" },
+                            },
+                            grid: { color: "rgba(0, 0, 0, 0.1)" },
                           },
                           y: {
                             display: true,
-                            title: { display: true, text: 'Number of Reports', font: { weight: 'bold' } },
-                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
-                            beginAtZero: true
-                          }
-                        }
+                            title: {
+                              display: true,
+                              text: "Number of Reports",
+                              font: { weight: "bold" },
+                            },
+                            grid: { color: "rgba(0, 0, 0, 0.1)" },
+                            beginAtZero: true,
+                          },
+                        },
                       }}
                     />
                   </div>
@@ -522,36 +806,58 @@ const AnalyticsPage: React.FC = () => {
                   {/* Scout Performance Summary */}
                   <Row>
                     <Col md={12}>
-                      <h6 style={{ color: '#495057', marginBottom: '1rem' }}>📈 Top Performing Scouts</h6>
+                      <h6 style={{ color: "#495057", marginBottom: "1rem" }}>
+                        📈 Top Performing Scouts
+                      </h6>
                       <Row>
-                        {timelineData.topScouts.slice(0, 6).map((scout, index) => (
-                          <Col md={4} key={scout.name} className="mb-3">
-                            <div
-                              className="d-flex justify-content-between align-items-center p-3"
-                              style={{
-                                backgroundColor: index === 0 ? '#fff3cd' : index === 1 ? '#d1ecf1' : index === 2 ? '#d4edda' : '#f8f9fa',
-                                borderRadius: '8px',
-                                border: `2px solid ${index === 0 ? '#ffc107' : index === 1 ? '#17a2b8' : index === 2 ? '#28a745' : '#dee2e6'}`,
-                                height: '100%'
-                              }}
-                            >
-                              <span style={{ fontWeight: '600' }}>
-                                {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`} {scout.name}
-                              </span>
-                              <span className="badge badge-neutral-grey">
-                                {scout.reports} reports
-                              </span>
-                            </div>
-                          </Col>
-                        ))}
+                        {timelineData.topScouts
+                          .slice(0, 6)
+                          .map((scout, index) => (
+                            <Col md={4} key={scout.name} className="mb-3">
+                              <div
+                                className="d-flex justify-content-between align-items-center p-3"
+                                style={{
+                                  backgroundColor:
+                                    index === 0
+                                      ? "#fff3cd"
+                                      : index === 1
+                                        ? "#d1ecf1"
+                                        : index === 2
+                                          ? "#d4edda"
+                                          : "#f8f9fa",
+                                  borderRadius: "8px",
+                                  border: `2px solid ${index === 0 ? "#ffc107" : index === 1 ? "#17a2b8" : index === 2 ? "#28a745" : "#dee2e6"}`,
+                                  height: "100%",
+                                }}
+                              >
+                                <span style={{ fontWeight: "600" }}>
+                                  {index === 0
+                                    ? "🥇"
+                                    : index === 1
+                                      ? "🥈"
+                                      : index === 2
+                                        ? "🥉"
+                                        : `${index + 1}.`}{" "}
+                                  {scout.name}
+                                </span>
+                                <span className="badge badge-neutral-grey">
+                                  {scout.reports} reports
+                                </span>
+                              </div>
+                            </Col>
+                          ))}
                       </Row>
                     </Col>
                   </Row>
                 </>
               ) : (
                 <div className="text-center py-5">
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
-                  <h5 style={{ color: '#6c757d' }}>No timeline data available</h5>
+                  <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>
+                    📊
+                  </div>
+                  <h5 style={{ color: "#6c757d" }}>
+                    No timeline data available
+                  </h5>
                 </div>
               )}
             </Card.Body>
