@@ -5103,7 +5103,122 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Query for ALL games (games with scout reports)
+        # ALL REPORTS - Count unique games with scout reports
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT MATCH_ID)
+            FROM scout_reports
+            WHERE MATCH_ID IS NOT NULL
+            """
+        )
+        total_games_all = cursor.fetchone()[0] or 0
+
+        # ALL REPORTS - Count unique players (both PLAYER_ID and CAFC_PLAYER_ID)
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT COALESCE(PLAYER_ID, CAFC_PLAYER_ID))
+            FROM scout_reports
+            WHERE PLAYER_ID IS NOT NULL OR CAFC_PLAYER_ID IS NOT NULL
+            """
+        )
+        total_players_all = cursor.fetchone()[0] or 0
+
+        # ALL REPORTS - Count total report IDs
+        cursor.execute(
+            """
+            SELECT COUNT(ID)
+            FROM scout_reports
+            """
+        )
+        total_reports_all = cursor.fetchone()[0] or 0
+
+        # LIVE REPORTS - Count unique games with live scout reports
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT MATCH_ID)
+            FROM scout_reports
+            WHERE MATCH_ID IS NOT NULL
+            AND UPPER(SCOUTING_TYPE) = 'LIVE'
+            """
+        )
+        total_games_live = cursor.fetchone()[0] or 0
+
+        # LIVE REPORTS - Count unique players
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT COALESCE(PLAYER_ID, CAFC_PLAYER_ID))
+            FROM scout_reports
+            WHERE (PLAYER_ID IS NOT NULL OR CAFC_PLAYER_ID IS NOT NULL)
+            AND UPPER(SCOUTING_TYPE) = 'LIVE'
+            """
+        )
+        total_players_live = cursor.fetchone()[0] or 0
+
+        # LIVE REPORTS - Count total report IDs
+        cursor.execute(
+            """
+            SELECT COUNT(ID)
+            FROM scout_reports
+            WHERE UPPER(SCOUTING_TYPE) = 'LIVE'
+            """
+        )
+        total_reports_live = cursor.fetchone()[0] or 0
+
+        # VIDEO REPORTS - Count unique games with video scout reports
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT MATCH_ID)
+            FROM scout_reports
+            WHERE MATCH_ID IS NOT NULL
+            AND UPPER(SCOUTING_TYPE) = 'VIDEO'
+            """
+        )
+        total_games_video = cursor.fetchone()[0] or 0
+
+        # VIDEO REPORTS - Count unique players
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT COALESCE(PLAYER_ID, CAFC_PLAYER_ID))
+            FROM scout_reports
+            WHERE (PLAYER_ID IS NOT NULL OR CAFC_PLAYER_ID IS NOT NULL)
+            AND UPPER(SCOUTING_TYPE) = 'VIDEO'
+            """
+        )
+        total_players_video = cursor.fetchone()[0] or 0
+
+        # VIDEO REPORTS - Count total report IDs
+        cursor.execute(
+            """
+            SELECT COUNT(ID)
+            FROM scout_reports
+            WHERE UPPER(SCOUTING_TYPE) = 'VIDEO'
+            """
+        )
+        total_reports_video = cursor.fetchone()[0] or 0
+
+        # Calculate stats
+        all_games_stats = {
+            "total_games": total_games_all,
+            "total_players_covered": total_players_all,
+            "total_reports": total_reports_all,
+            "average_players_per_game": round(total_players_all / total_games_all, 2) if total_games_all > 0 else 0,
+        }
+
+        live_games_stats = {
+            "total_games": total_games_live,
+            "total_players_covered": total_players_live,
+            "total_reports": total_reports_live,
+            "average_players_per_game": round(total_players_live / total_games_live, 2) if total_games_live > 0 else 0,
+        }
+
+        video_games_stats = {
+            "total_games": total_games_video,
+            "total_players_covered": total_players_video,
+            "total_reports": total_reports_video,
+            "average_players_per_game": round(total_players_video / total_games_video, 2) if total_games_video > 0 else 0,
+        }
+
+        # Get per-game coverage data for table
         cursor.execute(
             """
             SELECT
@@ -5112,149 +5227,29 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
                 m.AWAYSQUADNAME,
                 m.SCHEDULEDDATE,
                 sr.SCOUTING_TYPE,
-                COUNT(DISTINCT sr.PLAYER_ID) as players_covered,
+                COUNT(DISTINCT COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID)) as players_covered,
                 COUNT(sr.ID) as total_reports
             FROM matches m
             INNER JOIN scout_reports sr ON m.ID = sr.MATCH_ID
             WHERE m.ID IS NOT NULL
-            AND sr.PLAYER_ID IS NOT NULL
+            AND (sr.PLAYER_ID IS NOT NULL OR sr.CAFC_PLAYER_ID IS NOT NULL)
             GROUP BY m.ID, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE, sr.SCOUTING_TYPE
             ORDER BY m.SCHEDULEDDATE DESC
         """
         )
 
-        all_games_data = cursor.fetchall()
-
-        # Process results
         games_with_coverage = []
-        all_games_stats = {
-            "total_games": 0,
-            "total_players_covered": 0,
-            "total_reports": 0,
-            "average_players_per_game": 0,
-        }
-
-        live_games_stats = {
-            "total_games": 0,
-            "total_players_covered": 0,
-            "total_reports": 0,
-            "average_players_per_game": 0,
-        }
-
-        total_players_all = 0
-        total_players_live = 0
-        games_dict = {}
-
-        for row in all_games_data:
-            (
-                match_id,
-                home_team,
-                away_team,
-                scheduled_date,
-                scouting_type,
-                players_covered,
-                total_reports,
-            ) = row
-
-            # Create a unique key for each game
-            game_key = f"{match_id}_{home_team}_{away_team}_{scheduled_date}"
-
-            if game_key not in games_dict:
-                games_dict[game_key] = {
-                    "match_id": match_id,
-                    "home_team": home_team,
-                    "away_team": away_team,
-                    "scheduled_date": str(scheduled_date),
-                    "players_covered_all": 0,
-                    "players_covered_live": 0,
-                    "total_reports_all": 0,
-                    "total_reports_live": 0,
-                    "has_live": False,
-                    "has_other": False,
-                }
-
-            # Add to ALL games totals
-            games_dict[game_key]["players_covered_all"] += players_covered
-            games_dict[game_key]["total_reports_all"] += total_reports
-            total_players_all += players_covered
-
-            # Check if this is a LIVE scouting type
-            if scouting_type and scouting_type.upper() == "LIVE":
-                games_dict[game_key]["players_covered_live"] += players_covered
-                games_dict[game_key]["total_reports_live"] += total_reports
-                games_dict[game_key]["has_live"] = True
-                total_players_live += players_covered
-            else:
-                games_dict[game_key]["has_other"] = True
-
-        # Convert dict to list and create game data entries
-        for game_key, game_info in games_dict.items():
-            # Add entry for ALL games
-            game_data_all = {
-                "match_id": game_info["match_id"],
-                "home_team": game_info["home_team"],
-                "away_team": game_info["away_team"],
-                "scheduled_date": game_info["scheduled_date"],
-                "players_covered": game_info["players_covered_all"],
-                "total_reports": game_info["total_reports_all"],
-                "scouting_type": "ALL",
-            }
-            games_with_coverage.append(game_data_all)
-
-            # Add entry for LIVE games if it has live scouting
-            if game_info["has_live"]:
-                game_data_live = {
-                    "match_id": game_info["match_id"],
-                    "home_team": game_info["home_team"],
-                    "away_team": game_info["away_team"],
-                    "scheduled_date": game_info["scheduled_date"],
-                    "players_covered": game_info["players_covered_live"],
-                    "total_reports": game_info["total_reports_live"],
-                    "scouting_type": "LIVE",
-                }
-                games_with_coverage.append(game_data_live)
-
-        # Count unique games for stats
-        unique_games_all = len(games_dict)
-        unique_games_live = len([g for g in games_dict.values() if g["has_live"]])
-
-        # Update stats
-        all_games_stats["total_games"] = unique_games_all
-        all_games_stats["total_reports"] = sum(
-            g["total_reports_all"] for g in games_dict.values()
-        )
-
-        live_games_stats["total_games"] = unique_games_live
-        live_games_stats["total_reports"] = sum(
-            g["total_reports_live"] for g in games_dict.values()
-        )
-
-        # Calculate averages
-        all_games_stats["total_players_covered"] = total_players_all
-        if all_games_stats["total_games"] > 0:
-            all_games_stats["average_players_per_game"] = round(
-                total_players_all / all_games_stats["total_games"], 2
-            )
-
-        live_games_stats["total_players_covered"] = total_players_live
-        if live_games_stats["total_games"] > 0:
-            live_games_stats["average_players_per_game"] = round(
-                total_players_live / live_games_stats["total_games"], 2
-            )
-
-        # Get additional insights
-        cursor.execute(
-            """
-            SELECT
-                COUNT(DISTINCT m.ID) as total_matches_in_db,
-                COUNT(DISTINCT CASE WHEN sr.MATCH_ID IS NOT NULL THEN m.ID END) as matches_with_reports
-            FROM matches m
-            LEFT JOIN scout_reports sr ON m.ID = sr.MATCH_ID
-        """
-        )
-
-        coverage_info = cursor.fetchone()
-        total_matches_in_db, matches_with_reports = coverage_info
+        for row in cursor.fetchall():
+            match_id, home_team, away_team, scheduled_date, scouting_type, players_covered, total_reports = row
+            games_with_coverage.append({
+                "match_id": match_id,
+                "home_team": home_team,
+                "away_team": away_team,
+                "scheduled_date": str(scheduled_date),
+                "players_covered": players_covered,
+                "total_reports": total_reports,
+                "scouting_type": scouting_type or "Unknown",
+            })
 
         # Get top covered games (LIVE scouting only)
         cursor.execute(
@@ -5263,11 +5258,12 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
                 m.HOMESQUADNAME,
                 m.AWAYSQUADNAME,
                 m.SCHEDULEDDATE,
-                COUNT(DISTINCT sr.PLAYER_ID) as players_covered,
+                COUNT(DISTINCT COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID)) as players_covered,
                 sr.SCOUTING_TYPE
             FROM matches m
             INNER JOIN scout_reports sr ON m.ID = sr.MATCH_ID
-            WHERE m.ID IS NOT NULL AND sr.PLAYER_ID IS NOT NULL
+            WHERE m.ID IS NOT NULL
+            AND (sr.PLAYER_ID IS NOT NULL OR sr.CAFC_PLAYER_ID IS NOT NULL)
             AND UPPER(sr.SCOUTING_TYPE) = 'LIVE'
             GROUP BY m.ID, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE, sr.SCOUTING_TYPE
             ORDER BY players_covered DESC
@@ -5290,16 +5286,8 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         return {
             "all_games_stats": all_games_stats,
             "live_games_stats": live_games_stats,
+            "video_games_stats": video_games_stats,
             "games_with_coverage": games_with_coverage,
-            "database_overview": {
-                "total_matches_in_database": total_matches_in_db,
-                "matches_with_scout_reports": matches_with_reports,
-                "coverage_percentage": (
-                    round((matches_with_reports / total_matches_in_db * 100), 2)
-                    if total_matches_in_db > 0
-                    else 0
-                ),
-            },
             "top_covered_games": top_covered_games,
         }
 

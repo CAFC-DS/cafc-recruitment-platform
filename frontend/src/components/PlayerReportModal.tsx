@@ -1132,6 +1132,12 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
           Close
         </Button>
       </Modal.Footer>
+
+      <style>{`
+        .modal-header-dark .btn-close {
+          filter: invert(1) grayscale(100%) brightness(200%);
+        }
+      `}</style>
     </Modal>
   );
 };

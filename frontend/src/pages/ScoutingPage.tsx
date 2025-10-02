@@ -982,7 +982,7 @@ const ScoutingPage: React.FC = () => {
                     <th>Fixture Date</th>
                     <th>Fixture</th>
                     <th>Scout</th>
-                    <th>Tag</th>
+                    <th>Type</th>
                     <th>Score</th>
                     <th>Actions</th>
                   </tr>

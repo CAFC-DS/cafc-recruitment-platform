@@ -87,8 +87,8 @@ interface TimelineData {
 interface AnalyticsData {
   all_games_stats: PlayerCoverageStats;
   live_games_stats: PlayerCoverageStats;
+  video_games_stats: PlayerCoverageStats;
   games_with_coverage: GameData[];
-  database_overview: DatabaseOverview;
   top_covered_games: TopCoveredGame[];
 }
 
@@ -248,159 +248,6 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Key Metrics Cards */}
-      <Row className="mb-4">
-        <Col md={3} className="mb-3">
-          <Card
-            className="h-100 shadow-sm hover-card"
-            style={{ borderRadius: "12px", border: "2px solid #dc3545" }}
-          >
-            <Card.Header
-              className="border-0"
-              style={{
-                backgroundColor: "#f8f9fa",
-                color: "#212529",
-                borderRadius: "12px 12px 0 0",
-                padding: "1rem",
-              }}
-            >
-              <Card.Title
-                className="h6 mb-0 text-center"
-                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
-              >
-                Average Players Scouted Per Game (All Types)
-              </Card.Title>
-            </Card.Header>
-            <Card.Body className="text-center">
-              <div
-                style={{
-                  fontSize: "2.5rem",
-                  fontWeight: "bold",
-                  color: "#dc3545",
-                }}
-              >
-                {data.all_games_stats.average_players_per_game}
-              </div>
-              <small className="text-muted">
-                {data.all_games_stats.total_games} games |{" "}
-                {data.all_games_stats.total_players_covered} total players
-              </small>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3} className="mb-3">
-          <Card
-            className="h-100 shadow-sm hover-card"
-            style={{ borderRadius: "12px", border: "2px solid #28a745" }}
-          >
-            <Card.Header
-              className="border-0"
-              style={{
-                backgroundColor: "#f8f9fa",
-                color: "#212529",
-                borderRadius: "12px 12px 0 0",
-                padding: "1rem",
-              }}
-            >
-              <Card.Title
-                className="h6 mb-0 text-center"
-                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
-              >
-                Average Players Scouted Per Game (Live Scouting Only)
-              </Card.Title>
-            </Card.Header>
-            <Card.Body className="text-center">
-              <div
-                style={{
-                  fontSize: "2.5rem",
-                  fontWeight: "bold",
-                  color: "#28a745",
-                }}
-              >
-                {data.live_games_stats.average_players_per_game || 0}
-              </div>
-              <small className="text-muted">
-                {data.live_games_stats.total_games} games |{" "}
-                {data.live_games_stats.total_players_covered} total players
-              </small>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3} className="mb-3">
-          <Card
-            className="h-100 shadow-sm hover-card"
-            style={{ borderRadius: "12px", border: "2px solid #ffc107" }}
-          >
-            <Card.Header
-              className="border-0"
-              style={{
-                backgroundColor: "#f8f9fa",
-                color: "#212529",
-                borderRadius: "12px 12px 0 0",
-                padding: "1rem",
-              }}
-            >
-              <Card.Title
-                className="h6 mb-0 text-center"
-                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
-              >
-                Database Coverage Percentage
-              </Card.Title>
-            </Card.Header>
-            <Card.Body className="text-center">
-              <div
-                style={{
-                  fontSize: "2.5rem",
-                  fontWeight: "bold",
-                  color: "#ffc107",
-                }}
-              >
-                {data.database_overview.coverage_percentage}%
-              </div>
-              <small className="text-muted">
-                {data.database_overview.matches_with_scout_reports} of{" "}
-                {data.database_overview.total_matches_in_database} matches
-              </small>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3} className="mb-3">
-          <Card
-            className="h-100 shadow-sm hover-card"
-            style={{ borderRadius: "12px", border: "2px solid #17a2b8" }}
-          >
-            <Card.Header
-              className="border-0"
-              style={{
-                backgroundColor: "#f8f9fa",
-                color: "#212529",
-                borderRadius: "12px 12px 0 0",
-                padding: "1rem",
-              }}
-            >
-              <Card.Title
-                className="h6 mb-0 text-center"
-                style={{ fontWeight: "bold", fontSize: "0.9rem" }}
-              >
-                Total Scout Reports Generated
-              </Card.Title>
-            </Card.Header>
-            <Card.Body className="text-center">
-              <div
-                style={{
-                  fontSize: "2.5rem",
-                  fontWeight: "bold",
-                  color: "#17a2b8",
-                }}
-              >
-                {data.all_games_stats.total_reports}
-              </div>
-              <small className="text-muted">Across all games</small>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
       <Row>
         {/* Top Covered Games */}
         <Col md={6} className="mb-4">
@@ -527,25 +374,31 @@ const AnalyticsPage: React.FC = () => {
 
                 <hr style={{ margin: "20px 0" }} />
 
-                <h6 style={{ color: "#ffc107", marginBottom: "15px" }}>
-                  DATABASE OVERVIEW
+                <h6 style={{ color: "#6f42c1", marginBottom: "15px" }}>
+                  VIDEO SCOUTING ONLY
                 </h6>
                 <div className="mb-2">
-                  <strong>Total Matches in Database:</strong>{" "}
+                  <strong>Total Video Games:</strong>{" "}
                   <span className="badge badge-neutral-grey">
-                    {data.database_overview.total_matches_in_database}
+                    {data.video_games_stats?.total_games || 0}
                   </span>
                 </div>
                 <div className="mb-2">
-                  <strong>Matches with Scout Reports:</strong>{" "}
+                  <strong>Total Players Covered:</strong>{" "}
                   <span className="badge badge-neutral-grey">
-                    {data.database_overview.matches_with_scout_reports}
+                    {data.video_games_stats?.total_players_covered || 0}
                   </span>
                 </div>
                 <div className="mb-2">
-                  <strong>Coverage Percentage:</strong>{" "}
+                  <strong>Total Scout Reports:</strong>{" "}
                   <span className="badge badge-neutral-grey">
-                    {data.database_overview.coverage_percentage}%
+                    {data.video_games_stats?.total_reports || 0}
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <strong>Average Players per Game:</strong>{" "}
+                  <span className="badge badge-neutral-grey">
+                    {data.video_games_stats?.average_players_per_game || "N/A"}
                   </span>
                 </div>
               </div>
