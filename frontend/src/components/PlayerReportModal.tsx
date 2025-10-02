@@ -781,34 +781,33 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     <Row style={{ fontSize: "11px" }}>
                       <Col md={4}>
                         <p className="mb-1">
-                          <strong>Player | Team:</strong> {report.player_name} |{" "}
+                          <strong>Player:</strong> {report.player_name}
+                        </p>
+                        <p className="mb-1">
+                          <strong>Team:</strong>{" "}
                           {playerData?.squad_name ||
                             report.home_squad_name ||
                             report.away_squad_name ||
                             "N/A"}
                         </p>
-                        <p className="mb-1">
+                        <p className="mb-0">
                           <strong>Date of Birth | Age:</strong>{" "}
                           {formatBirthDateWithAge()}
                         </p>
-                        <p className="mb-0">
-                          <strong>Build | Height:</strong>{" "}
-                          {report.build || "N/A"} | {report.height || "N/A"}
-                        </p>
                       </Col>
                       <Col md={4}>
+                        <p className="mb-1">
+                          <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
+                          {report.away_squad_name}
+                        </p>
                         <p className="mb-1">
                           <strong>Position | Formation:</strong>{" "}
                           {report.position_played || "Not specified"} |{" "}
                           {report.formation || "Not specified"}
                         </p>
-                        <p className="mb-1">
+                        <p className="mb-0">
                           <strong>Build | Height:</strong>{" "}
                           {report.build || "N/A"} | {report.height || "N/A"}
-                        </p>
-                        <p className="mb-0">
-                          <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
-                          {report.away_squad_name}
                         </p>
                       </Col>
                       <Col md={4}>
