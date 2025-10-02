@@ -2663,13 +2663,13 @@ async def get_scout_report(
         attribute_scores = dict(cursor.fetchall())
 
         # Convert strengths and weaknesses from comma-separated strings to arrays
-        strengths = [s.strip() for s in report[5].split(",")] if report[5] else []
-        weaknesses = [w.strip() for w in report[6].split(",")] if report[6] else []
+        strengths = [s.strip() for s in report[6].split(",")] if report[6] else []
+        weaknesses = [w.strip() for w in report[7].split(",")] if report[7] else []
 
         # Determine the universal player ID based on data source
         external_player_id = report[1]  # sr.PLAYER_ID
         internal_player_id = report[2]  # sr.CAFC_PLAYER_ID
-        data_source = report[18]  # p.DATA_SOURCE
+        data_source = report[19]  # p.DATA_SOURCE
 
         if data_source == "internal" and internal_player_id:
             universal_player_id = f"internal_{internal_player_id}"

@@ -171,6 +171,7 @@ const ScoutingPage: React.FC = () => {
       setSelectedPlayer({
         player_id: response.data.player_id,
         player_name: response.data.player_name,
+        universal_id: response.data.player_id,
       });
       setEditMode(true);
       setShowAssessmentModal(true);
