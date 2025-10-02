@@ -566,13 +566,13 @@ const PlayerProfilePage: React.FC = () => {
                 </div>
                 <h1 className="player-lastname">{profile.last_name}</h1>
                 <div className="player-meta">
-                  <span className="club-name">{profile.squad_name}</span>
-                  <span className="position-age">
-                    {profile.position} | Age: {profile.age} | Born:{" "}
+                  <div className="player-position">{profile.position}</div>
+                  <div className="club-name">{profile.squad_name}</div>
+                  <div className="position-age">
                     {profile.birth_date
-                      ? new Date(profile.birth_date).toLocaleDateString()
+                      ? `${new Date(profile.birth_date).toLocaleDateString("en-GB")} (${profile.age})`
                       : "N/A"}
-                  </span>
+                  </div>
                 </div>
                 {(() => {
                   const avgScore = calculateAveragePerformanceScore();
@@ -1293,8 +1293,9 @@ const PlayerProfilePage: React.FC = () => {
 
         .player-meta {
           display: flex;
-          align-items: center;
-          gap: 1rem;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
           color: #666;
           font-size: 0.95rem;
         }
