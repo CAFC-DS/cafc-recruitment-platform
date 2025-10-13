@@ -307,6 +307,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       } else if (assessmentType === "Flag") {
         payload.selectedMatch = parseInt(formData.selectedMatch, 10);
         payload.playerPosition = formData.playerPosition;
+        payload.formation = formData.formation;
         payload.playerBuild = formData.playerBuild;
         payload.playerHeight = formData.playerHeight;
         payload.scoutingType = formData.scoutingType;
@@ -590,7 +591,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
             size="lg"
             onClick={() => setAssessmentType("Flag")}
           >
-            🚩 Flag Assessment
+            🏳️ Flag Assessment
           </Button>
           <Button
             variant="secondary"
@@ -903,6 +904,21 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   ))}
                 </Form.Select>
               </Form.Group>
+              <Form.Group as={Col} controlId="formation">
+                <Form.Label>Formation</Form.Label>
+                <Form.Select
+                  name="formation"
+                  value={formData.formation}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Formation</option>
+                  {formations.map((form) => (
+                    <option key={form} value={form}>
+                      {form}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
               <Form.Group as={Col} controlId="playerBuild">
                 <Form.Label>
                   Player Build <span className="text-danger">*</span>
@@ -1129,7 +1145,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       case "Player Assessment":
         return "⚽";
       case "Flag":
-        return "🚩";
+        return "🏳️";
       case "Clips":
         return "🎬";
       default:

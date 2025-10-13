@@ -2159,6 +2159,7 @@ async def create_scout_report(
         elif report_type == "Flag":
             flag_category = report.flagCategory
             match_id = report.selectedMatch
+            formation = report.formation
 
         elif report_type == "Clips":
             pass  # All relevant fields are already prepared or optional
@@ -2492,6 +2493,7 @@ async def update_scout_report(
         elif report_type == "Flag":
             flag_category = report.flagCategory
             match_id = report.selectedMatch
+            formation = report.formation
         elif report_type == "Clips":
             pass
 

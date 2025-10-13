@@ -377,7 +377,7 @@ const ScoutingPage: React.FC = () => {
         }}
         title={`Flag: ${flagType || "Unknown"}`}
       >
-        🚩
+        🏳️
       </span>
     );
   };

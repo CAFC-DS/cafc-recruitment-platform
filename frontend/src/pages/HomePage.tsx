@@ -393,7 +393,7 @@ const HomePage: React.FC = () => {
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0">
-                    🚩{" "}
+                    🏳️{" "}
                     {userRole === "scout"
                       ? "Your Recent Flag Reports"
                       : "Recent Flag Reports"}{" "}

@@ -619,7 +619,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     if (hasFlag) {
       return {
         color: "warning",
-        icon: "🚩",
+        icon: "🏳️",
         title: "Flag Assessment Report",
       };
     }
@@ -632,7 +632,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
       case "flag_assessment":
         return {
           color: "warning",
-          icon: "🚩",
+          icon: "🏳️",
           title: "Flag Assessment Report",
         };
       case "clips assessment":
@@ -697,38 +697,49 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                 <Row>
                   <Col md={4}>
                     <p className="mb-1">
-                      <strong>Player | Team:</strong> {report.player_name} |{" "}
+                      <strong>Player:</strong> {report.player_name}
+                    </p>
+                    <p className="mb-1">
+                      <strong>Team:</strong>{" "}
                       {playerData?.squad_name ||
                         report.home_squad_name ||
                         report.away_squad_name ||
                         "N/A"}
                     </p>
                     <p className="mb-0">
-                      <strong>Flag Type:</strong>
-                      <span className="ms-2">
-                        {getFlagBadge(report.flag_category || "Not specified")}
-                      </span>
+                      <strong>Date of Birth | Age:</strong>{" "}
+                      {formatBirthDateWithAge()}
                     </p>
                   </Col>
                   <Col md={4}>
                     <p className="mb-1">
-                      <strong>Match:</strong> {report.home_squad_name} vs{" "}
+                      <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
                       {report.away_squad_name}
                     </p>
+                    <p className="mb-1">
+                      <strong>Position | Formation:</strong>{" "}
+                      {report.position_played || "Not specified"} |{" "}
+                      {report.formation || "Not specified"}
+                    </p>
                     <p className="mb-0">
+                      <strong>Build | Height:</strong>{" "}
+                      {report.build || "N/A"} | {report.height || "N/A"}
+                    </p>
+                  </Col>
+                  <Col md={4}>
+                    <p className="mb-1">
                       <strong>Fixture Date:</strong>{" "}
                       {report.fixture_date
                         ? new Date(report.fixture_date).toLocaleDateString("en-GB")
                         : "N/A"}
                     </p>
-                  </Col>
-                  <Col md={4}>
                     <p className="mb-1">
                       <strong>Report Date:</strong>{" "}
-                      {new Date(report.created_at).toLocaleDateString()}
+                      {new Date(report.created_at).toLocaleDateString("en-GB")}
                     </p>
                     <p className="mb-0">
-                      <strong>Scout:</strong> {report.scout_name}
+                      <strong>Scout:</strong> {report.scout_name} |{" "}
+                      {getFlagBadge(report.flag_category || "Not specified")}
                     </p>
                   </Col>
                 </Row>
