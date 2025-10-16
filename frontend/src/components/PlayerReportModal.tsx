@@ -612,6 +612,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
 
   const getReportTypeInfo = () => {
     const reportType = report.report_type || "Player Assessment";
+    const purposeOfAssessment = report.purpose_of_assessment;
 
     // Check if this should be treated as a flag report based on flag_category
     const hasFlag = report.flag_category && report.flag_category.trim() !== "";
@@ -622,6 +623,11 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
         icon: "🏳️",
         title: "Flag Assessment Report",
       };
+    }
+
+    // Check if this is a Loan Report
+    if (purposeOfAssessment === "Loan Report") {
+      return { color: "dark", icon: "📋", title: "Loan Assessment Report" };
     }
 
     switch (reportType.toLowerCase()) {
@@ -1086,6 +1092,28 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     </h6>
                   </Card.Header>
                   <Card.Body className="py-2">
+                    {report.opposition_details && (
+                      <div className="mb-3">
+                        <div className="d-flex align-items-center mb-1">
+                          <strong style={{ fontSize: "12px", color: "#333" }}>
+                            Opposition Details:
+                          </strong>
+                        </div>
+                        <div className="border-start border-secondary border-3 ps-2">
+                          <p
+                            className="mb-0"
+                            style={{
+                              whiteSpace: "pre-wrap",
+                              fontSize: "11px",
+                              lineHeight: "1.4",
+                            }}
+                          >
+                            {report.opposition_details}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mb-3">
                       <div className="d-flex align-items-center mb-1">
                         <strong style={{ fontSize: "12px", color: "#333" }}>

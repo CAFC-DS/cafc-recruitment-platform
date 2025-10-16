@@ -8,6 +8,8 @@ import {
   Spinner,
   Alert,
   Form,
+  OverlayTrigger,
+  Tooltip,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
@@ -18,7 +20,6 @@ import {
   getPerformanceScoreColor,
   getAttributeScoreColor,
   getFlagColor,
-  getContrastTextColor,
 } from "../utils/colorUtils";
 
 interface ScoutReport {
@@ -63,7 +64,7 @@ const HomePage: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
   const [databaseMetadata, setDatabaseMetadata] = useState<any>(null);
-  const [recencyFilter, setRecencyFilter] = useState("30"); // Default to 30 days
+  const [recencyFilter, setRecencyFilter] = useState("7"); // Default to 7 days
 
   useEffect(() => {
     if (token) {
@@ -80,9 +81,12 @@ const HomePage: React.FC = () => {
       setUserRole(userResponse.data.role || "scout");
 
       // Fetch recent scout reports with recency filter
-      const scoutResponse = await axiosInstance.get(
-        `/scout_reports/all?page=1&limit=50&recency_days=${recencyFilter}`,
-      );
+      // Don't send recency_days parameter if "all" is selected
+      // Fetch more reports to ensure we have enough after filtering by type
+      const scoutUrl = recencyFilter === "all"
+        ? `/scout_reports/all?page=1&limit=1000`
+        : `/scout_reports/all?page=1&limit=1000&recency_days=${recencyFilter}`;
+      const scoutResponse = await axiosInstance.get(scoutUrl);
       const scoutReports =
         scoutResponse.data.reports || scoutResponse.data || [];
 
@@ -91,23 +95,25 @@ const HomePage: React.FC = () => {
         ? scoutReports
         : [];
 
-      // Separate flag reports from regular scout reports
+      // Separate flag reports from player assessment reports
+      // Don't slice - show all within the time period
       const flagReports = filteredScoutReports
         .filter(
           (report) =>
             report.report_type?.toLowerCase() === "flag" ||
             report.report_type?.toLowerCase() === "flag assessment",
-        )
-        .slice(0, 10); // Show 10 most recent flag reports
-      const regularReports = filteredScoutReports
+        );
+
+      // Only show Player Assessment reports (exclude Flags and Clips)
+      // Don't slice - show all within the time period
+      const playerAssessmentReports = filteredScoutReports
         .filter(
           (report) =>
-            report.report_type?.toLowerCase() !== "flag" &&
-            report.report_type?.toLowerCase() !== "flag assessment",
-        )
-        .slice(0, 10); // Show 10 most recent regular reports
+            report.report_type?.toLowerCase() === "player assessment" ||
+            report.report_type?.toLowerCase() === "player_assessment",
+        );
 
-      setRecentScoutReports(regularReports);
+      setRecentScoutReports(playerAssessmentReports);
       setRecentFlagReports(flagReports);
 
       // Fetch recent intel reports (last 5) - role-based filtering will be done on server
@@ -121,19 +127,22 @@ const HomePage: React.FC = () => {
       // TODO: Add created_by field to intel reports for proper filtering
       setRecentIntelReports(Array.isArray(intelReports) ? intelReports : []);
 
-      // For top attribute reports, use all filtered reports (including flag reports with attribute scores)
+      // For top attribute reports, only show Player Assessment reports
+      // Sort by attribute score and show all within the time period (no slicing)
       const topReports =
         filteredScoutReports.length > 0
           ? filteredScoutReports
               .filter(
                 (report) =>
-                  report.attribute_score && report.attribute_score > 0,
+                  (report.report_type?.toLowerCase() === "player assessment" ||
+                    report.report_type?.toLowerCase() === "player_assessment") &&
+                  report.attribute_score &&
+                  report.attribute_score > 0,
               )
               .sort(
                 (a, b) => (b.attribute_score || 0) - (a.attribute_score || 0),
               )
-              .slice(0, 10)
-          : []; // Show top 10 attribute reports
+          : []; // Show all player assessment attribute reports sorted by score
       setTopAttributeReports(topReports);
 
       // Fetch database metadata
@@ -275,12 +284,24 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
+                  <h5 className="mb-0 d-flex align-items-center">
                     ⚽{" "}
                     {userRole === "scout"
                       ? "Your Recent Scout Reports"
                       : "Recent Scout Reports"}{" "}
                     ({recentScoutReports.length})
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>
+                          Shows all Player Assessment reports within the selected time period, sorted by most recent first. Excludes Flag and Clips reports.
+                        </Tooltip>
+                      }
+                    >
+                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
+                        ℹ️
+                      </span>
+                    </OverlayTrigger>
                   </h5>
                   <Button
                     variant="outline-dark"
@@ -346,11 +367,7 @@ const HomePage: React.FC = () => {
                                 backgroundColor: getPerformanceScoreColor(
                                   report.performance_score,
                                 ),
-                                color: getContrastTextColor(
-                                  getPerformanceScoreColor(
-                                    report.performance_score,
-                                  ),
-                                ),
+                                color: "white",
                                 fontWeight: "bold",
                                 ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                               }}
@@ -363,11 +380,7 @@ const HomePage: React.FC = () => {
                                 backgroundColor: getAttributeScoreColor(
                                   report.attribute_score,
                                 ),
-                                color: getContrastTextColor(
-                                  getAttributeScoreColor(
-                                    report.attribute_score,
-                                  ),
-                                ),
+                                color: "white",
                                 fontWeight: "bold",
                                 border: "none",
                               }}
@@ -392,12 +405,24 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
+                  <h5 className="mb-0 d-flex align-items-center">
                     🏳️{" "}
                     {userRole === "scout"
                       ? "Your Recent Flag Reports"
                       : "Recent Flag Reports"}{" "}
                     ({recentFlagReports.length})
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>
+                          Shows all Flag reports within the selected time period, sorted by most recent first. Flags are quick assessments marked as Positive, Neutral, or Negative.
+                        </Tooltip>
+                      }
+                    >
+                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
+                        ℹ️
+                      </span>
+                    </OverlayTrigger>
                   </h5>
                   <Button
                     variant="outline-dark"
@@ -460,11 +485,7 @@ const HomePage: React.FC = () => {
                                 backgroundColor: getFlagColor(
                                   report.flag_category || "neutral",
                                 ),
-                                color: getContrastTextColor(
-                                  getFlagColor(
-                                    report.flag_category || "neutral",
-                                  ),
-                                ),
+                                color: "white",
                                 fontWeight: "bold",
                               }}
                             >
@@ -494,12 +515,24 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
+                  <h5 className="mb-0 d-flex align-items-center">
                     🏆{" "}
                     {userRole === "scout"
                       ? "Your Highest Attribute Scores"
                       : "Highest Attribute Scores"}{" "}
                     ({topAttributeReports.length})
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>
+                          Shows all Player Assessment reports within the selected time period, ranked by total attribute score (highest to lowest). Only includes reports with attribute scores.
+                        </Tooltip>
+                      }
+                    >
+                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
+                        ℹ️
+                      </span>
+                    </OverlayTrigger>
                   </h5>
                   <Button
                     variant="outline-dark"
@@ -565,11 +598,7 @@ const HomePage: React.FC = () => {
                                 backgroundColor: getAttributeScoreColor(
                                   report.attribute_score,
                                 ),
-                                color: getContrastTextColor(
-                                  getAttributeScoreColor(
-                                    report.attribute_score,
-                                  ),
-                                ),
+                                color: "white",
                                 fontWeight: "bold",
                                 border: "none",
                               }}
@@ -594,12 +623,24 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">
+                  <h5 className="mb-0 d-flex align-items-center">
                     🕵️{" "}
                     {userRole === "scout"
                       ? "Your Recent Intel Reports"
                       : "Recent Intel Reports"}{" "}
                     ({recentIntelReports.length})
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={
+                        <Tooltip>
+                          Shows the 5 most recent Intel reports. Intel reports contain transfer and contract information from various contacts. This section is not affected by the time filter.
+                        </Tooltip>
+                      }
+                    >
+                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
+                        ℹ️
+                      </span>
+                    </OverlayTrigger>
                   </h5>
                   <Button
                     variant="outline-dark"

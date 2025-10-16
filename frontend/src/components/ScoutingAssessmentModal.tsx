@@ -63,6 +63,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     assessmentSummary: "",
     justificationRationale: "",
     flagCategory: "",
+    oppositionDetails: "",
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -109,6 +110,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         assessmentSummary: existingReportData.assessmentSummary || "",
         justificationRationale: existingReportData.justificationRationale || "",
         flagCategory: existingReportData.flagCategory || "",
+        oppositionDetails: existingReportData.oppositionDetails || "",
       });
 
       if (existingReportData.fixtureDate) {
@@ -169,7 +171,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
 
   const isFormValid = () => {
     if (assessmentType === "Player Assessment") {
-      return (
+      const baseValid =
         formData.selectedMatch &&
         formData.playerPosition &&
         formData.playerHeight &&
@@ -177,8 +179,14 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         formData.justificationRationale &&
         formData.performanceScore > 0 &&
         formData.scoutingType &&
-        formData.purposeOfAssessment
-      );
+        formData.purposeOfAssessment;
+
+      // If Loan Report is selected, also require oppositionDetails
+      if (formData.purposeOfAssessment === "Loan Report") {
+        return baseValid && formData.oppositionDetails;
+      }
+
+      return baseValid;
     } else if (assessmentType === "Flag") {
       return (
         formData.selectedMatch &&
@@ -301,6 +309,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         payload.performanceScore = formData.performanceScore;
         payload.assessmentSummary = formData.assessmentSummary;
         payload.justificationRationale = formData.justificationRationale;
+        payload.oppositionDetails = formData.oppositionDetails;
         payload.strengths = strengths.map((s) => s.value);
         payload.weaknesses = weaknesses.map((w) => w.value);
         payload.attributeScores = attributeScores;
@@ -798,6 +807,22 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   </Col>
                 ))}
               </Row>
+            )}
+            {formData.purposeOfAssessment === "Loan Report" && (
+              <Form.Group className="mb-3" controlId="oppositionDetails">
+                <Form.Label>
+                  Opposition Details (formation, style and direct opponent){" "}
+                  <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  name="oppositionDetails"
+                  value={formData.oppositionDetails}
+                  onChange={handleChange}
+                  placeholder="Please provide details about the opposition's formation, playing style, and the player's direct opponent"
+                />
+              </Form.Group>
             )}
             <Form.Group className="mb-3" controlId="assessmentSummary">
               <Form.Label>
