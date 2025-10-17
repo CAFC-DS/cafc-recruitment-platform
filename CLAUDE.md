@@ -24,9 +24,10 @@ The platform has four user roles with different access levels:
 - No access to analytics or admin features
 
 ### Loan Manager Role
-- Can only see Loan Reports (filtered by PURPOSE = 'Loan Report')
-- Sees ALL Loan Reports regardless of who created them
-- No access to Player Assessments, Flags, or Clips
+- Can see their OWN reports (Player Assessments, Flags, Clips) that they created
+- Can see ALL Loan Reports regardless of who created them
+- Filter: `(USER_ID = current_user.id OR PURPOSE = 'Loan Report')`
+- This allows them to work like a scout but also view everyone's loan reports
 - No access to analytics or admin features
 
 ## Commands

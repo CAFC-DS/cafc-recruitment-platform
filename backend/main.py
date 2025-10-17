@@ -1836,8 +1836,7 @@ async def detect_data_clashes(
     name_filter: str = None
 ):
     """Detect potential duplicate players and fixtures (admin only).
-    Optional name_filter to search for specific player names."""antml:parameter>
-</invoke>
+    Optional name_filter to search for specific player names."""
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
@@ -1904,7 +1903,63 @@ async def detect_data_clashes(
                 "lastname": lastname,
             })
 
-        # Compare all players (optimized with early exit)
+        # PRIORITY: First check for exact name duplicates (100% matches)
+        # This ensures we catch obvious duplicates like "Scofield Lonmeni" x2
+        from collections import defaultdict
+        players_by_name = defaultdict(list)
+        for p in all_players:
+            normalized_name = (p["name"] or "").lower().strip()
+            if normalized_name:
+                players_by_name[normalized_name].append(p)
+
+        # Find all exact name duplicates
+        for name, name_players in players_by_name.items():
+            if len(name_players) > 1:
+                # Multiple players with exact same name - definitely a clash!
+                for i, p1 in enumerate(name_players):
+                    for p2 in name_players[i + 1:]:
+                        # Skip if they're actually the same player (same IDs)
+                        if (p1["cafc_player_id"] == p2["cafc_player_id"] and
+                            p1["cafc_player_id"] is not None):
+                            continue
+                        if (p1["player_id"] == p2["player_id"] and
+                            p1["player_id"] is not None):
+                            continue
+
+                        player_clashes.append({
+                            "player1": {
+                                "universal_id": get_player_universal_id({
+                                    "CAFC_PLAYER_ID": p1["cafc_player_id"],
+                                    "PLAYERID": p1["player_id"],
+                                    "DATA_SOURCE": p1["data_source"],
+                                }),
+                                "cafc_player_id": p1["cafc_player_id"],
+                                "player_id": p1["player_id"],
+                                "name": p1["name"],
+                                "firstname": p1["firstname"],
+                                "lastname": p1["lastname"],
+                                "data_source": p1["data_source"],
+                            },
+                            "player2": {
+                                "universal_id": get_player_universal_id({
+                                    "CAFC_PLAYER_ID": p2["cafc_player_id"],
+                                    "PLAYERID": p2["player_id"],
+                                    "DATA_SOURCE": p2["data_source"],
+                                }),
+                                "cafc_player_id": p2["cafc_player_id"],
+                                "player_id": p2["player_id"],
+                                "name": p2["name"],
+                                "firstname": p2["firstname"],
+                                "lastname": p2["lastname"],
+                                "data_source": p2["data_source"],
+                            },
+                            "squad1": p1["squad"],
+                            "squad2": p2["squad"],
+                            "similarity": 100.0,
+                            "clash_type": "player",
+                        })
+
+        # Now check for similar names (70-99% matches) if we haven't hit limit
         total_comparisons = 0
         max_comparisons = 50000  # Safety limit
 
@@ -1933,6 +1988,10 @@ async def detect_data_clashes(
                 if not name1 or not name2:
                     continue
 
+                # Skip exact matches (already handled above)
+                if name1 == name2:
+                    continue
+
                 # Quick length check for early exit
                 len_diff = abs(len(name1) - len(name2))
                 max_len = max(len(name1), len(name2))
@@ -1942,8 +2001,8 @@ async def detect_data_clashes(
                 dist = levenshtein_distance(name1, name2)
                 similarity = (1 - (dist / max_len)) * 100 if max_len > 0 else 0
 
-                # Flag if similarity > 70% (likely duplicates or typos)
-                if similarity > 70:
+                # Flag if similarity > 70% AND < 100% (70-99% similar, not exact)
+                if similarity > 70 and similarity < 100:
                     player_clashes.append({
                         "player1": {
                             "universal_id": get_player_universal_id({
@@ -2058,6 +2117,12 @@ async def detect_data_clashes(
             "player_clashes": player_clashes,
             "fixture_clashes": fixture_clashes,
             "total_clashes": len(player_clashes) + len(fixture_clashes),
+            "debug_info": {
+                "total_players_checked": len(all_players),
+                "total_comparisons_made": total_comparisons,
+                "hit_comparison_limit": total_comparisons >= max_comparisons,
+                "hit_result_limit": len(player_clashes) >= max_results,
+            }
         }
 
     except Exception as e:
@@ -3147,13 +3212,6 @@ async def get_scout_report(
         if not report:
             raise HTTPException(status_code=404, detail="Scout report not found")
 
-        # Role-based authorization
-        # For loan_manager: only allow access to Loan Reports
-        if current_user.role == "loan_manager":
-            report_purpose = report[12]  # PURPOSE field
-            if report_purpose != "Loan Report":
-                raise HTTPException(status_code=403, detail="Access denied: Loan managers can only view Loan Reports")
-
         # Get attribute scores
         cursor.execute(
             """
@@ -3647,7 +3705,9 @@ async def get_all_scout_reports(
                         f"Applied scout filtering for user ID: {current_user.id}"
                     )
                 elif current_user.role == "loan_manager":
-                    where_clauses.append("sr.PURPOSE = %s")
+                    # Loan managers see their own reports OR any Loan Reports
+                    where_clauses.append("(sr.USER_ID = %s OR sr.PURPOSE = %s)")
+                    sql_params.append(current_user.id)
                     sql_params.append("Loan Report")
                     logging.info(
                         f"Applied loan_manager filtering for user ID: {current_user.id}"
@@ -3828,13 +3888,6 @@ async def get_single_scout_report(
 
         if not report_data:
             raise HTTPException(status_code=404, detail="Scout report not found")
-
-        # Role-based authorization
-        # For loan_manager: only allow access to Loan Reports
-        if current_user.role == "loan_manager":
-            report_purpose = report_data[15]  # PURPOSE field
-            if report_purpose != "Loan Report":
-                raise HTTPException(status_code=403, detail="Access denied: Loan managers can only view Loan Reports")
 
         # Calculate age
         player_birthdate = report_data[2]
@@ -4347,7 +4400,9 @@ async def get_player_scout_reports(
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
             elif current_user.role == "loan_manager":
-                base_query += " AND sr.PURPOSE = %s"
+                # Loan managers see their own reports OR any Loan Reports
+                base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
+                query_params.append(current_user.id)
                 query_params.append("Loan Report")
         except:
             pass
