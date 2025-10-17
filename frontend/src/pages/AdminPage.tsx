@@ -316,7 +316,7 @@ const AdminPage: React.FC = () => {
                         <option value="scout">Scout</option>
                         <option value="manager">Manager</option>
                         <option value="admin">Admin</option>
-                        <option value="loan_manager">Loan Manager</option>
+                        <option value="loan">Loan</option>
                       </Form.Select>
                       <Button
                         variant="outline-danger"
@@ -423,7 +423,7 @@ const AdminPage: React.FC = () => {
                 <option value="scout">Scout</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
-                <option value="loan_manager">Loan Manager</option>
+                <option value="loan">Loan</option>
               </Form.Select>
             </Form.Group>
           </Form>

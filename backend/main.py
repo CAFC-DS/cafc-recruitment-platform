@@ -436,7 +436,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: Optional[str] = "scout"  # scout, manager, admin, loan_manager
+    role: Optional[str] = "scout"  # scout, manager, admin, loan
     firstname: str
     lastname: str
 
@@ -1123,7 +1123,7 @@ class AdminUserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: str  # admin, scout, manager, loan_manager
+    role: str  # admin, scout, manager, loan
     firstname: str
     lastname: str
 
@@ -1321,9 +1321,9 @@ async def update_user_role(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    if new_role not in ["admin", "scout", "manager"]:
+    if new_role not in ["admin", "scout", "manager", "loan"]:
         raise HTTPException(
-            status_code=400, detail="Invalid role. Must be admin, scout, or manager"
+            status_code=400, detail="Invalid role. Must be admin, scout, manager, or loan"
         )
 
     if user_id == current_user.id:
@@ -3704,13 +3704,13 @@ async def get_all_scout_reports(
                     logging.info(
                         f"Applied scout filtering for user ID: {current_user.id}"
                     )
-                elif current_user.role == "loan_manager":
-                    # Loan managers see their own reports OR any Loan Reports
+                elif current_user.role == "loan":
+                    # Loan users see their own reports OR any Loan Reports
                     where_clauses.append("(sr.USER_ID = %s OR sr.PURPOSE = %s)")
                     sql_params.append(current_user.id)
                     sql_params.append("Loan Report")
                     logging.info(
-                        f"Applied loan_manager filtering for user ID: {current_user.id}"
+                        f"Applied loan filtering for user ID: {current_user.id}"
                     )
                 else:
                     logging.info(
@@ -4011,13 +4011,20 @@ async def get_player_profile(
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
-            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
                 scout_sql = scout_sql.replace(
                     "WHERE sr.PLAYER_ID = %s",
                     "WHERE sr.PLAYER_ID = %s AND sr.USER_ID = %s",
                 )
                 scout_values = (actual_player_id, current_user.id)
+            elif current_user.role == "loan":
+                # Loan users see their own reports OR any Loan Reports
+                scout_sql = scout_sql.replace(
+                    "WHERE sr.PLAYER_ID = %s",
+                    "WHERE sr.PLAYER_ID = %s AND (sr.USER_ID = %s OR sr.PURPOSE = %s)",
+                )
+                scout_values = (actual_player_id, current_user.id, "Loan Report")
         except:
             pass
 
@@ -4202,14 +4209,19 @@ async def get_player_attributes(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users
+        # Apply role-based filtering for scout users and loan
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
-            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
+            elif current_user.role == "loan":
+                # Loan users see their own reports OR any Loan Reports
+                base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
+                query_params.append(current_user.id)
+                query_params.append("Loan Report")
         except:
             # USER_ID column doesn't exist, skip filtering
             pass
@@ -4392,15 +4404,15 @@ async def get_player_scout_reports(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users and loan_manager
+        # Apply role-based filtering for scout users and loan
         try:
             test_cursor = conn.cursor()
             test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == "loan_manager":
-                # Loan managers see their own reports OR any Loan Reports
+            elif current_user.role == "loan":
+                # Loan users see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
@@ -4503,13 +4515,18 @@ async def get_player_position_counts(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users
+        # Apply role-based filtering for scout users and loan
         try:
             test_cursor = conn.cursor()
-            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
+            elif current_user.role == "loan":
+                # Loan users see their own reports OR any Loan Reports
+                base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
+                query_params.append(current_user.id)
+                query_params.append("Loan Report")
         except:
             pass
 
