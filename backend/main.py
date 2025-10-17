@@ -1842,7 +1842,7 @@ async def detect_data_clashes(
 
     conn = None
     try:
-        from Levenshtein import distance as levenshtein_distance
+        from rapidfuzz.distance import Levenshtein as levenshtein_module
         from collections import defaultdict
 
         conn = get_snowflake_connection()
@@ -1998,7 +1998,7 @@ async def detect_data_clashes(
                 if len_diff / max_len > 0.3:  # If length difference > 30%, skip
                     continue
 
-                dist = levenshtein_distance(name1, name2)
+                dist = levenshtein_module.distance(name1, name2)
                 similarity = (1 - (dist / max_len)) * 100 if max_len > 0 else 0
 
                 # Flag if similarity > 70% AND < 100% (70-99% similar, not exact)
