@@ -26,7 +26,7 @@ import {
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
-import { getPerformanceScoreColor } from "../utils/colorUtils";
+import { getPerformanceScoreColor, getFlagColor, getContrastTextColor } from "../utils/colorUtils";
 import {
   PlayerProfile,
   PlayerAttributes,
@@ -54,6 +54,9 @@ interface ScoutReport {
   overall_rating: number | null;
   attribute_count: number;
   report_type: string | null;
+  position_played: string | null;
+  flag_category?: string;
+  scouting_type?: string;
 }
 
 interface ScoutReportsData {
@@ -61,6 +64,78 @@ interface ScoutReportsData {
   total_reports: number;
   reports: ScoutReport[];
 }
+
+// Helper functions for flag badges
+const getFlagBadge = (flagType?: string) => {
+  const flagColor = getFlagColor(flagType || "");
+
+  return (
+    <span
+      className="badge"
+      style={{
+        backgroundColor: flagColor,
+        color: "white",
+        border: "none",
+        cursor: "pointer",
+        fontWeight: "500",
+      }}
+      title={`Flag: ${flagType || "Unknown"}`}
+    >
+      🏳️
+    </span>
+  );
+};
+
+const getFlagTypeText = (flagType?: string) => {
+  const flagColor = getFlagColor(flagType || "");
+
+  return (
+    <span
+      className="badge"
+      style={{
+        backgroundColor: flagColor,
+        color: "white",
+        border: "none",
+        fontWeight: "500",
+        fontSize: "0.9rem",
+      }}
+    >
+      {flagType || "Flag"}
+    </span>
+  );
+};
+
+const getScoutingTypeBadge = (scoutingType: string) => {
+  const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
+  return (
+    <span
+      className="badge badge-neutral-grey"
+      style={{ cursor: "pointer", fontSize: "16px" }}
+      title={`Scouting Type: ${scoutingType}`}
+    >
+      {icon}
+    </span>
+  );
+};
+
+const getReportTypeBadge = (
+  reportType: string,
+  _scoutingType: string,
+  flagType?: string,
+) => {
+  switch (reportType?.toLowerCase()) {
+    case "flag":
+    case "flag assessment":
+      return getFlagBadge(flagType);
+    case "clips":
+      return <span className="badge badge-neutral-grey">Clips</span>;
+    case "player assessment":
+    case "player":
+      return null;
+    default:
+      return <span className="badge badge-neutral-grey">{reportType}</span>;
+  }
+};
 
 const PlayerProfilePage: React.FC = () => {
   const { playerId, cafcPlayerId } = useParams<{
@@ -586,7 +661,7 @@ const PlayerProfilePage: React.FC = () => {
                           className="badge score-badge ms-2"
                           style={{
                             backgroundColor: getPerformanceScoreColor(avgScore),
-                            color: "white",
+                            color: "white !important",
                             fontWeight: "bold",
                             fontSize: "1rem",
                             padding: "0.4rem 0.8rem",
@@ -651,102 +726,175 @@ const PlayerProfilePage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Horizontal Timeline */}
-              <div className="horizontal-timeline">
-                <div className="timeline-track">
-                  {scoutReportsData.reports.slice(0, 4).map((report, index) => (
-                    <div key={report.report_id} className="timeline-card">
-                      <div className="timeline-card-header">
-                        <div className="timeline-card-date">
-                          {new Date(report.report_date).toLocaleDateString(
-                            "en-GB",
-                            {
-                              day: "numeric",
-                              month: "short",
-                            },
-                          )}
-                        </div>
-                        {report.overall_rating && (
-                          <span
-                            className="badge timeline-rating"
-                            style={{
-                              backgroundColor: getPerformanceScoreColor(
-                                report.overall_rating,
-                              ),
-                              color: "white",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            {report.overall_rating}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="timeline-card-body">
-                        <div className="timeline-card-type">
-                          <span className="badge badge-neutral-grey type-badge">
-                            {report.report_type || "Scout Report"}
-                          </span>
-                        </div>
-
-                        <div className="timeline-card-fixture">
-                          {report.fixture ? (
-                            <>
-                              <small className="fixture-text">
-                                {report.fixture}
+              {/* Recent Scouting Cards - Matching ScoutingPage Style */}
+              <Row>
+                {scoutReportsData.reports.slice(0, 4).map((report, index) => (
+                  <Col sm={6} md={4} lg={3} key={report.report_id} className="mb-4">
+                    <Card
+                      className="h-100 shadow-sm hover-card"
+                      style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                    >
+                      <Card.Body className="p-3">
+                        {/* Top Row - 2 columns */}
+                        <Row className="mb-3 pb-2 border-bottom">
+                          {/* Left: Player Info */}
+                          <Col xs={6}>
+                            <div>
+                              <div
+                                className="fw-bold d-block mb-1"
+                                style={{
+                                  color: "#212529",
+                                  fontSize: "1rem",
+                                  textAlign: "left",
+                                }}
+                              >
+                                {profile.player_name}
+                              </div>
+                              <small className="text-muted d-block">
+                                Position: {report.position_played || "N/A"}
                               </small>
-                              {report.fixture_date && (
-                                <small className="fixture-date">
-                                  {new Date(
-                                    report.fixture_date,
-                                  ).toLocaleDateString("en-GB")}
-                                </small>
+                              <small className="text-muted d-block">
+                                Age: {profile.age || "N/A"}
+                              </small>
+                            </div>
+                          </Col>
+
+                          {/* Right: Scout Info */}
+                          <Col xs={6} className="text-end">
+                            <div>
+                              <small className="text-muted d-block">
+                                {report.scout_name}
+                              </small>
+                              <small className="text-muted d-block">
+                                Report Date:{" "}
+                                {new Date(report.report_date).toLocaleDateString()}
+                              </small>
+                            </div>
+                          </Col>
+                        </Row>
+
+                        {/* Middle Row - 2 columns */}
+                        <Row className="mb-3 pb-2 border-bottom">
+                          {/* Left: Fixture Info */}
+                          <Col xs={6}>
+                            <div>
+                              {report.fixture_date && report.fixture_date !== "N/A" ? (
+                                <>
+                                  <small
+                                    className="text-muted d-block mb-1"
+                                    style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                  >
+                                    <span className="fw-semibold">Fixture Date:</span>{" "}
+                                    {new Date(report.fixture_date).toLocaleDateString()}
+                                  </small>
+                                  {report.fixture && report.fixture !== "N/A" && (
+                                    <small
+                                      className="text-muted d-block"
+                                      style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                    >
+                                      <span className="fw-semibold">Fixture:</span>{" "}
+                                      {report.fixture}
+                                    </small>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <small
+                                    className="text-muted d-block mb-1"
+                                    style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                  >
+                                    <span className="fw-semibold">Fixture Date:</span> N/A
+                                  </small>
+                                  <small
+                                    className="text-muted d-block"
+                                    style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                  >
+                                    <span className="fw-semibold">Fixture:</span> N/A
+                                  </small>
+                                </>
                               )}
-                            </>
-                          ) : (
-                            <small className="no-fixture">
-                              No fixture info
-                            </small>
-                          )}
-                        </div>
+                            </div>
+                          </Col>
 
-                        <div className="timeline-card-scout">
-                          by {report.scout_name}
-                        </div>
-                      </div>
+                          {/* Right: Score */}
+                          <Col xs={6} className="text-end">
+                            <div>
+                              {report.report_type?.toLowerCase() !== "flag" &&
+                              report.report_type?.toLowerCase() !== "flag assessment" ? (
+                                <>
+                                  <small className="text-muted fw-semibold d-block">Score</small>
+                                  {report.overall_rating && (
+                                    <span
+                                      className="badge"
+                                      style={{
+                                        backgroundColor: getPerformanceScoreColor(
+                                          report.overall_rating,
+                                        ),
+                                        color: "white !important",
+                                        fontWeight: "bold",
+                                        fontSize: "0.9rem",
+                                      }}
+                                    >
+                                      {report.overall_rating}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                getFlagTypeText(report.flag_category)
+                              )}
+                            </div>
+                          </Col>
+                        </Row>
 
-                      <Button
-                        size="sm"
-                        variant="outline-primary"
-                        className="timeline-card-btn"
-                        onClick={() => handleOpenReportModal(report.report_id)}
-                        disabled={loadingReportId === report.report_id}
-                      >
-                        {loadingReportId === report.report_id ? (
-                          <Spinner animation="border" size="sm" />
-                        ) : (
-                          "View"
-                        )}
-                      </Button>
+                        {/* Bottom Row - Tags and Actions */}
+                        <Row className="align-items-center">
+                          {/* Left: Tags */}
+                          <Col xs={6}>
+                            <div className="d-flex align-items-center gap-1">
+                              <small className="text-muted fw-semibold me-1">Tags:</small>
+                              {getReportTypeBadge(
+                                report.report_type || "",
+                                report.scouting_type || "",
+                                report.flag_category,
+                              )}
+                              {report.scouting_type && (
+                                <span className="ms-1">
+                                  {getScoutingTypeBadge(report.scouting_type)}
+                                </span>
+                              )}
+                            </div>
+                          </Col>
 
-                      {/* Connector line to next card */}
-                      {index <
-                        Math.min(scoutReportsData.reports.length - 1, 3) && (
-                        <div className="timeline-connector"></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                          {/* Right: Actions */}
+                          <Col xs={6} className="text-end">
+                            <Button
+                              size="sm"
+                              className="btn-action-circle btn-action-view"
+                              onClick={() => handleOpenReportModal(report.report_id)}
+                              disabled={loadingReportId === report.report_id}
+                              title="View Report"
+                            >
+                              {loadingReportId === report.report_id ? (
+                                <Spinner as="span" animation="border" size="sm" />
+                              ) : (
+                                "👁️"
+                              )}
+                            </Button>
+                          </Col>
+                        </Row>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
 
+              </Row>
                 {scoutReportsData.reports.length > 4 && (
-                  <div className="timeline-more">
+                  <div className="text-center mt-3">
                     <small className="text-muted">
-                      +{scoutReportsData.reports.length - 4} more reports in
-                      tabs below
+                      +{scoutReportsData.reports.length - 4} more reports available
                     </small>
                   </div>
                 )}
-              </div>
             </>
           ) : (
             <div className="empty-state-compact">
@@ -755,111 +903,115 @@ const PlayerProfilePage: React.FC = () => {
           )}
         </div>
 
-        {/* Compact Attributes Section */}
-        {attributesLoading ? (
-          <div className="attributes-loading mt-3 mb-2">
-            <div className="loading-content-compact">
-              <Spinner animation="border" size="sm" />
-              <span>Loading attributes...</span>
-            </div>
-          </div>
-        ) : attributes &&
-          attributes.total_attributes &&
-          attributes.total_attributes > 0 ? (
-          <div className="attributes-section-compact mt-3 mb-3">
-            {/* Compact Legend */}
-            <div className="attributes-legend-compact mb-2">
-              <h4 className="legend-title-compact">📊 Player Attributes</h4>
-              <p className="legend-text-compact">
-                <span className="dot-compact filled"></span> = Average from{" "}
-                {attributes.total_reports} report
-                {attributes.total_reports !== 1 ? "s" : ""} |{" "}
-                {attributes.total_attributes} attributes assessed
-              </p>
-            </div>
+        {/* Side-by-Side: Attributes and Position Analysis */}
+        <Row className="mt-4 mb-4">
+          {/* Left Column: Player Attributes */}
+          <Col lg={4} style={{ display: "flex", flexDirection: "column" }}>
+            {attributesLoading ? (
+              <div className="attributes-loading mt-3 mb-2">
+                <div className="loading-content-compact">
+                  <Spinner animation="border" size="sm" />
+                  <span>Loading attributes...</span>
+                </div>
+              </div>
+            ) : attributes &&
+              attributes.total_attributes &&
+              attributes.total_attributes > 0 ? (
+              <div className="attributes-section-compact" style={{ flex: 1 }}>
+                {/* Compact Legend */}
+                <div className="attributes-legend-compact mb-2">
+                  <h4 className="legend-title-compact">📊 Player Attributes</h4>
+                  <p className="legend-text-compact">
+                    <span className="dot-compact filled"></span> = Average from{" "}
+                    {attributes.total_reports} report
+                    {attributes.total_reports !== 1 ? "s" : ""} |{" "}
+                    {attributes.total_attributes} attributes assessed
+                  </p>
+                </div>
 
-            {/* Compact Attribute Data */}
-            <Row>
-              {Object.entries(attributes.attribute_groups || {}).map(
-                ([groupName, groupAttributes]) => {
-                  // Get emoji for group
-                  const groupEmojis: { [key: string]: string } = {
-                    Physical: "💪",
-                    Technical: "⚽",
-                    Mental: "🧠",
-                    Defensive: "🛡️",
-                    Attacking: "⚡",
-                    Other: "📊",
-                  };
+                {/* Compact Attribute Data */}
+                <div>
+                  {Object.entries(attributes.attribute_groups || {}).map(
+                    ([groupName, groupAttributes]) => {
+                      // Get emoji for group
+                      const groupEmojis: { [key: string]: string } = {
+                        Physical: "💪",
+                        Technical: "⚽",
+                        Mental: "🧠",
+                        Defensive: "🛡️",
+                        Attacking: "⚡",
+                        Other: "📊",
+                      };
 
-                  return (
-                    <Col lg={4} md={6} key={groupName}>
-                      <div
-                        className="attribute-section-compact mb-3"
-                        style={{
-                          borderLeft: `6px solid ${getAttributeGroupColor(groupName)}`,
-                          backgroundColor: `${getAttributeGroupColor(groupName)}15`,
-                          border: `1px solid ${getAttributeGroupColor(groupName)}40`,
-                          borderRadius: "8px",
-                          padding: "12px",
-                        }}
-                      >
-                        <h5
-                          className="section-title-compact"
+                      return (
+                        <div
+                          key={groupName}
+                          className="attribute-section-compact mb-3"
                           style={{
-                            color: getAttributeGroupColor(groupName),
-                            fontWeight: "bold",
-                            textShadow: "1px 1px 2px rgba(0,0,0,0.1)",
+                            borderLeft: `6px solid ${getAttributeGroupColor(groupName)}`,
+                            backgroundColor: `${getAttributeGroupColor(groupName)}15`,
+                            border: `1px solid ${getAttributeGroupColor(groupName)}40`,
+                            borderRadius: "8px",
+                            padding: "12px",
                           }}
                         >
-                          {groupEmojis[groupName] || "📊"}{" "}
-                          {groupName.split(" // ")[0]}
-                        </h5>
-                        <div className="attribute-grid-compact">
-                          {groupAttributes.map((attr) => (
-                            <div
-                              key={attr.name}
-                              className="attribute-row-compact"
-                            >
-                              <span className="attribute-name-compact">
-                                {attr.name}
-                              </span>
-                              <div className="dots-compact">
-                                {[...Array(10)].map((_, i) => (
-                                  <span
-                                    key={i}
-                                    className={`dot-mini ${i < Math.round(attr.average_score) ? "filled" : "empty"}`}
-                                  ></span>
-                                ))}
-                                <span className="score-compact">
-                                  {attr.average_score.toFixed(2)}
+                          <h5
+                            className="section-title-compact"
+                            style={{
+                              color: getAttributeGroupColor(groupName),
+                              fontWeight: "bold",
+                              textShadow: "1px 1px 2px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            {groupEmojis[groupName] || "📊"}{" "}
+                            {groupName.split(" // ")[0]}
+                          </h5>
+                          <div className="attribute-grid-compact">
+                            {groupAttributes.map((attr) => (
+                              <div
+                                key={attr.name}
+                                className="attribute-row-compact"
+                              >
+                                <span className="attribute-name-compact">
+                                  {attr.name}
                                 </span>
+                                <div className="dots-compact">
+                                  {[...Array(10)].map((_, i) => (
+                                    <span
+                                      key={i}
+                                      className={`dot-mini ${i < Math.round(attr.average_score) ? "filled" : "empty"}`}
+                                    ></span>
+                                  ))}
+                                  <span className="score-compact" style={{ color: "black" }}>
+                                    {attr.average_score.toFixed(2)}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </Col>
-                  );
-                },
-              )}
-            </Row>
-          </div>
-        ) : (
-          <div className="no-attributes-section mt-4 mb-3">
-            <div className="no-attributes-content">
-              <h4>📊 Player Attributes</h4>
-              <p>
-                {(profile.scout_reports || []).length === 0
-                  ? "No scout reports available yet. Attributes will appear here once scout assessments are submitted."
-                  : "No attribute data found in the existing scout reports. Attributes may not have been assessed yet."}
-              </p>
-            </div>
-          </div>
-        )}
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="no-attributes-section">
+                <div className="no-attributes-content">
+                  <h4>📊 Player Attributes</h4>
+                  <p>
+                    {(profile.scout_reports || []).length === 0
+                      ? "No scout reports available yet. Attributes will appear here once scout assessments are submitted."
+                      : "No attribute data found in the existing scout reports. Attributes may not have been assessed yet."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </Col>
 
-        {/* Position-Filterable Radar Charts */}
-        <div className="radar-charts-section mt-4 mb-4">
+          {/* Right Column: Position Analysis */}
+          <Col lg={8} style={{ display: "flex", flexDirection: "column" }}>
+            <div className="radar-charts-section" style={{ flex: 1 }}>
           <div className="radar-header mb-3">
             <h4>📊 Position Analysis</h4>
             <div className="position-disclaimer mb-3 p-3" style={{
@@ -885,12 +1037,6 @@ const PlayerProfilePage: React.FC = () => {
                   </option>
                 ))}
               </Form.Select>
-              <small className="text-muted">
-                Available positions:{" "}
-                {availablePositions.length > 0
-                  ? availablePositions.join(", ")
-                  : "Using default positions"}
-              </small>
             </div>
           </div>
 
@@ -1034,7 +1180,7 @@ const PlayerProfilePage: React.FC = () => {
 
               return (
                 <Row>
-                  <Col lg={9}>
+                  <Col lg={8}>
                     <div
                       style={{
                         height: "700px",
@@ -1052,7 +1198,7 @@ const PlayerProfilePage: React.FC = () => {
                       </div>
                     </div>
                   </Col>
-                  <Col lg={3} className="d-flex flex-column">
+                  <Col lg={4} className="d-flex flex-column">
                     <Card
                       className="shadow-sm flex-fill"
                       style={{ borderRadius: "12px" }}
@@ -1083,7 +1229,7 @@ const PlayerProfilePage: React.FC = () => {
                                       chartData.datasets[0].backgroundColor[
                                         index
                                       ],
-                                    color: "white",
+                                    color: "white !important",
                                     fontWeight: "bold",
                                     fontSize: "0.75rem",
                                     border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
@@ -1151,7 +1297,9 @@ const PlayerProfilePage: React.FC = () => {
                 </Row>
               );
             })()}
-        </div>
+            </div>
+          </Col>
+        </Row>
       </Container>
 
       {/* Add Note Modal */}

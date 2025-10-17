@@ -8,9 +8,12 @@ import {
   Form,
   Alert,
   Spinner,
+  Tabs,
+  Tab,
 } from "react-bootstrap";
 import axiosInstance from "../axiosInstance";
 import axios from "axios";
+import DataClashesTab from "../components/DataClashesTab";
 
 interface User {
   id: number;
@@ -31,6 +34,7 @@ interface CreateUserForm {
 }
 
 const AdminPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<string>("users");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -205,10 +209,19 @@ const AdminPage: React.FC = () => {
 
   return (
     <Container className="mt-4">
-      <Card>
-        <Card.Header>
-          <div className="d-flex justify-content-between align-items-center">
-            <h4>👥 User Management</h4>
+      <h2 className="mb-4">⚙️ Admin Dashboard</h2>
+
+      <Tabs
+        id="admin-tabs"
+        activeKey={activeTab}
+        onSelect={(k) => setActiveTab(k || "users")}
+        className="mb-3"
+      >
+        <Tab eventKey="users" title="👥 User Management">
+          <Card>
+            <Card.Header>
+              <div className="d-flex justify-content-between align-items-center">
+                <h4>User Management</h4>
             <div>
               <Button
                 variant="outline-secondary"
@@ -303,6 +316,7 @@ const AdminPage: React.FC = () => {
                         <option value="scout">Scout</option>
                         <option value="manager">Manager</option>
                         <option value="admin">Admin</option>
+                        <option value="loan_manager">Loan Manager</option>
                       </Form.Select>
                       <Button
                         variant="outline-danger"
@@ -322,6 +336,12 @@ const AdminPage: React.FC = () => {
           )}
         </Card.Body>
       </Card>
+      </Tab>
+
+      <Tab eventKey="clashes" title="⚠️ Data Clashes">
+        <DataClashesTab />
+      </Tab>
+    </Tabs>
 
       {/* Create User Modal */}
       <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)}>
@@ -403,6 +423,7 @@ const AdminPage: React.FC = () => {
                 <option value="scout">Scout</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
+                <option value="loan_manager">Loan Manager</option>
               </Form.Select>
             </Form.Group>
           </Form>

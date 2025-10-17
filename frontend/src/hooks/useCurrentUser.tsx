@@ -43,7 +43,9 @@ export const useCurrentUser = () => {
     loading,
     isAdmin: user?.role === "admin",
     isManager: user?.role === "manager",
+    isLoanManager: user?.role === "loan_manager",
     canAccessPlayers: user?.role === "admin" || user?.role === "manager",
     canAccessAnalytics: user?.role === "admin" || user?.role === "manager",
+    canAccessLoanReports: user?.role === "admin" || user?.role === "manager" || user?.role === "loan_manager",
   };
 };

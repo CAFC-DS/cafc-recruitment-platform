@@ -82,6 +82,7 @@ const ScoutingPage: React.FC = () => {
 
   // Add debouncing and caching for player search
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Record<string, any[]>>({});
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -267,28 +268,33 @@ const ScoutingPage: React.FC = () => {
     const query = e.target.value;
     setPlayerSearch(query);
 
-    // Clear previous timeout
+    // Clear previous timeouts
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+    }
 
-    // Clear error immediately when user starts typing
+    // Clear error and loading immediately when user starts typing
     setPlayerSearchError("");
+    setPlayerSearchLoading(false);
 
     if (query.length <= 2) {
       setPlayers([]);
       setShowDropdown(false);
-      setPlayerSearchLoading(false);
       return;
     }
 
-    // Set loading immediately for better UX
-    setPlayerSearchLoading(true);
+    // Show loading indicator only after user stops typing for 300ms
+    loadingTimeoutRef.current = setTimeout(() => {
+      setPlayerSearchLoading(true);
+    }, 300);
 
-    // Debounce the actual search
+    // Debounce the actual search with longer delay (600ms)
     searchTimeoutRef.current = setTimeout(() => {
       performPlayerSearch(query);
-    }, 300); // 300ms delay
+    }, 600);
   };
 
   const handlePlayerSelect = (player: any) => {
@@ -372,12 +378,33 @@ const ScoutingPage: React.FC = () => {
         className="badge"
         style={{
           backgroundColor: flagColor,
+          color: "white",
           border: "none",
           cursor: "pointer",
+          fontWeight: "500",
         }}
         title={`Flag: ${flagType || "Unknown"}`}
       >
         🏳️
+      </span>
+    );
+  };
+
+  const getFlagTypeText = (flagType?: string) => {
+    const flagColor = getFlagColor(flagType || "");
+
+    return (
+      <span
+        className="badge"
+        style={{
+          backgroundColor: flagColor,
+          color: "white",
+          border: "none",
+          fontWeight: "500",
+          fontSize: "0.9rem",
+        }}
+      >
+        {flagType || "Flag"}
       </span>
     );
   };
@@ -513,6 +540,20 @@ const ScoutingPage: React.FC = () => {
       <Card className="mb-4">
         <Card.Body>
           <Card.Title>Player Search</Card.Title>
+          <div className="mb-3 p-3" style={{
+            backgroundColor: "#fff3cd",
+            border: "1px solid #ffc107",
+            borderRadius: "8px",
+            fontSize: "0.9rem"
+          }}>
+            <strong>⚠️ Note:</strong> Some players may show "NO_SQUAD" as their club. This occurs when:
+            <ul className="mb-0 mt-2" style={{ fontSize: "0.85rem" }}>
+              <li>The player is a free agent or retired</li>
+              <li>They're playing for a national team in international competitions (World Cup, Euros, etc.)</li>
+              <li>Their club squad wasn't included in the specific competition data</li>
+              <li>The data only tracks national teams for certain tournaments, not their club affiliations</li>
+            </ul>
+          </div>
           <Form.Group as={Col} controlId="playerName">
             <div className="position-relative">
               <Form.Control
@@ -1045,11 +1086,7 @@ const ScoutingPage: React.FC = () => {
                             backgroundColor: getPerformanceScoreColor(
                               report.performance_score,
                             ),
-                            color: getContrastTextColor(
-                              getPerformanceScoreColor(
-                                report.performance_score,
-                              ),
-                            ),
+                            color: "white !important",
                             fontWeight: "bold",
                             ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                           }}
@@ -1232,37 +1269,32 @@ const ScoutingPage: React.FC = () => {
                         {/* Right: Score */}
                         <Col xs={6} className="text-end">
                           <div>
-                            <small className="text-muted fw-semibold d-block">
-                              Score
-                            </small>
                             {report.report_type?.toLowerCase() !== "flag" &&
-                            report.report_type?.toLowerCase() !==
-                              "flag assessment" ? (
-                              <span
-                                className={`badge ${
-                                  report.performance_score === 9 ? 'performance-score-9' :
-                                  report.performance_score === 10 ? 'performance-score-10' : ''
-                                }`}
-                                style={{
-                                  backgroundColor: getPerformanceScoreColor(
-                                    report.performance_score,
-                                  ),
-                                  color: getContrastTextColor(
-                                    getPerformanceScoreColor(
+                            report.report_type?.toLowerCase() !== "flag assessment" ? (
+                              <>
+                                <small className="text-muted fw-semibold d-block">
+                                  Score
+                                </small>
+                                <span
+                                  className={`badge ${
+                                    report.performance_score === 9 ? 'performance-score-9' :
+                                    report.performance_score === 10 ? 'performance-score-10' : ''
+                                  }`}
+                                  style={{
+                                    backgroundColor: getPerformanceScoreColor(
                                       report.performance_score,
                                     ),
-                                  ),
-                                  fontWeight: "bold",
-                                  fontSize: "0.9rem",
-                                  ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
-                                }}
-                              >
-                                {report.performance_score}
-                              </span>
+                                    color: "white !important",
+                                    fontWeight: "bold",
+                                    fontSize: "0.9rem",
+                                    ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
+                                  }}
+                                >
+                                  {report.performance_score}
+                                </span>
+                              </>
                             ) : (
-                              <div>
-                                {getFlagBadge((report as any).flag_category)}
-                              </div>
+                              getFlagTypeText((report as any).flag_category)
                             )}
                           </div>
                         </Col>

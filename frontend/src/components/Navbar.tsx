@@ -18,7 +18,7 @@ import logo from "../assets/logo.png";
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme } = useTheme();
-  const { isAdmin, canAccessPlayers, canAccessAnalytics } = useCurrentUser();
+  const { isAdmin, isLoanManager, canAccessPlayers, canAccessAnalytics, canAccessLoanReports } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
@@ -183,9 +183,6 @@ const AppNavbar: React.FC = () => {
           <Nav className="me-auto">
             {token && ( // Only show links if authenticated
               <>
-                <Nav.Link as={Link} to="/">
-                  Home
-                </Nav.Link>
                 <Nav.Link as={Link} to="/scouting">
                   ⚽ Scouting
                 </Nav.Link>
@@ -195,11 +192,6 @@ const AppNavbar: React.FC = () => {
                 {canAccessAnalytics && (
                   <Nav.Link as={Link} to="/analytics">
                     📊 Analytics
-                  </Nav.Link>
-                )}
-                {canAccessPlayers && (
-                  <Nav.Link as={Link} to="/players">
-                    👥 Players
                   </Nav.Link>
                 )}
                 {isAdmin && (

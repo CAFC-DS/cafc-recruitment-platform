@@ -11,7 +11,6 @@ import ScoutingPage from './pages/ScoutingPage';
 import IntelPage from './pages/IntelPage';
 import LoginPage from './pages/LoginPage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
-import PlayersPage from './pages/PlayersPage';
 import AdminPage from './pages/AdminPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 
@@ -254,14 +253,6 @@ function App() {
                 <PrivateRoute>
                   <IntelPage />
                 </PrivateRoute>
-              }
-            />
-            <Route
-              path="/players"
-              element={
-                <AdminManagerRoute>
-                  <PlayersPage />
-                </AdminManagerRoute>
               }
             />
             <Route

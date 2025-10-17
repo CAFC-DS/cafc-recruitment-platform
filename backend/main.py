@@ -436,7 +436,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: Optional[str] = "scout"  # scout, manager, admin
+    role: Optional[str] = "scout"  # scout, manager, admin, loan_manager
     firstname: str
     lastname: str
 
@@ -1123,7 +1123,7 @@ class AdminUserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: str  # admin, scout, manager
+    role: str  # admin, scout, manager, loan_manager
     firstname: str
     lastname: str
 
@@ -1829,6 +1829,477 @@ async def merge_players(
             conn.close()
 
 
+@app.get("/admin/detect-clashes")
+async def detect_data_clashes(
+    current_user: User = Depends(get_current_user),
+    max_results: int = 100,
+    name_filter: str = None
+):
+    """Detect potential duplicate players and fixtures (admin only).
+    Optional name_filter to search for specific player names."""antml:parameter>
+</invoke>
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        from Levenshtein import distance as levenshtein_distance
+        from collections import defaultdict
+
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        player_clashes = []
+        fixture_clashes = []
+
+        # Detect player clashes - OPTIMIZED: compare across all clubs
+        # Optional name filter for targeted search
+        if name_filter:
+            cursor.execute(
+                """
+                SELECT
+                    CAFC_PLAYER_ID,
+                    PLAYERID,
+                    PLAYERNAME,
+                    SQUADNAME,
+                    DATA_SOURCE,
+                    FIRSTNAME,
+                    LASTNAME
+                FROM players
+                WHERE PLAYERNAME IS NOT NULL
+                  AND PLAYERNAME ILIKE %s
+                ORDER BY PLAYERNAME
+            """,
+                (f"%{name_filter}%",)
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT
+                    CAFC_PLAYER_ID,
+                    PLAYERID,
+                    PLAYERNAME,
+                    SQUADNAME,
+                    DATA_SOURCE,
+                    FIRSTNAME,
+                    LASTNAME
+                FROM players
+                WHERE PLAYERNAME IS NOT NULL
+                ORDER BY PLAYERNAME
+            """
+            )
+        players = cursor.fetchall()
+
+        # Build a list of all players
+        all_players = []
+        for player in players:
+            cafc_id, player_id, name, squad, data_source, firstname, lastname = player
+            all_players.append({
+                "cafc_player_id": cafc_id,
+                "player_id": player_id,
+                "name": name,
+                "squad": squad,
+                "data_source": data_source,
+                "firstname": firstname,
+                "lastname": lastname,
+            })
+
+        # Compare all players (optimized with early exit)
+        total_comparisons = 0
+        max_comparisons = 50000  # Safety limit
+
+        for i, p1 in enumerate(all_players):
+            if len(player_clashes) >= max_results:
+                break
+
+            for p2 in all_players[i + 1:]:
+                total_comparisons += 1
+                if total_comparisons > max_comparisons:
+                    break
+
+                # Skip if comparing same player
+                if (p1["cafc_player_id"] == p2["cafc_player_id"] and
+                    p1["cafc_player_id"] is not None):
+                    continue
+
+                if (p1["player_id"] == p2["player_id"] and
+                    p1["player_id"] is not None):
+                    continue
+
+                # Calculate Levenshtein distance
+                name1 = (p1["name"] or "").lower().strip()
+                name2 = (p2["name"] or "").lower().strip()
+
+                if not name1 or not name2:
+                    continue
+
+                # Quick length check for early exit
+                len_diff = abs(len(name1) - len(name2))
+                max_len = max(len(name1), len(name2))
+                if len_diff / max_len > 0.3:  # If length difference > 30%, skip
+                    continue
+
+                dist = levenshtein_distance(name1, name2)
+                similarity = (1 - (dist / max_len)) * 100 if max_len > 0 else 0
+
+                # Flag if similarity > 70% (likely duplicates or typos)
+                if similarity > 70:
+                    player_clashes.append({
+                        "player1": {
+                            "universal_id": get_player_universal_id({
+                                "CAFC_PLAYER_ID": p1["cafc_player_id"],
+                                "PLAYERID": p1["player_id"],
+                                "DATA_SOURCE": p1["data_source"],
+                            }),
+                            "cafc_player_id": p1["cafc_player_id"],
+                            "player_id": p1["player_id"],
+                            "name": p1["name"],
+                            "firstname": p1["firstname"],
+                            "lastname": p1["lastname"],
+                            "data_source": p1["data_source"],
+                        },
+                        "player2": {
+                            "universal_id": get_player_universal_id({
+                                "CAFC_PLAYER_ID": p2["cafc_player_id"],
+                                "PLAYERID": p2["player_id"],
+                                "DATA_SOURCE": p2["data_source"],
+                            }),
+                            "cafc_player_id": p2["cafc_player_id"],
+                            "player_id": p2["player_id"],
+                            "name": p2["name"],
+                            "firstname": p2["firstname"],
+                            "lastname": p2["lastname"],
+                            "data_source": p2["data_source"],
+                        },
+                        "squad1": p1["squad"],
+                        "squad2": p2["squad"],
+                        "similarity": round(similarity, 1),
+                        "clash_type": "player",
+                    })
+
+            if total_comparisons > max_comparisons:
+                break
+
+        # Detect fixture clashes - same teams on same date
+        cursor.execute(
+            """
+            SELECT
+                CAFC_MATCH_ID,
+                ID,
+                HOMESQUADNAME,
+                AWAYSQUADNAME,
+                SCHEDULEDDATE,
+                DATA_SOURCE
+            FROM matches
+            ORDER BY SCHEDULEDDATE, HOMESQUADNAME, AWAYSQUADNAME
+        """
+        )
+        matches = cursor.fetchall()
+
+        # Group by home team, away team, and date
+        matches_by_key = defaultdict(list)
+        for match in matches:
+            cafc_id, match_id, home, away, date, data_source = match
+            key = (home, away, str(date))
+            matches_by_key[key].append(
+                {
+                    "cafc_match_id": cafc_id,
+                    "match_id": match_id,
+                    "home": home,
+                    "away": away,
+                    "date": str(date),
+                    "data_source": data_source,
+                }
+            )
+
+        # Find duplicates
+        for key, key_matches in matches_by_key.items():
+            if len(key_matches) > 1:
+                # Multiple matches with same teams and date
+                for i, m1 in enumerate(key_matches):
+                    for m2 in key_matches[i + 1 :]:
+                        fixture_clashes.append(
+                            {
+                                "match1": {
+                                    "universal_id": get_match_universal_id(
+                                        {
+                                            "CAFC_MATCH_ID": m1["cafc_match_id"],
+                                            "ID": m1["match_id"],
+                                            "DATA_SOURCE": m1["data_source"],
+                                        }
+                                    ),
+                                    "cafc_match_id": m1["cafc_match_id"],
+                                    "match_id": m1["match_id"],
+                                    "home": m1["home"],
+                                    "away": m1["away"],
+                                    "date": m1["date"],
+                                    "data_source": m1["data_source"],
+                                },
+                                "match2": {
+                                    "universal_id": get_match_universal_id(
+                                        {
+                                            "CAFC_MATCH_ID": m2["cafc_match_id"],
+                                            "ID": m2["match_id"],
+                                            "DATA_SOURCE": m2["data_source"],
+                                        }
+                                    ),
+                                    "cafc_match_id": m2["cafc_match_id"],
+                                    "match_id": m2["match_id"],
+                                    "home": m2["home"],
+                                    "away": m2["away"],
+                                    "date": m2["date"],
+                                    "data_source": m2["data_source"],
+                                },
+                                "clash_type": "fixture",
+                            }
+                        )
+
+        return {
+            "player_clashes": player_clashes,
+            "fixture_clashes": fixture_clashes,
+            "total_clashes": len(player_clashes) + len(fixture_clashes),
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error detecting clashes: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/admin/check-player-duplicates")
+async def check_player_duplicates(
+    name: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Check if a specific player name has duplicates in the database"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, SQUADNAME, DATA_SOURCE
+            FROM players
+            WHERE PLAYERNAME ILIKE %s
+            ORDER BY PLAYERNAME
+            """,
+            (f"%{name}%",)
+        )
+
+        players = cursor.fetchall()
+
+        result = []
+        for row in players:
+            cafc_id, player_id, pname, squad, source = row
+            result.append({
+                "cafc_player_id": cafc_id,
+                "player_id": player_id,
+                "name": pname,
+                "squad": squad,
+                "data_source": source,
+                "universal_id": get_player_universal_id({
+                    "CAFC_PLAYER_ID": cafc_id,
+                    "PLAYERID": player_id,
+                    "DATA_SOURCE": source
+                })
+            })
+
+        return {
+            "search": name,
+            "count": len(result),
+            "players": result
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/admin/merge-duplicate-match")
+async def merge_duplicate_match(
+    keep_match_universal_id: str,
+    remove_match_universal_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Merge duplicate match records (admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Parse universal IDs
+        keep_condition, keep_params = resolve_match_lookup(keep_match_universal_id)
+        remove_condition, remove_params = resolve_match_lookup(remove_match_universal_id)
+
+        # Get the match to keep
+        cursor.execute(
+            f"SELECT CAFC_MATCH_ID, ID, HOMESQUADNAME, AWAYSQUADNAME FROM matches WHERE {keep_condition}",
+            keep_params,
+        )
+        keep_match = cursor.fetchone()
+        if not keep_match:
+            raise HTTPException(status_code=404, detail="Target match not found")
+
+        keep_cafc_id, keep_id, home, away = keep_match
+
+        # Get the match to remove
+        cursor.execute(
+            f"SELECT CAFC_MATCH_ID, ID FROM matches WHERE {remove_condition}",
+            remove_params,
+        )
+        remove_match = cursor.fetchone()
+        if not remove_match:
+            raise HTTPException(status_code=404, detail="Match to remove not found")
+
+        remove_cafc_id, remove_id = remove_match
+
+        results = []
+
+        # Update scout reports - handle both CAFC_MATCH_ID and MATCH_ID
+        if remove_cafc_id:
+            cursor.execute(
+                """
+                UPDATE scout_reports
+                SET MATCH_ID = %s
+                WHERE MATCH_ID = %s
+            """,
+                (keep_cafc_id if keep_cafc_id else keep_id, remove_cafc_id),
+            )
+            results.append(f"Updated {cursor.rowcount} scout reports (CAFC)")
+
+        if remove_id:
+            cursor.execute(
+                """
+                UPDATE scout_reports
+                SET MATCH_ID = %s
+                WHERE MATCH_ID = %s
+            """,
+                (keep_cafc_id if keep_cafc_id else keep_id, remove_id),
+            )
+            results.append(f"Updated {cursor.rowcount} scout reports (external)")
+
+        # Delete the duplicate match
+        cursor.execute(f"DELETE FROM matches WHERE {remove_condition}", remove_params)
+        results.append(f"Deleted duplicate match")
+
+        conn.commit()
+
+        return {
+            "message": f"Successfully merged match: {home} vs {away}",
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error merging matches: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/admin/delete-duplicate")
+async def delete_duplicate(
+    entity_type: str,
+    universal_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a duplicate player or match (admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    if entity_type not in ["player", "match"]:
+        raise HTTPException(
+            status_code=400, detail="entity_type must be 'player' or 'match'"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        if entity_type == "player":
+            condition, params = resolve_player_lookup(universal_id)
+
+            # Check if player has any reports
+            cursor.execute(
+                f"""
+                SELECT COUNT(*) FROM scout_reports sr
+                WHERE {condition.replace('PLAYERID', 'sr.PLAYER_ID').replace('CAFC_PLAYER_ID', 'sr.CAFC_PLAYER_ID').replace('DATA_SOURCE', 'sr.DATA_SOURCE')}
+            """,
+                params,
+            )
+            report_count = cursor.fetchone()[0]
+
+            if report_count > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot delete player with {report_count} associated reports. Use merge instead.",
+                )
+
+            # Delete player
+            cursor.execute(f"DELETE FROM players WHERE {condition}", params)
+            deleted_count = cursor.rowcount
+
+        else:  # match
+            condition, params = resolve_match_lookup(universal_id)
+
+            # Check if match has any reports
+            cursor.execute(
+                f"""
+                SELECT COUNT(*) FROM scout_reports
+                WHERE MATCH_ID IN (
+                    SELECT COALESCE(CAFC_MATCH_ID, ID) FROM matches WHERE {condition}
+                )
+            """,
+                params,
+            )
+            report_count = cursor.fetchone()[0]
+
+            if report_count > 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot delete match with {report_count} associated reports. Use merge instead.",
+                )
+
+            # Delete match
+            cursor.execute(f"DELETE FROM matches WHERE {condition}", params)
+            deleted_count = cursor.rowcount
+
+        conn.commit()
+
+        return {
+            "message": f"Successfully deleted {entity_type}",
+            "deleted_count": deleted_count,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error deleting {entity_type}: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.post("/players")
 async def add_player(player: Player, current_user: User = Depends(get_current_user)):
     """Add a manual player to the database with separate ID system"""
@@ -2036,22 +2507,26 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 search_patterns.append(f"%{normalized_word}%")
 
                 # Add common accent variations for better database matching
-                if normalized_word == "oscar":
-                    search_patterns.extend(
-                        [
-                            "%Óscar%",
-                            "%óscar%",
-                            "%Òscar%",
-                            "%òscar%",
-                            "%Ôscar%",
-                            "%ôscar%",
-                            "%Õscar%",
-                            "%õscar%",
-                        ]
-                    )
-                elif normalized_word == "jose":
+                word_lower = normalized_word.lower()
+
+                if word_lower == "marton":
+                    search_patterns.extend(["%Márton%", "%márton%", "%Marton%"])
+                elif word_lower == "dardai":
+                    search_patterns.extend(["%Dárdai%", "%dárdai%", "%Dardai%"])
+                elif word_lower == "jokubas":
+                    search_patterns.extend(["%Jokūbas%", "%jokūbas%", "%Jokubas%"])
+                elif word_lower == "mazionis":
+                    search_patterns.extend(["%Mažionis%", "%mažionis%", "%Mazionis%"])
+                elif word_lower == "oscar":
+                    search_patterns.extend([
+                        "%Óscar%", "%óscar%", "%Òscar%", "%òscar%",
+                        "%Ôscar%", "%ôscar%", "%Õscar%", "%õscar%"
+                    ])
+                elif word_lower == "jose":
                     search_patterns.extend(["%José%", "%josé%", "%Josè%", "%josè%"])
-                # Add more common name variations as needed
+                elif word_lower == "joao":
+                    search_patterns.extend(["%João%", "%joão%", "%Joao%"])
+                # Add more as needed
 
         # Build the WHERE clause with multiple ILIKE conditions
         where_conditions = " OR ".join(["PLAYERNAME ILIKE %s"] * len(search_patterns))
@@ -2672,6 +3147,13 @@ async def get_scout_report(
         if not report:
             raise HTTPException(status_code=404, detail="Scout report not found")
 
+        # Role-based authorization
+        # For loan_manager: only allow access to Loan Reports
+        if current_user.role == "loan_manager":
+            report_purpose = report[12]  # PURPOSE field
+            if report_purpose != "Loan Report":
+                raise HTTPException(status_code=403, detail="Access denied: Loan managers can only view Loan Reports")
+
         # Get attribute scores
         cursor.execute(
             """
@@ -3164,9 +3646,15 @@ async def get_all_scout_reports(
                     logging.info(
                         f"Applied scout filtering for user ID: {current_user.id}"
                     )
+                elif current_user.role == "loan_manager":
+                    where_clauses.append("sr.PURPOSE = %s")
+                    sql_params.append("Loan Report")
+                    logging.info(
+                        f"Applied loan_manager filtering for user ID: {current_user.id}"
+                    )
                 else:
                     logging.info(
-                        f"User role '{current_user.role}' - no scout filtering applied"
+                        f"User role '{current_user.role}' - no filtering applied"
                     )
             else:
                 logging.warning("USER_ID column does not exist in scout_reports table")
@@ -3341,7 +3829,12 @@ async def get_single_scout_report(
         if not report_data:
             raise HTTPException(status_code=404, detail="Scout report not found")
 
-        # Note: Role-based authorization temporarily disabled until USER_ID column is added
+        # Role-based authorization
+        # For loan_manager: only allow access to Loan Reports
+        if current_user.role == "loan_manager":
+            report_purpose = report_data[15]  # PURPOSE field
+            if report_purpose != "Loan Report":
+                raise HTTPException(status_code=403, detail="Access denied: Loan managers can only view Loan Reports")
 
         # Calculate age
         player_birthdate = report_data[2]
@@ -3846,13 +4339,16 @@ async def get_player_scout_reports(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users
+        # Apply role-based filtering for scout users and loan_manager
         try:
             test_cursor = conn.cursor()
-            test_cursor.execute("SELECT USER_ID FROM scout_reports LIMIT 1")
+            test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
+            elif current_user.role == "loan_manager":
+                base_query += " AND sr.PURPOSE = %s"
+                query_params.append("Loan Report")
         except:
             pass
 
@@ -5551,75 +6047,74 @@ async def get_player_analytics(
                 "total": row['TOTAL']
             })
 
-        # 13. Top 5 Players by Performance Score (only if position filter applied)
+        # 13. Top 10 Players by Performance Score (with optional position filter)
         top_players_by_performance = []
-        if position:
-            cursor.execute(f"""
-                SELECT
-                    COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
-                    COALESCE(sr.POSITION, 'Unknown') as position,
-                    COALESCE(AVG(sr.PERFORMANCE_SCORE), 0) as avg_performance_score,
-                    COUNT(sr.ID) as report_count,
-                    COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
-                    COALESCE(p.DATA_SOURCE, 'external') as data_source
-                FROM scout_reports sr
-                LEFT JOIN players p ON (
-                    (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
-                    (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
-                )
-                WHERE sr.REPORT_TYPE = 'Player Assessment'
-                AND sr.PERFORMANCE_SCORE IS NOT NULL
-                AND sr.POSITION = '{position}'
-                {date_filter}
-                GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
-                ORDER BY avg_performance_score DESC, report_count DESC
-                LIMIT 5
-            """)
-            for row in cursor.fetchall():
-                top_players_by_performance.append({
-                    "player_name": row['PLAYER_NAME'] or "Unknown Player",
-                    "position": row['POSITION'] or "Unknown",
-                    "avg_performance_score": round(float(row['AVG_PERFORMANCE_SCORE'] or 0), 2),
-                    "report_count": row['REPORT_COUNT'] or 0,
-                    "player_id": row['PLAYER_ID'] or 0,
-                    "data_source": row['DATA_SOURCE'] or 'external'
-                })
+        position_clause = f"AND sr.POSITION = '{position}'" if position else ""
+        cursor.execute(f"""
+            SELECT
+                COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
+                COALESCE(sr.POSITION, 'Unknown') as position,
+                COALESCE(AVG(sr.PERFORMANCE_SCORE), 0) as avg_performance_score,
+                COUNT(sr.ID) as report_count,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
+                COALESCE(p.DATA_SOURCE, 'external') as data_source
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            WHERE sr.REPORT_TYPE = 'Player Assessment'
+            AND sr.PERFORMANCE_SCORE IS NOT NULL
+            {position_clause}
+            {date_filter}
+            GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
+            ORDER BY avg_performance_score DESC, report_count DESC
+            LIMIT 10
+        """)
+        for row in cursor.fetchall():
+            top_players_by_performance.append({
+                "player_name": row['PLAYER_NAME'] or "Unknown Player",
+                "position": row['POSITION'] or "Unknown",
+                "avg_performance_score": round(float(row['AVG_PERFORMANCE_SCORE'] or 0), 2),
+                "report_count": row['REPORT_COUNT'] or 0,
+                "player_id": row['PLAYER_ID'] or 0,
+                "data_source": row['DATA_SOURCE'] or 'external'
+            })
 
 
-        # 14. Top 5 Players by Attribute Score (only if position filter applied)
+        # 14. Top 10 Players by Attribute Score (with optional position filter)
         top_players_by_attributes = []
-        if position:
-            cursor.execute(f"""
-                SELECT
-                    COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
-                    COALESCE(sr.POSITION, 'Unknown') as position,
-                    COALESCE(AVG(sr.ATTRIBUTE_SCORE), 0) as avg_attribute_score,
-                    COUNT(sr.ID) as report_count,
-                    COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
-                    COALESCE(p.DATA_SOURCE, 'external') as data_source
-                FROM scout_reports sr
-                LEFT JOIN players p ON (
-                    (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
-                    (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
-                )
-                WHERE sr.REPORT_TYPE = 'Player Assessment'
-                AND sr.ATTRIBUTE_SCORE IS NOT NULL
-                AND sr.ATTRIBUTE_SCORE > 0
-                AND sr.POSITION = '{position}'
-                {date_filter}
-                GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
-                ORDER BY avg_attribute_score DESC, report_count DESC
-                LIMIT 5
-            """)
-            for row in cursor.fetchall():
-                top_players_by_attributes.append({
-                    "player_name": row['PLAYER_NAME'] or "Unknown Player",
-                    "position": row['POSITION'] or "Unknown",
-                    "avg_attribute_score": round(float(row['AVG_ATTRIBUTE_SCORE'] or 0), 2),
-                    "report_count": row['REPORT_COUNT'] or 0,
-                    "player_id": row['PLAYER_ID'] or 0,
-                    "data_source": row['DATA_SOURCE'] or 'external'
-                })
+        cursor.execute(f"""
+            SELECT
+                COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
+                COALESCE(sr.POSITION, 'Unknown') as position,
+                COALESCE(AVG(sr.ATTRIBUTE_SCORE), 0) as avg_attribute_score,
+                COUNT(sr.ID) as report_count,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
+                COALESCE(p.DATA_SOURCE, 'external') as data_source
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            WHERE sr.REPORT_TYPE = 'Player Assessment'
+            AND sr.ATTRIBUTE_SCORE IS NOT NULL
+            AND sr.ATTRIBUTE_SCORE > 0
+            {position_clause}
+            {date_filter}
+            GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
+            ORDER BY avg_attribute_score DESC, report_count DESC
+            LIMIT 10
+        """)
+        for row in cursor.fetchall():
+            top_players_by_attributes.append({
+                "player_name": row['PLAYER_NAME'] or "Unknown Player",
+                "position": row['POSITION'] or "Unknown",
+                "avg_attribute_score": round(float(row['AVG_ATTRIBUTE_SCORE'] or 0), 2),
+                "report_count": row['REPORT_COUNT'] or 0,
+                "player_id": row['PLAYER_ID'] or 0,
+                "data_source": row['DATA_SOURCE'] or 'external'
+            })
 
         # 15. Positive Flagged Players
         cursor.execute(f"""
@@ -5994,8 +6489,95 @@ async def get_scout_analytics(
         if conn:
             conn.close()
 
+@app.get("/analytics/players/by-score")
+async def get_players_by_score(
+    current_user: User = Depends(get_current_user),
+    min_performance: Optional[float] = None,
+    max_performance: Optional[float] = None,
+    min_attribute: Optional[float] = None,
+    max_attribute: Optional[float] = None,
+    months: Optional[int] = None,
+    position: Optional[str] = None
+):
+    """Get players filtered by performance and attribute score thresholds"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
 
+        # Build filters
+        filters = []
+        if months:
+            filters.append(f"sr.CREATED_AT >= DATEADD(month, -{months}, CURRENT_DATE())")
+        if position:
+            filters.append(f"sr.POSITION = '{position}'")
 
+        # Performance score filters
+        if min_performance is not None:
+            filters.append(f"sr.PERFORMANCE_SCORE >= {min_performance}")
+        if max_performance is not None:
+            filters.append(f"sr.PERFORMANCE_SCORE <= {max_performance}")
+
+        # Attribute score filters
+        if min_attribute is not None:
+            filters.append(f"sr.ATTRIBUTE_SCORE >= {min_attribute}")
+        if max_attribute is not None:
+            filters.append(f"sr.ATTRIBUTE_SCORE <= {max_attribute}")
+
+        where_clause = " AND ".join(filters) if filters else "1=1"
+
+        # Query for players meeting score thresholds
+        cursor.execute(f"""
+            SELECT
+                COALESCE(p.PLAYERNAME, 'Unknown') as player_name,
+                sr.POSITION as position,
+                AVG(sr.PERFORMANCE_SCORE) as avg_performance_score,
+                AVG(sr.ATTRIBUTE_SCORE) as avg_attribute_score,
+                COUNT(sr.ID) as report_count,
+                MAX(sr.CREATED_AT) as most_recent_report_date,
+                MAX(sr.ID) as most_recent_report_id,
+                COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID) as player_id,
+                COALESCE(p.DATA_SOURCE, 'unknown') as data_source,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as latest_scout_name
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            WHERE {where_clause}
+            AND sr.REPORT_TYPE = 'Player Assessment'
+            GROUP BY COALESCE(p.PLAYERNAME, 'Unknown'), sr.POSITION, COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID), p.DATA_SOURCE, u.FIRSTNAME, u.LASTNAME, u.USERNAME
+            ORDER BY avg_performance_score DESC, avg_attribute_score DESC
+        """)
+
+        results = cursor.fetchall()
+
+        players = []
+        for row in results:
+            players.append({
+                "player_name": row['PLAYER_NAME'],
+                "position": row['POSITION'] or 'Unknown',
+                "avg_performance_score": round(float(row['AVG_PERFORMANCE_SCORE'] or 0), 2),
+                "avg_attribute_score": round(float(row['AVG_ATTRIBUTE_SCORE'] or 0), 2),
+                "report_count": row['REPORT_COUNT'] or 0,
+                "most_recent_report_date": str(row['MOST_RECENT_REPORT_DATE']) if row['MOST_RECENT_REPORT_DATE'] else None,
+                "most_recent_report_id": row['MOST_RECENT_REPORT_ID'],
+                "player_id": row['PLAYER_ID'],
+                "data_source": row['DATA_SOURCE'],
+                "latest_scout_name": row['LATEST_SCOUT_NAME']
+            })
+
+        return {"players": players}
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving players by score: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
 
 
 # --- AI Chatbot Endpoints ---

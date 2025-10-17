@@ -32,6 +32,17 @@ export const getPlayerProfilePath = (player: Player): string => {
 };
 
 /**
+ * Overloaded function to get player profile path from data source and ID
+ */
+export function getPlayerProfilePathFromSource(dataSource: string, playerId: number): string {
+  if (dataSource === "internal") {
+    return `/player-profile/${playerId}`;
+  } else {
+    return `/player/${playerId}`;
+  }
+}
+
+/**
  * Get the effective player ID for API calls (handles both external and manual players)
  */
 export const getEffectivePlayerId = (player: Player): number | null => {
