@@ -6368,10 +6368,10 @@ async def get_match_team_analytics(
 
         # 5. Number of unique competitions/tournaments
         cursor.execute(f"""
-            SELECT COUNT(DISTINCT m.ITERATIONNAME) as unique_competitions
+            SELECT COUNT(DISTINCT m.ITERATIONID) as unique_competitions
             FROM scout_reports sr
             INNER JOIN matches m ON sr.MATCH_ID = m.ID
-            WHERE m.ITERATIONNAME IS NOT NULL
+            WHERE m.ITERATIONID IS NOT NULL
             {date_filter}
         """)
         total_unique_competitions = (cursor.fetchone() or {}).get('UNIQUE_COMPETITIONS', 0)
@@ -6401,6 +6401,28 @@ async def get_match_team_analytics(
             live_reports = row.get('LIVE') or 0
             video_reports = row.get('VIDEO') or 0
 
+        # 8. Competition/Iteration Coverage
+        cursor.execute(f"""
+            SELECT
+                TO_VARCHAR(m.ITERATIONID) as competition_name,
+                COUNT(sr.ID) as report_count,
+                COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
+                COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
+            FROM scout_reports sr
+            INNER JOIN matches m ON sr.MATCH_ID = m.ID
+            WHERE m.ITERATIONID IS NOT NULL {date_filter}
+            GROUP BY m.ITERATIONID
+            ORDER BY report_count DESC
+        """)
+
+        competition_coverage = []
+        for row in cursor.fetchall():
+            competition_coverage.append({
+                "competition_name": row['COMPETITION_NAME'] or "Unknown Competition",
+                "report_count": row['REPORT_COUNT'] or 0,
+                "live_reports": row['LIVE_REPORTS'] or 0,
+                "video_reports": row['VIDEO_REPORTS'] or 0
+            })
 
         return {
             "team_coverage": team_coverage,
@@ -6410,7 +6432,8 @@ async def get_match_team_analytics(
             "unique_competitions": total_unique_competitions,
             "unique_fixtures": total_unique_fixtures,
             "live_reports": live_reports,
-            "video_reports": video_reports
+            "video_reports": video_reports,
+            "competition_coverage": competition_coverage
         }
 
     except Exception as e:

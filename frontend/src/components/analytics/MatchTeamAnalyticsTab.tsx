@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Spinner, Card, Button, ButtonGroup } from "react-bootstrap";
+import { Row, Col, Spinner, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
 import SimpleBarChart from "./SimpleBarChart";
-import SimpleTable from "./SimpleTable";
 
 interface MatchTeamAnalytics {
   total_reports: number;
@@ -23,6 +22,12 @@ interface MatchTeamAnalytics {
   team_coverage: Array<{
     team_name: string;
     total_reports: number;
+    live_reports: number;
+    video_reports: number;
+  }>;
+  competition_coverage: Array<{
+    competition_name: string;
+    report_count: number;
     live_reports: number;
     video_reports: number;
   }>;
@@ -83,6 +88,71 @@ const MatchTeamAnalyticsTab: React.FC = () => {
 
   return (
     <div>
+      {/* Filters Section at Top */}
+      <Row className="mb-4">
+        <Col>
+          <Card className="shadow-sm">
+            <Card.Body className="py-3">
+              <div className="d-flex align-items-center justify-content-between flex-wrap" style={{ gap: "1rem" }}>
+                <div className="d-flex align-items-center" style={{ gap: "1rem" }}>
+                  <span className="text-muted" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+                    Filters:
+                  </span>
+                  <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
+                    <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Time Period:</span>
+                    <ButtonGroup size="sm">
+                      <Button
+                        variant={monthFilter === 3 ? 'dark' : 'outline-secondary'}
+                        onClick={() => setMonthFilter(3)}
+                        style={{ minWidth: "45px" }}
+                      >
+                        3M
+                      </Button>
+                      <Button
+                        variant={monthFilter === 6 ? 'dark' : 'outline-secondary'}
+                        onClick={() => setMonthFilter(6)}
+                        style={{ minWidth: "45px" }}
+                      >
+                        6M
+                      </Button>
+                      <Button
+                        variant={monthFilter === 9 ? 'dark' : 'outline-secondary'}
+                        onClick={() => setMonthFilter(9)}
+                        style={{ minWidth: "45px" }}
+                      >
+                        9M
+                      </Button>
+                      <Button
+                        variant={monthFilter === 12 ? 'dark' : 'outline-secondary'}
+                        onClick={() => setMonthFilter(12)}
+                        style={{ minWidth: "45px" }}
+                      >
+                        12M
+                      </Button>
+                    </ButtonGroup>
+                  </div>
+                </div>
+                <OverlayTrigger
+                  placement="left"
+                  overlay={
+                    <Tooltip id="filters-tooltip">
+                      Filters apply to all sections: Summary Stats, Timeline, Competition Reports, and Formation Stats
+                    </Tooltip>
+                  }
+                >
+                  <span
+                    className="badge bg-light text-dark"
+                    style={{ cursor: 'help', fontSize: "0.75rem", padding: "0.4rem 0.6rem" }}
+                  >
+                    ℹ️ Filter Info
+                  </span>
+                </OverlayTrigger>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
       {/* Summary Stats */}
       <Row className="mb-4">
         <Col md={3}>
@@ -93,8 +163,8 @@ const MatchTeamAnalyticsTab: React.FC = () => {
         </Col>
         <Col md={3}>
           <SimpleStatsCard
-            title="Unique Fixtures"
-            value={data.unique_fixtures ?? 0}
+            title="Unique Competitions"
+            value={data.unique_competitions ?? 0}
           />
         </Col>
         <Col md={3}>
@@ -111,78 +181,72 @@ const MatchTeamAnalyticsTab: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Monthly Timeline */}
+      {/* Monthly Timeline and Formation Usage */}
       <Row className="mb-4">
-        <Col>
+        <Col md={7}>
           <SimpleLineChart
             title="Monthly Match Reports Timeline"
             labels={timelineLabels}
             datasets={timelineDatasets}
+            height={400}
           />
         </Col>
-      </Row>
-
-      {/* Month Filter Section */}
-      <Row className="mb-4">
-        <Col>
-          <Card>
-            <Card.Body className="py-3">
-              <div className="d-flex justify-content-center align-items-center">
-                <span className="me-3 fw-semibold">Time Period:</span>
-                <ButtonGroup size="sm">
-                  <Button
-                    variant={monthFilter === 3 ? 'dark' : 'outline-secondary'}
-                    onClick={() => setMonthFilter(3)}
-                  >
-                    3 Months
-                  </Button>
-                  <Button
-                    variant={monthFilter === 6 ? 'dark' : 'outline-secondary'}
-                    onClick={() => setMonthFilter(6)}
-                  >
-                    6 Months
-                  </Button>
-                  <Button
-                    variant={monthFilter === 9 ? 'dark' : 'outline-secondary'}
-                    onClick={() => setMonthFilter(9)}
-                  >
-                    9 Months
-                  </Button>
-                  <Button
-                    variant={monthFilter === 12 ? 'dark' : 'outline-secondary'}
-                    onClick={() => setMonthFilter(12)}
-                  >
-                    12 Months
-                  </Button>
-                </ButtonGroup>
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Team Coverage and Formations */}
-      <Row className="mb-4">
-        <Col md={8}>
-          <SimpleTable
-            title="Team Coverage"
-            columns={[
-              { key: "team_name", label: "Team" },
-              { key: "total_reports", label: "Total Reports" },
-              { key: "live_reports", label: "Live" },
-              { key: "video_reports", label: "Video" }
-            ]}
-            data={data.team_coverage || []}
-            emptyMessage="No team coverage data"
-          />
-        </Col>
-        <Col md={4}>
+        <Col md={5}>
           <SimpleBarChart
             title="Formation Usage"
             labels={formationLabels.slice(0, 10)}
             data={formationData.slice(0, 10)}
             height={400}
           />
+        </Col>
+      </Row>
+
+      {/* Competition Coverage - Scrollable Table */}
+      <Row className="mb-4">
+        <Col>
+          <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+            <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
+              <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>Reports by Competition</h5>
+            </Card.Header>
+            <Card.Body className="p-0">
+              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                <Table hover striped className="table-compact table-sm mb-0" style={{ textAlign: 'center' }}>
+                  <thead className="table-dark" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                    <tr>
+                      <th>Competition</th>
+                      <th>Total Reports</th>
+                      <th>Live</th>
+                      <th>Video</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.competition_coverage || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center text-muted py-4">
+                          No competition data available
+                        </td>
+                      </tr>
+                    ) : (
+                      (data.competition_coverage || []).map((comp, idx) => (
+                        <tr key={idx}>
+                          <td><strong>{comp.competition_name}</strong></td>
+                          <td>
+                            <span className="badge bg-dark">{comp.report_count}</span>
+                          </td>
+                          <td>
+                            <span className="badge bg-success">{comp.live_reports}</span>
+                          </td>
+                          <td>
+                            <span className="badge bg-info">{comp.video_reports}</span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            </Card.Body>
+          </Card>
         </Col>
       </Row>
     </div>

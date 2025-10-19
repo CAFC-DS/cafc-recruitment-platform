@@ -53,29 +53,43 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
       label: ds.label || '',
       data: ds.data || [],
       borderColor: ds.borderColor || (index === 0 ? '#000000' : '#6c757d'),
-      backgroundColor: 'transparent',
-      tension: 0.3,
-      fill: false,
-      borderWidth: 2,
-      pointRadius: 3,
-      pointHoverRadius: 5
+      backgroundColor: ds.backgroundColor || 'transparent',
+      tension: 0.4,
+      fill: true,
+      borderWidth: 3,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: ds.borderColor || '#000000',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2
     }))
   };
 
   const options: any = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        top: 20,
+        right: 20,
+        bottom: 10,
+        left: 10
+      }
+    },
     plugins: {
       legend: {
         display: datasets.length > 1,
-        position: 'top' as const,
+        position: 'right' as const,
+        align: 'center' as const,
         labels: {
-          boxWidth: 12,
-          padding: 15,
+          boxWidth: 15,
+          padding: 20,
           font: {
-            size: 12,
-            weight: 500
-          }
+            size: 13,
+            weight: 600
+          },
+          usePointStyle: true,
+          pointStyle: 'circle'
         }
       },
       tooltip: {
@@ -94,10 +108,10 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
       datalabels: {
         align: 'top' as const,
         anchor: 'end' as const,
-        offset: 4,
+        offset: 6,
         font: {
-          size: 11,
-          weight: 600
+          size: 13,
+          weight: 700
         },
         formatter: (value: number) => {
           return value > 0 ? value : '';
@@ -114,21 +128,26 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
         ticks: {
           precision: 0,
           font: {
-            size: 11
+            size: 13,
+            weight: 500
           },
-          color: '#6c757d'
+          color: '#495057',
+          padding: 8
         },
         grid: {
-          color: 'rgba(0, 0, 0, 0.05)',
-          drawBorder: false
+          color: 'rgba(0, 0, 0, 0.08)',
+          drawBorder: false,
+          lineWidth: 1
         }
       },
       x: {
         ticks: {
           font: {
-            size: 11
+            size: 13,
+            weight: 500
           },
-          color: '#6c757d'
+          color: '#495057',
+          padding: 8
         },
         grid: {
           display: false,
@@ -139,9 +158,11 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
   };
 
   return (
-    <Card className="stat-card">
-      <Card.Body>
-        <h5 className="mb-3">{title}</h5>
+    <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+      <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
+        <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>{title}</h5>
+      </Card.Header>
+      <Card.Body style={{ padding: '1.5rem' }}>
         <div style={{ height: `${height}px` }}>
           <Line data={chartData} options={options} />
         </div>

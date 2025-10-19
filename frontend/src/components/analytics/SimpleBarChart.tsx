@@ -113,9 +113,11 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   };
 
   return (
-    <Card className="stat-card">
-      <Card.Body>
-        <h5 className="mb-3">{title}</h5>
+    <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+      <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
+        <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>{title}</h5>
+      </Card.Header>
+      <Card.Body style={{ padding: '1.5rem' }}>
         <div style={{ height: `${height}px` }}>
           <Bar data={chartData} options={options} />
         </div>
