@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Spinner, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Row, Col, Spinner, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip, Form, InputGroup } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
 import SimpleBarChart from "./SimpleBarChart";
+import TeamCoverageTable from "./TeamCoverageTable";
 
 interface MatchTeamAnalytics {
   total_reports: number;
@@ -33,9 +34,16 @@ interface MatchTeamAnalytics {
   }>;
   team_report_coverage: Array<{
     team_name: string;
-    report_count: number;
-    live_reports: number;
-    video_reports: number;
+    total_times_covered: number;
+    total_reports: number;
+    scout_breakdown: {
+      [scoutName: string]: {
+        times_seen: number;
+        report_count: number;
+        live_matches: number;
+        video_matches: number;
+      };
+    };
   }>;
   formation_stats: Array<{
     formation: string;
@@ -47,6 +55,8 @@ const MatchTeamAnalyticsTab: React.FC = () => {
   const [data, setData] = useState<MatchTeamAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [monthFilter, setMonthFilter] = useState<number>(6);
+  const [teamSearchTerm, setTeamSearchTerm] = useState("");
+  const [selectedScouts, setSelectedScouts] = useState<string[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -199,7 +209,7 @@ const MatchTeamAnalyticsTab: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Competition and Team Coverage - Side by Side */}
+      {/* Reports by Competition and Reports by Team - Side by Side */}
       <Row className="mb-4">
         <Col md={6}>
           <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
@@ -264,18 +274,18 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data.team_report_coverage || []).length === 0 ? (
+                    {(data.team_coverage || []).length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-center text-muted py-4">
                           No team data available
                         </td>
                       </tr>
                     ) : (
-                      (data.team_report_coverage || []).map((team, idx) => (
+                      (data.team_coverage || []).map((team, idx) => (
                         <tr key={idx}>
                           <td><strong>{team.team_name}</strong></td>
                           <td>
-                            <span className="badge bg-dark">{team.report_count}</span>
+                            <span className="badge bg-dark">{team.total_reports}</span>
                           </td>
                           <td>
                             <span className="badge bg-success">{team.live_reports}</span>
@@ -291,6 +301,13 @@ const MatchTeamAnalyticsTab: React.FC = () => {
               </div>
             </Card.Body>
           </Card>
+        </Col>
+      </Row>
+
+      {/* Team Coverage - Detailed Scout Breakdown - Full Width at Bottom */}
+      <Row className="mb-4">
+        <Col>
+          <TeamCoverageTable data={data.team_report_coverage || []} />
         </Col>
       </Row>
     </div>

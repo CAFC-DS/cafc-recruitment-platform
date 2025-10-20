@@ -6275,26 +6275,20 @@ async def get_match_team_analytics(
         if months:
             date_filter = f"AND sr.CREATED_AT >= DATEADD(month, -{months}, CURRENT_DATE())"
 
-        # 1. Team Coverage Stats
+        # 1. Team Coverage Stats - count reports by player's actual team
         cursor.execute(f"""
-            WITH team_reports AS (
-                SELECT m.HOMESQUADNAME as team_name, sr.ID, sr.SCOUTING_TYPE
-                FROM scout_reports sr
-                INNER JOIN matches m ON sr.MATCH_ID = m.ID
-                WHERE m.HOMESQUADNAME IS NOT NULL {date_filter}
-                UNION ALL
-                SELECT m.AWAYSQUADNAME as team_name, sr.ID, sr.SCOUTING_TYPE
-                FROM scout_reports sr
-                INNER JOIN matches m ON sr.MATCH_ID = m.ID
-                WHERE m.AWAYSQUADNAME IS NOT NULL {date_filter}
-            )
             SELECT
-                COALESCE(team_name, 'Unknown Team') as team_name,
-                COUNT(ID) as total_reports,
-                COALESCE(SUM(CASE WHEN UPPER(SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
-                COALESCE(SUM(CASE WHEN UPPER(SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
-            FROM team_reports
-            GROUP BY team_name
+                COALESCE(p.SQUADNAME, 'Unknown Team') as team_name,
+                COUNT(sr.ID) as total_reports,
+                COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
+                COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            WHERE p.SQUADNAME IS NOT NULL {date_filter}
+            GROUP BY p.SQUADNAME
             ORDER BY total_reports DESC
         """)
 
@@ -6435,38 +6429,71 @@ async def get_match_team_analytics(
                 "video_reports": row['VIDEO_REPORTS'] or 0
             })
 
-        # 9. Team Coverage - count reports per team
+        # 9. Team Coverage - detailed per-team, per-scout breakdown with live/video split
         cursor.execute(f"""
-            SELECT
-                team_name,
-                COUNT(*) as report_count,
-                COALESCE(SUM(CASE WHEN UPPER(scouting_type) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
-                COALESCE(SUM(CASE WHEN UPPER(scouting_type) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
-            FROM (
-                SELECT sr.ID as report_id, sr.SCOUTING_TYPE, m.HOMESQUADNAME as team_name
+            WITH team_scout_data AS (
+                SELECT
+                    m.HOMESQUADNAME as team_name,
+                    m.ID as match_id,
+                    sr.ID as report_id,
+                    sr.SCOUTING_TYPE,
+                    COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name
                 FROM scout_reports sr
                 INNER JOIN matches m ON sr.MATCH_ID = m.ID
+                LEFT JOIN users u ON sr.USER_ID = u.ID
                 WHERE m.HOMESQUADNAME IS NOT NULL {date_filter}
 
                 UNION ALL
 
-                SELECT sr.ID as report_id, sr.SCOUTING_TYPE, m.AWAYSQUADNAME as team_name
+                SELECT
+                    m.AWAYSQUADNAME as team_name,
+                    m.ID as match_id,
+                    sr.ID as report_id,
+                    sr.SCOUTING_TYPE,
+                    COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name
                 FROM scout_reports sr
                 INNER JOIN matches m ON sr.MATCH_ID = m.ID
+                LEFT JOIN users u ON sr.USER_ID = u.ID
                 WHERE m.AWAYSQUADNAME IS NOT NULL {date_filter}
-            ) team_reports
-            GROUP BY team_name
-            ORDER BY report_count DESC
+            )
+            SELECT
+                team_name,
+                scout_name,
+                COUNT(DISTINCT match_id) as times_seen,
+                COUNT(report_id) as report_count,
+                COUNT(DISTINCT CASE WHEN UPPER(SCOUTING_TYPE) = 'LIVE' THEN match_id END) as live_matches,
+                COUNT(DISTINCT CASE WHEN UPPER(SCOUTING_TYPE) = 'VIDEO' THEN match_id END) as video_matches
+            FROM team_scout_data
+            GROUP BY team_name, scout_name
+            ORDER BY team_name, times_seen DESC
         """)
 
-        team_report_coverage = []
+        # Build nested structure: team -> scout breakdown with live/video split
+        team_scout_breakdown = {}
         for row in cursor.fetchall():
-            team_report_coverage.append({
-                "team_name": row['TEAM_NAME'] or "Unknown Team",
+            team_name = row['TEAM_NAME'] or "Unknown Team"
+            scout_name = row['SCOUT_NAME'] or "Unknown Scout"
+
+            if team_name not in team_scout_breakdown:
+                team_scout_breakdown[team_name] = {
+                    "team_name": team_name,
+                    "total_times_covered": 0,
+                    "total_reports": 0,
+                    "scout_breakdown": {}
+                }
+
+            team_scout_breakdown[team_name]["scout_breakdown"][scout_name] = {
+                "times_seen": row['TIMES_SEEN'] or 0,
                 "report_count": row['REPORT_COUNT'] or 0,
-                "live_reports": row['LIVE_REPORTS'] or 0,
-                "video_reports": row['VIDEO_REPORTS'] or 0
-            })
+                "live_matches": row['LIVE_MATCHES'] or 0,
+                "video_matches": row['VIDEO_MATCHES'] or 0
+            }
+            team_scout_breakdown[team_name]["total_times_covered"] += row['TIMES_SEEN'] or 0
+            team_scout_breakdown[team_name]["total_reports"] += row['REPORT_COUNT'] or 0
+
+        team_report_coverage = list(team_scout_breakdown.values())
+        # Sort by total times covered descending
+        team_report_coverage.sort(key=lambda x: x["total_times_covered"], reverse=True)
 
         return {
             "team_coverage": team_coverage,
