@@ -31,6 +31,12 @@ interface MatchTeamAnalytics {
     live_reports: number;
     video_reports: number;
   }>;
+  team_report_coverage: Array<{
+    team_name: string;
+    report_count: number;
+    live_reports: number;
+    video_reports: number;
+  }>;
   formation_stats: Array<{
     formation: string;
     count: number;
@@ -181,9 +187,9 @@ const MatchTeamAnalyticsTab: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Monthly Timeline and Formation Usage */}
+      {/* Monthly Timeline */}
       <Row className="mb-4">
-        <Col md={7}>
+        <Col>
           <SimpleLineChart
             title="Monthly Match Reports Timeline"
             labels={timelineLabels}
@@ -191,19 +197,11 @@ const MatchTeamAnalyticsTab: React.FC = () => {
             height={400}
           />
         </Col>
-        <Col md={5}>
-          <SimpleBarChart
-            title="Formation Usage"
-            labels={formationLabels.slice(0, 10)}
-            data={formationData.slice(0, 10)}
-            height={400}
-          />
-        </Col>
       </Row>
 
-      {/* Competition Coverage - Scrollable Table */}
+      {/* Competition and Team Coverage - Side by Side */}
       <Row className="mb-4">
-        <Col>
+        <Col md={6}>
           <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
             <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
               <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>Reports by Competition</h5>
@@ -238,6 +236,52 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                           </td>
                           <td>
                             <span className="badge bg-info">{comp.video_reports}</span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={6}>
+          <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+            <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
+              <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>Reports by Team</h5>
+            </Card.Header>
+            <Card.Body className="p-0">
+              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                <Table hover striped className="table-compact table-sm mb-0" style={{ textAlign: 'center' }}>
+                  <thead className="table-dark" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                    <tr>
+                      <th>Team</th>
+                      <th>Total Reports</th>
+                      <th>Live</th>
+                      <th>Video</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.team_report_coverage || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="text-center text-muted py-4">
+                          No team data available
+                        </td>
+                      </tr>
+                    ) : (
+                      (data.team_report_coverage || []).map((team, idx) => (
+                        <tr key={idx}>
+                          <td><strong>{team.team_name}</strong></td>
+                          <td>
+                            <span className="badge bg-dark">{team.report_count}</span>
+                          </td>
+                          <td>
+                            <span className="badge bg-success">{team.live_reports}</span>
+                          </td>
+                          <td>
+                            <span className="badge bg-info">{team.video_reports}</span>
                           </td>
                         </tr>
                       ))

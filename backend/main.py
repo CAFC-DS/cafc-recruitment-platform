@@ -32,6 +32,9 @@ from services.sql_generator import SQLGeneratorService
 from services.schema_service import SchemaService
 from services.ollama_service import ollama_service
 
+# Import iteration mapping
+from iteration_mapping import ITERATION_MAPPING
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -6417,8 +6420,49 @@ async def get_match_team_analytics(
 
         competition_coverage = []
         for row in cursor.fetchall():
+            iteration_id_str = row['COMPETITION_NAME']
+            # Try to convert to int and lookup in mapping
+            try:
+                iteration_id = int(iteration_id_str)
+                competition_name = ITERATION_MAPPING.get(iteration_id, f"ID {iteration_id}")
+            except (ValueError, TypeError):
+                competition_name = iteration_id_str or "Unknown Competition"
+
             competition_coverage.append({
-                "competition_name": row['COMPETITION_NAME'] or "Unknown Competition",
+                "competition_name": competition_name,
+                "report_count": row['REPORT_COUNT'] or 0,
+                "live_reports": row['LIVE_REPORTS'] or 0,
+                "video_reports": row['VIDEO_REPORTS'] or 0
+            })
+
+        # 9. Team Coverage - count reports per team
+        cursor.execute(f"""
+            SELECT
+                team_name,
+                COUNT(*) as report_count,
+                COALESCE(SUM(CASE WHEN UPPER(scouting_type) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
+                COALESCE(SUM(CASE WHEN UPPER(scouting_type) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
+            FROM (
+                SELECT sr.ID as report_id, sr.SCOUTING_TYPE, m.HOMESQUADNAME as team_name
+                FROM scout_reports sr
+                INNER JOIN matches m ON sr.MATCH_ID = m.ID
+                WHERE m.HOMESQUADNAME IS NOT NULL {date_filter}
+
+                UNION ALL
+
+                SELECT sr.ID as report_id, sr.SCOUTING_TYPE, m.AWAYSQUADNAME as team_name
+                FROM scout_reports sr
+                INNER JOIN matches m ON sr.MATCH_ID = m.ID
+                WHERE m.AWAYSQUADNAME IS NOT NULL {date_filter}
+            ) team_reports
+            GROUP BY team_name
+            ORDER BY report_count DESC
+        """)
+
+        team_report_coverage = []
+        for row in cursor.fetchall():
+            team_report_coverage.append({
+                "team_name": row['TEAM_NAME'] or "Unknown Team",
                 "report_count": row['REPORT_COUNT'] or 0,
                 "live_reports": row['LIVE_REPORTS'] or 0,
                 "video_reports": row['VIDEO_REPORTS'] or 0
@@ -6433,7 +6477,8 @@ async def get_match_team_analytics(
             "unique_fixtures": total_unique_fixtures,
             "live_reports": live_reports,
             "video_reports": video_reports,
-            "competition_coverage": competition_coverage
+            "competition_coverage": competition_coverage,
+            "team_report_coverage": team_report_coverage
         }
 
     except Exception as e:
