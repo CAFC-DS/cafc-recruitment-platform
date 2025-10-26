@@ -501,6 +501,8 @@ class Match(BaseModel):
     homeTeam: str
     awayTeam: str
     date: str
+    homeTeamId: Optional[int] = None
+    awayTeamId: Optional[int] = None
 
 
 class IntelReport(BaseModel):
@@ -3632,14 +3634,23 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
         cursor.execute("SELECT manual_match_seq.NEXTVAL")
         cafc_match_id = cursor.fetchone()[0]
 
-        # Insert manual match with CAFC_MATCH_ID, MATCH_ID stays NULL
+        # Insert manual match with CAFC_MATCH_ID and squad IDs if provided
         sql = """
             INSERT INTO matches (
                 HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE,
+                HOMESQUADID, AWAYSQUADID,
                 CAFC_MATCH_ID, DATA_SOURCE
-            ) VALUES (%s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
-        values = (match.homeTeam, match.awayTeam, match.date, cafc_match_id, "internal")
+        values = (
+            match.homeTeam,
+            match.awayTeam,
+            match.date,
+            match.homeTeamId,
+            match.awayTeamId,
+            cafc_match_id,
+            "internal"
+        )
         cursor.execute(sql, values)
         conn.commit()
 
@@ -5432,10 +5443,10 @@ async def get_teams(current_user: User = Depends(get_current_user)):
         cursor.execute(
             """
             SELECT DISTINCT team_name FROM (
-                SELECT HOMESQUADNAME as team_name FROM matches 
+                SELECT HOMESQUADNAME as team_name FROM matches
                 WHERE HOMESQUADNAME IS NOT NULL
                 UNION ALL
-                SELECT AWAYSQUADNAME as team_name FROM matches 
+                SELECT AWAYSQUADNAME as team_name FROM matches
                 WHERE AWAYSQUADNAME IS NOT NULL
             ) teams
             ORDER BY team_name
@@ -5452,6 +5463,56 @@ async def get_teams(current_user: User = Depends(get_current_user)):
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching teams: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/teams-with-ids")
+async def get_teams_with_ids(current_user: User = Depends(get_current_user)):
+    """Get all teams with their squad IDs from external matches for fixture creation"""
+    cache_key = "teams_with_ids_list"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return {"teams": cached_data}
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Get unique teams from external matches with their squad IDs
+        cursor.execute(
+            """
+            SELECT DISTINCT team_name, squad_id FROM (
+                SELECT HOMESQUADNAME as team_name, HOMESQUADID as squad_id
+                FROM matches
+                WHERE DATA_SOURCE = 'external'
+                  AND HOMESQUADNAME IS NOT NULL
+                  AND HOMESQUADID IS NOT NULL
+                UNION
+                SELECT AWAYSQUADNAME as team_name, AWAYSQUADID as squad_id
+                FROM matches
+                WHERE DATA_SOURCE = 'external'
+                  AND AWAYSQUADNAME IS NOT NULL
+                  AND AWAYSQUADID IS NOT NULL
+            ) teams
+            ORDER BY team_name
+        """
+        )
+
+        teams = cursor.fetchall()
+        team_list = [{"name": row[0], "id": row[1]} for row in teams if row[0] and row[1]]
+
+        # Cache for 30 minutes
+        set_cache(cache_key, team_list, expiry_minutes=30)
+
+        return {"teams": team_list}
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching teams with IDs: {e}")
     finally:
         if conn:
             conn.close()
