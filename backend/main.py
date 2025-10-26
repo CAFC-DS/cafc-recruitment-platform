@@ -503,6 +503,18 @@ class Match(BaseModel):
     date: str
     homeTeamId: Optional[int] = None
     awayTeamId: Optional[int] = None
+    homeTeamType: Optional[str] = None
+    awayTeamType: Optional[str] = None
+    homeTeamCountryId: Optional[int] = None
+    awayTeamCountryId: Optional[int] = None
+    homeTeamCountryName: Optional[str] = None
+    awayTeamCountryName: Optional[str] = None
+    homeTeamSkillCornerId: Optional[int] = None
+    awayTeamSkillCornerId: Optional[int] = None
+    homeTeamHeimspielId: Optional[int] = None
+    awayTeamHeimspielId: Optional[int] = None
+    homeTeamWyscoutId: Optional[int] = None
+    awayTeamWyscoutId: Optional[int] = None
 
 
 class IntelReport(BaseModel):
@@ -3634,13 +3646,19 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
         cursor.execute("SELECT manual_match_seq.NEXTVAL")
         cafc_match_id = cursor.fetchone()[0]
 
-        # Insert manual match with CAFC_MATCH_ID and squad IDs if provided
+        # Insert manual match with CAFC_MATCH_ID and all squad metadata if provided
         sql = """
             INSERT INTO matches (
                 HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE,
                 HOMESQUADID, AWAYSQUADID,
+                HOMESQUADTYPE, AWAYSQUADTYPE,
+                HOMESQUADCOUNTRYID, AWAYSQUADCOUNTRYID,
+                HOMESQUADCOUNTRYNAME, AWAYSQUADCOUNTRYNAME,
+                HOMESQUADSKILLCORNERID, AWAYSQUADSKILLCORNERID,
+                HOMESQUADHEIMSPIELID, AWAYSQUADHEIMSPIELID,
+                HOMESQUADWYSCOUTID, AWAYSQUADWYSCOUTID,
                 CAFC_MATCH_ID, DATA_SOURCE
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
             match.homeTeam,
@@ -3648,6 +3666,18 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
             match.date,
             match.homeTeamId,
             match.awayTeamId,
+            match.homeTeamType,
+            match.awayTeamType,
+            match.homeTeamCountryId,
+            match.awayTeamCountryId,
+            match.homeTeamCountryName,
+            match.awayTeamCountryName,
+            match.homeTeamSkillCornerId,
+            match.awayTeamSkillCornerId,
+            match.homeTeamHeimspielId,
+            match.awayTeamHeimspielId,
+            match.homeTeamWyscoutId,
+            match.awayTeamWyscoutId,
             cafc_match_id,
             "internal"
         )
@@ -5483,17 +5513,36 @@ async def get_teams_with_ids(current_user: User = Depends(get_current_user)):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Get unique teams from external matches with their squad IDs
+        # Get unique teams from external matches with all squad metadata
         cursor.execute(
             """
-            SELECT DISTINCT team_name, squad_id FROM (
-                SELECT HOMESQUADNAME as team_name, HOMESQUADID as squad_id
+            SELECT DISTINCT
+                team_name, squad_id, squad_type, squad_country_id, squad_country_name,
+                squad_skillcorner_id, squad_heimspiel_id, squad_wyscout_id
+            FROM (
+                SELECT
+                    HOMESQUADNAME as team_name,
+                    HOMESQUADID as squad_id,
+                    HOMESQUADTYPE as squad_type,
+                    HOMESQUADCOUNTRYID as squad_country_id,
+                    HOMESQUADCOUNTRYNAME as squad_country_name,
+                    HOMESQUADSKILLCORNERID as squad_skillcorner_id,
+                    HOMESQUADHEIMSPIELID as squad_heimspiel_id,
+                    HOMESQUADWYSCOUTID as squad_wyscout_id
                 FROM matches
                 WHERE DATA_SOURCE = 'external'
                   AND HOMESQUADNAME IS NOT NULL
                   AND HOMESQUADID IS NOT NULL
                 UNION
-                SELECT AWAYSQUADNAME as team_name, AWAYSQUADID as squad_id
+                SELECT
+                    AWAYSQUADNAME as team_name,
+                    AWAYSQUADID as squad_id,
+                    AWAYSQUADTYPE as squad_type,
+                    AWAYSQUADCOUNTRYID as squad_country_id,
+                    AWAYSQUADCOUNTRYNAME as squad_country_name,
+                    AWAYSQUADSKILLCORNERID as squad_skillcorner_id,
+                    AWAYSQUADHEIMSPIELID as squad_heimspiel_id,
+                    AWAYSQUADWYSCOUTID as squad_wyscout_id
                 FROM matches
                 WHERE DATA_SOURCE = 'external'
                   AND AWAYSQUADNAME IS NOT NULL
@@ -5504,7 +5553,19 @@ async def get_teams_with_ids(current_user: User = Depends(get_current_user)):
         )
 
         teams = cursor.fetchall()
-        team_list = [{"name": row[0], "id": row[1]} for row in teams if row[0] and row[1]]
+        team_list = [
+            {
+                "name": row[0],
+                "id": row[1],
+                "type": row[2],
+                "countryId": row[3],
+                "countryName": row[4],
+                "skillCornerId": row[5],
+                "heimspielId": row[6],
+                "wyscoutId": row[7]
+            }
+            for row in teams if row[0] and row[1]
+        ]
 
         # Cache for 30 minutes
         set_cache(cache_key, team_list, expiry_minutes=30)

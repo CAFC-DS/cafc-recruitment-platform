@@ -12,6 +12,12 @@ import axiosInstance from "../axiosInstance";
 interface Team {
   name: string;
   id: number;
+  type: string | null;
+  countryId: number | null;
+  countryName: string | null;
+  skillCornerId: number | null;
+  heimspielId: number | null;
+  wyscoutId: number | null;
 }
 
 interface AddFixtureModalProps {
@@ -26,6 +32,18 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
     date: "",
     homeTeamId: null as number | null,
     awayTeamId: null as number | null,
+    homeTeamType: null as string | null,
+    awayTeamType: null as string | null,
+    homeTeamCountryId: null as number | null,
+    awayTeamCountryId: null as number | null,
+    homeTeamCountryName: null as string | null,
+    awayTeamCountryName: null as string | null,
+    homeTeamSkillCornerId: null as number | null,
+    awayTeamSkillCornerId: null as number | null,
+    homeTeamHeimspielId: null as number | null,
+    awayTeamHeimspielId: null as number | null,
+    homeTeamWyscoutId: null as number | null,
+    awayTeamWyscoutId: null as number | null,
   });
   const [teams, setTeams] = useState<Team[]>([]);
   const [homeSearch, setHomeSearch] = useState("");
@@ -75,6 +93,12 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
         ...formData,
         homeTeam: team.name,
         homeTeamId: team.id,
+        homeTeamType: team.type,
+        homeTeamCountryId: team.countryId,
+        homeTeamCountryName: team.countryName,
+        homeTeamSkillCornerId: team.skillCornerId,
+        homeTeamHeimspielId: team.heimspielId,
+        homeTeamWyscoutId: team.wyscoutId,
       });
       setHomeSearch(team.name);
       setShowHomeDropdown(false);
@@ -83,6 +107,12 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
         ...formData,
         awayTeam: team.name,
         awayTeamId: team.id,
+        awayTeamType: team.type,
+        awayTeamCountryId: team.countryId,
+        awayTeamCountryName: team.countryName,
+        awayTeamSkillCornerId: team.skillCornerId,
+        awayTeamHeimspielId: team.heimspielId,
+        awayTeamWyscoutId: team.wyscoutId,
       });
       setAwaySearch(team.name);
       setShowAwayDropdown(false);
@@ -104,6 +134,18 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
       date: "",
       homeTeamId: null,
       awayTeamId: null,
+      homeTeamType: null,
+      awayTeamType: null,
+      homeTeamCountryId: null,
+      awayTeamCountryId: null,
+      homeTeamCountryName: null,
+      awayTeamCountryName: null,
+      homeTeamSkillCornerId: null,
+      awayTeamSkillCornerId: null,
+      homeTeamHeimspielId: null,
+      awayTeamHeimspielId: null,
+      homeTeamWyscoutId: null,
+      awayTeamWyscoutId: null,
     });
     setHomeSearch("");
     setAwaySearch("");

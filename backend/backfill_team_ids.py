@@ -49,16 +49,35 @@ def get_snowflake_connection():
     )
 
 def get_external_teams(cursor):
-    """Get all unique teams from external matches with their IDs"""
+    """Get all unique teams from external matches with their IDs and metadata"""
     cursor.execute("""
-        SELECT DISTINCT team_name, squad_id FROM (
-            SELECT HOMESQUADNAME as team_name, HOMESQUADID as squad_id
+        SELECT DISTINCT
+            team_name, squad_id, squad_type, squad_country_id, squad_country_name,
+            squad_skillcorner_id, squad_heimspiel_id, squad_wyscout_id
+        FROM (
+            SELECT
+                HOMESQUADNAME as team_name,
+                HOMESQUADID as squad_id,
+                HOMESQUADTYPE as squad_type,
+                HOMESQUADCOUNTRYID as squad_country_id,
+                HOMESQUADCOUNTRYNAME as squad_country_name,
+                HOMESQUADSKILLCORNERID as squad_skillcorner_id,
+                HOMESQUADHEIMSPIELID as squad_heimspiel_id,
+                HOMESQUADWYSCOUTID as squad_wyscout_id
             FROM MATCHES
             WHERE DATA_SOURCE = 'external'
               AND HOMESQUADNAME IS NOT NULL
               AND HOMESQUADID IS NOT NULL
             UNION
-            SELECT AWAYSQUADNAME as team_name, AWAYSQUADID as squad_id
+            SELECT
+                AWAYSQUADNAME as team_name,
+                AWAYSQUADID as squad_id,
+                AWAYSQUADTYPE as squad_type,
+                AWAYSQUADCOUNTRYID as squad_country_id,
+                AWAYSQUADCOUNTRYNAME as squad_country_name,
+                AWAYSQUADSKILLCORNERID as squad_skillcorner_id,
+                AWAYSQUADHEIMSPIELID as squad_heimspiel_id,
+                AWAYSQUADWYSCOUTID as squad_wyscout_id
             FROM MATCHES
             WHERE DATA_SOURCE = 'external'
               AND AWAYSQUADNAME IS NOT NULL
@@ -68,8 +87,17 @@ def get_external_teams(cursor):
     """)
 
     teams = {}
-    for name, squad_id in cursor.fetchall():
-        teams[name] = squad_id
+    for row in cursor.fetchall():
+        name = row[0]
+        teams[name] = {
+            'id': row[1],
+            'type': row[2],
+            'country_id': row[3],
+            'country_name': row[4],
+            'skillcorner_id': row[5],
+            'heimspiel_id': row[6],
+            'wyscout_id': row[7]
+        }
     return teams
 
 def get_internal_matches(cursor):
@@ -161,8 +189,15 @@ def main():
         if home_name and (not home_id or home_name not in external_teams):
             best_match, score = find_best_match(home_name, external_teams)
             if best_match:
+                team_metadata = external_teams[best_match]
                 update_data['new_home'] = best_match
-                update_data['home_id'] = external_teams[best_match]
+                update_data['home_id'] = team_metadata['id']
+                update_data['home_type'] = team_metadata['type']
+                update_data['home_country_id'] = team_metadata['country_id']
+                update_data['home_country_name'] = team_metadata['country_name']
+                update_data['home_skillcorner_id'] = team_metadata['skillcorner_id']
+                update_data['home_heimspiel_id'] = team_metadata['heimspiel_id']
+                update_data['home_wyscout_id'] = team_metadata['wyscout_id']
                 update_data['home_match_score'] = score
                 needs_update = True
             else:
@@ -172,8 +207,15 @@ def main():
         if away_name and (not away_id or away_name not in external_teams):
             best_match, score = find_best_match(away_name, external_teams)
             if best_match:
+                team_metadata = external_teams[best_match]
                 update_data['new_away'] = best_match
-                update_data['away_id'] = external_teams[best_match]
+                update_data['away_id'] = team_metadata['id']
+                update_data['away_type'] = team_metadata['type']
+                update_data['away_country_id'] = team_metadata['country_id']
+                update_data['away_country_name'] = team_metadata['country_name']
+                update_data['away_skillcorner_id'] = team_metadata['skillcorner_id']
+                update_data['away_heimspiel_id'] = team_metadata['heimspiel_id']
+                update_data['away_wyscout_id'] = team_metadata['wyscout_id']
                 update_data['away_match_score'] = score
                 needs_update = True
             else:
@@ -241,13 +283,37 @@ def main():
                     SET HOMESQUADNAME = %s,
                         AWAYSQUADNAME = %s,
                         HOMESQUADID = %s,
-                        AWAYSQUADID = %s
+                        AWAYSQUADID = %s,
+                        HOMESQUADTYPE = %s,
+                        AWAYSQUADTYPE = %s,
+                        HOMESQUADCOUNTRYID = %s,
+                        AWAYSQUADCOUNTRYID = %s,
+                        HOMESQUADCOUNTRYNAME = %s,
+                        AWAYSQUADCOUNTRYNAME = %s,
+                        HOMESQUADSKILLCORNERID = %s,
+                        AWAYSQUADSKILLCORNERID = %s,
+                        HOMESQUADHEIMSPIELID = %s,
+                        AWAYSQUADHEIMSPIELID = %s,
+                        HOMESQUADWYSCOUTID = %s,
+                        AWAYSQUADWYSCOUTID = %s
                     WHERE CAFC_MATCH_ID = %s AND DATA_SOURCE = 'internal'
                 """, (
                     update['new_home'],
                     update['new_away'],
                     update['home_id'],
                     update['away_id'],
+                    update.get('home_type'),
+                    update.get('away_type'),
+                    update.get('home_country_id'),
+                    update.get('away_country_id'),
+                    update.get('home_country_name'),
+                    update.get('away_country_name'),
+                    update.get('home_skillcorner_id'),
+                    update.get('away_skillcorner_id'),
+                    update.get('home_heimspiel_id'),
+                    update.get('away_heimspiel_id'),
+                    update.get('home_wyscout_id'),
+                    update.get('away_wyscout_id'),
                     update['cafc_id']
                 ))
                 print(f"✓ Updated match {update['cafc_id']}")
