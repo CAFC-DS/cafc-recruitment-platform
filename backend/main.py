@@ -6489,7 +6489,10 @@ async def get_match_team_analytics(
         cursor.execute(f"""
             SELECT COUNT(DISTINCT m.ITERATIONID) as unique_competitions
             FROM scout_reports sr
-            INNER JOIN matches m ON sr.MATCH_ID = m.ID
+            INNER JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             WHERE m.ITERATIONID IS NOT NULL
             {date_filter}
         """)
@@ -6528,7 +6531,10 @@ async def get_match_team_analytics(
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
             FROM scout_reports sr
-            INNER JOIN matches m ON sr.MATCH_ID = m.ID
+            INNER JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             WHERE m.ITERATIONID IS NOT NULL {date_filter}
             GROUP BY m.ITERATIONID
             ORDER BY report_count DESC
@@ -6552,37 +6558,60 @@ async def get_match_team_analytics(
             })
 
         # 9. Team Coverage - detailed per-team, per-scout breakdown with live/video split
+        # Include both external and internal matches, but only internal matches with squad IDs
+        # Combine home and away appearances for each team
         cursor.execute(f"""
-            WITH team_scout_data AS (
+            WITH match_reports AS (
                 SELECT
-                    m.HOMESQUADNAME as team_name,
-                    m.ID as match_id,
                     sr.ID as report_id,
+                    COALESCE(m.ID, m.CAFC_MATCH_ID) as match_id,
+                    m.HOMESQUADNAME,
+                    m.HOMESQUADID,
+                    m.AWAYSQUADNAME,
+                    m.AWAYSQUADID,
+                    m.DATA_SOURCE,
                     sr.SCOUTING_TYPE,
                     COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name
                 FROM scout_reports sr
-                INNER JOIN matches m ON sr.MATCH_ID = m.ID
+                INNER JOIN matches m ON (
+                    (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                    (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+                )
                 LEFT JOIN users u ON sr.USER_ID = u.ID
-                WHERE m.HOMESQUADNAME IS NOT NULL {date_filter}
+                WHERE (m.DATA_SOURCE = 'external' OR
+                       (m.DATA_SOURCE = 'internal' AND (m.HOMESQUADID IS NOT NULL OR m.AWAYSQUADID IS NOT NULL)))
+                  {date_filter}
+            ),
+            team_scout_data AS (
+                -- Home team appearances
+                SELECT
+                    HOMESQUADNAME as team_name,
+                    match_id,
+                    report_id,
+                    SCOUTING_TYPE,
+                    scout_name
+                FROM match_reports
+                WHERE HOMESQUADNAME IS NOT NULL
+                  AND (DATA_SOURCE = 'external' OR (DATA_SOURCE = 'internal' AND HOMESQUADID IS NOT NULL))
 
                 UNION ALL
 
+                -- Away team appearances
                 SELECT
-                    m.AWAYSQUADNAME as team_name,
-                    m.ID as match_id,
-                    sr.ID as report_id,
-                    sr.SCOUTING_TYPE,
-                    COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name
-                FROM scout_reports sr
-                INNER JOIN matches m ON sr.MATCH_ID = m.ID
-                LEFT JOIN users u ON sr.USER_ID = u.ID
-                WHERE m.AWAYSQUADNAME IS NOT NULL {date_filter}
+                    AWAYSQUADNAME as team_name,
+                    match_id,
+                    report_id,
+                    SCOUTING_TYPE,
+                    scout_name
+                FROM match_reports
+                WHERE AWAYSQUADNAME IS NOT NULL
+                  AND (DATA_SOURCE = 'external' OR (DATA_SOURCE = 'internal' AND AWAYSQUADID IS NOT NULL))
             )
             SELECT
                 team_name,
                 scout_name,
                 COUNT(DISTINCT match_id) as times_seen,
-                COUNT(report_id) as report_count,
+                COUNT(DISTINCT report_id) as report_count,
                 COUNT(DISTINCT CASE WHEN UPPER(SCOUTING_TYPE) = 'LIVE' THEN match_id END) as live_matches,
                 COUNT(DISTINCT CASE WHEN UPPER(SCOUTING_TYPE) = 'VIDEO' THEN match_id END) as video_matches
             FROM team_scout_data
