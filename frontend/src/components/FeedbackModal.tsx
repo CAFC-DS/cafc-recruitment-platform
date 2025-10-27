@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Form, Button, Alert, Spinner } from "react-bootstrap";
+import { Modal, Form, Button, Alert, Spinner, Toast, ToastContainer } from "react-bootstrap";
 import axiosInstance from "../axiosInstance";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 
@@ -18,7 +18,9 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -49,18 +51,23 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
 
     try {
       await axiosInstance.post("/feedback", formData);
-      setSuccess(true);
-      // Reset form after 2 seconds and close modal
-      setTimeout(() => {
-        resetForm();
-        onHide();
-      }, 2000);
+
+      // Show success toast
+      setToastMessage("Feedback submitted successfully! Thank you for your input.");
+      setToastVariant("success");
+      setShowToast(true);
+
+      // Reset form and close modal
+      resetForm();
+      onHide();
     } catch (error: any) {
       console.error("Error submitting feedback:", error);
-      setError(
+      setToastMessage(
         error.response?.data?.detail ||
           "Failed to submit feedback. Please try again."
       );
+      setToastVariant("danger");
+      setShowToast(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -74,31 +81,25 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
       priority: "medium",
     });
     setError("");
-    setSuccess(false);
   };
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered onExited={resetForm}>
-      <Modal.Header
-        closeButton
-        style={{ backgroundColor: "#000", color: "white" }}
-      >
-        <Modal.Title>💬 Send Feedback</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        {error && (
-          <Alert variant="danger" className="mb-3">
-            {error}
-          </Alert>
-        )}
+    <>
+      <Modal show={show} onHide={onHide} size="lg" centered onExited={resetForm}>
+        <Modal.Header
+          closeButton
+          style={{ backgroundColor: "#000", color: "white" }}
+        >
+          <Modal.Title>💬 Send Feedback</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {error && (
+            <Alert variant="danger" className="mb-3">
+              {error}
+            </Alert>
+          )}
 
-        {success && (
-          <Alert variant="success" className="mb-3">
-            ✅ Feedback submitted successfully! Thank you for your input.
-          </Alert>
-        )}
-
-        <Form onSubmit={handleSubmit}>
+          <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3" controlId="feedbackType">
             <Form.Label>Type *</Form.Label>
             <Form.Select
@@ -172,15 +173,13 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
             <Button
               type="submit"
               variant="primary"
-              disabled={isSubmitting || success}
+              disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
                   <Spinner animation="border" size="sm" className="me-2" />
                   Sending...
                 </>
-              ) : success ? (
-                "Sent!"
               ) : (
                 "Submit Feedback"
               )}
@@ -194,6 +193,24 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
         }
       `}</style>
     </Modal>
+
+    <ToastContainer position="top-end" className="p-3">
+      <Toast
+        onClose={() => setShowToast(false)}
+        show={showToast}
+        delay={3000}
+        autohide
+        bg={toastVariant}
+      >
+        <Toast.Header>
+          <strong className="me-auto">Notification</strong>
+        </Toast.Header>
+        <Toast.Body className={toastVariant === "success" ? "text-white" : ""}>
+          {toastMessage}
+        </Toast.Body>
+      </Toast>
+    </ToastContainer>
+    </>
   );
 };
 
