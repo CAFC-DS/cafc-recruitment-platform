@@ -9,7 +9,7 @@ interface FeedbackModalProps {
 }
 
 const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
-  const { userName } = useCurrentUser();
+  const { user } = useCurrentUser();
   const [formData, setFormData] = useState({
     type: "bug",
     title: "",

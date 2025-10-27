@@ -94,8 +94,7 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
       {/* Sub-modals */}
       <AddFixtureModal
         show={showFixtureModal}
-        onHide={() => setShowFixtureModal(false)}
-        onSuccess={() => {
+        onHide={() => {
           setShowFixtureModal(false);
           onSuccess();
         }}
@@ -105,7 +104,7 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
         show={showIntelModal}
         onHide={() => setShowIntelModal(false)}
         selectedPlayer={null}
-        onSubmitSuccess={() => {
+        onIntelSubmitSuccess={() => {
           setShowIntelModal(false);
           onSuccess();
         }}
