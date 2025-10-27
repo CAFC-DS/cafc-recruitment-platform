@@ -15,7 +15,6 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import axiosInstance from "../axiosInstance";
 import logo from "../assets/logo.png";
 import AddNewReportModal from "./AddNewReportModal";
-import FeedbackModal from "./FeedbackModal";
 
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
@@ -35,9 +34,6 @@ const AppNavbar: React.FC = () => {
 
   // Add New Report Modal state
   const [showAddNewModal, setShowAddNewModal] = useState(false);
-
-  // Feedback Modal state
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Draft indicator state
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
@@ -428,18 +424,6 @@ const AppNavbar: React.FC = () => {
             )}
             {token && (
               <Button
-                variant="warning"
-                onClick={() => setShowFeedbackModal(true)}
-                size="sm"
-                className="ms-2 rounded-pill"
-                style={{ fontWeight: 600 }}
-                title="Send feedback, report bugs, or request features"
-              >
-                💬 Feedback
-              </Button>
-            )}
-            {token && (
-              <Button
                 variant="danger"
                 onClick={() => setShowAddNewModal(true)}
                 size="sm"
@@ -480,12 +464,6 @@ const AppNavbar: React.FC = () => {
           setShowAddNewModal(false);
           // Optionally refresh data here if needed
         }}
-      />
-
-      {/* Feedback Modal */}
-      <FeedbackModal
-        show={showFeedbackModal}
-        onHide={() => setShowFeedbackModal(false)}
       />
     </Navbar>
   );
