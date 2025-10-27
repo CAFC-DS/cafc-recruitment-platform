@@ -1210,11 +1210,18 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           <Button
             variant="secondary"
             onClick={() => setShowWarningModal(false)}
+            disabled={loading}
           >
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleConfirmSubmit}>
-            Continue
+          <Button variant="primary" onClick={handleConfirmSubmit} disabled={loading}>
+            {loading ? (
+              <>
+                <Spinner animation="border" size="sm" /> Submitting...
+              </>
+            ) : (
+              "Continue"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
