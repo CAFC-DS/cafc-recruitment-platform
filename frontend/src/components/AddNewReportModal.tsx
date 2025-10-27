@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Modal, Button, ListGroup } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
 import AddFixtureModal from "./AddFixtureModal";
 import IntelModal from "./IntelModal";
 import FeedbackModal from "./FeedbackModal";
@@ -15,6 +16,7 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
   onHide,
   onSuccess,
 }) => {
+  const navigate = useNavigate();
   const [showFixtureModal, setShowFixtureModal] = useState(false);
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -23,6 +25,9 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
     onHide(); // Close the selection modal first
 
     switch (option) {
+      case "report":
+        navigate("/scouting");
+        break;
       case "fixture":
         setShowFixtureModal(true);
         break;
@@ -43,6 +48,21 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
         </Modal.Header>
         <Modal.Body>
           <ListGroup>
+            <ListGroup.Item
+              action
+              onClick={() => handleOptionSelect("report")}
+              className="d-flex align-items-center py-3"
+              style={{ cursor: "pointer" }}
+            >
+              <span style={{ fontSize: "1.5rem", marginRight: "12px" }}>📊</span>
+              <div>
+                <strong>Add Report</strong>
+                <div style={{ fontSize: "0.875rem", color: "#6c757d" }}>
+                  Create a new scouting report
+                </div>
+              </div>
+            </ListGroup.Item>
+
             <ListGroup.Item
               action
               onClick={() => handleOptionSelect("fixture")}
