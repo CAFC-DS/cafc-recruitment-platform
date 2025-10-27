@@ -14,6 +14,7 @@ import DarkModeToggle from "./DarkModeToggle";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import axiosInstance from "../axiosInstance";
 import logo from "../assets/logo.png";
+import AddNewReportModal from "./AddNewReportModal";
 
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
@@ -30,6 +31,23 @@ const AppNavbar: React.FC = () => {
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Map<string, any[]>>(new Map());
+
+  // Add New Report Modal state
+  const [showAddNewModal, setShowAddNewModal] = useState(false);
+
+  // Draft indicator state
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
+
+  // Check for saved drafts periodically
+  useEffect(() => {
+    const checkDraft = () => {
+      const draftStr = localStorage.getItem('scoutingAssessmentDraft');
+      setHasSavedDraft(!!draftStr);
+    };
+    checkDraft();
+    const interval = setInterval(checkDraft, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -392,6 +410,29 @@ const AppNavbar: React.FC = () => {
 
           <Nav className="d-flex align-items-center">
             <DarkModeToggle />
+            {token && hasSavedDraft && (
+              <Button
+                variant="info"
+                onClick={() => navigate('/scouting?openDraft=true')}
+                size="sm"
+                className="ms-2 rounded-pill"
+                style={{ fontWeight: 600 }}
+                title="Click to restore your saved draft"
+              >
+                💾 Draft Saved
+              </Button>
+            )}
+            {token && (
+              <Button
+                variant="danger"
+                onClick={() => setShowAddNewModal(true)}
+                size="sm"
+                className="ms-2 rounded-pill"
+                style={{ fontWeight: 600 }}
+              >
+                + Add New
+              </Button>
+            )}
             {token ? (
               <Button
                 variant="outline-light"
@@ -414,6 +455,16 @@ const AppNavbar: React.FC = () => {
           </Nav>
         </Navbar.Collapse>
       </Container>
+
+      {/* Add New Report Modal */}
+      <AddNewReportModal
+        show={showAddNewModal}
+        onHide={() => setShowAddNewModal(false)}
+        onSuccess={() => {
+          setShowAddNewModal(false);
+          // Optionally refresh data here if needed
+        }}
+      />
     </Navbar>
   );
 };

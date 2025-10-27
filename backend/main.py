@@ -26,6 +26,10 @@ import asyncio
 from functools import lru_cache
 import unicodedata
 import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import requests
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
@@ -556,6 +560,13 @@ class ChatbotHealthCheck(BaseModel):
     ai_model_loaded: bool
     database_accessible: bool
     status: str
+
+
+class FeedbackSubmission(BaseModel):
+    type: str  # "bug", "feature", "feedback"
+    title: str
+    description: str
+    priority: str  # "low", "medium", "high"
 
 
 # --- User Database Operations ---
@@ -2962,6 +2973,225 @@ async def create_scout_report(
             conn.close()
 
 
+@app.post("/scout_reports/batch")
+async def create_scout_reports_batch(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Create multiple scout reports in a single transaction"""
+    conn = None
+    try:
+        # Get the reports array from request body
+        body = await request.json()
+        reports_data = body.get("reports", [])
+
+        if not reports_data or len(reports_data) == 0:
+            raise HTTPException(status_code=400, detail="No reports provided")
+
+        # Parse reports into ScoutReport objects
+        reports = [ScoutReport(**report_data) for report_data in reports_data]
+
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        conn.autocommit = False  # Start transaction
+
+        created_report_ids = []
+
+        for report in reports:
+            report_type = report.reportType
+
+            # Prepare common fields
+            player_id = report.player_id
+            position = report.playerPosition
+            build = report.playerBuild
+            height = report.playerHeight
+            summary = report.assessmentSummary
+            scouting_type = report.scoutingType
+            performance_score = report.performanceScore
+            strengths = ", ".join(report.strengths) if report.strengths else None
+            weaknesses = ", ".join(report.weaknesses) if report.weaknesses else None
+
+            # Initialize fields that might be null
+            justification_rationale = None
+            attribute_score = None
+            purpose_of_assessment = None
+            flag_category = None
+            match_id = None
+            formation = None
+            opposition_details = None
+
+            if report_type == "Player Assessment":
+                justification_rationale = report.justificationRationale
+                purpose_of_assessment = report.purposeOfAssessment
+                opposition_details = report.oppositionDetails
+                match_id = report.selectedMatch
+                formation = report.formation
+                if report.attributeScores:
+                    attribute_score = sum(report.attributeScores.values())
+
+            elif report_type == "Flag":
+                flag_category = report.flagCategory
+                match_id = report.selectedMatch
+                formation = report.formation
+
+            elif report_type == "Clips":
+                pass  # All relevant fields already prepared
+
+            # Validate and resolve player_id using universal ID or dual ID lookup
+            if player_id:
+                # Check if player_id is universal ID format
+                if isinstance(player_id, str) and (
+                    "internal_" in player_id or "external_" in player_id
+                ):
+                    where_clause, params = resolve_player_lookup(player_id)
+                    cursor.execute(
+                        f"""
+                        SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
+                               BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
+                        FROM players
+                        WHERE {where_clause}
+                    """,
+                        params,
+                    )
+                    player_data = cursor.fetchone()
+
+                    if not player_data:
+                        raise HTTPException(
+                            status_code=404,
+                            detail=f"Player with universal ID {player_id} not found",
+                        )
+
+                    player_data_source = (
+                        "internal" if "internal_" in player_id else "external"
+                    )
+                    actual_player_id = (
+                        player_data[0]
+                        if player_data_source == "external"
+                        else player_data[1]
+                    )
+                else:
+                    # Fallback to legacy dual ID lookup
+                    player_data, player_data_source = find_player_by_any_id(
+                        player_id, cursor
+                    )
+                    if not player_data:
+                        raise HTTPException(
+                            status_code=404, detail=f"Player with ID {player_id} not found"
+                        )
+                    actual_player_id = (
+                        player_data[0]
+                        if player_data_source == "external"
+                        else player_data[1]
+                    )
+            else:
+                actual_player_id = None
+                player_data_source = None
+
+            # Validate and resolve match_id if provided
+            actual_match_id = None
+            if match_id:
+                match_data, match_data_source = find_match_by_any_id(match_id, cursor)
+                if not match_data:
+                    raise HTTPException(
+                        status_code=404, detail=f"Match with ID {match_id} not found"
+                    )
+                actual_match_id = (
+                    match_data[0] if match_data_source == "external" else match_data[1]
+                )
+
+            # Determine which column to populate based on player source
+            external_player_id = (
+                actual_player_id if player_data_source == "external" else None
+            )
+            internal_player_id = (
+                actual_player_id if player_data_source == "internal" else None
+            )
+
+            # Insert report
+            sql = """
+                INSERT INTO scout_reports (
+                    PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
+                    SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
+                    PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+
+            values = (
+                external_player_id,
+                internal_player_id,
+                position,
+                build,
+                height,
+                strengths,
+                weaknesses,
+                summary,
+                justification_rationale,
+                attribute_score,
+                performance_score,
+                purpose_of_assessment,
+                scouting_type,
+                flag_category,
+                report_type,
+                actual_match_id,
+                formation,
+                opposition_details,
+                current_user.id,
+            )
+            cursor.execute(sql, values)
+
+            # Get the ID of the inserted report
+            if player_data_source == "external":
+                cursor.execute(
+                    "SELECT ID FROM scout_reports WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    (actual_player_id, current_user.id, summary, report_type),
+                )
+            else:
+                cursor.execute(
+                    "SELECT ID FROM scout_reports WHERE CAFC_PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    (actual_player_id, current_user.id, summary, report_type),
+                )
+
+            report_row = cursor.fetchone()
+            if report_row:
+                report_id = report_row[0]
+                created_report_ids.append(report_id)
+
+                # Insert attribute scores if present
+                if report_type == "Player Assessment" and report.attributeScores:
+                    for attribute_name, score_value in report.attributeScores.items():
+                        cursor.execute(
+                            """
+                            INSERT INTO SCOUT_REPORT_ATTRIBUTE_SCORES
+                            (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE)
+                            VALUES (%s, %s, %s)
+                            """,
+                            (report_id, attribute_name, score_value),
+                        )
+
+        # Commit the transaction
+        conn.commit()
+
+        return {
+            "message": f"Successfully created {len(created_report_ids)} scout reports",
+            "report_ids": created_report_ids,
+        }
+
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.error(f"Error creating batch scout reports: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create batch scout reports: {str(e)}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.put("/scout_reports/{report_id}")
 async def update_scout_report(
     report_id: int, report: ScoutReport, current_user: User = Depends(get_current_user)
@@ -3538,10 +3768,17 @@ async def get_matches_by_date(
             conn.close()
 
 
+# Simple in-memory cache for position attributes (they rarely change)
+_attributes_cache = {}
+
 @app.get("/attributes/{position}")
 async def get_attributes_by_position(
     position: str, current_user: User = Depends(get_current_user)
 ):
+    # Check cache first
+    if position in _attributes_cache:
+        return _attributes_cache[position]
+
     conn = None
     try:
         # Map specific positions to attribute groups for assessment forms
@@ -3582,15 +3819,19 @@ async def get_attributes_by_position(
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT ATTRIBUTE_NAME 
-            FROM POSITION_ATTRIBUTES 
-            WHERE POSITION = %s 
+            SELECT ATTRIBUTE_NAME
+            FROM POSITION_ATTRIBUTES
+            WHERE POSITION = %s
             ORDER BY DISPLAY_ORDER
         """,
             (attribute_group,),
         )
         attributes = cursor.fetchall()
         attribute_list = [row[0] for row in attributes]
+
+        # Cache the result
+        _attributes_cache[position] = attribute_list
+
         return attribute_list
     except Exception as e:
         logging.exception(e)
@@ -3733,15 +3974,18 @@ async def get_all_scout_reports(
         sql_params = []
 
         # Apply role-based filtering
+        print(f"🔍 START FILTERING - User: {current_user.username}, Role: {current_user.role}")
         try:
             test_cursor = conn.cursor()
             # Check if USER_ID column exists by describing the table
             test_cursor.execute("DESCRIBE TABLE scout_reports")
             columns = test_cursor.fetchall()
             column_names = [col[0] for col in columns]
+            print(f"🔍 USER_ID column exists: {'USER_ID' in column_names}")
 
             if "USER_ID" in column_names:
                 # Column exists, apply role-based filtering
+                print(f"🔍 Applying filter for role: {current_user.role}")
                 if current_user.role == "scout":
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
@@ -3750,12 +3994,16 @@ async def get_all_scout_reports(
                     )
                 elif current_user.role == "loan":
                     # Loan users see their own reports OR any Loan Reports
-                    where_clauses.append("(sr.USER_ID = %s OR sr.PURPOSE = %s)")
+                    # Use UPPER() for case-insensitive comparison
+                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
                     sql_params.append(current_user.id)
                     sql_params.append("Loan Report")
+                    print(f"🔍 LOAN FILTER APPLIED - User: {current_user.username} (ID: {current_user.id})")
+                    print(f"🔍 Filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
                     logging.info(
-                        f"Applied loan filtering for user ID: {current_user.id}"
+                        f"Applied loan filtering for user ID: {current_user.id}, username: {current_user.username}"
                     )
+                    logging.info(f"Loan filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
                 else:
                     logging.info(
                         f"User role '{current_user.role}' - no filtering applied"
@@ -3778,8 +4026,18 @@ async def get_all_scout_reports(
 
         # Get total count
         count_sql = f"SELECT COUNT(*) {base_sql}"
+
+        # Log the actual SQL query for debugging
+        if current_user.role == "loan":
+            logging.info(f"Executing count query: {count_sql}")
+            logging.info(f"With params: {sql_params}")
+
         cursor.execute(count_sql, sql_params)
         total_reports = cursor.fetchone()[0]
+
+        if current_user.role == "loan":
+            print(f"🔍 LOAN USER QUERY RESULT: {total_reports} total reports")
+            logging.info(f"Loan user sees {total_reports} total reports")
 
         # Get paginated reports
         select_sql = f"""
@@ -4066,7 +4324,7 @@ async def get_player_profile(
                 # Loan users see their own reports OR any Loan Reports
                 scout_sql = scout_sql.replace(
                     "WHERE sr.PLAYER_ID = %s",
-                    "WHERE sr.PLAYER_ID = %s AND (sr.USER_ID = %s OR sr.PURPOSE = %s)",
+                    "WHERE sr.PLAYER_ID = %s AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))",
                 )
                 scout_values = (actual_player_id, current_user.id, "Loan Report")
         except:
@@ -4263,7 +4521,7 @@ async def get_player_attributes(
                 query_params.append(current_user.id)
             elif current_user.role == "loan":
                 # Loan users see their own reports OR any Loan Reports
-                base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
+                base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
         except:
@@ -4457,7 +4715,7 @@ async def get_player_scout_reports(
                 query_params.append(current_user.id)
             elif current_user.role == "loan":
                 # Loan users see their own reports OR any Loan Reports
-                base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
+                base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
         except:
@@ -4568,7 +4826,7 @@ async def get_player_position_counts(
                 query_params.append(current_user.id)
             elif current_user.role == "loan":
                 # Loan users see their own reports OR any Loan Reports
-                base_query += " AND (sr.USER_ID = %s OR sr.PURPOSE = %s)"
+                base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
         except:
@@ -7042,6 +7300,103 @@ async def get_schema_summary(current_user: User = Depends(get_current_user)):
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail="Failed to get schema information")
+
+
+@app.post("/feedback")
+async def submit_feedback(
+    feedback: FeedbackSubmission, current_user: User = Depends(get_current_user)
+):
+    """
+    Submit user feedback, bug reports, or feature requests
+    Sends notification to Discord webhook
+    """
+    try:
+        # Get Discord webhook URL from environment
+        discord_webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
+
+        # Determine emoji based on feedback type
+        type_emoji = {
+            "bug": "🐛",
+            "feature": "💡",
+            "feedback": "💬"
+        }
+        emoji = type_emoji.get(feedback.type, "📝")
+
+        # Determine priority color for Discord embed
+        priority_colors = {
+            "low": 3066993,     # Green
+            "medium": 16776960,  # Yellow
+            "high": 15158332     # Red
+        }
+        embed_color = priority_colors.get(feedback.priority, 9807270)  # Default gray
+
+        # Determine priority emoji
+        priority_emoji = {
+            "low": "🟢",
+            "medium": "🟡",
+            "high": "🔴"
+        }
+        priority_icon = priority_emoji.get(feedback.priority, "⚪")
+
+        # Create Discord embed
+        discord_payload = {
+            "username": "Recruitment Platform Feedback",
+            "avatar_url": "https://cdn-icons-png.flaticon.com/512/1077/1077063.png",
+            "embeds": [{
+                "title": f"{emoji} [{feedback.type.upper()}] {feedback.title}",
+                "description": feedback.description,
+                "color": embed_color,
+                "fields": [
+                    {
+                        "name": "Priority",
+                        "value": f"{priority_icon} {feedback.priority.title()}",
+                        "inline": True
+                    },
+                    {
+                        "name": "Submitted by",
+                        "value": current_user.username,
+                        "inline": True
+                    },
+                    {
+                        "name": "Type",
+                        "value": f"{emoji} {feedback.type.title()}",
+                        "inline": True
+                    }
+                ],
+                "timestamp": datetime.now().isoformat(),
+                "footer": {
+                    "text": "Charlton Athletic Recruitment Platform"
+                }
+            }]
+        }
+
+        # Send to Discord if webhook URL is configured
+        if discord_webhook_url:
+            try:
+                response = requests.post(discord_webhook_url, json=discord_payload, timeout=10)
+                response.raise_for_status()
+                logging.info(f"Feedback sent to Discord successfully from {current_user.username}")
+            except Exception as discord_error:
+                # Log Discord error but don't fail the request
+                logging.error(f"Failed to send feedback to Discord: {str(discord_error)}")
+                # Continue execution - feedback was received even if Discord failed
+        else:
+            # Log that Discord webhook is not configured
+            logging.warning("Discord webhook not configured - feedback received but not sent to Discord")
+            logging.info(f"Feedback received: [{feedback.type}] {feedback.title} from {current_user.username}")
+
+        return {
+            "success": True,
+            "message": "Feedback submitted successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logging.exception(f"Error processing feedback: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to submit feedback. Please try again later."
+        )
 
 
 if __name__ == "__main__":
