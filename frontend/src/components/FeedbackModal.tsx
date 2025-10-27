@@ -81,7 +81,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
     <Modal show={show} onHide={onHide} size="lg" centered onExited={resetForm}>
       <Modal.Header
         closeButton
-        style={{ backgroundColor: "#dc3545", color: "white" }}
+        style={{ backgroundColor: "#000", color: "white" }}
       >
         <Modal.Title>💬 Send Feedback</Modal.Title>
       </Modal.Header>

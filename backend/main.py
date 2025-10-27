@@ -29,6 +29,7 @@ import re
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import requests
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
@@ -7156,15 +7157,11 @@ async def submit_feedback(
 ):
     """
     Submit user feedback, bug reports, or feature requests
-    Sends an email notification to the admin
+    Sends notification to Discord webhook
     """
     try:
-        # Get email configuration from environment
-        email_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-        email_port = int(os.getenv("EMAIL_PORT", "587"))
-        email_username = os.getenv("EMAIL_USERNAME")
-        email_password = os.getenv("EMAIL_PASSWORD")
-        admin_email = os.getenv("ADMIN_EMAIL", email_username)  # Default to sender if not set
+        # Get Discord webhook URL from environment
+        discord_webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
 
         # Determine emoji based on feedback type
         type_emoji = {
@@ -7174,6 +7171,14 @@ async def submit_feedback(
         }
         emoji = type_emoji.get(feedback.type, "📝")
 
+        # Determine priority color for Discord embed
+        priority_colors = {
+            "low": 3066993,     # Green
+            "medium": 16776960,  # Yellow
+            "high": 15158332     # Red
+        }
+        embed_color = priority_colors.get(feedback.priority, 9807270)  # Default gray
+
         # Determine priority emoji
         priority_emoji = {
             "low": "🟢",
@@ -7182,89 +7187,51 @@ async def submit_feedback(
         }
         priority_icon = priority_emoji.get(feedback.priority, "⚪")
 
-        # Create email content
-        subject = f"{emoji} [{feedback.type.upper()}] {feedback.title}"
+        # Create Discord embed
+        discord_payload = {
+            "username": "Recruitment Platform Feedback",
+            "avatar_url": "https://cdn-icons-png.flaticon.com/512/1077/1077063.png",
+            "embeds": [{
+                "title": f"{emoji} [{feedback.type.upper()}] {feedback.title}",
+                "description": feedback.description,
+                "color": embed_color,
+                "fields": [
+                    {
+                        "name": "Priority",
+                        "value": f"{priority_icon} {feedback.priority.title()}",
+                        "inline": True
+                    },
+                    {
+                        "name": "Submitted by",
+                        "value": current_user.username,
+                        "inline": True
+                    },
+                    {
+                        "name": "Type",
+                        "value": f"{emoji} {feedback.type.title()}",
+                        "inline": True
+                    }
+                ],
+                "timestamp": datetime.now().isoformat(),
+                "footer": {
+                    "text": "Charlton Athletic Recruitment Platform"
+                }
+            }]
+        }
 
-        html_body = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-                <h2 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 10px;">
-                    {emoji} New Feedback Submission
-                </h2>
-
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                    <p style="margin: 5px 0;"><strong>Type:</strong> {emoji} {feedback.type.title()}</p>
-                    <p style="margin: 5px 0;"><strong>Priority:</strong> {priority_icon} {feedback.priority.title()}</p>
-                    <p style="margin: 5px 0;"><strong>Submitted by:</strong> {current_user.username}</p>
-                    <p style="margin: 5px 0;"><strong>Date:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
-                </div>
-
-                <h3 style="color: #495057; margin-top: 25px;">Title</h3>
-                <p style="background-color: #fff; padding: 10px; border-left: 4px solid #dc3545; margin: 10px 0;">
-                    {feedback.title}
-                </p>
-
-                <h3 style="color: #495057; margin-top: 25px;">Description</h3>
-                <div style="background-color: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 5px; white-space: pre-wrap;">
-{feedback.description}
-                </div>
-
-                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-                    <p>This feedback was submitted via the Charlton Athletic Recruitment Platform.</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
-        text_body = f"""
-New Feedback Submission
-
-Type: {feedback.type.title()}
-Priority: {feedback.priority.title()}
-Submitted by: {current_user.username}
-Date: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-
-Title:
-{feedback.title}
-
-Description:
-{feedback.description}
-
----
-This feedback was submitted via the Charlton Athletic Recruitment Platform.
-        """
-
-        # Only send email if email credentials are configured
-        if email_username and email_password and admin_email:
+        # Send to Discord if webhook URL is configured
+        if discord_webhook_url:
             try:
-                # Create message
-                msg = MIMEMultipart("alternative")
-                msg["Subject"] = subject
-                msg["From"] = email_username
-                msg["To"] = admin_email
-
-                # Attach both plain text and HTML versions
-                part1 = MIMEText(text_body, "plain")
-                part2 = MIMEText(html_body, "html")
-                msg.attach(part1)
-                msg.attach(part2)
-
-                # Send email
-                with smtplib.SMTP(email_host, email_port) as server:
-                    server.starttls()
-                    server.login(email_username, email_password)
-                    server.send_message(msg)
-
-                logging.info(f"Feedback email sent successfully to {admin_email}")
-            except Exception as email_error:
-                # Log email error but don't fail the request
-                logging.error(f"Failed to send feedback email: {str(email_error)}")
-                # Continue execution - feedback was received even if email failed
+                response = requests.post(discord_webhook_url, json=discord_payload, timeout=10)
+                response.raise_for_status()
+                logging.info(f"Feedback sent to Discord successfully from {current_user.username}")
+            except Exception as discord_error:
+                # Log Discord error but don't fail the request
+                logging.error(f"Failed to send feedback to Discord: {str(discord_error)}")
+                # Continue execution - feedback was received even if Discord failed
         else:
-            # Log that email is not configured
-            logging.warning("Email not configured - feedback received but not emailed")
+            # Log that Discord webhook is not configured
+            logging.warning("Discord webhook not configured - feedback received but not sent to Discord")
             logging.info(f"Feedback received: [{feedback.type}] {feedback.title} from {current_user.username}")
 
         return {
