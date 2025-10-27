@@ -35,7 +35,6 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ show, onHide }) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
-    setSuccess(false);
 
     // Validation
     if (!formData.title.trim()) {
