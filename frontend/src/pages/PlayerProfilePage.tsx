@@ -175,6 +175,10 @@ const PlayerProfilePage: React.FC = () => {
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [positionCounts, setPositionCounts] = useState<Array<{position: string, report_count: number}>>([]);
 
+  // Report display controls
+  const [showAllReports, setShowAllReports] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'compact'>('cards');
+
   // Red-green gradient color functions for scoring (now using utility)
 
   // Group-based color mapping using same colors as PlayerReportModal
@@ -658,13 +662,17 @@ const PlayerProfilePage: React.FC = () => {
                           Average Performance Score:
                         </span>
                         <span
-                          className="badge score-badge ms-2"
+                          className={`badge score-badge ms-2 ${
+                            avgScore === 9 ? 'performance-score-9' :
+                            avgScore === 10 ? 'performance-score-10' : ''
+                          }`}
                           style={{
                             backgroundColor: getPerformanceScoreColor(avgScore),
                             color: "white !important",
                             fontWeight: "bold",
                             fontSize: "1rem",
                             padding: "0.4rem 0.8rem",
+                            ...(avgScore !== 9 && avgScore !== 10 ? { border: "none" } : {}),
                           }}
                         >
                           {avgScore}/10
@@ -726,9 +734,32 @@ const PlayerProfilePage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Recent Scouting Cards - Matching ScoutingPage Style */}
-              <Row>
-                {scoutReportsData.reports.slice(0, 4).map((report, index) => (
+              {/* View Mode Toggle Buttons */}
+              {scoutReportsData.reports.length > 4 && (
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div className="d-flex gap-2">
+                    <Button
+                      size="sm"
+                      variant={showAllReports ? "secondary" : "primary"}
+                      onClick={() => setShowAllReports(!showAllReports)}
+                    >
+                      {showAllReports ? "Show Less" : `Show All ${scoutReportsData.reports.length} Reports`}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={viewMode === 'compact' ? "secondary" : "outline-secondary"}
+                      onClick={() => setViewMode(viewMode === 'cards' ? 'compact' : 'cards')}
+                    >
+                      {viewMode === 'cards' ? '📋 Compact View' : '🎴 Card View'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Card View */}
+              {viewMode === 'cards' && (
+                <Row>
+                  {(showAllReports ? scoutReportsData.reports : scoutReportsData.reports.slice(0, 4)).map((report, index) => (
                   <Col sm={6} md={4} lg={3} key={report.report_id} className="mb-4">
                     <Card
                       className="h-100 shadow-sm hover-card"
@@ -825,7 +856,10 @@ const PlayerProfilePage: React.FC = () => {
                                   <small className="text-muted fw-semibold d-block">Score</small>
                                   {report.overall_rating && (
                                     <span
-                                      className="badge"
+                                      className={`badge ${
+                                        report.overall_rating === 9 ? 'performance-score-9' :
+                                        report.overall_rating === 10 ? 'performance-score-10' : ''
+                                      }`}
                                       style={{
                                         backgroundColor: getPerformanceScoreColor(
                                           report.overall_rating,
@@ -833,6 +867,7 @@ const PlayerProfilePage: React.FC = () => {
                                         color: "white !important",
                                         fontWeight: "bold",
                                         fontSize: "0.9rem",
+                                        ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
                                       }}
                                     >
                                       {report.overall_rating}
@@ -885,16 +920,101 @@ const PlayerProfilePage: React.FC = () => {
                       </Card.Body>
                     </Card>
                   </Col>
-                ))}
+                  ))}
+                </Row>
+              )}
 
-              </Row>
-                {scoutReportsData.reports.length > 4 && (
-                  <div className="text-center mt-3">
-                    <small className="text-muted">
-                      +{scoutReportsData.reports.length - 4} more reports available
-                    </small>
-                  </div>
-                )}
+              {/* Compact Table View */}
+              {viewMode === 'compact' && (
+                <div className="table-responsive">
+                  <table className="table table-hover table-sm">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Report Date</th>
+                        <th>Scout</th>
+                        <th>Fixture Date</th>
+                        <th>Fixture</th>
+                        <th>Position</th>
+                        <th>Score</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(showAllReports ? scoutReportsData.reports : scoutReportsData.reports.slice(0, 4)).map((report) => (
+                        <tr key={report.report_id} style={{ cursor: 'pointer' }}>
+                          <td>{new Date(report.report_date).toLocaleDateString()}</td>
+                          <td>{report.scout_name}</td>
+                          <td>{report.fixture_date ? new Date(report.fixture_date).toLocaleDateString() : 'N/A'}</td>
+                          <td style={{ fontSize: '0.85rem', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {report.fixture || 'N/A'}
+                          </td>
+                          <td>{report.position_played || 'N/A'}</td>
+                          <td>
+                            {report.report_type?.toLowerCase() !== "flag" && report.report_type?.toLowerCase() !== "flag assessment" ? (
+                              report.overall_rating && (
+                                <span
+                                  className={`badge ${
+                                    report.overall_rating === 9 ? 'performance-score-9' :
+                                    report.overall_rating === 10 ? 'performance-score-10' : ''
+                                  }`}
+                                  style={{
+                                    backgroundColor: getPerformanceScoreColor(report.overall_rating),
+                                    color: "white",
+                                    fontWeight: "bold",
+                                    fontSize: "0.85rem",
+                                    ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
+                                  }}
+                                >
+                                  {report.overall_rating}
+                                </span>
+                              )
+                            ) : (
+                              getFlagTypeText(report.flag_category)
+                            )}
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center gap-1">
+                              {getReportTypeBadge(
+                                report.report_type || "",
+                                report.scouting_type || "",
+                                report.flag_category,
+                              )}
+                              {report.scouting_type && (
+                                <span className="ms-1">
+                                  {getScoutingTypeBadge(report.scouting_type)}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              onClick={() => handleOpenReportModal(report.report_id)}
+                              disabled={loadingReportId === report.report_id}
+                            >
+                              {loadingReportId === report.report_id ? (
+                                <Spinner as="span" animation="border" size="sm" />
+                              ) : (
+                                "View"
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {!showAllReports && scoutReportsData.reports.length > 4 && viewMode === 'cards' && (
+                <div className="text-center mt-3">
+                  <small className="text-muted">
+                    +{scoutReportsData.reports.length - 4} more reports available
+                  </small>
+                </div>
+              )}
             </>
           ) : (
             <div className="empty-state-compact">
