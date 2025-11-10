@@ -1,0 +1,1 @@
+python: can't open file '/Users/hashim.umarji/Desktop/2025-26/Recruitment/Coding/NewRecruitmentPlatform/check_all_internal_for_externals.py': [Errno 2] No such file or directory

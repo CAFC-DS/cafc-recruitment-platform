@@ -1,0 +1,126 @@
+====================================================================================================
+STEP 1: UPDATING EXACT MATCHES (24 teams)
+====================================================================================================
+
+Processing: AZ Alkmaar
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 390
+
+Processing: Aston Villa U21
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 1461
+
+Processing: Birmingham City U18
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 3321
+
+Processing: Celtic Glasgow
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 255
+
+Processing: Crystal Palace U21
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 3253
+
+Processing: Eastbourne Borough
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 875
+
+Processing: FC Stevenage
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 940
+
+Processing: FK Partizan Belgrad
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 1056
+
+Processing: Falkirk FC
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 9270
+
+Processing: Glasgow Rangers
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 822
+
+Processing: Heart of Midlothian FC
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 827
+
+Processing: Hibernian FC
+  ✓ Updated 1 home teams, 1 away teams with Squad ID: 1437
+
+Processing: Ilves Tampere
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 2953
+
+Processing: Kashiwa Reysol
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 2095
+
+Processing: Kawasaki Frontale
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 2055
+
+Processing: Leeds United U21
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 3252
+
+Processing: Livingston FC
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 2819
+
+Processing: Maidstone United
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 869
+
+Processing: Notts County
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 896
+
+Processing: Peterborough United
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 965
+
+Processing: Sanfrecce Hiroshima
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 2054
+
+Processing: Shonan Bellmare
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 2078
+
+Processing: St. Mirren FC
+  ✓ Updated 1 home teams, 0 away teams with Squad ID: 2818
+
+Processing: Sydney FC
+  ✓ Updated 0 home teams, 1 away teams with Squad ID: 2037
+
+✓ Step 1 complete: Exact matches updated
+
+====================================================================================================
+STEP 2: UPDATING FUZZY MATCHES (5 teams, excluding 2)
+====================================================================================================
+
+Processing: 'CF Montreal' → 'CF Montréal'
+  ✓ Renamed and updated 1 home teams, 0 away teams
+    Squad ID: 1845, Type: CLUB, Country: United States
+
+Processing: 'Cliftonville' → 'Cliftonville FC'
+  ✓ Renamed and updated 1 home teams, 0 away teams
+    Squad ID: 1402, Type: CLUB, Country: Northern Ireland
+
+Processing: 'Manchester United U21 ' → 'Manchester United U21'
+  ✓ Renamed and updated 0 home teams, 1 away teams
+    Squad ID: 1451, Type: CLUB, Country: England
+
+Processing: 'Reading U18' → 'FC Reading U18'
+  ✓ Renamed and updated 0 home teams, 1 away teams
+    Squad ID: 3299, Type: CLUB, Country: England
+
+Processing: 'Western United' → 'Western United FC'
+  ✓ Renamed and updated 2 home teams, 0 away teams
+    Squad ID: 6376, Type: CLUB, Country: Australia
+
+✓ Step 2 complete: Fuzzy matches updated
+
+====================================================================================================
+STEP 3: HANDLING DUPLICATE MATCHES
+====================================================================================================
+
+================================================================================
+Processing duplicate: Birmingham City U18 vs Reading U18
+Internal ID: 2801, External ID: 227117
+================================================================================
+Traceback (most recent call last):
+  File "/Users/hashim.umarji/Desktop/2025-26/Recruitment/Coding/NewRecruitmentPlatform/backend/fix_internal_matches.py", line 250, in <module>
+    cursor.execute("""
+  File "/opt/anaconda3/lib/python3.12/site-packages/snowflake/connector/cursor.py", line 1121, in execute
+    Error.errorhandler_wrapper(self.connection, self, error_class, errvalue)
+  File "/opt/anaconda3/lib/python3.12/site-packages/snowflake/connector/errors.py", line 286, in errorhandler_wrapper
+    handed_over = Error.hand_to_other_handler(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/lib/python3.12/site-packages/snowflake/connector/errors.py", line 341, in hand_to_other_handler
+    cursor.errorhandler(connection, cursor, error_class, error_value)
+  File "/opt/anaconda3/lib/python3.12/site-packages/snowflake/connector/errors.py", line 217, in default_errorhandler
+    raise error_class(
+snowflake.connector.errors.ProgrammingError: 000904 (42000): SQL compilation error: error line 3 at position 14
+invalid identifier 'CAFC_MATCH_ID'

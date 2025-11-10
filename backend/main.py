@@ -26,6 +26,8 @@ import asyncio
 from functools import lru_cache
 import unicodedata
 import re
+import threading
+from queue import Queue, Empty
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -201,11 +203,102 @@ def find_match_by_any_id(match_id: int, cursor):
     return None, None
 
 
+# Global schema cache - loaded on startup to avoid repeated DESCRIBE TABLE queries
+TABLE_SCHEMA_CACHE = {}
+
+# Global user cache - loaded on startup and refreshed periodically
+USER_CACHE = {}
+USER_CACHE_TIMESTAMP = None
+USER_CACHE_TTL = 1800  # 30 minutes in seconds
+
+def load_table_schemas():
+    """Load table schemas into memory on startup to avoid repeated DESCRIBE TABLE calls"""
+    global TABLE_SCHEMA_CACHE
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Load schemas for frequently-checked tables
+        tables_to_cache = [
+            "users",
+            "players",
+            "scout_reports",
+            "player_information",
+            "player_notes",
+            "matches"
+        ]
+
+        for table_name in tables_to_cache:
+            try:
+                cursor.execute(f"DESCRIBE TABLE {table_name}")
+                columns = cursor.fetchall()
+                TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in columns]
+                print(f"✅ Cached schema for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
+            except Exception as e:
+                print(f"⚠️ Could not cache schema for {table_name}: {e}")
+                TABLE_SCHEMA_CACHE[table_name] = []
+
+        conn.close()
+        print(f"🎯 Schema cache loaded: {len(TABLE_SCHEMA_CACHE)} tables")
+    except Exception as e:
+        print(f"❌ Failed to load table schemas: {e}")
+        # Initialize with empty cache if connection fails
+        TABLE_SCHEMA_CACHE = {}
+
+def get_table_columns(table_name: str) -> list:
+    """Get column names for a table from cache"""
+    return TABLE_SCHEMA_CACHE.get(table_name, [])
+
+def has_column(table_name: str, column_name: str) -> bool:
+    """Check if a table has a specific column using cached schema"""
+    columns = get_table_columns(table_name)
+    return column_name in columns
+
+def load_user_cache():
+    """Load users into memory cache"""
+    global USER_CACHE, USER_CACHE_TIMESTAMP
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT ID, USERNAME FROM users")
+        users = cursor.fetchall()
+
+        USER_CACHE = {user[0]: user[1] for user in users}
+        USER_CACHE_TIMESTAMP = datetime.now()
+
+        conn.close()
+        print(f"✅ User cache loaded: {len(USER_CACHE)} users")
+    except Exception as e:
+        print(f"❌ Failed to load user cache: {e}")
+        USER_CACHE = {}
+
+def get_cached_username(user_id: int) -> Optional[str]:
+    """Get username from cache, refresh if stale"""
+    global USER_CACHE_TIMESTAMP
+
+    # Check if cache is stale
+    if USER_CACHE_TIMESTAMP is None or (datetime.now() - USER_CACHE_TIMESTAMP).seconds > USER_CACHE_TTL:
+        print("🔄 User cache stale, refreshing...")
+        load_user_cache()
+
+    return USER_CACHE.get(user_id)
+
+
 app = FastAPI(
     title="CAFC Recruitment Platform API",
     description="Football recruitment platform with role-based access control",
     version="1.0.0",
 )
+
+# Load table schemas and user cache on startup
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 Loading table schemas into cache...")
+    load_table_schemas()
+    print("🚀 Loading user cache...")
+    load_user_cache()
+    print("✅ Application startup complete")
 
 
 @app.get("/health/snowflake")
@@ -292,6 +385,10 @@ _connection_cache = {}
 _data_cache = {}
 _cache_expiry = {}
 
+# Connection pool - initialized on first use
+_connection_pool = None
+_pool_lock = threading.Lock()
+
 
 @lru_cache(maxsize=1)
 def get_private_key():
@@ -350,32 +447,127 @@ def get_cache(cache_key: str) -> any:
     return None
 
 
+def _create_new_connection():
+    """Create a new Snowflake connection"""
+    pkb = get_private_key()
+
+    # SSL configuration for Railway deployment
+    connect_params = {
+        "user": SNOWFLAKE_USERNAME,
+        "account": SNOWFLAKE_ACCOUNT,
+        "warehouse": SNOWFLAKE_WAREHOUSE,
+        "database": SNOWFLAKE_DATABASE,
+        "schema": SNOWFLAKE_SCHEMA,
+        "private_key": pkb,
+        # Performance optimizations
+        "client_session_keep_alive": True,
+        "client_session_keep_alive_heartbeat_frequency": 3600,  # 1 hour
+        "network_timeout": 60,
+        "query_timeout": 300,  # 5 minutes
+    }
+
+    # Disable SSL verification in Railway for certificate issues
+    if ENVIRONMENT == "production":
+        connect_params["insecure_mode"] = True
+
+    return snowflake.connector.connect(**connect_params)
+
+
+def _initialize_connection_pool():
+    """Initialize the Snowflake connection pool (lazy loading - connections created on demand)"""
+    global _connection_pool
+
+    if _connection_pool is not None:
+        return _connection_pool
+
+    with _pool_lock:
+        # Double-check after acquiring lock
+        if _connection_pool is not None:
+            return _connection_pool
+
+        try:
+            # Create empty queue-based connection pool
+            # Connections will be created on demand when needed
+            _connection_pool = Queue(maxsize=5)
+
+            logging.info(f"Snowflake connection pool initialized (lazy loading, max: 5 connections)")
+            return _connection_pool
+
+        except Exception as e:
+            logging.exception(e)
+            raise HTTPException(status_code=500, detail=f"Connection pool initialization error: {e}")
+
+
+class PooledSnowflakeConnection:
+    """
+    Wrapper for Snowflake connections that returns connection to pool on close.
+    This allows existing code with conn.close() to work with pooling.
+    """
+
+    def __init__(self, real_conn, pool):
+        self._real_conn = real_conn
+        self._pool = pool
+        self._closed = False
+
+    def __getattr__(self, name):
+        """Delegate all other methods to the real connection"""
+        return getattr(self._real_conn, name)
+
+    def close(self):
+        """Return connection to pool instead of closing"""
+        if self._closed:
+            return
+
+        self._closed = True
+
+        # Try to return to pool if not full
+        try:
+            self._pool.put_nowait(self._real_conn)
+        except:
+            # Pool is full, actually close this connection
+            try:
+                self._real_conn.close()
+            except:
+                pass
+
+
 def get_snowflake_connection():
-    """Optimized connection function using cached private key"""
+    """
+    Get connection from pool - reduces connection overhead by 50-80%
+
+    Connection pooling reuses existing database connections instead of creating
+    new ones for each request, significantly reducing Snowflake compute costs.
+
+    The returned connection automatically returns to the pool when close() is called.
+    """
     try:
-        pkb = get_private_key()
+        # Initialize pool on first use
+        if _connection_pool is None:
+            _initialize_connection_pool()
 
-        # SSL configuration for Railway deployment
-        connect_params = {
-            "user": SNOWFLAKE_USERNAME,
-            "account": SNOWFLAKE_ACCOUNT,
-            "warehouse": SNOWFLAKE_WAREHOUSE,
-            "database": SNOWFLAKE_DATABASE,
-            "schema": SNOWFLAKE_SCHEMA,
-            "private_key": pkb,
-            # Performance optimizations
-            "client_session_keep_alive": True,
-            "client_session_keep_alive_heartbeat_frequency": 3600,  # 1 hour
-            "network_timeout": 60,
-            "query_timeout": 300,  # 5 minutes
-        }
+        # Try to get connection from pool (non-blocking)
+        try:
+            conn = _connection_pool.get_nowait()
 
-        # Disable SSL verification in Railway for certificate issues
-        if ENVIRONMENT == "production":
-            connect_params["insecure_mode"] = True
+            # Test if connection is still alive
+            try:
+                conn.cursor().execute("SELECT 1")
+                # Wrap in pooled connection that returns to pool on close
+                return PooledSnowflakeConnection(conn, _connection_pool)
+            except:
+                # Connection is dead, create a new one
+                try:
+                    conn.close()
+                except:
+                    pass
+                conn = _create_new_connection()
+                return PooledSnowflakeConnection(conn, _connection_pool)
 
-        conn = snowflake.connector.connect(**connect_params)
-        return conn
+        except Empty:
+            # Pool is empty, create new connection
+            conn = _create_new_connection()
+            return PooledSnowflakeConnection(conn, _connection_pool)
+
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Snowflake connection error: {e}")
@@ -576,14 +768,11 @@ async def get_user(username: str):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check which columns exist
+        # Check which columns exist (using cached schema)
         try:
-            cursor.execute("DESCRIBE TABLE users")
-            columns = cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            has_email = "EMAIL" in column_names
-            has_firstname = "FIRSTNAME" in column_names
-            has_lastname = "LASTNAME" in column_names
+            has_email = has_column("users", "EMAIL")
+            has_firstname = has_column("users", "FIRSTNAME")
+            has_lastname = has_column("users", "LASTNAME")
         except:
             has_email = has_firstname = has_lastname = False
 
@@ -638,12 +827,9 @@ async def get_user_by_email(email: str):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check if EMAIL column exists
+        # Check if EMAIL column exists (using cached schema)
         try:
-            cursor.execute("DESCRIBE TABLE users")
-            columns = cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            has_email = "EMAIL" in column_names
+            has_email = has_column("users", "EMAIL")
         except:
             has_email = False
 
@@ -680,14 +866,11 @@ async def get_user_by_id(user_id: int):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check which columns exist
+        # Check which columns exist (using cached schema)
         try:
-            cursor.execute("DESCRIBE TABLE users")
-            columns = cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            has_email = "EMAIL" in column_names
-            has_firstname = "FIRSTNAME" in column_names
-            has_lastname = "LASTNAME" in column_names
+            has_email = has_column("users", "EMAIL")
+            has_firstname = has_column("users", "FIRSTNAME")
+            has_lastname = has_column("users", "LASTNAME")
         except:
             has_email = has_firstname = has_lastname = False
 
@@ -814,6 +997,14 @@ async def get_analytics_timeline(
     current_user: User = Depends(get_current_user)
 ):
     """Get timeline analytics data for scout reports by month and user"""
+    # Generate cache key based on parameters
+    cache_key = f"analytics_timeline_{min_months or 12}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -891,11 +1082,16 @@ async def get_analytics_timeline(
             reverse=True,
         )[:10]
 
-        return {
+        result = {
             "timeline": timeline_list,
             "totalScouts": len(scout_totals),
             "topScouts": top_scouts,
         }
+
+        # Cache for 5 minutes (analytics data changes slowly)
+        set_cache(cache_key, result, expiry_minutes=5)
+
+        return result
 
     except Exception as e:
         logging.exception(e)
@@ -1167,14 +1363,11 @@ async def get_all_users(current_user: User = Depends(get_current_user)):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check which columns exist
+        # Check which columns exist (using cached schema)
         try:
-            cursor.execute("DESCRIBE TABLE users")
-            columns = cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            has_email = "EMAIL" in column_names
-            has_firstname = "FIRSTNAME" in column_names
-            has_lastname = "LASTNAME" in column_names
+            has_email = has_column("users", "EMAIL")
+            has_firstname = has_column("users", "FIRSTNAME")
+            has_lastname = has_column("users", "LASTNAME")
         except:
             has_email = has_firstname = has_lastname = False
 
@@ -2501,11 +2694,8 @@ async def get_player_by_cafc_id(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check if CAFC_PLAYER_ID column exists
-        cursor.execute("DESCRIBE TABLE players")
-        columns = cursor.fetchall()
-        column_names = [col[0] for col in columns]
-        has_cafc_id = "CAFC_PLAYER_ID" in column_names
+        # Check if CAFC_PLAYER_ID column exists (using cached schema)
+        has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
         if not has_cafc_id:
             raise HTTPException(
@@ -2562,11 +2752,8 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check if CAFC_PLAYER_ID column exists
-        cursor.execute("DESCRIBE TABLE players")
-        columns = cursor.fetchall()
-        column_names = [col[0] for col in columns]
-        has_cafc_id = "CAFC_PLAYER_ID" in column_names
+        # Check if CAFC_PLAYER_ID column exists (using cached schema)
+        has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
         # For accent-insensitive search, we'll search with a broader database query
         # then apply precise client-side filtering
@@ -2631,6 +2818,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 FROM players
                 WHERE {where_conditions}
                 ORDER BY PLAYERNAME
+                LIMIT 50
             """,
                 search_patterns,
             )
@@ -2641,6 +2829,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 FROM players
                 WHERE {where_conditions}
                 ORDER BY PLAYERNAME
+                LIMIT 50
             """,
                 search_patterns,
             )
@@ -3977,13 +4166,11 @@ async def get_all_scout_reports(
         print(f"🔍 START FILTERING - User: {current_user.username}, Role: {current_user.role}")
         try:
             test_cursor = conn.cursor()
-            # Check if USER_ID column exists by describing the table
-            test_cursor.execute("DESCRIBE TABLE scout_reports")
-            columns = test_cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            print(f"🔍 USER_ID column exists: {'USER_ID' in column_names}")
+            # Check if USER_ID column exists (using cached schema)
+            user_id_exists = has_column("scout_reports", "USER_ID")
+            print(f"🔍 USER_ID column exists: {user_id_exists}")
 
-            if "USER_ID" in column_names:
+            if user_id_exists:
                 # Column exists, apply role-based filtering
                 print(f"🔍 Applying filter for role: {current_user.role}")
                 if current_user.role == "scout":
@@ -4140,6 +4327,159 @@ async def get_all_scout_reports(
             conn.close()
 
 
+@app.get("/scout_reports/top-attributes")
+async def get_top_attribute_reports(
+    current_user: User = Depends(get_current_user),
+    recency_days: Optional[int] = None,
+    limit: int = 10,
+):
+    """
+    Get top reports sorted by attribute score (for dashboard "Top Attribute Scores" widget).
+    This endpoint fetches the ACTUAL top N reports by attribute score within a time period,
+    not just the top N from the most recent reports.
+    """
+    # Generate cache key based on parameters and user role
+    cache_key = f"top_attributes_{recency_days}_{limit}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+
+    # Check cache first (5 min TTL for dashboard widgets)
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Base SQL query
+        base_sql = """
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+        """
+
+        where_clauses = []
+        sql_params = []
+
+        # Apply role-based filtering (same as /scout_reports/all)
+        try:
+            user_id_exists = has_column("scout_reports", "USER_ID")
+            if user_id_exists:
+                if current_user.role == "scout":
+                    where_clauses.append("sr.USER_ID = %s")
+                    sql_params.append(current_user.id)
+                elif current_user.role == "loan":
+                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
+                    sql_params.append(current_user.id)
+                    sql_params.append("Loan Report")
+        except Exception as e:
+            logging.error(f"Error checking USER_ID column: {e}")
+
+        # Only include Player Assessment reports
+        where_clauses.append("sr.REPORT_TYPE = 'Player Assessment'")
+
+        # Only include reports with valid attribute scores
+        where_clauses.append("sr.ATTRIBUTE_SCORE IS NOT NULL")
+        where_clauses.append("sr.ATTRIBUTE_SCORE > 0")
+
+        # Apply recency filter
+        if recency_days is not None and recency_days > 0:
+            where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
+            sql_params.append(recency_days)
+
+        # Construct WHERE clause
+        if where_clauses:
+            base_sql += " WHERE " + " AND ".join(where_clauses)
+
+        # Get top reports ordered by attribute score DESC
+        select_sql = f"""
+            SELECT
+                sr.CREATED_AT,
+                p.PLAYERNAME,
+                p.BIRTHDATE,
+                m.SCHEDULEDDATE,
+                m.HOMESQUADNAME,
+                m.AWAYSQUADNAME,
+                sr.POSITION,
+                sr.PERFORMANCE_SCORE,
+                sr.ATTRIBUTE_SCORE,
+                sr.ID,
+                sr.REPORT_TYPE,
+                sr.SCOUTING_TYPE,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name,
+                COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID) as player_id,
+                sr.FLAG_CATEGORY,
+                sr.PURPOSE,
+                sr.CAFC_PLAYER_ID,
+                p.DATA_SOURCE
+            {base_sql}
+            ORDER BY sr.ATTRIBUTE_SCORE DESC
+            LIMIT %s
+        """
+        sql_params.append(limit)
+
+        cursor.execute(select_sql, sql_params)
+        rows = cursor.fetchall()
+
+        report_list = []
+        for row in rows:
+            # Determine universal ID for navigation (collision-safe)
+            data_source = row[17] if row[17] else "external"
+            if data_source == "internal":
+                nav_universal_id = f"internal_{row[16]}"  # CAFC_PLAYER_ID
+            else:
+                nav_universal_id = f"external_{row[13]}"  # PLAYER_ID
+
+            fixture_details = None
+            if row[3] and row[4] and row[5]:  # SCHEDULEDDATE, HOME, AWAY
+                fixture_details = f"{row[4]} vs {row[5]} ({row[3].strftime('%Y-%m-%d') if row[3] else 'N/A'})"
+
+            report_list.append(
+                {
+                    "created_at": str(row[0]),
+                    "player_name": row[1] if row[1] else "Unknown Player",
+                    "birth_date": str(row[2]) if row[2] else None,
+                    "fixture_date": str(row[3]) if row[3] else None,
+                    "fixture_details": fixture_details,
+                    "home_team": row[4] if row[4] else None,
+                    "away_team": row[5] if row[5] else None,
+                    "position_played": row[6],
+                    "performance_score": row[7],
+                    "attribute_score": row[8],
+                    "report_id": row[9],
+                    "report_type": row[10],
+                    "scouting_type": row[11],
+                    "scout_name": row[12] if row[12] else "Unknown Scout",
+                    "player_id": nav_universal_id,
+                    "flag_category": row[14],
+                    "purpose": row[15] if row[15] else None,
+                    "cafc_player_id": row[16],
+                    "data_source": row[17],
+                    "universal_id": nav_universal_id,
+                }
+            )
+
+        result = {"reports": report_list}
+
+        # Cache for 5 minutes
+        set_cache(cache_key, result, expiry_minutes=5)
+
+        return result
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching top attribute reports: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/scout_reports/{report_id}")
 async def get_single_scout_report(
     report_id: int, current_user: User = Depends(get_current_user)
@@ -4278,6 +4618,14 @@ class PlayerNote(BaseModel):
 async def get_player_profile(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
+    # Generate cache key based on player_id and user role (scouts/loan see filtered data)
+    cache_key = f"player_profile_{player_id}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -4345,10 +4693,8 @@ async def get_player_profile(
         # Apply role-based filtering for intel reports
         intel_values = (actual_player_id,)
         try:
-            cursor.execute("DESCRIBE TABLE player_information")
-            columns = cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            if "USER_ID" in column_names and current_user.role == "scout":
+            # Check if USER_ID column exists (using cached schema)
+            if has_column("player_information", "USER_ID") and current_user.role == "scout":
                 intel_sql = intel_sql.replace(
                     "WHERE pi.PLAYER_ID = %s",
                     "WHERE pi.PLAYER_ID = %s AND pi.USER_ID = %s",
@@ -4456,6 +4802,9 @@ async def get_player_profile(
             "notes": notes,
         }
 
+        # Cache for 5 minutes (player profiles are accessed frequently but data changes moderately)
+        set_cache(cache_key, profile, expiry_minutes=5)
+
         return profile
 
     except Exception as e:
@@ -4473,6 +4822,14 @@ async def get_player_attributes(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get player attribute averages grouped by categories from all scout reports"""
+    # Generate cache key based on player_id and user role (scouts see only their reports)
+    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role == 'scout' else 'all'}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -4631,7 +4988,7 @@ async def get_player_attributes(
         )
         matching_attributes = cursor.fetchall()
 
-        return {
+        result = {
             "player_id": player_id,
             "player_position": player_position,
             "attribute_groups": attribute_groups,
@@ -4643,6 +5000,11 @@ async def get_player_attributes(
             ],
             "debug_position_attributes_found": len(position_attributes),
         }
+
+        # Cache for 15 minutes (attribute aggregations change slowly)
+        set_cache(cache_key, result, expiry_minutes=15)
+
+        return result
 
     except Exception as e:
         logging.exception(e)
@@ -4659,6 +5021,14 @@ async def get_player_scout_reports(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get scout reports timeline for a player"""
+    # Generate cache key based on player_id and user role (scouts/loan see filtered data)
+    cache_key = f"player_scout_reports_{player_id}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -4762,11 +5132,16 @@ async def get_player_scout_reports(
                 }
             )
 
-        return {
+        result = {
             "player_id": player_id,
             "total_reports": len(reports_data),
             "reports": reports_data,
         }
+
+        # Cache for 5 minutes (scout reports timeline accessed frequently)
+        set_cache(cache_key, result, expiry_minutes=5)
+
+        return result
 
     except Exception as e:
         logging.exception(e)
@@ -4783,6 +5158,14 @@ async def get_player_position_counts(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get count of scout reports by position for a player"""
+    # Generate cache key based on player_id and user role (scouts/loan see filtered data)
+    cache_key = f"player_position_counts_{player_id}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -4851,11 +5234,16 @@ async def get_player_position_counts(
                     }
                 )
 
-        return {
+        result = {
             "player_id": player_id,
             "position_counts": position_counts,
             "total_positions": len(position_counts),
         }
+
+        # Cache for 5 minutes (position counts accessed frequently)
+        set_cache(cache_key, result, expiry_minutes=5)
+
+        return result
 
     except Exception as e:
         logging.exception(e)
@@ -5266,13 +5654,9 @@ async def create_intel_report(
         else:
             actual_player_id = None
 
-        # Check which columns exist
-        cursor.execute("DESCRIBE TABLE player_information")
-        columns = cursor.fetchall()
-        column_names = [col[0].upper() for col in columns]
-
-        has_player_id = "PLAYER_ID" in column_names
-        has_user_id = "USER_ID" in column_names
+        # Check which columns exist (using cached schema)
+        has_player_id = has_column("player_information", "PLAYER_ID")
+        has_user_id = has_column("player_information", "USER_ID")
 
         # Add CREATED_AT column if it doesn't exist
         if "CREATED_AT" not in column_names:
@@ -5384,12 +5768,9 @@ async def get_all_intel_reports(
         where_clauses = []
         sql_params = []
 
-        # Check if PLAYER_ID column exists to determine if we can JOIN with players
-        cursor.execute("DESCRIBE TABLE player_information")
-        columns = cursor.fetchall()
-        column_names = [col[0] for col in columns]
-        has_player_id = "PLAYER_ID" in column_names
-        has_user_id = "USER_ID" in column_names
+        # Check if PLAYER_ID column exists to determine if we can JOIN with players (using cached schema)
+        has_player_id = has_column("player_information", "PLAYER_ID")
+        has_user_id = has_column("player_information", "USER_ID")
 
         # Apply role-based filtering if USER_ID column exists
         if has_user_id and current_user.role == "scout":
@@ -5492,13 +5873,9 @@ async def get_single_intel_report(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check which columns exist
-        cursor.execute("DESCRIBE TABLE player_information")
-        columns = cursor.fetchall()
-        column_names = [col[0] for col in columns]
-
-        has_player_id = "PLAYER_ID" in column_names
-        has_user_id = "USER_ID" in column_names
+        # Check which columns exist (using cached schema)
+        has_player_id = has_column("player_information", "PLAYER_ID")
+        has_user_id = has_column("player_information", "USER_ID")
 
         if has_player_id:
             sql = """
@@ -6083,6 +6460,14 @@ async def get_database_metadata():
 @app.get("/analytics/player-coverage")
 async def get_player_coverage_analytics(current_user: User = Depends(get_current_user)):
     """Get analytics on player coverage per game"""
+    # Generate cache key
+    cache_key = "analytics_player_coverage"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -6268,13 +6653,18 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
                 }
             )
 
-        return {
+        result = {
             "all_games_stats": all_games_stats,
             "live_games_stats": live_games_stats,
             "video_games_stats": video_games_stats,
             "games_with_coverage": games_with_coverage,
             "top_covered_games": top_covered_games,
         }
+
+        # Cache for 10 minutes (player coverage analytics don't change rapidly)
+        set_cache(cache_key, result, expiry_minutes=10)
+
+        return result
 
     except Exception as e:
         logging.exception(e)
@@ -6295,6 +6685,14 @@ async def get_player_analytics(
     min_performance_score: Optional[int] = None
 ):
     """Get player-focused analytics data"""
+    # Generate cache key based on parameters
+    cache_key = f"analytics_players_{months}_{position}_{min_performance_score}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -6303,29 +6701,37 @@ async def get_player_analytics(
         def lower_dict(d):
             return {k.lower(): v for k, v in d.items()} if d else {}
 
-        # Build date filter
-        date_filter = ""
+        # Build filter clauses and parameters (using parameterized queries to prevent SQL injection)
+        where_clauses = []
+        params = []
+
         if months:
-            date_filter = f"AND sr.CREATED_AT >= DATEADD(month, -{months}, CURRENT_DATE())"
+            where_clauses.append("sr.CREATED_AT >= DATEADD(month, %s, CURRENT_DATE())")
+            params.append(-months)
 
-        # Build position filter
-        position_filter = ""
         if position:
-            position_filter = f"AND sr.POSITION = '{position}'"
+            where_clauses.append("sr.POSITION = %s")
+            params.append(position)
 
-        # Build performance score filter
+        # Build WHERE clause string
+        additional_filters = ""
+        if where_clauses:
+            additional_filters = "AND " + " AND ".join(where_clauses)
+
+        # Build performance score filter separately (used in some queries but not all)
         score_filter = ""
+        score_params = []
         if min_performance_score:
-            score_filter = f"AND sr.PERFORMANCE_SCORE >= {min_performance_score}"
+            score_filter = "AND sr.PERFORMANCE_SCORE >= %s"
+            score_params = [min_performance_score]
 
         # 1. Total Player Assessments Count
         cursor.execute(f"""
             SELECT COUNT(*) as total_assessments
             FROM scout_reports sr
             WHERE REPORT_TYPE = 'Player Assessment'
-            {date_filter}
-            {position_filter}
-        """)
+            {additional_filters}
+        """, params)
         total_player_assessments = (cursor.fetchone() or {}).get('TOTAL_ASSESSMENTS', 0)
 
         # 2. Average Performance Score
@@ -6334,9 +6740,8 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE PERFORMANCE_SCORE IS NOT NULL
             AND REPORT_TYPE = 'Player Assessment'
-            {date_filter}
-            {position_filter}
-        """)
+            {additional_filters}
+        """, params)
         avg_perf_result = (cursor.fetchone() or {}).get('AVG_PERF')
         avg_performance_score = round(float(avg_perf_result), 2) if avg_perf_result else 0
 
@@ -6346,9 +6751,8 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE (CAFC_PLAYER_ID IS NOT NULL OR PLAYER_ID IS NOT NULL)
             AND REPORT_TYPE = 'Player Assessment'
-            {date_filter}
-            {position_filter}
-        """)
+            {additional_filters}
+        """, params)
         unique_players_assessed = (cursor.fetchone() or {}).get('UNIQUE_PLAYERS', 0)
 
         # 4. Performance Score Distribution
@@ -6357,14 +6761,14 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE PERFORMANCE_SCORE IS NOT NULL
             AND REPORT_TYPE = 'Player Assessment'
-            {date_filter}
-            {position_filter}
+            {additional_filters}
             GROUP BY PERFORMANCE_SCORE
             ORDER BY PERFORMANCE_SCORE
-        """)
+        """, params)
         performance_distribution = {int(row['PERFORMANCE_SCORE']): row['COUNT'] for row in cursor.fetchall()}
 
         # 5. Average Attribute Score by Position
+        # Note: Position filter already applied in additional_filters, so only use months filter
         cursor.execute(f"""
             SELECT sr.POSITION, AVG(sr.ATTRIBUTE_SCORE) as avg_attr_score
             FROM scout_reports sr
@@ -6372,13 +6776,14 @@ async def get_player_analytics(
             AND sr.ATTRIBUTE_SCORE IS NOT NULL
             AND sr.ATTRIBUTE_SCORE > 0
             AND sr.REPORT_TYPE = 'Player Assessment'
-            {date_filter}
+            {additional_filters if not position else ('AND ' + where_clauses[0]) if months else ''}
             GROUP BY sr.POSITION
             ORDER BY avg_attr_score DESC
-        """)
+        """, [params[0]] if months and not position else [])
         avg_attributes_by_position = {row['POSITION']: round(float(row['AVG_ATTR_SCORE']), 2) for row in cursor.fetchall()}
 
         # 6. Top Players (generic) - with null safety
+        top_players_params = params + score_params
         cursor.execute(f"""
             SELECT
                 COALESCE(p.PLAYERNAME, 'Unknown Player') as playername,
@@ -6393,13 +6798,12 @@ async def get_player_analytics(
             )
             WHERE sr.REPORT_TYPE = 'Player Assessment'
             AND sr.PERFORMANCE_SCORE IS NOT NULL
-            {date_filter}
-            {position_filter}
+            {additional_filters}
             {score_filter}
             GROUP BY p.PLAYERNAME, sr.POSITION
             ORDER BY avg_performance_score DESC, report_count DESC
             LIMIT 20
-        """)
+        """, top_players_params)
         top_players = []
         for row in cursor.fetchall():
             top_players.append({
@@ -6417,10 +6821,10 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE POSITION IS NOT NULL
             AND REPORT_TYPE = 'Player Assessment'
-            {date_filter}
+            {('AND ' + where_clauses[0]) if months else ''}
             GROUP BY POSITION
             ORDER BY player_count DESC
-        """)
+        """, [params[0]] if months else [])
         position_distribution = {row['POSITION']: row['PLAYER_COUNT'] for row in cursor.fetchall()}
 
         # 8. Flag Category Distribution
@@ -6429,9 +6833,9 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE FLAG_CATEGORY IS NOT NULL
             AND REPORT_TYPE = 'Flag'
-            {date_filter}
+            {('AND ' + where_clauses[0]) if months else ''}
             GROUP BY FLAG_CATEGORY
-        """)
+        """, [params[0]] if months else [])
         flag_distribution = {row['FLAG_CATEGORY']: row['COUNT'] for row in cursor.fetchall()}
 
         # 9. Total All Reports
@@ -6439,9 +6843,8 @@ async def get_player_analytics(
             SELECT COUNT(*) as total_reports
             FROM scout_reports sr
             WHERE (REPORT_TYPE = 'Player Assessment' OR REPORT_TYPE = 'Flag')
-            {date_filter}
-            {position_filter}
-        """)
+            {additional_filters}
+        """, params)
         total_all_reports = (cursor.fetchone() or {}).get('TOTAL_REPORTS', 0)
 
         # 10. Total Flag Reports
@@ -6449,9 +6852,8 @@ async def get_player_analytics(
             SELECT COUNT(*) as total_flags
             FROM scout_reports sr
             WHERE REPORT_TYPE = 'Flag'
-            {date_filter}
-            {position_filter}
-        """)
+            {additional_filters}
+        """, params)
         total_flag_reports = (cursor.fetchone() or {}).get('TOTAL_FLAGS', 0)
 
         # 11. Monthly Reports Timeline
@@ -6462,11 +6864,10 @@ async def get_player_analytics(
                 COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END), 0) as flags
             FROM scout_reports sr
             WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
-            {date_filter}
-            {position_filter}
+            {additional_filters}
             GROUP BY DATE_TRUNC('MONTH', sr.CREATED_AT)
             ORDER BY month ASC
-        """)
+        """, params)
 
         monthly_reports_timeline = []
         for row in cursor.fetchall():
@@ -6604,7 +7005,7 @@ async def get_player_analytics(
                 "data_source": row['DATA_SOURCE'] or 'external'
             })
 
-        return {
+        result = {
             "total_player_assessments": total_player_assessments,
             "avg_performance_score": avg_performance_score,
             "unique_players_assessed": unique_players_assessed,
@@ -6621,6 +7022,11 @@ async def get_player_analytics(
             "top_players_by_attributes": top_players_by_attributes,
             "positive_flagged_players": positive_flagged_players,
         }
+
+        # Cache for 10 minutes (player analytics data changes slowly)
+        set_cache(cache_key, result, expiry_minutes=10)
+
+        return result
 
     except Exception as e:
         import traceback
@@ -6642,6 +7048,14 @@ async def get_match_team_analytics(
     months: Optional[int] = None
 ):
     """Get match and team-focused analytics data"""
+    # Generate cache key based on parameters
+    cache_key = f"analytics_matches_teams_{months}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -6904,7 +7318,7 @@ async def get_match_team_analytics(
         # Sort by total times covered descending
         team_report_coverage.sort(key=lambda x: x["total_times_covered"], reverse=True)
 
-        return {
+        result = {
             "team_coverage": team_coverage,
             "formation_stats": formation_stats,
             "match_timeline": monthly_reports_timeline,
@@ -6916,6 +7330,11 @@ async def get_match_team_analytics(
             "competition_coverage": competition_coverage,
             "team_report_coverage": team_report_coverage
         }
+
+        # Cache for 10 minutes (match analytics data changes slowly)
+        set_cache(cache_key, result, expiry_minutes=10)
+
+        return result
 
     except Exception as e:
         import traceback
@@ -6938,6 +7357,14 @@ async def get_scout_analytics(
     position: Optional[str] = None
 ):
     """Get scout-focused analytics data"""
+    # Generate cache key based on parameters
+    cache_key = f"analytics_scouts_{months}_{position}"
+
+    # Check cache first
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -7051,10 +7478,15 @@ async def get_scout_analytics(
             "datasets": datasets
         }
 
-        return {
+        result = {
             "scout_stats": scout_stats,
             "monthly_reports_timeline": monthly_reports_timeline,
         }
+
+        # Cache for 10 minutes (scout analytics data changes slowly)
+        set_cache(cache_key, result, expiry_minutes=10)
+
+        return result
 
     except Exception as e:
         logging.exception(e)

@@ -1789,3 +1789,28 @@ span.badge.badge-neutral-grey {
 }
 
 /* Ensure inline styles work properly - no Bootstrap class interference */
+
+/* ================================
+   DARK MODE QUICK FIXES
+   ================================ */
+
+/* Enhanced dark mode contrast for tables */
+[data-bs-theme="dark"] .table {
+  --bs-table-color: #f9fafb;
+  --bs-table-bg: #1f2937;
+  --bs-table-border-color: #4b5563;
+  --bs-table-striped-bg: #374151;
+  --bs-table-hover-bg: #4b5563;
+}
+
+/* Enhanced slider visibility in dark mode */
+[data-bs-theme="dark"] input[type="range"] {
+  accent-color: #ef4444;
+}
+
+[data-bs-theme="dark"] .tooltip-inner {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: 2px solid #ef4444 !important;
+}

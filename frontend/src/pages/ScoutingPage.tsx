@@ -14,7 +14,7 @@ import {
   Modal,
   Dropdown,
 } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import AddPlayerModal from "../components/AddPlayerModal";
@@ -27,10 +27,6 @@ import {
   getFlagColor,
   getContrastTextColor,
 } from "../utils/colorUtils";
-import {
-  normalizeText,
-  containsAccentInsensitive,
-} from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 
@@ -58,9 +54,7 @@ const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
-  const [playerSearch, setPlayerSearch] = useState("");
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const location = useLocation();
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showAddFixtureModal, setShowAddFixtureModal] = useState(false);
@@ -77,14 +71,6 @@ const ScoutingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [playerSearchError, setPlayerSearchError] = useState("");
-  const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
-
-  // Add debouncing and caching for player search
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchCacheRef = useRef<Record<string, any[]>>({});
-  const [showDropdown, setShowDropdown] = useState(false);
 
   // Advanced filters
   const [performanceScores, setPerformanceScores] = useState<number[]>([]);
@@ -219,122 +205,6 @@ const ScoutingPage: React.FC = () => {
     }
   }, [token, recencyFilter, fetchScoutReports, fetchUserInfo]);
 
-  const performPlayerSearch = useCallback(async (query: string) => {
-    const trimmedQuery = query.trim();
-    const normalizedQuery = normalizeText(trimmedQuery);
-
-    // Check cache first using normalized query
-    if (searchCacheRef.current[normalizedQuery]) {
-      setPlayers(searchCacheRef.current[normalizedQuery]);
-      setPlayerSearchError("");
-      setPlayerSearchLoading(false);
-      setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
-      return;
-    }
-
-    try {
-      setPlayerSearchLoading(true);
-      // Backend now handles comprehensive accent-insensitive search
-      const response = await axiosInstance.get(
-        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
-      );
-      let results = response.data || [];
-
-      // Backend already handles accent-insensitive search and sorting
-      // No need for additional client-side filtering
-
-      // Cache the results using normalized query
-      searchCacheRef.current[normalizedQuery] = results;
-
-      setPlayers(results);
-      setShowDropdown(results.length > 0);
-
-      if (results.length === 0) {
-        setPlayerSearchError("No players found.");
-      } else {
-        setPlayerSearchError("");
-      }
-    } catch (error) {
-      console.error("Error searching players:", error);
-      setPlayers([]);
-      setShowDropdown(false);
-      setPlayerSearchError("Error searching for players.");
-    } finally {
-      setPlayerSearchLoading(false);
-    }
-  }, []);
-
-  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setPlayerSearch(query);
-
-    // Clear previous timeouts
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    // Clear error and loading immediately when user starts typing
-    setPlayerSearchError("");
-    setPlayerSearchLoading(false);
-
-    if (query.length <= 2) {
-      setPlayers([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    // Show loading indicator only after user stops typing for 300ms
-    loadingTimeoutRef.current = setTimeout(() => {
-      setPlayerSearchLoading(true);
-    }, 300);
-
-    // Debounce the actual search with longer delay (600ms)
-    searchTimeoutRef.current = setTimeout(() => {
-      performPlayerSearch(query);
-    }, 600);
-  };
-
-  const handlePlayerSelect = (player: any) => {
-    setSelectedPlayer(player);
-    setPlayerSearch(`${player.player_name} (${player.squad_name})`);
-    setPlayers([]);
-    setShowDropdown(false);
-    setPlayerSearchError("");
-  };
-
-  // Close dropdown when clicking outside
-  const handleInputBlur = () => {
-    // Small delay to allow click on dropdown items
-    setTimeout(() => {
-      setShowDropdown(false);
-    }, 200);
-  };
-
-  const handleInputFocus = () => {
-    if (players.length > 0) {
-      setShowDropdown(true);
-    }
-  };
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleShowAssessmentModal = () => {
-    if (selectedPlayer) {
-      setShowAssessmentModal(true);
-    } else {
-      alert("Please select a player first.");
-    }
-  };
 
   const handleOpenReportModal = async (report_id: number) => {
     setLoadingReportId(report_id);
@@ -535,103 +405,41 @@ const ScoutingPage: React.FC = () => {
     positionFilter,
   ]);
 
+  // Check if we should open the draft modal from URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('openDraft') === 'true') {
+      // Restore selected player from draft if available
+      const draftStr = localStorage.getItem('scoutingAssessmentDraft');
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          if (draft.selectedPlayer) {
+            setSelectedPlayer({
+              universal_id: draft.selectedPlayer.id,
+              player_id: draft.selectedPlayer.id,
+              player_name: draft.selectedPlayer.name,
+              position: draft.selectedPlayer.position,
+              squad_name: draft.selectedPlayer.team,
+            } as Player);
+          } else {
+            setSelectedPlayer(null);
+          }
+        } catch (error) {
+          console.error('Error parsing draft:', error);
+          setSelectedPlayer(null);
+        }
+      } else {
+        setSelectedPlayer(null);
+      }
+      setShowAssessmentModal(true);
+      // Remove the parameter from URL
+      navigate('/scouting', { replace: true });
+    }
+  }, [location.search, navigate]);
+
   return (
     <Container className="mt-4">
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Player Search</Card.Title>
-          <div className="mb-3 p-3" style={{
-            backgroundColor: "#fff3cd",
-            border: "1px solid #ffc107",
-            borderRadius: "8px",
-            fontSize: "0.9rem"
-          }}>
-            <strong>⚠️ Note:</strong> Some players may show "NO_SQUAD" as their club. This occurs when:
-            <ul className="mb-0 mt-2" style={{ fontSize: "0.85rem" }}>
-              <li>The player is a free agent or retired</li>
-              <li>They're playing for a national team in international competitions (World Cup, Euros, etc.)</li>
-              <li>Their club squad wasn't included in the specific competition data</li>
-              <li>The data only tracks national teams for certain tournaments, not their club affiliations</li>
-            </ul>
-          </div>
-          <Form.Group as={Col} controlId="playerName">
-            <div className="position-relative">
-              <Form.Control
-                type="text"
-                placeholder="Enter player name"
-                value={playerSearch}
-                onChange={handlePlayerSearchChange}
-                onBlur={handleInputBlur}
-                onFocus={handleInputFocus}
-              />
-              {playerSearchLoading && (
-                <div
-                  className="position-absolute top-50 end-0 translate-middle-y me-3"
-                  style={{ zIndex: 10 }}
-                >
-                  <Spinner animation="border" size="sm" />
-                </div>
-              )}
-            </div>
-            {showDropdown && players.length > 0 && (
-              <ListGroup
-                className="mt-2"
-                style={{
-                  position: "absolute",
-                  zIndex: 1000,
-                  width: "calc(100% - 30px)",
-                  maxHeight: "200px",
-                  overflowY: "auto",
-                }}
-              >
-                {players.map((player, index) => (
-                  <ListGroup.Item
-                    key={
-                      player.universal_id ||
-                      `fallback-${index}-${player.player_name}`
-                    }
-                    action
-                    onClick={() => handlePlayerSelect(player)}
-                    className="d-flex justify-content-between align-items-center"
-                  >
-                    <span>{player.player_name}</span>
-                    <small className="text-muted">({player.squad_name})</small>
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            )}
-            {playerSearchError && (
-              <div className="mt-2">
-                <small className="text-danger d-block">
-                  ⚠️ {playerSearchError}
-                </small>
-              </div>
-            )}
-          </Form.Group>
-          <Button
-            className="mt-2"
-            variant="outline-secondary"
-            onClick={handleShowAssessmentModal}
-            disabled={!selectedPlayer}
-          >
-            Add Assessment
-          </Button>
-          <Button
-            className="mt-2 ms-2"
-            variant="outline-secondary"
-            onClick={() => setShowAddPlayerModal(true)}
-          >
-            Add Player
-          </Button>
-          <Button
-            className="mt-2 ms-2"
-            variant="outline-secondary"
-            onClick={() => setShowAddFixtureModal(true)}
-          >
-            Add Fixture
-          </Button>
-        </Card.Body>
-      </Card>
 
       <AddPlayerModal
         show={showAddPlayerModal}
@@ -644,7 +452,7 @@ const ScoutingPage: React.FC = () => {
       <ScoutingAssessmentModal
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
-        selectedPlayer={selectedPlayer}
+        selectedPlayer={null}
         onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter)}
         editMode={editMode}
         reportId={editReportId}
