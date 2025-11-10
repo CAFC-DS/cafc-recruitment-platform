@@ -27,6 +27,7 @@ import {
   getFlagColor,
   getContrastTextColor,
 } from "../utils/colorUtils";
+import { containsAccentInsensitive } from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 
@@ -55,6 +56,7 @@ const ScoutingPage: React.FC = () => {
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const location = useLocation();
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showAddFixtureModal, setShowAddFixtureModal] = useState(false);
@@ -452,7 +454,7 @@ const ScoutingPage: React.FC = () => {
       <ScoutingAssessmentModal
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
-        selectedPlayer={null}
+        selectedPlayer={selectedPlayer}
         onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter)}
         editMode={editMode}
         reportId={editReportId}
