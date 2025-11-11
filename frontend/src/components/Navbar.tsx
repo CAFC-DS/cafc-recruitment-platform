@@ -6,7 +6,6 @@ import {
   Container,
   Button,
   Form,
-  InputGroup,
   Dropdown,
   Modal,
   ListGroup,
@@ -15,7 +14,6 @@ import {
 } from "react-bootstrap";
 import { useAuth } from "../App"; // Import useAuth
 import { useTheme } from "../contexts/ThemeContext";
-import DarkModeToggle from "./DarkModeToggle";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import axiosInstance from "../axiosInstance";
 import logo from "../assets/logo.png";
@@ -27,7 +25,7 @@ import ScoutingAssessmentModal from "./ScoutingAssessmentModal";
 
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
-  const { theme } = useTheme();
+  const { theme, toggleDarkMode } = useTheme();
   const { isAdmin, isLoanManager, canAccessPlayers, canAccessAnalytics, canAccessLoanReports } = useCurrentUser();
   const navigate = useNavigate();
 
@@ -380,7 +378,7 @@ const AppNavbar: React.FC = () => {
               style={{ position: "relative", minWidth: "280px" }}
             >
               <Form className="w-100">
-                <InputGroup size="sm">
+                <div style={{ position: "relative" }}>
                   <Form.Control
                     type="text"
                     placeholder="Search players..."
@@ -390,31 +388,38 @@ const AppNavbar: React.FC = () => {
                       handleSearch(e.target.value);
                     }}
                     onKeyDown={handleKeyDown}
+                    size="sm"
                     style={{
                       backgroundColor: "rgba(255, 255, 255, 0.95)",
                       borderColor: "rgba(255, 255, 255, 0.3)",
                       color: "#374151",
                       fontWeight: "500",
                       paddingLeft: "0.75rem",
+                      paddingRight: "2.5rem",
                       fontSize: "0.875rem",
+                      borderRadius: "20px !important",
                     }}
-                    className="navbar-search-input"
+                    className="navbar-search-input rounded-pill"
                   />
-                  <Button
-                    variant="outline-light"
-                    type="submit"
-                    size="sm"
-                    disabled={isSearching}
+                  <div
                     style={{
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                      backgroundColor: "rgba(255, 255, 255, 0.1)",
-                      color: "white",
-                      borderLeft: "none",
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#6b7280",
+                      pointerEvents: "none",
+                      display: "flex",
+                      alignItems: "center",
                     }}
                   >
-                    {isSearching ? "⏳" : "🔍"}
-                  </Button>
-                </InputGroup>
+                    {isSearching ? (
+                      <Spinner animation="border" size="sm" style={{ width: "16px", height: "16px" }} />
+                    ) : (
+                      "🔍"
+                    )}
+                  </div>
+                </div>
               </Form>
 
               {/* Search Results Dropdown - Always show when search is active */}
@@ -548,11 +553,41 @@ const AppNavbar: React.FC = () => {
           )}
 
           <Nav className="d-flex align-items-center">
-            <DarkModeToggle />
+            {token && (
+              <Dropdown className="ms-2">
+                <Dropdown.Toggle
+                  variant="light"
+                  size="sm"
+                  className="rounded-pill"
+                  style={{ fontWeight: 600 }}
+                  id="add-new-dropdown"
+                >
+                  + Add New
+                </Dropdown.Toggle>
+                <Dropdown.Menu>
+                  <Dropdown.Item onClick={() => setShowAssessmentModal(true)}>
+                    📊 Add Player Assessment
+                  </Dropdown.Item>
+                  <Dropdown.Item onClick={() => setShowIntelModal(true)}>
+                    📝 Add Intel Report
+                  </Dropdown.Item>
+                  <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
+                    ⚽ Add Fixture
+                  </Dropdown.Item>
+                  <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
+                    👤 Add Player
+                  </Dropdown.Item>
+                  <Dropdown.Divider />
+                  <Dropdown.Item onClick={() => setShowFeedbackModal(true)}>
+                    💬 Send Feedback
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+            )}
             {token && (hasSavedDraft || queueCount > 0) && (
               <Dropdown className="ms-2">
                 <Dropdown.Toggle
-                  variant="primary"
+                  variant="warning"
                   size="sm"
                   className="rounded-pill"
                   style={{ fontWeight: 600 }}
@@ -602,46 +637,27 @@ const AppNavbar: React.FC = () => {
                 </Dropdown.Menu>
               </Dropdown>
             )}
-            {token && (
+            {token ? (
               <Dropdown className="ms-2">
                 <Dropdown.Toggle
-                  variant="danger"
+                  variant="outline-light"
                   size="sm"
                   className="rounded-pill"
                   style={{ fontWeight: 600 }}
-                  id="add-new-dropdown"
+                  id="settings-dropdown"
                 >
-                  + Add New
+                  ⚙️ Settings
                 </Dropdown.Toggle>
-                <Dropdown.Menu>
-                  <Dropdown.Item onClick={() => setShowAssessmentModal(true)}>
-                    📊 Add Player Assessment
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowIntelModal(true)}>
-                    📝 Add Intel Report
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
-                    ⚽ Add Fixture
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
-                    👤 Add Player
+                <Dropdown.Menu align="end">
+                  <Dropdown.Item onClick={toggleDarkMode}>
+                    {theme.isDark ? "☀️ Light Mode" : "🌙 Dark Mode"}
                   </Dropdown.Item>
                   <Dropdown.Divider />
-                  <Dropdown.Item onClick={() => setShowFeedbackModal(true)}>
-                    💬 Send Feedback
+                  <Dropdown.Item onClick={logout}>
+                    🚪 Logout
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
-            )}
-            {token ? (
-              <Button
-                variant="outline-light"
-                onClick={logout}
-                size="sm"
-                className="ms-2 rounded-pill"
-              >
-                Logout
-              </Button>
             ) : (
               <Button
                 variant="outline-light"

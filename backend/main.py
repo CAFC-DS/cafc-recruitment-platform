@@ -2811,16 +2811,24 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         # Build the WHERE clause with multiple ILIKE conditions
         where_conditions = " OR ".join(["PLAYERNAME ILIKE %s"] * len(search_patterns))
 
+        # Order by relevance: exact matches first, then alphabetically
+        # Use CASE to prioritize exact/close matches
         if has_cafc_id:
             cursor.execute(
                 f"""
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE
                 FROM players
                 WHERE {where_conditions}
-                ORDER BY PLAYERNAME
-                LIMIT 50
+                ORDER BY
+                    CASE
+                        WHEN UPPER(PLAYERNAME) = UPPER(%s) THEN 1
+                        WHEN UPPER(PLAYERNAME) LIKE UPPER(%s) THEN 2
+                        ELSE 3
+                    END,
+                    PLAYERNAME
+                LIMIT 100
             """,
-                search_patterns,
+                search_patterns + [query, query + '%'],
             )
         else:
             cursor.execute(
@@ -2828,10 +2836,16 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE
                 FROM players
                 WHERE {where_conditions}
-                ORDER BY PLAYERNAME
-                LIMIT 50
+                ORDER BY
+                    CASE
+                        WHEN UPPER(PLAYERNAME) = UPPER(%s) THEN 1
+                        WHEN UPPER(PLAYERNAME) LIKE UPPER(%s) THEN 2
+                        ELSE 3
+                    END,
+                    PLAYERNAME
+                LIMIT 100
             """,
-                search_patterns,
+                search_patterns + [query, query + '%'],
             )
 
         players = cursor.fetchall()
@@ -4246,7 +4260,8 @@ async def get_all_scout_reports(
                 sr.FLAG_CATEGORY,
                 sr.PURPOSE,
                 p.CAFC_PLAYER_ID,
-                p.DATA_SOURCE
+                p.DATA_SOURCE,
+                sr.IS_ARCHIVED
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -4308,6 +4323,7 @@ async def get_all_scout_reports(
                     "purpose": row[15] if row[15] else None,
                     "cafc_player_id": row[16],
                     "data_source": row[17],
+                    "is_archived": row[18] if row[18] is not None else False,
                     "universal_id": nav_universal_id,  # Also include separately for clarity
                 }
             )
@@ -4513,7 +4529,8 @@ async def get_single_scout_report(
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
                 sr.REPORT_TYPE,
                 sr.FLAG_CATEGORY,
-                sr.OPPOSITION_DETAILS
+                sr.OPPOSITION_DETAILS,
+                sr.IS_ARCHIVED
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -4589,6 +4606,7 @@ async def get_single_scout_report(
             "report_type": report_data[19] if report_data[19] else "Player Assessment",
             "flag_category": report_data[20],
             "opposition_details": report_data[21],
+            "is_archived": report_data[22] if report_data[22] is not None else False,
             "individual_attribute_scores": individual_attribute_scores,
             "average_attribute_score": round(average_attribute_score, 2),
         }
@@ -5066,7 +5084,8 @@ async def get_player_scout_reports(
                 sr.REPORT_TYPE as report_type,
                 sr.POSITION as position_played,
                 sr.FLAG_CATEGORY as flag_category,
-                sr.SCOUTING_TYPE as scouting_type
+                sr.SCOUTING_TYPE as scouting_type,
+                sr.IS_ARCHIVED as is_archived
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
@@ -5092,7 +5111,7 @@ async def get_player_scout_reports(
             pass
 
         base_query += """
-            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE
+            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED
             ORDER BY sr.CREATED_AT DESC
         """
 
@@ -5114,6 +5133,7 @@ async def get_player_scout_reports(
                 position_played,
                 flag_category,
                 scouting_type,
+                is_archived,
             ) = report
             reports_data.append(
                 {
@@ -5129,6 +5149,7 @@ async def get_player_scout_reports(
                     "position_played": position_played,
                     "flag_category": flag_category,
                     "scouting_type": scouting_type,
+                    "is_archived": is_archived if is_archived is not None else False,
                 }
             )
 
@@ -6768,7 +6789,7 @@ async def get_player_analytics(
         performance_distribution = {int(row['PERFORMANCE_SCORE']): row['COUNT'] for row in cursor.fetchall()}
 
         # 5. Average Attribute Score by Position
-        # Note: Position filter already applied in additional_filters, so only use months filter
+        # Note: This query only uses months filter to show ALL positions (not filtered by selected position)
         cursor.execute(f"""
             SELECT sr.POSITION, AVG(sr.ATTRIBUTE_SCORE) as avg_attr_score
             FROM scout_reports sr
@@ -6776,10 +6797,10 @@ async def get_player_analytics(
             AND sr.ATTRIBUTE_SCORE IS NOT NULL
             AND sr.ATTRIBUTE_SCORE > 0
             AND sr.REPORT_TYPE = 'Player Assessment'
-            {additional_filters if not position else ('AND ' + where_clauses[0]) if months else ''}
+            {('AND ' + where_clauses[0]) if months else ''}
             GROUP BY sr.POSITION
             ORDER BY avg_attr_score DESC
-        """, [params[0]] if months and not position else [])
+        """, [params[0]] if months else [])
         avg_attributes_by_position = {row['POSITION']: round(float(row['AVG_ATTR_SCORE']), 2) for row in cursor.fetchall()}
 
         # 6. Top Players (generic) - with null safety
@@ -6881,6 +6902,7 @@ async def get_player_analytics(
             })
 
         # 12. Reports by Position (count of reports per position)
+        # Note: This query only uses months filter to show distribution across ALL positions
         cursor.execute(f"""
             SELECT
                 sr.POSITION,
@@ -6890,10 +6912,10 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE sr.POSITION IS NOT NULL
             AND (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
-            {date_filter}
+            {('AND ' + where_clauses[0]) if months else ''}
             GROUP BY sr.POSITION
             ORDER BY total DESC
-        """)
+        """, [params[0]] if months else [])
         reports_by_position = []
         for row in cursor.fetchall():
             reports_by_position.append({
@@ -6905,7 +6927,6 @@ async def get_player_analytics(
 
         # 13. Top 10 Players by Performance Score (with optional position filter)
         top_players_by_performance = []
-        position_clause = f"AND sr.POSITION = '{position}'" if position else ""
         cursor.execute(f"""
             SELECT
                 COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
@@ -6921,12 +6942,11 @@ async def get_player_analytics(
             )
             WHERE sr.REPORT_TYPE = 'Player Assessment'
             AND sr.PERFORMANCE_SCORE IS NOT NULL
-            {position_clause}
-            {date_filter}
+            {additional_filters}
             GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
             ORDER BY avg_performance_score DESC, report_count DESC
             LIMIT 10
-        """)
+        """, params)
         for row in cursor.fetchall():
             top_players_by_performance.append({
                 "player_name": row['PLAYER_NAME'] or "Unknown Player",
@@ -6956,12 +6976,11 @@ async def get_player_analytics(
             WHERE sr.REPORT_TYPE = 'Player Assessment'
             AND sr.ATTRIBUTE_SCORE IS NOT NULL
             AND sr.ATTRIBUTE_SCORE > 0
-            {position_clause}
-            {date_filter}
+            {additional_filters}
             GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
             ORDER BY avg_attribute_score DESC, report_count DESC
             LIMIT 10
-        """)
+        """, params)
         for row in cursor.fetchall():
             top_players_by_attributes.append({
                 "player_name": row['PLAYER_NAME'] or "Unknown Player",
@@ -6972,7 +6991,25 @@ async def get_player_analytics(
                 "data_source": row['DATA_SOURCE'] or 'external'
             })
 
-        # 15. Positive Flagged Players
+        # 15. Positive Flagged Players - Get total count first
+        cursor.execute(f"""
+            SELECT COUNT(*) as total_count
+            FROM (
+                SELECT p.PLAYERNAME
+                FROM scout_reports sr
+                LEFT JOIN players p ON (
+                    (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                    (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+                )
+                WHERE sr.REPORT_TYPE = 'Flag'
+                AND sr.FLAG_CATEGORY = 'Positive'
+                {additional_filters}
+                GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
+            ) AS unique_players
+        """, params)
+        total_positive_flagged_count = cursor.fetchone()['TOTAL_COUNT'] or 0
+
+        # Now get the limited results
         cursor.execute(f"""
             SELECT
                 COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
@@ -6988,11 +7025,11 @@ async def get_player_analytics(
             )
             WHERE sr.REPORT_TYPE = 'Flag'
             AND sr.FLAG_CATEGORY = 'Positive'
-            {date_filter}
-            {position_filter}
+            {additional_filters}
             GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
             ORDER BY flag_count DESC, most_recent_flag DESC
-        """)
+            LIMIT 25
+        """, params)
 
         positive_flagged_players = []
         for row in cursor.fetchall():
@@ -7021,6 +7058,7 @@ async def get_player_analytics(
             "top_players_by_performance": top_players_by_performance,
             "top_players_by_attributes": top_players_by_attributes,
             "positive_flagged_players": positive_flagged_players,
+            "total_positive_flagged_count": total_positive_flagged_count,
         }
 
         # Cache for 10 minutes (player analytics data changes slowly)

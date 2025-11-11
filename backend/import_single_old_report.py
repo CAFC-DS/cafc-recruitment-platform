@@ -1,7 +1,11 @@
 """
-Single Report Import Script - Test importing one old scout report as a Flag report.
+Single Report Import Script - Test importing one old scout report as an ARCHIVED Flag report.
 
 This script imports the Kamari Doyle report as a test to verify the import process works.
+The report is marked as IS_ARCHIVED = TRUE, meaning it:
+- Will be viewable throughout the system
+- Will NOT affect analytics or score averages
+- Will display with "ARCHIVED" badge and special styling in the UI
 
 Usage:
     python import_single_old_report.py
@@ -31,6 +35,7 @@ SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
 TEST_REPORT = {
     "report_id": 755,
     "player": "Kamari Doyle",
+    "position": "AM - Shadow Striker",
     "fixture": "Rotherham 0-4 Crawley Town",
     "report_date": "04/04/2025",
     "fixture_date": "29/03/2025",
@@ -41,7 +46,7 @@ TEST_REPORT = {
     "summary": "A brilliant performance and definitely the man of the match. Technically gifted and well balanced 10. He looked really comfortable at the league 1 level for a 19 year old. Also the fact he's already got good/valuable minutes at this level, I would seriously recommend him as a 10 next season if available. I think his current ability and potential is, for sure, outstanding.",
     "grade": "Outstanding/Above Level",
     "scout": "Elliot Young",
-    "vss_score": 30,
+    "vss_score": '30',
     "live_video": "Video"
 }
 
@@ -250,7 +255,7 @@ def find_scout(cursor, scout_name):
     return None
 
 
-def combine_content(strengths, weaknesses, summary):
+def combine_content(strengths, weaknesses, summary, vss_score):
     """Combine strengths, weaknesses, and summary into formatted text."""
     parts = []
 
@@ -263,11 +268,14 @@ def combine_content(strengths, weaknesses, summary):
     if summary and summary.strip():
         parts.append(f"SUMMARY:\n{summary.strip()}")
 
+    if vss_score and vss_score.strip():
+        parts.append(f"VSS SCORE:\n{vss_score.strip()}")
+
     return "\n\n".join(parts)
 
 
 def create_flag_report(cursor, player, match_id, user_id, combined_summary,
-                       flag_category, scouting_type, position=""):
+                       flag_category, scouting_type, report_date, position="", is_archived=True):
     """Create Flag report in database using dual ID system."""
     print("\nCreating Flag report...")
 
@@ -280,6 +288,8 @@ def create_flag_report(cursor, player, match_id, user_id, combined_summary,
         player_id = player['playerid']
         cafc_player_id = None
         print(f"  Using PLAYER_ID: {player_id}")
+
+    print(f"  IS_ARCHIVED: {is_archived}")
 
     query = """
         INSERT INTO SCOUT_REPORTS (
@@ -295,9 +305,10 @@ def create_flag_report(cursor, player, match_id, user_id, combined_summary,
             SCOUTING_TYPE,
             SUMMARY,
             FLAG_CATEGORY,
-            CREATED_AT
+            CREATED_AT,
+            IS_ARCHIVED
         ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
     """
 
@@ -314,10 +325,12 @@ def create_flag_report(cursor, player, match_id, user_id, combined_summary,
         scouting_type,
         combined_summary,
         flag_category,
-        datetime.now()
+        report_date,
+        is_archived,
     ))
 
     print("✓ Flag report created successfully!")
+    print(f"✓ Report marked as archived: {is_archived}")
 
 
 def main():
@@ -360,9 +373,15 @@ def main():
         combined_summary = combine_content(
             TEST_REPORT["strengths"],
             TEST_REPORT["weaknesses"],
-            TEST_REPORT["summary"]
+            TEST_REPORT["summary"],
+            TEST_REPORT["vss_score"]
         )
         print(f"✓ Combined summary length: {len(combined_summary)} characters")
+
+        raw_date = TEST_REPORT["report_date"]
+        python_date = datetime.strptime(raw_date, "%d/%m/%Y")
+        print (python_date)
+        print (datetime.now())
 
         # Create flag report
         create_flag_report(
@@ -373,7 +392,8 @@ def main():
             combined_summary,
             TEST_REPORT["grade"],
             TEST_REPORT["live_video"],
-            player.get("position", "")
+            python_date,
+            TEST_REPORT["position"]
         )
 
         # Commit transaction
