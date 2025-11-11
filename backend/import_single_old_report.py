@@ -37,7 +37,7 @@ TEST_REPORT = {
     "player": "Kamari Doyle",
     "position": "AM - Shadow Striker",
     "fixture": "Rotherham 0-4 Crawley Town",
-    "report_date": "10/11/2024",  # Yesterday's date for testing
+    "report_date": "10/11/2025",  # Yesterday's date for testing (2025)
     "fixture_date": "29/03/2025",
     "strengths": """Technique- set pieces throughout the game were taking with pace and precision. He could also take them with either foot which is very unique. His strike of the ball is great, scoring a difficult shot from outside of the box putting a lot of curl on the ball and scoring a powerful low driven shot, displaying his range of clinical finishing.
  Receiving in pockets- his off the ball movement was superb, always moving into pockets of space. Had good awareness, knew when to play quick passes or when to turn into space.
