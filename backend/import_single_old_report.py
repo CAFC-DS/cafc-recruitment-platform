@@ -31,13 +31,13 @@ SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
 SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
 SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
 
-# Test report data - Kamari Doyle
+# Test report data - Kamari Doyle (with recent date for testing)
 TEST_REPORT = {
     "report_id": 755,
     "player": "Kamari Doyle",
     "position": "AM - Shadow Striker",
     "fixture": "Rotherham 0-4 Crawley Town",
-    "report_date": "04/04/2025",
+    "report_date": "10/11/2024",  # Yesterday's date for testing
     "fixture_date": "29/03/2025",
     "strengths": """Technique- set pieces throughout the game were taking with pace and precision. He could also take them with either foot which is very unique. His strike of the ball is great, scoring a difficult shot from outside of the box putting a lot of curl on the ball and scoring a powerful low driven shot, displaying his range of clinical finishing.
  Receiving in pockets- his off the ball movement was superb, always moving into pockets of space. Had good awareness, knew when to play quick passes or when to turn into space.
