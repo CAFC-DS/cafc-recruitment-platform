@@ -843,7 +843,7 @@ const PlayerProfilePage: React.FC = () => {
                                   >
                                     {report.flag_category}
                                   </span>
-                                  {extractVSSScore(report.summary) && (
+                                  {report.summary && extractVSSScore(report.summary) && (
                                     <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
                                       VSS: {extractVSSScore(report.summary)}/32
                                     </span>
