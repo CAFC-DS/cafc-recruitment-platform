@@ -529,7 +529,7 @@ const HomePage: React.FC = () => {
                     </div>
                     );
                   }))
-                )}
+                }
               </Card.Body>
             </Card>
           </Col>

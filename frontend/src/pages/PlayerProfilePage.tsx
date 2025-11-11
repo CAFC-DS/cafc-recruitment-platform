@@ -26,7 +26,8 @@ import {
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
-import { getPerformanceScoreColor, getFlagColor, getContrastTextColor } from "../utils/colorUtils";
+import { getPerformanceScoreColor, getFlagColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
+import { extractVSSScore } from "../utils/reportUtils";
 import {
   PlayerProfile,
   PlayerAttributes,
@@ -48,6 +49,8 @@ interface ScoutReport {
   report_id: number;
   report_date: string;
   scout_name: string;
+  is_archived?: boolean;
+  summary?: string;
   game_date: string | null;
   fixture: string | null;
   fixture_date: string | null;
@@ -738,7 +741,7 @@ const PlayerProfilePage: React.FC = () => {
                 {scoutReportsData.reports.slice(currentReportPage * 4, (currentReportPage + 1) * 4).map((report, index) => (
                   <Col sm={6} md={4} lg={3} key={report.report_id} className="mb-4">
                     <Card
-                      className="h-100 shadow-sm hover-card"
+                      className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
                       style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
                     >
                       <Card.Body className="p-3">
@@ -769,6 +772,9 @@ const PlayerProfilePage: React.FC = () => {
                           {/* Right: Scout Info */}
                           <Col xs={6} className="text-end">
                             <div>
+                              {report.is_archived && (
+                                <span className="badge-archived d-block mb-1">ARCHIVED</span>
+                              )}
                               <small className="text-muted d-block">
                                 {report.scout_name}
                               </small>
@@ -826,8 +832,25 @@ const PlayerProfilePage: React.FC = () => {
                           {/* Right: Score */}
                           <Col xs={6} className="text-end">
                             <div>
-                              {report.report_type?.toLowerCase() !== "flag" &&
-                              report.report_type?.toLowerCase() !== "flag assessment" ? (
+                              {report.is_archived && report.flag_category ? (
+                                <>
+                                  <span
+                                    className="badge-grade d-block mb-1"
+                                    style={{
+                                      backgroundColor: getGradeColor(report.flag_category),
+                                      fontSize: "0.7rem",
+                                    }}
+                                  >
+                                    {report.flag_category}
+                                  </span>
+                                  {extractVSSScore(report.summary) && (
+                                    <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
+                                      VSS: {extractVSSScore(report.summary)}/32
+                                    </span>
+                                  )}
+                                </>
+                              ) : report.report_type?.toLowerCase() !== "flag" &&
+                                report.report_type?.toLowerCase() !== "flag assessment" ? (
                                 <>
                                   <small className="text-muted fw-semibold d-block">Score</small>
                                   {report.overall_rating && (
