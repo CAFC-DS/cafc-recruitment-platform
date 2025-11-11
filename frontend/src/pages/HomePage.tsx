@@ -325,7 +325,7 @@ const HomePage: React.FC = () => {
                   recentScoutReports.map((report) => (
                     <div
                       key={report.report_id}
-                      className="border-bottom pb-2 mb-2"
+                      className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
                     >
                       <div className="d-flex justify-content-between align-items-start">
                         <div className="d-flex align-items-start">
@@ -361,6 +361,9 @@ const HomePage: React.FC = () => {
                           </div>
                         </div>
                         <div className="text-end">
+                          {report.is_archived && (
+                            <span className="badge-archived d-block mb-1">ARCHIVED</span>
+                          )}
                           <div className="mb-1">
                             <span
                               className={`badge me-1 ${
