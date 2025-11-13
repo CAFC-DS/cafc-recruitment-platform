@@ -5085,7 +5085,8 @@ async def get_player_scout_reports(
                 sr.POSITION as position_played,
                 sr.FLAG_CATEGORY as flag_category,
                 sr.SCOUTING_TYPE as scouting_type,
-                sr.IS_ARCHIVED as is_archived
+                sr.IS_ARCHIVED as is_archived,
+                sr.SUMMARY as summary
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
@@ -5111,7 +5112,7 @@ async def get_player_scout_reports(
             pass
 
         base_query += """
-            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED
+            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED, sr.SUMMARY
             ORDER BY sr.CREATED_AT DESC
         """
 
@@ -5134,6 +5135,7 @@ async def get_player_scout_reports(
                 flag_category,
                 scouting_type,
                 is_archived,
+                summary,
             ) = report
             reports_data.append(
                 {
@@ -5150,6 +5152,7 @@ async def get_player_scout_reports(
                     "flag_category": flag_category,
                     "scouting_type": scouting_type,
                     "is_archived": is_archived if is_archived is not None else False,
+                    "summary": summary,
                 }
             )
 

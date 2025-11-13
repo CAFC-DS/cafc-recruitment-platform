@@ -622,8 +622,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     if (hasFlag) {
       return {
         color: "warning",
-        icon: "🏳️",
-        title: "Flag Assessment Report",
+        icon: report.is_archived ? "📄" : "🏳️",
+        title: report.is_archived ? "Archived Report" : "Flag Assessment Report",
       };
     }
 
@@ -731,15 +731,25 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                       <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
                       {report.away_squad_name}
                     </p>
-                    <p className="mb-1">
-                      <strong>Position | Formation:</strong>{" "}
-                      {report.position_played || "Not specified"} |{" "}
-                      {report.formation || "Not specified"}
-                    </p>
-                    <p className="mb-0">
-                      <strong>Build | Height:</strong>{" "}
-                      {report.build || "N/A"} | {report.height || "N/A"}
-                    </p>
+                    {!report.is_archived && (
+                      <>
+                        <p className="mb-1">
+                          <strong>Position | Formation:</strong>{" "}
+                          {report.position_played || "Not specified"} |{" "}
+                          {report.formation || "Not specified"}
+                        </p>
+                        <p className="mb-0">
+                          <strong>Build | Height:</strong>{" "}
+                          {report.build || "N/A"} | {report.height || "N/A"}
+                        </p>
+                      </>
+                    )}
+                    {report.is_archived && (
+                      <p className="mb-0">
+                        <strong>Position:</strong>{" "}
+                        {report.position_played || "Not specified"}
+                      </p>
+                    )}
                   </Col>
                   <Col md={4}>
                     <p className="mb-1">
@@ -768,7 +778,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                           </span>
                           {extractVSSScore(report.summary) && (
                             <span className="badge-vss">
-                              VSS: {extractVSSScore(report.summary)}/32
+                              VSS Score: {extractVSSScore(report.summary)}/32
                             </span>
                           )}
                         </>
@@ -846,15 +856,25 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                           <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
                           {report.away_squad_name}
                         </p>
-                        <p className="mb-1">
-                          <strong>Position | Formation:</strong>{" "}
-                          {report.position_played || "Not specified"} |{" "}
-                          {report.formation || "Not specified"}
-                        </p>
-                        <p className="mb-0">
-                          <strong>Build | Height:</strong>{" "}
-                          {report.build || "N/A"} | {report.height || "N/A"}
-                        </p>
+                        {!report.is_archived && (
+                          <>
+                            <p className="mb-1">
+                              <strong>Position | Formation:</strong>{" "}
+                              {report.position_played || "Not specified"} |{" "}
+                              {report.formation || "Not specified"}
+                            </p>
+                            <p className="mb-0">
+                              <strong>Build | Height:</strong>{" "}
+                              {report.build || "N/A"} | {report.height || "N/A"}
+                            </p>
+                          </>
+                        )}
+                        {report.is_archived && (
+                          <p className="mb-0">
+                            <strong>Position:</strong>{" "}
+                            {report.position_played || "Not specified"}
+                          </p>
+                        )}
                       </Col>
                       <Col md={4}>
                         <p className="mb-1">

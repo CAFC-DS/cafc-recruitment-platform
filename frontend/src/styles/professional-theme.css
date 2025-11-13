@@ -1821,7 +1821,6 @@ span.badge.badge-neutral-grey {
 
 /* Archived report card styling */
 .report-card-archived {
-  opacity: 0.75;
   position: relative;
   border: 1px dashed #9ca3af !important;
   background-color: #f9fafb !important;
@@ -1854,14 +1853,15 @@ span.badge.badge-neutral-grey {
   display: inline-block;
 }
 
-/* VSS score badge for archived reports */
+/* VSS score badge for archived reports - white background like Add New button */
 .badge-vss {
-  background-color: #6366f1;
-  color: white;
+  background-color: white;
+  color: #000000;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 0.85rem;
+  border: 2px solid #dee2e6;
 }
 
 /* Archived report table row styling */
