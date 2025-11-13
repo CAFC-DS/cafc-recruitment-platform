@@ -128,30 +128,30 @@ export const getContrastTextColor = (backgroundColor: string): string => {
 /**
  * Get color for archived report grades
  * Maps old report grades to performance score color equivalents:
- * - Outstanding/Above Level → 8 (Darker green)
- * - Target → 6 (Light green)
- * - Monitor → 4 (Orange)
- * - Scout → 2 (Dark red)
- * - No Action → 0 (Grey)
+ * - Outstanding/Above Level → 10 (Gold)
+ * - Target → 8 (Darker green)
+ * - Monitor → 6 (Light green)
+ * - Scout → 4 (Orange)
+ * - No Action → 1 (Darkest red)
  */
 export const getGradeColor = (grade: string): string => {
   const gradeMap: { [key: string]: number } = {
-    "Outstanding/Above Level": 8,
-    "outstanding/above level": 8,
-    "Outstanding": 8,
-    "outstanding": 8,
-    "Above Level": 8,
-    "above level": 8,
-    "Target": 6,
-    "target": 6,
-    "Monitor": 4,
-    "monitor": 4,
-    "Scout": 2,
-    "scout": 2,
-    "No Action": 0,
-    "no action": 0,
+    "Outstanding/Above Level": 10,
+    "outstanding/above level": 10,
+    "Outstanding": 10,
+    "outstanding": 10,
+    "Above Level": 10,
+    "above level": 10,
+    "Target": 8,
+    "target": 8,
+    "Monitor": 6,
+    "monitor": 6,
+    "Scout": 4,
+    "scout": 4,
+    "No Action": 1,
+    "no action": 1,
   };
 
-  const scoreEquivalent = gradeMap[grade] || 0;
+  const scoreEquivalent = gradeMap[grade] || 1;
   return getPerformanceScoreColor(scoreEquivalent);
 };

@@ -26,11 +26,13 @@ import {
   getPerformanceScoreColor,
   getFlagColor,
   getContrastTextColor,
+  getGradeColor,
 } from "../utils/colorUtils";
 import {
   normalizeText,
   containsAccentInsensitive,
 } from "../utils/textNormalization";
+import { extractVSSScore } from "../utils/reportUtils";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -53,6 +55,9 @@ interface ScoutReport {
   player_id: number;
   purpose: string | null;
   universal_id?: string;
+  flag_category?: string;
+  is_archived?: boolean;
+  summary?: string;
 }
 
 const ScoutingPage: React.FC = () => {
@@ -361,12 +366,18 @@ const ScoutingPage: React.FC = () => {
   const getReportTypeBadge = (
     reportType: string,
     _scoutingType: string,
-    flagType?: string,
+    report: ScoutReport,
   ) => {
+    // For archived reports in card view, don't show badge in Tags section
+    // (they have ARCHIVED banner at top instead)
+    if (report.is_archived) {
+      return null;
+    }
+
     switch (reportType.toLowerCase()) {
       case "flag":
       case "flag assessment":
-        return getFlagBadge(flagType);
+        return getFlagBadge(report);
       case "clips":
         return <span className="badge badge-neutral-grey">Clips</span>;
       case "player assessment":
@@ -377,9 +388,28 @@ const ScoutingPage: React.FC = () => {
     }
   };
 
-  const getFlagBadge = (flagType?: string) => {
-    const flagColor = getFlagColor(flagType || "");
+  const getFlagBadge = (report: ScoutReport) => {
+    // For archived reports, show grade badge in table view
+    if (report.is_archived && report.flag_category) {
+      return (
+        <span
+          className="badge-grade"
+          style={{
+            backgroundColor: getGradeColor(report.flag_category),
+            color: "white",
+            fontSize: "0.8rem",
+            padding: "4px 8px",
+            fontWeight: "500",
+          }}
+          title={`Grade: ${report.flag_category}`}
+        >
+          {report.flag_category}
+        </span>
+      );
+    }
 
+    // For regular flag reports, show flag emoji with color
+    const flagColor = getFlagColor(report.flag_category || "");
     return (
       <span
         className="badge"
@@ -390,16 +420,40 @@ const ScoutingPage: React.FC = () => {
           cursor: "pointer",
           fontWeight: "500",
         }}
-        title={`Flag: ${flagType || "Unknown"}`}
+        title={`Flag: ${report.flag_category || "Unknown"}`}
       >
         🏳️
       </span>
     );
   };
 
-  const getFlagTypeText = (flagType?: string) => {
-    const flagColor = getFlagColor(flagType || "");
+  const getFlagTypeText = (report: ScoutReport) => {
+    // For archived reports, show grade badge instead of regular flag badge
+    if (report.is_archived && report.flag_category) {
+      const vssScore = report.summary ? extractVSSScore(report.summary) : null;
+      return (
+        <div className="d-flex flex-column align-items-end gap-1">
+          <span
+            className="badge-grade"
+            style={{
+              backgroundColor: getGradeColor(report.flag_category),
+              color: "white",
+              fontSize: "0.7rem",
+            }}
+          >
+            {report.flag_category}
+          </span>
+          {vssScore && (
+            <span className="badge-vss" style={{ fontSize: "0.7rem" }}>
+              VSS Score: {vssScore}/32
+            </span>
+          )}
+        </div>
+      );
+    }
 
+    // For regular flag reports, show flag color
+    const flagColor = getFlagColor(report.flag_category || "");
     return (
       <span
         className="badge"
@@ -411,7 +465,7 @@ const ScoutingPage: React.FC = () => {
           fontSize: "0.9rem",
         }}
       >
-        {flagType || "Flag"}
+        {report.flag_category || "Flag"}
       </span>
     );
   };
@@ -1079,11 +1133,28 @@ const ScoutingPage: React.FC = () => {
                         {getReportTypeBadge(
                           report.report_type,
                           report.scouting_type,
-                          (report as any).flag_category,
+                          report,
                         )}
                         {report.scouting_type && (
                           <span className="ms-1">
                             {getScoutingTypeBadge(report.scouting_type)}
+                          </span>
+                        )}
+                        {report.is_archived && report.flag_category && (
+                          <span className="ms-1">
+                            <span
+                              className="badge-grade"
+                              style={{
+                                backgroundColor: getGradeColor(report.flag_category),
+                                color: "white",
+                                fontSize: "0.65rem",
+                                padding: "2px 6px",
+                                fontWeight: "500",
+                              }}
+                              title={`Grade: ${report.flag_category}`}
+                            >
+                              {report.flag_category}
+                            </span>
                           </span>
                         )}
                       </td>
@@ -1164,7 +1235,7 @@ const ScoutingPage: React.FC = () => {
                   className="mb-4"
                 >
                   <Card
-                    className="h-100 shadow-sm hover-card"
+                    className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
                     style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
                   >
                     <Card.Body className="p-3">
@@ -1199,6 +1270,9 @@ const ScoutingPage: React.FC = () => {
                         {/* Right: Scout Info */}
                         <Col xs={6} className="text-end">
                           <div>
+                            {report.is_archived && (
+                              <span className="badge-archived d-block mb-1">ARCHIVED</span>
+                            )}
                             <small className="text-muted d-block">
                               {report.scout_name}
                             </small>
@@ -1305,7 +1379,7 @@ const ScoutingPage: React.FC = () => {
                                 </span>
                               </>
                             ) : (
-                              getFlagTypeText((report as any).flag_category)
+                              getFlagTypeText(report)
                             )}
                           </div>
                         </Col>
@@ -1322,7 +1396,7 @@ const ScoutingPage: React.FC = () => {
                             {getReportTypeBadge(
                               report.report_type,
                               report.scouting_type,
-                              (report as any).flag_category,
+                              report,
                             )}
                             {report.scouting_type && (
                               <span className="ms-1">

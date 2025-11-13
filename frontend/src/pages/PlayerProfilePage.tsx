@@ -125,7 +125,13 @@ const getReportTypeBadge = (
   reportType: string,
   _scoutingType: string,
   flagType?: string,
+  isArchived?: boolean,
 ) => {
+  // For archived reports, don't show badge in Tags (they have ARCHIVED banner at top)
+  if (isArchived) {
+    return null;
+  }
+
   switch (reportType?.toLowerCase()) {
     case "flag":
     case "flag assessment":
@@ -735,7 +741,7 @@ const PlayerProfilePage: React.FC = () => {
                   different scouts
                 </span>
               </div>
-
+   
               {/* Report Cards with Carousel Navigation */}
               <Row>
                 {scoutReportsData.reports.slice(currentReportPage * 4, (currentReportPage + 1) * 4).map((report, index) => (
@@ -843,9 +849,9 @@ const PlayerProfilePage: React.FC = () => {
                                   >
                                     {report.flag_category}
                                   </span>
-                                  {report.summary && extractVSSScore(report.summary) && (
+                                  {report.summary && extractVSSScore(report.summary!) && (
                                     <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
-                                      VSS: {extractVSSScore(report.summary)}/32
+                                      VSS Score: {extractVSSScore(report.summary)}/32
                                     </span>
                                   )}
                                 </>
@@ -890,6 +896,7 @@ const PlayerProfilePage: React.FC = () => {
                                 report.report_type || "",
                                 report.scouting_type || "",
                                 report.flag_category,
+                                report.is_archived,
                               )}
                               {report.scouting_type && (
                                 <span className="ms-1">
@@ -903,15 +910,23 @@ const PlayerProfilePage: React.FC = () => {
                           <Col xs={6} className="text-end">
                             <Button
                               size="sm"
-                              className="btn-action-circle btn-action-view"
                               onClick={() => handleOpenReportModal(report.report_id)}
                               disabled={loadingReportId === report.report_id}
                               title="View Report"
+                              style={{
+                                backgroundColor: "white",
+                                color: "#000000",
+                                fontWeight: 600,
+                                padding: "6px 16px",
+                                borderRadius: "20px",
+                                fontSize: "0.85rem",
+                                border: "2px solid #dee2e6",
+                              }}
                             >
                               {loadingReportId === report.report_id ? (
                                 <Spinner as="span" animation="border" size="sm" />
                               ) : (
-                                "👁️"
+                                "View Report 👁️"
                               )}
                             </Button>
                           </Col>
