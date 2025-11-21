@@ -33,6 +33,7 @@ import {
 } from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface ScoutReport {
   report_id: number;
@@ -58,6 +59,11 @@ const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
+  const { isAdmin } = useCurrentUser();
+
+  // Only Admin role can add fixtures and players
+  const canAddFixtureOrPlayer = isAdmin;
+
   const [playerSearch, setPlayerSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -620,6 +626,8 @@ const ScoutingPage: React.FC = () => {
             className="mt-2 ms-2"
             variant="outline-secondary"
             onClick={() => setShowAddPlayerModal(true)}
+            disabled={!canAddFixtureOrPlayer}
+            title={!canAddFixtureOrPlayer ? "Only Admin role can add players" : ""}
           >
             Add Player
           </Button>
@@ -627,6 +635,8 @@ const ScoutingPage: React.FC = () => {
             className="mt-2 ms-2"
             variant="outline-secondary"
             onClick={() => setShowAddFixtureModal(true)}
+            disabled={!canAddFixtureOrPlayer}
+            title={!canAddFixtureOrPlayer ? "Only Admin role can add fixtures" : ""}
           >
             Add Fixture
           </Button>
