@@ -4727,22 +4727,25 @@ async def get_player_profile(
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
 
-        # Get scout reports
-        scout_sql = """
-            SELECT sr.ID, sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE,
-                   sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
-                   u.USERNAME, sr.IS_POTENTIAL
-            FROM scout_reports sr
-            LEFT JOIN users u ON sr.USER_ID = u.ID
-            WHERE sr.PLAYER_ID = %s
-            ORDER BY sr.CREATED_AT DESC
-        """
-
         # Determine which player ID to use for scout reports lookup
         # Extract the actual ID being used for this player from the found data
         actual_player_id = (
             player_data[0] if data_source == "external" else player_data[1]
         )  # PLAYERID vs CAFC_PLAYER_ID
+
+        # Use correct column based on data source
+        player_id_column = "sr.PLAYER_ID" if data_source == "external" else "sr.CAFC_PLAYER_ID"
+
+        # Get scout reports
+        scout_sql = f"""
+            SELECT sr.ID, sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE,
+                   sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
+                   u.USERNAME, sr.IS_POTENTIAL
+            FROM scout_reports sr
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            WHERE {player_id_column} = %s
+            ORDER BY sr.CREATED_AT DESC
+        """
 
         # Apply role-based filtering for scout reports
         scout_values = (actual_player_id,)
@@ -4752,15 +4755,15 @@ async def get_player_profile(
             test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
             if current_user.role == "scout":
                 scout_sql = scout_sql.replace(
-                    "WHERE sr.PLAYER_ID = %s",
-                    "WHERE sr.PLAYER_ID = %s AND sr.USER_ID = %s",
+                    f"WHERE {player_id_column} = %s",
+                    f"WHERE {player_id_column} = %s AND sr.USER_ID = %s",
                 )
                 scout_values = (actual_player_id, current_user.id)
             elif current_user.role == "loan":
                 # Loan users see their own reports OR any Loan Reports
                 scout_sql = scout_sql.replace(
-                    "WHERE sr.PLAYER_ID = %s",
-                    "WHERE sr.PLAYER_ID = %s AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))",
+                    f"WHERE {player_id_column} = %s",
+                    f"WHERE {player_id_column} = %s AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))",
                 )
                 scout_values = (actual_player_id, current_user.id, "Loan Report")
         except:
