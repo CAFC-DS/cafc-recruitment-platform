@@ -372,13 +372,9 @@ const HomePage: React.FC = () => {
                                 fontWeight: "bold",
                                 ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                               }}
+                              title={report.is_potential ? "Potential Score" : undefined}
                             >
-                              {report.performance_score}
-                              {report.is_potential && (
-                                <span className="ms-1" style={{ fontSize: "0.75rem" }}>
-                                  ⭐
-                                </span>
-                              )}
+                              {report.performance_score}{report.is_potential && "*"}
                             </span>
                             <span
                               className="badge"

@@ -1011,23 +1011,10 @@ const ScoutingPage: React.FC = () => {
                               fontWeight: "bold",
                               ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                             }}
+                            title={report.is_potential ? "Potential Score" : undefined}
                           >
-                            {report.performance_score}
+                            {report.performance_score}{report.is_potential && "*"}
                           </span>
-                          {report.is_potential && (
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor: "#6f42c1",
-                                color: "white",
-                                fontSize: "0.7rem",
-                                padding: "2px 6px",
-                              }}
-                              title="Potential Score"
-                            >
-                              P
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td>
@@ -1233,13 +1220,9 @@ const ScoutingPage: React.FC = () => {
                                     fontSize: "0.9rem",
                                     ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                                   }}
+                                  title={report.is_potential ? "Potential Score" : undefined}
                                 >
-                                  {report.performance_score}
-                                  {report.is_potential && (
-                                    <span className="ms-1" style={{ fontSize: "0.75rem" }}>
-                                      ⭐
-                                    </span>
-                                  )}
+                                  {report.performance_score}{report.is_potential && "*"}
                                 </span>
                               </>
                             ) : (

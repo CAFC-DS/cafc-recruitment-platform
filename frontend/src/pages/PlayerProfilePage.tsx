@@ -886,23 +886,10 @@ const PlayerProfilePage: React.FC = () => {
                                   fontWeight: "bold",
                                   ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
                                 }}
+                                title={report.is_potential ? "Potential Score" : undefined}
                               >
-                                {report.overall_rating}
+                                {report.overall_rating}{report.is_potential && "*"}
                               </span>
-                              {report.is_potential && (
-                                <span
-                                  className="badge"
-                                  style={{
-                                    backgroundColor: "#6f42c1",
-                                    color: "white",
-                                    fontSize: "0.7rem",
-                                    padding: "2px 6px",
-                                  }}
-                                  title="Potential Score"
-                                >
-                                  P
-                                </span>
-                              )}
                             </div>
                           </td>
                           <td>
@@ -1080,13 +1067,9 @@ const PlayerProfilePage: React.FC = () => {
                                         fontSize: "0.9rem",
                                         ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
                                       }}
+                                      title={report.is_potential ? "Potential Score" : undefined}
                                     >
-                                      {report.overall_rating}
-                                      {report.is_potential && (
-                                        <span className="ms-1" style={{ fontSize: "0.75rem" }}>
-                                          ⭐
-                                        </span>
-                                      )}
+                                      {report.overall_rating}{report.is_potential && "*"}
                                     </span>
                                   )}
                                 </>
