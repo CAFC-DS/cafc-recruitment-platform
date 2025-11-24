@@ -884,8 +884,7 @@ const PlayerProfilePage: React.FC = () => {
                                   ),
                                   color: "white !important",
                                   fontWeight: "bold",
-                                  fontSize: "0.875rem",
-                                  padding: "0.35rem 0.5rem",
+                                  fontSize: "0.9rem",
                                   ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
                                 }}
                                 title={report.is_potential ? "Potential Score" : undefined}
