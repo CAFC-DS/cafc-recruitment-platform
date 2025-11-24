@@ -1009,8 +1009,8 @@ const ScoutingPage: React.FC = () => {
                               ),
                               color: "white !important",
                               fontWeight: "bold",
-                              fontSize: "1rem",
-                              padding: "0.4rem 0.6rem",
+                              fontSize: "0.875rem",
+                              padding: "0.35rem 0.5rem",
                               ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                             }}
                             title={report.is_potential ? "Potential Score" : undefined}
