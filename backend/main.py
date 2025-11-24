@@ -675,10 +675,11 @@ class ScoutReport(BaseModel):
     scoutingType: Optional[str] = None
     purposeOfAssessment: Optional[str] = None
     performanceScore: Optional[int] = None
+    isPotential: Optional[bool] = False
     assessmentSummary: str
     justificationRationale: Optional[str] = None
     strengths: Optional[List[str]] = None
-    weaknesses: Optional[List[str]] = None
+    weaknesses: Optional[List[str] = None
     attributeScores: Optional[dict] = None
     reportType: str
     flagCategory: Optional[str] = None
@@ -3059,9 +3060,9 @@ async def create_scout_report(
             sql = """
                 INSERT INTO scout_reports (
                     PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
-                    SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
+                    SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, IS_POTENTIAL,
                     PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             values = (
@@ -3076,6 +3077,7 @@ async def create_scout_report(
                 justification_rationale,
                 attribute_score,
                 performance_score,
+                report.isPotential if report.isPotential is not None else False,
                 purpose_of_assessment,
                 scouting_type,
                 flag_category,
@@ -3093,9 +3095,9 @@ async def create_scout_report(
                 sql = """
                     INSERT INTO scout_reports (
                         PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
-                        SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
+                        SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, IS_POTENTIAL,
                         PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
 
                 values = (
@@ -3110,6 +3112,7 @@ async def create_scout_report(
                     justification_rationale,
                     attribute_score,
                     performance_score,
+                    report.isPotential if report.isPotential is not None else False,
                     purpose_of_assessment,
                     scouting_type,
                     flag_category,
@@ -3531,7 +3534,7 @@ async def update_scout_report(
         sql = """
             UPDATE scout_reports SET
                 PLAYER_ID = %s, CAFC_PLAYER_ID = %s, POSITION = %s, BUILD = %s, HEIGHT = %s, STRENGTHS = %s, WEAKNESSES = %s,
-                SUMMARY = %s, JUSTIFICATION = %s, ATTRIBUTE_SCORE = %s, PERFORMANCE_SCORE = %s,
+                SUMMARY = %s, JUSTIFICATION = %s, ATTRIBUTE_SCORE = %s, PERFORMANCE_SCORE = %s, IS_POTENTIAL = %s,
                 PURPOSE = %s, SCOUTING_TYPE = %s, FLAG_CATEGORY = %s, REPORT_TYPE = %s, MATCH_ID = %s, FORMATION = %s, OPPOSITION_DETAILS = %s
             WHERE ID = %s
         """
@@ -3548,6 +3551,7 @@ async def update_scout_report(
             justification_rationale,
             attribute_score,
             performance_score,
+            report.isPotential if report.isPotential is not None else False,
             purpose_of_assessment,
             scouting_type,
             flag_category,
@@ -3660,7 +3664,7 @@ async def get_scout_report(
                    sr.SUMMARY, sr.JUSTIFICATION, sr.ATTRIBUTE_SCORE, sr.PERFORMANCE_SCORE, sr.PURPOSE,
                    sr.SCOUTING_TYPE, sr.FLAG_CATEGORY, sr.REPORT_TYPE, sr.MATCH_ID, sr.FORMATION,
                    p.PLAYERNAME, p.DATA_SOURCE, m.HOMESQUADNAME, m.AWAYSQUADNAME, DATE(m.SCHEDULEDDATE) as FIXTURE_DATE,
-                   sr.OPPOSITION_DETAILS
+                   sr.OPPOSITION_DETAILS, sr.IS_POTENTIAL
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -3716,6 +3720,7 @@ async def get_scout_report(
             "assessmentSummary": report[8],
             "justificationRationale": report[9],
             "performanceScore": report[11],
+            "isPotential": report[24] if report[24] is not None else False,
             "purposeOfAssessment": report[12],
             "scoutingType": report[13],
             "flagCategory": report[14],
@@ -4279,7 +4284,8 @@ async def get_all_scout_reports(
                 p.CAFC_PLAYER_ID,
                 p.DATA_SOURCE,
                 sr.IS_ARCHIVED,
-                CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END as HAS_BEEN_VIEWED
+                CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END as HAS_BEEN_VIEWED,
+                sr.IS_POTENTIAL
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -4343,6 +4349,7 @@ async def get_all_scout_reports(
                     "data_source": row[17],
                     "is_archived": row[18] if row[18] is not None else False,
                     "has_been_viewed": row[19] if row[19] is not None else False,
+                    "is_potential": row[20] if row[20] is not None else False,
                     "universal_id": nav_universal_id,  # Also include separately for clarity
                 }
             )
@@ -4549,7 +4556,8 @@ async def get_single_scout_report(
                 sr.REPORT_TYPE,
                 sr.FLAG_CATEGORY,
                 sr.OPPOSITION_DETAILS,
-                sr.IS_ARCHIVED
+                sr.IS_ARCHIVED,
+                sr.IS_POTENTIAL
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -4626,6 +4634,7 @@ async def get_single_scout_report(
             "flag_category": report_data[20],
             "opposition_details": report_data[21],
             "is_archived": report_data[22] if report_data[22] is not None else False,
+            "is_potential": report_data[23] if report_data[23] is not None else False,
             "individual_attribute_scores": individual_attribute_scores,
             "average_attribute_score": round(average_attribute_score, 2),
         }
