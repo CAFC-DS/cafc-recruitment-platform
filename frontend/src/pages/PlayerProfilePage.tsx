@@ -62,6 +62,7 @@ interface ScoutReport {
   position_played: string | null;
   flag_category?: string;
   scouting_type?: string;
+  is_potential?: boolean;
 }
 
 interface ScoutReportsData {
@@ -871,22 +872,38 @@ const PlayerProfilePage: React.FC = () => {
                           <td>{report.fixture || "N/A"}</td>
                           <td>{report.position_played || "N/A"}</td>
                           <td>
-                            <span
-                              className={`badge ${
-                                report.overall_rating === 9 ? 'performance-score-9' :
-                                report.overall_rating === 10 ? 'performance-score-10' : ''
-                              }`}
-                              style={{
-                                backgroundColor: getPerformanceScoreColor(
-                                  report.overall_rating || 0,
-                                ),
-                                color: "white !important",
-                                fontWeight: "bold",
-                                ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
-                              }}
-                            >
-                              {report.overall_rating}
-                            </span>
+                            <div className="d-flex align-items-center justify-content-center gap-1">
+                              <span
+                                className={`badge ${
+                                  report.overall_rating === 9 ? 'performance-score-9' :
+                                  report.overall_rating === 10 ? 'performance-score-10' : ''
+                                }`}
+                                style={{
+                                  backgroundColor: getPerformanceScoreColor(
+                                    report.overall_rating || 0,
+                                  ),
+                                  color: "white !important",
+                                  fontWeight: "bold",
+                                  ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
+                                }}
+                              >
+                                {report.overall_rating}
+                              </span>
+                              {report.is_potential && (
+                                <span
+                                  className="badge"
+                                  style={{
+                                    backgroundColor: "#6f42c1",
+                                    color: "white",
+                                    fontSize: "0.7rem",
+                                    padding: "2px 6px",
+                                  }}
+                                  title="Potential Score"
+                                >
+                                  P
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td>
                             <div
@@ -1065,6 +1082,11 @@ const PlayerProfilePage: React.FC = () => {
                                       }}
                                     >
                                       {report.overall_rating}
+                                      {report.is_potential && (
+                                        <span className="ms-1" style={{ fontSize: "0.75rem" }}>
+                                          ⭐
+                                        </span>
+                                      )}
                                     </span>
                                   )}
                                 </>

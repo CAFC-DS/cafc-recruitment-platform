@@ -55,6 +55,7 @@ interface ScoutReport {
   is_archived?: boolean;
   summary?: string;
   has_been_viewed?: boolean;
+  is_potential?: boolean;
 }
 
 const ScoutingPage: React.FC = () => {
@@ -996,22 +997,38 @@ const ScoutingPage: React.FC = () => {
                         )}
                       </td>
                       <td>
-                        <span
-                          className={`badge ${
-                            report.performance_score === 9 ? 'performance-score-9' :
-                            report.performance_score === 10 ? 'performance-score-10' : ''
-                          }`}
-                          style={{
-                            backgroundColor: getPerformanceScoreColor(
-                              report.performance_score,
-                            ),
-                            color: "white !important",
-                            fontWeight: "bold",
-                            ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
-                          }}
-                        >
-                          {report.performance_score}
-                        </span>
+                        <div className="d-flex align-items-center justify-content-center gap-1">
+                          <span
+                            className={`badge ${
+                              report.performance_score === 9 ? 'performance-score-9' :
+                              report.performance_score === 10 ? 'performance-score-10' : ''
+                            }`}
+                            style={{
+                              backgroundColor: getPerformanceScoreColor(
+                                report.performance_score,
+                              ),
+                              color: "white !important",
+                              fontWeight: "bold",
+                              ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
+                            }}
+                          >
+                            {report.performance_score}
+                          </span>
+                          {report.is_potential && (
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: "#6f42c1",
+                                color: "white",
+                                fontSize: "0.7rem",
+                                padding: "2px 6px",
+                              }}
+                              title="Potential Score"
+                            >
+                              P
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div
@@ -1218,6 +1235,11 @@ const ScoutingPage: React.FC = () => {
                                   }}
                                 >
                                   {report.performance_score}
+                                  {report.is_potential && (
+                                    <span className="ms-1" style={{ fontSize: "0.75rem" }}>
+                                      ⭐
+                                    </span>
+                                  )}
                                 </span>
                               </>
                             ) : (

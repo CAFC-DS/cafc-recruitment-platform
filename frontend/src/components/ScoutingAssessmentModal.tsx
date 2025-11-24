@@ -104,6 +104,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     scoutingType: "Live",
     purposeOfAssessment: "Player Report",
     performanceScore: 5,
+    isPotential: false,
     assessmentSummary: "",
     justificationRationale: "",
     flagCategory: "",
@@ -679,6 +680,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         purposeOfAssessment:
           existingReportData.purposeOfAssessment || "Player Report",
         performanceScore: existingReportData.performanceScore || 5,
+        isPotential: existingReportData.isPotential || false,
         assessmentSummary: existingReportData.assessmentSummary || "",
         justificationRationale: existingReportData.justificationRationale || "",
         flagCategory: existingReportData.flagCategory || "",
@@ -1730,10 +1732,33 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                 disabled={!selectedPlayer || !fixtureDate || !selectedMatch}
               />
             </Form.Group>
+
+            {/* Potential vs Performance Toggle */}
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                id="isPotentialCheckbox"
+                name="isPotential"
+                checked={formData.isPotential}
+                onChange={(e) => {
+                  setFormData({ ...formData, isPotential: e.target.checked });
+                }}
+                label={
+                  <span>
+                    <strong>This is a Potential Score</strong>
+                    <small className="text-muted d-block">
+                      Check this if scoring future ability/ceiling rather than current performance
+                    </small>
+                  </span>
+                }
+                disabled={!selectedPlayer || !fixtureDate || !selectedMatch}
+              />
+            </Form.Group>
+
             <Form.Group className="mb-3" controlId="performanceScore">
               <OverlayTrigger placement="top" overlay={renderTooltip}>
                 <Form.Label>
-                  Performance Score ({formData.performanceScore}){" "}
+                  {formData.isPotential ? "Potential Score" : "Performance Score"} ({formData.performanceScore}){" "}
                   <span className="text-danger">*</span>
                 </Form.Label>
               </OverlayTrigger>
@@ -1975,10 +2000,33 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                 disabled={!selectedPlayer}
               />
             </Form.Group>
+
+            {/* Potential vs Performance Toggle */}
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                id="isPotentialCheckboxClips"
+                name="isPotential"
+                checked={formData.isPotential}
+                onChange={(e) => {
+                  setFormData({ ...formData, isPotential: e.target.checked });
+                }}
+                label={
+                  <span>
+                    <strong>This is a Potential Score</strong>
+                    <small className="text-muted d-block">
+                      Check this if scoring future ability/ceiling rather than current performance
+                    </small>
+                  </span>
+                }
+                disabled={!selectedPlayer}
+              />
+            </Form.Group>
+
             <Form.Group className="mb-3" controlId="performanceScore">
               <OverlayTrigger placement="top" overlay={renderTooltip}>
                 <Form.Label>
-                  Performance Score ({formData.performanceScore}){" "}
+                  {formData.isPotential ? "Potential Score" : "Performance Score"} ({formData.performanceScore}){" "}
                   <span className="text-danger">*</span>
                 </Form.Label>
               </OverlayTrigger>

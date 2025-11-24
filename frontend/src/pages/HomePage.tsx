@@ -36,6 +36,7 @@ interface ScoutReport {
   flag_category?: string;
   is_archived?: boolean;
   summary?: string;
+  is_potential?: boolean;
 }
 
 interface IntelReport {
@@ -373,6 +374,11 @@ const HomePage: React.FC = () => {
                               }}
                             >
                               {report.performance_score}
+                              {report.is_potential && (
+                                <span className="ms-1" style={{ fontSize: "0.75rem" }}>
+                                  ⭐
+                                </span>
+                              )}
                             </span>
                             <span
                               className="badge"
