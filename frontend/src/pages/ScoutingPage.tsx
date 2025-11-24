@@ -54,6 +54,7 @@ interface ScoutReport {
   flag_category?: string;
   is_archived?: boolean;
   summary?: string;
+  has_been_viewed?: boolean;
 }
 
 const ScoutingPage: React.FC = () => {
@@ -219,6 +220,20 @@ const ScoutingPage: React.FC = () => {
       const response = await axiosInstance.get(`/scout_reports/${report_id}`);
       setSelectedReport(response.data);
       setShowReportModal(true);
+
+      // Mark as viewed (fire and forget - don't block modal opening)
+      axiosInstance
+        .post(`/scout_reports/${report_id}/mark-viewed`)
+        .catch((err) =>
+          console.warn("Failed to mark report as viewed:", err)
+        );
+
+      // Update local state to remove blue dot immediately
+      setScoutReports((prev) =>
+        prev.map((r) =>
+          r.report_id === report_id ? { ...r, has_been_viewed: true } : r
+        )
+      );
     } catch (error) {
       console.error("Error fetching single scout report:", error);
     } finally {
@@ -637,6 +652,13 @@ const ScoutingPage: React.FC = () => {
               <span> ({totalReports} total)</span>
             )}
           </small>
+          {filteredReports.filter((r) => !r.has_been_viewed).length > 0 && (
+            <div>
+              <small className="text-primary fw-semibold">
+                {filteredReports.filter((r) => !r.has_been_viewed).length} unread
+              </small>
+            </div>
+          )}
         </Col>
       </Row>
 
@@ -880,6 +902,7 @@ const ScoutingPage: React.FC = () => {
               >
                 <thead className="table-dark">
                   <tr>
+                    <th style={{ width: "30px" }}></th>
                     <th>Report Date</th>
                     <th>Player</th>
                     <th>Age</th>
@@ -895,6 +918,21 @@ const ScoutingPage: React.FC = () => {
                 <tbody>
                   {paginatedReports.map((report) => (
                     <tr key={report.report_id}>
+                      <td style={{ width: "30px", textAlign: "center", paddingRight: 0 }}>
+                        {!report.has_been_viewed && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              backgroundColor: "#0d6efd",
+                              boxShadow: "0 0 4px rgba(13, 110, 253, 0.4)",
+                            }}
+                            title="Unread"
+                          />
+                        )}
+                      </td>
                       <td>
                         {new Date(report.created_at).toLocaleDateString()}
                       </td>
@@ -1035,7 +1073,12 @@ const ScoutingPage: React.FC = () => {
                 >
                   <Card
                     className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
-                    style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                    style={{
+                      borderRadius: "8px",
+                      border: "1px solid #dee2e6",
+                      position: "relative",
+                      borderLeft: !report.has_been_viewed ? "4px solid #0d6efd" : "4px solid transparent",
+                    }}
                   >
                     <Card.Body className="p-3">
                       {/* Top Row - 2 columns */}

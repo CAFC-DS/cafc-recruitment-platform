@@ -407,17 +407,19 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     return { group: "PHYSICAL / PSYCHOLOGICAL", order: 1 }; // Default
   };
 
-  const sortedAttributes = Object.entries(report.individual_attribute_scores)
-    // Include all attributes, including those with 0 scores
-    .sort(([a], [b]) => {
-      const groupA = getAttributeGroup(a);
-      const groupB = getAttributeGroup(b);
-      // First sort by group order, then alphabetically within group
-      if (groupA.order !== groupB.order) {
-        return groupA.order - groupB.order;
-      }
-      return a.localeCompare(b);
-    });
+  const sortedAttributes = report.individual_attribute_scores
+    ? Object.entries(report.individual_attribute_scores)
+        // Include all attributes, including those with 0 scores
+        .sort(([a], [b]) => {
+          const groupA = getAttributeGroup(a);
+          const groupB = getAttributeGroup(b);
+          // First sort by group order, then alphabetically within group
+          if (groupA.order !== groupB.order) {
+            return groupA.order - groupB.order;
+          }
+          return a.localeCompare(b);
+        })
+    : [];
 
   const chartLabels = sortedAttributes.map(([label]) => label);
   const chartData = sortedAttributes.map(([, value]) => {

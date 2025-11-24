@@ -95,9 +95,6 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
   // Report queue state
   const [reportQueue, setReportQueue] = useState<QueuedReport[]>([]);
 
-  // Track which report ID is being edited (for internal modal queue editing)
-  const [editingQueuedReportId, setEditingQueuedReportId] = useState<string | null>(null);
-
   const initialFormData = {
     selectedMatch: "",
     playerPosition: "",
@@ -161,6 +158,27 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           }
           if (draft.playerSearch) setPlayerSearch(draft.playerSearch);
           if (draft.selectedMatch) setSelectedMatch(draft.selectedMatch);
+
+          // Fetch matches if we have a fixture date in the draft
+          if (draft.fixtureDate) {
+            setLoadingMatches(true);
+            axiosInstance.get(`/matches/date?fixture_date=${draft.fixtureDate}`)
+              .then(response => {
+                const sortedMatches = response.data.sort((a: any, b: any) => {
+                  const matchA = `${a.home_team} vs ${a.away_team}`.toLowerCase();
+                  const matchB = `${b.home_team} vs ${b.away_team}`.toLowerCase();
+                  return matchA.localeCompare(matchB);
+                });
+                setMatches(sortedMatches);
+              })
+              .catch(e => {
+                console.error("Error fetching matches from draft:", e);
+                setMatches([]);
+              })
+              .finally(() => {
+                setLoadingMatches(false);
+              });
+          }
 
           console.log("Draft restored from localStorage");
         } catch (error) {
@@ -333,9 +351,6 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
 
     // Keep: fixtureDate, selectedMatch, assessmentType
 
-    // Clear editing state
-    setEditingQueuedReportId(null);
-
     // Clear form data but preserve selectedMatch in formData
     setFormData({
       ...initialFormData,
@@ -352,7 +367,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     if (!selectedPlayer || !assessmentType) return;
 
     const queuedReport: QueuedReport = {
-      id: editingQueuedReportId || `${Date.now()}-${Math.random()}`,
+      id: `${Date.now()}-${Math.random()}`,
       timestamp: new Date().toISOString(),
       player: selectedPlayer,
       assessmentType: assessmentType,
@@ -365,16 +380,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       positionAttributes: [...positionAttributes],
     };
 
-    if (editingQueuedReportId) {
-      // Replace the existing queued report
-      setReportQueue(reportQueue.map(r => r.id === editingQueuedReportId ? queuedReport : r));
-      setToastMessage(`Report for ${selectedPlayer.player_name} updated in queue!`);
-      setEditingQueuedReportId(null); // Clear editing state
-    } else {
-      // Add new report to queue
-      setReportQueue([...reportQueue, queuedReport]);
-      setToastMessage(`Report for ${selectedPlayer.player_name} added to queue!`);
-    }
+    // Add new report to queue
+    setReportQueue([...reportQueue, queuedReport]);
+    setToastMessage(`Report for ${selectedPlayer.player_name} added to queue!`);
 
     // Clear any existing draft since report is now in queue
     localStorage.removeItem("scoutingAssessmentDraft");
@@ -394,13 +402,13 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     setShowToast(true);
   };
 
-  // Edit queued report - load it back into form
+  // Edit queued report - load it back into form and remove from queue
   const handleEditQueued = (reportId: string) => {
     const report = reportQueue.find(r => r.id === reportId);
     if (!report) return;
 
-    // Track which report is being edited
-    setEditingQueuedReportId(reportId);
+    // Remove report from queue
+    setReportQueue(reportQueue.filter(r => r.id !== reportId));
 
     // Populate form with queued report data
     setSelectedPlayer(report.player);
@@ -432,6 +440,11 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           setLoadingMatches(false);
         });
     }
+
+    // Show notification
+    setToastMessage(`Editing report for ${report.player.player_name}`);
+    setToastVariant("info");
+    setShowToast(true);
 
     // Scroll to top of modal to show the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -519,9 +532,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       // Call success callback
       onAssessmentSubmitSuccess();
 
-      // Close modal and refresh to show new reports
+      // Close modal and refresh to show new reports after user has time to see success message
       onHide();
-      setTimeout(() => window.location.reload(), 300);
+      setTimeout(() => window.location.reload(), 2500);
     } else {
       setToastMessage(`${successCount} succeeded, ${failCount} failed. Failed reports kept in queue.`);
       setToastVariant("warning");
@@ -534,8 +547,8 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
 
   // Submit All - adds current report to queue if valid, then batch submits
   const handleSubmitAll = async () => {
-    // If current form is valid and not editing a queued report, add it to queue first
-    if (isFormValid() && !editingQueuedReportId && selectedPlayer && assessmentType) {
+    // If current form is valid, add it to queue first
+    if (isFormValid() && selectedPlayer && assessmentType) {
       const queuedReport: QueuedReport = {
         id: `${Date.now()}-${Math.random()}`,
         timestamp: new Date().toISOString(),
@@ -639,9 +652,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       // Call success callback
       onAssessmentSubmitSuccess();
 
-      // Close modal and refresh to show new reports
+      // Close modal and refresh to show new reports after user has time to see success message
       onHide();
-      setTimeout(() => window.location.reload(), 300);
+      setTimeout(() => window.location.reload(), 2500);
     } else {
       setToastMessage(`${successCount} succeeded, ${failCount} failed. Failed reports kept in queue.`);
       setToastVariant("warning");
@@ -1352,23 +1365,8 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         {/* Queue Panel - Shows when queue has items */}
         {reportQueue.length > 0 && (
           <Card className="mb-4" style={{ backgroundColor: "#f0f8ff", border: "1px solid #007bff" }}>
-            <Card.Header className="d-flex justify-content-between align-items-center" style={{ backgroundColor: "#007bff", color: "white" }}>
+            <Card.Header style={{ backgroundColor: "#007bff", color: "white" }}>
               <h6 className="mb-0">Queued Reports ({reportQueue.length})</h6>
-              <div>
-                <Button
-                  size="sm"
-                  variant="success"
-                  onClick={handleBatchSubmit}
-                  disabled={loading}
-                  className="me-2"
-                >
-                  {loading ? (
-                    <><Spinner animation="border" size="sm" className="me-1" /> Submitting...</>
-                  ) : (
-                    `Submit All (${reportQueue.length})`
-                  )}
-                </Button>
-              </div>
             </Card.Header>
             <Card.Body style={{ maxHeight: "200px", overflowY: "auto" }}>
               <ListGroup>
@@ -2003,7 +2001,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
               onClick={handleAddToQueue}
               disabled={!isFormValid() || loading}
             >
-              {editingQueuedReportId ? "Update Queue" : "Add to Queue"}
+              Add to Queue
             </Button>
             {!editMode && (
               <Button
@@ -2107,7 +2105,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         <Toast
           onClose={() => setShowToast(false)}
           show={showToast}
-          delay={3000}
+          delay={5000}
           autohide
           bg={toastVariant}
         >

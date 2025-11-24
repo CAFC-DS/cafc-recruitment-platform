@@ -10,6 +10,7 @@ import {
   Alert,
   Spinner,
   Modal,
+  Table,
 } from "react-bootstrap";
 import { PolarArea } from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -26,6 +27,7 @@ import {
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
+import { useViewMode } from "../contexts/ViewModeContext";
 import { getPerformanceScoreColor, getFlagColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import {
@@ -69,9 +71,28 @@ interface ScoutReportsData {
 }
 
 // Helper functions for flag badges
-const getFlagBadge = (flagType?: string) => {
-  const flagColor = getFlagColor(flagType || "");
+const getFlagBadge = (report: ScoutReport) => {
+  // For archived reports, show grade badge in table view
+  if (report.is_archived && report.flag_category) {
+    return (
+      <span
+        className="badge-grade"
+        style={{
+          backgroundColor: getGradeColor(report.flag_category),
+          color: "white",
+          fontSize: "0.8rem",
+          padding: "4px 8px",
+          fontWeight: "500",
+        }}
+        title={`Grade: ${report.flag_category}`}
+      >
+        {report.flag_category}
+      </span>
+    );
+  }
 
+  // For regular flag reports, show flag emoji with color
+  const flagColor = getFlagColor(report.flag_category || "");
   return (
     <span
       className="badge"
@@ -82,7 +103,7 @@ const getFlagBadge = (flagType?: string) => {
         cursor: "pointer",
         fontWeight: "500",
       }}
-      title={`Flag: ${flagType || "Unknown"}`}
+      title={`Flag: ${report.flag_category || "Unknown"}`}
     >
       🏳️
     </span>
@@ -124,23 +145,23 @@ const getScoutingTypeBadge = (scoutingType: string) => {
 const getReportTypeBadge = (
   reportType: string,
   _scoutingType: string,
-  flagType?: string,
-  isArchived?: boolean,
+  report: ScoutReport,
 ) => {
-  // For archived reports, don't show badge in Tags (they have ARCHIVED banner at top)
-  if (isArchived) {
+  // For archived reports in card view, don't show badge in Tags section
+  // (they have ARCHIVED banner at top instead)
+  if (report.is_archived) {
     return null;
   }
 
-  switch (reportType?.toLowerCase()) {
+  switch (reportType.toLowerCase()) {
     case "flag":
     case "flag assessment":
-      return getFlagBadge(flagType);
+      return getFlagBadge(report);
     case "clips":
       return <span className="badge badge-neutral-grey">Clips</span>;
     case "player assessment":
     case "player":
-      return null;
+      return null; // Remove Player Assessment badge
     default:
       return <span className="badge badge-neutral-grey">{reportType}</span>;
   }
@@ -155,6 +176,7 @@ const PlayerProfilePage: React.FC = () => {
   // Determine which ID to use - external or manual
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
+  const { viewMode, setViewMode } = useViewMode();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -707,7 +729,43 @@ const PlayerProfilePage: React.FC = () => {
 
         {/* Horizontal Scout Reports Timeline */}
         <div className="horizontal-timeline-section mt-4 mb-4">
-          <h4 className="section-title">📅 Recent Scouting History</h4>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h4 className="section-title mb-0">📅 Recent Scouting History</h4>
+            <div className="btn-group">
+              <Button
+                variant={viewMode === "cards" ? "secondary" : "outline-secondary"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                style={
+                  viewMode === "cards"
+                    ? {
+                        backgroundColor: "#000000",
+                        borderColor: "#000000",
+                        color: "white",
+                      }
+                    : { color: "#000000", borderColor: "#000000" }
+                }
+              >
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === "table" ? "secondary" : "outline-secondary"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                style={
+                  viewMode === "table"
+                    ? {
+                        backgroundColor: "#000000",
+                        borderColor: "#000000",
+                        color: "white",
+                      }
+                    : { color: "#000000", borderColor: "#000000" }
+                }
+              >
+                Table
+              </Button>
+            </div>
+          </div>
 
           {scoutReportsLoading ? (
             <div className="text-center py-3">
@@ -741,11 +799,142 @@ const PlayerProfilePage: React.FC = () => {
                   different scouts
                 </span>
               </div>
-   
-              {/* Report Cards with Carousel Navigation */}
+
+              {/* Conditional Rendering: Table View or Cards View */}
+              {viewMode === "table" ? (
+                /* TABLE VIEW */
+                <div className="table-responsive">
+                  <Table
+                    responsive
+                    hover
+                    striped
+                    className="table-compact table-sm"
+                    style={{ textAlign: "center" }}
+                  >
+                    <thead className="table-dark">
+                      <tr>
+                        <th>Report Date</th>
+                        <th>Scout</th>
+                        <th>Type</th>
+                        <th>Fixture Date</th>
+                        <th>Fixture</th>
+                        <th>Position</th>
+                        <th>Score</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scoutReportsData.reports.map((report) => (
+                        <tr key={report.report_id}>
+                          <td>
+                            {report.report_date
+                              ? new Date(report.report_date).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                          <td>{report.scout_name || "N/A"}</td>
+                          <td>
+                            {getReportTypeBadge(
+                              report.report_type || "",
+                              report.scouting_type || "",
+                              report,
+                            )}
+                            {report.scouting_type && (
+                              <span className="ms-1">
+                                {getScoutingTypeBadge(report.scouting_type)}
+                              </span>
+                            )}
+                            {report.is_archived && report.flag_category && (
+                              <span className="ms-1">
+                                <span
+                                  className="badge-grade"
+                                  style={{
+                                    backgroundColor: getGradeColor(report.flag_category),
+                                    color: "white",
+                                    fontSize: "0.65rem",
+                                    padding: "2px 6px",
+                                    fontWeight: "500",
+                                  }}
+                                  title={`Grade: ${report.flag_category}`}
+                                >
+                                  {report.flag_category}
+                                </span>
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {report.fixture_date
+                              ? new Date(report.fixture_date).toLocaleDateString()
+                              : report.game_date
+                              ? new Date(report.game_date).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                          <td>{report.fixture || "N/A"}</td>
+                          <td>{report.position_played || "N/A"}</td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                report.overall_rating === 9 ? 'performance-score-9' :
+                                report.overall_rating === 10 ? 'performance-score-10' : ''
+                              }`}
+                              style={{
+                                backgroundColor: getPerformanceScoreColor(
+                                  report.overall_rating || 0,
+                                ),
+                                color: "white !important",
+                                fontWeight: "bold",
+                                ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
+                              }}
+                            >
+                              {report.overall_rating}
+                            </span>
+                          </td>
+                          <td>
+                            <div
+                              className="btn-group"
+                              style={{ justifyContent: "center" }}
+                            >
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  if (
+                                    report.report_type?.toLowerCase() === "intel" ||
+                                    report.report_type?.toLowerCase() === "intel report"
+                                  ) {
+                                    setSelectedIntelId(report.report_id);
+                                    setShowIntelModal(true);
+                                  } else {
+                                    handleOpenReportModal(report.report_id);
+                                  }
+                                }}
+                                disabled={loadingReportId === report.report_id}
+                                title="View Report"
+                                className="btn-action-circle btn-action-view"
+                              >
+                                {loadingReportId === report.report_id ? (
+                                  <Spinner as="span" animation="border" size="sm" />
+                                ) : (
+                                  "👁️"
+                                )}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              ) : (
+                /* Report Cards - Fixed Height Scrollable Container */
+                <div style={{
+                maxHeight: "600px",
+                overflowY: "auto",
+                overflowX: "hidden",
+                paddingRight: "10px",
+                marginBottom: "1rem"
+              }}>
               <Row>
-                {scoutReportsData.reports.slice(currentReportPage * 4, (currentReportPage + 1) * 4).map((report, index) => (
-                  <Col sm={6} md={4} lg={3} key={report.report_id} className="mb-4">
+                {scoutReportsData.reports.map((report, index) => (
+                  <Col key={report.report_id} className="mb-4" style={{ flex: "0 0 20%", maxWidth: "20%" }}>
                     <Card
                       className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
                       style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
@@ -895,8 +1084,7 @@ const PlayerProfilePage: React.FC = () => {
                               {getReportTypeBadge(
                                 report.report_type || "",
                                 report.scouting_type || "",
-                                report.flag_category,
-                                report.is_archived,
+                                report,
                               )}
                               {report.scouting_type && (
                                 <span className="ms-1">
@@ -936,52 +1124,7 @@ const PlayerProfilePage: React.FC = () => {
                   </Col>
                 ))}
               </Row>
-
-              {/* Carousel Navigation Controls */}
-              {scoutReportsData.reports.length > 4 && (
-                <div className="d-flex justify-content-between align-items-center mt-3">
-                  <Button
-                    size="sm"
-                    variant="outline-secondary"
-                    onClick={() => setCurrentReportPage(currentReportPage - 1)}
-                    disabled={currentReportPage === 0}
-                  >
-                    ← Previous
-                  </Button>
-
-                  <div className="d-flex align-items-center gap-2">
-                    {/* Page Indicator Dots */}
-                    {Array.from({ length: Math.ceil(scoutReportsData.reports.length / 4) }).map((_, index) => (
-                      <span
-                        key={index}
-                        onClick={() => setCurrentReportPage(index)}
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: currentReportPage === index ? '#0d6efd' : '#dee2e6',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.3s',
-                        }}
-                        title={`Page ${index + 1}`}
-                      />
-                    ))}
-
-                    {/* Page Text */}
-                    <small className="text-muted ms-2">
-                      Page {currentReportPage + 1} of {Math.ceil(scoutReportsData.reports.length / 4)}
-                    </small>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    variant="outline-secondary"
-                    onClick={() => setCurrentReportPage(currentReportPage + 1)}
-                    disabled={currentReportPage >= Math.ceil(scoutReportsData.reports.length / 4) - 1}
-                  >
-                    Next →
-                  </Button>
-                </div>
+              </div>
               )}
             </>
           ) : (
@@ -991,117 +1134,11 @@ const PlayerProfilePage: React.FC = () => {
           )}
         </div>
 
-        {/* Side-by-Side: Attributes and Position Analysis */}
-        <Row className="mt-4 mb-4">
-          {/* Left Column: Player Attributes */}
-          <Col lg={4} style={{ display: "flex", flexDirection: "column" }}>
-            {attributesLoading ? (
-              <div className="attributes-loading mt-3 mb-2">
-                <div className="loading-content-compact">
-                  <Spinner animation="border" size="sm" />
-                  <span>Loading attributes...</span>
-                </div>
-              </div>
-            ) : attributes &&
-              attributes.total_attributes &&
-              attributes.total_attributes > 0 ? (
-              <div className="attributes-section-compact" style={{ flex: 1 }}>
-                {/* Compact Legend */}
-                <div className="attributes-legend-compact mb-2">
-                  <h4 className="legend-title-compact">📊 Player Attributes</h4>
-                  <p className="legend-text-compact">
-                    <span className="dot-compact filled"></span> = Average from{" "}
-                    {attributes.total_reports} report
-                    {attributes.total_reports !== 1 ? "s" : ""} |{" "}
-                    {attributes.total_attributes} attributes assessed
-                  </p>
-                </div>
-
-                {/* Compact Attribute Data */}
-                <div>
-                  {Object.entries(attributes.attribute_groups || {}).map(
-                    ([groupName, groupAttributes]) => {
-                      // Get emoji for group
-                      const groupEmojis: { [key: string]: string } = {
-                        Physical: "💪",
-                        Technical: "⚽",
-                        Mental: "🧠",
-                        Defensive: "🛡️",
-                        Attacking: "⚡",
-                        Other: "📊",
-                      };
-
-                      return (
-                        <div
-                          key={groupName}
-                          className="attribute-section-compact mb-3"
-                          style={{
-                            borderLeft: `6px solid ${getAttributeGroupColor(groupName)}`,
-                            backgroundColor: `${getAttributeGroupColor(groupName)}15`,
-                            border: `1px solid ${getAttributeGroupColor(groupName)}40`,
-                            borderRadius: "8px",
-                            padding: "12px",
-                          }}
-                        >
-                          <h5
-                            className="section-title-compact"
-                            style={{
-                              color: getAttributeGroupColor(groupName),
-                              fontWeight: "bold",
-                              textShadow: "1px 1px 2px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            {groupEmojis[groupName] || "📊"}{" "}
-                            {groupName.split(" // ")[0]}
-                          </h5>
-                          <div className="attribute-grid-compact">
-                            {groupAttributes.map((attr) => (
-                              <div
-                                key={attr.name}
-                                className="attribute-row-compact"
-                              >
-                                <span className="attribute-name-compact">
-                                  {attr.name}
-                                </span>
-                                <div className="dots-compact">
-                                  {[...Array(10)].map((_, i) => (
-                                    <span
-                                      key={i}
-                                      className={`dot-mini ${i < Math.round(attr.average_score) ? "filled" : "empty"}`}
-                                    ></span>
-                                  ))}
-                                  <span className="score-compact" style={{ color: "black" }}>
-                                    {attr.average_score.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    },
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="no-attributes-section">
-                <div className="no-attributes-content">
-                  <h4>📊 Player Attributes</h4>
-                  <p>
-                    {(profile.scout_reports || []).length === 0
-                      ? "No scout reports available yet. Attributes will appear here once scout assessments are submitted."
-                      : "No attribute data found in the existing scout reports. Attributes may not have been assessed yet."}
-                  </p>
-                </div>
-              </div>
-            )}
-          </Col>
-
-          {/* Right Column: Position Analysis */}
-          <Col lg={8} style={{ display: "flex", flexDirection: "column" }}>
-            <div className="radar-charts-section" style={{ flex: 1 }}>
+        {/* Attribute Analysis Section - Full Width */}
+        <div className="mt-4 mb-4">
+            <div className="radar-charts-section">
           <div className="radar-header mb-3">
-            <h4>📊 Position Analysis</h4>
+            <h4>📊 Attribute Analysis</h4>
             <div className="position-disclaimer mb-3 p-3" style={{
               backgroundColor: "#fff3cd",
               border: "1px solid #ffc107",
@@ -1267,112 +1304,69 @@ const PlayerProfilePage: React.FC = () => {
               };
 
               return (
-                <Row>
-                  <Col lg={8}>
+                <>
+                  {/* Polar Chart - Full Width Above */}
+                  <div className="mb-4">
                     <div
                       style={{
-                        height: "700px",
+                        height: "800px",
                         width: "100%",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <div style={{ width: "680px", height: "680px" }}>
+                      <div style={{ width: "750px", height: "750px" }}>
                         <PolarArea
                           data={chartData}
                           options={polarAreaChartOptions}
                         />
                       </div>
                     </div>
-                  </Col>
-                  <Col lg={4} className="d-flex flex-column">
-                    <Card
-                      className="shadow-sm flex-fill"
-                      style={{ borderRadius: "12px" }}
-                    >
-                      <Card.Header
-                        style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
-                      >
-                        <h6 className="mb-0">📋 Attribute Breakdown</h6>
-                      </Card.Header>
-                      <Card.Body>
-                        <div className="attribute-breakdown">
-                          {chartData.labels.map((label, index) => (
-                            <div
-                              key={label}
-                              className="attribute-breakdown-item mb-2"
-                            >
-                              <div className="d-flex justify-content-between align-items-center">
-                                <span
-                                  className="attribute-name"
-                                  style={{ fontSize: "0.85rem" }}
-                                >
-                                  {label}
-                                </span>
-                                <span
-                                  className="badge"
-                                  style={{
-                                    backgroundColor:
-                                      chartData.datasets[0].backgroundColor[
-                                        index
-                                      ],
-                                    color: "white !important",
-                                    fontWeight: "bold",
-                                    fontSize: "0.75rem",
-                                    border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
-                                  }}
-                                >
-                                  {chartData.actualValues[index] === 0
-                                    ? "N/A"
-                                    : `${chartData.actualValues[index].toFixed(2)}/10`}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </Card.Body>
-                    </Card>
+                  </div>
 
-                    {/* Position Report Counts Table */}
-                    {positionCounts.length > 0 && (
+                  {/* Two Cards Side by Side Below */}
+                  <Row>
+                    <Col lg={6}>
                       <Card
-                        className="shadow-sm mt-3"
+                        className="shadow-sm h-100"
                         style={{ borderRadius: "12px" }}
                       >
                         <Card.Header
                           style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
                         >
-                          <h6 className="mb-0">📍 Reports by Position</h6>
+                          <h6 className="mb-0">📋 Attribute Breakdown</h6>
                         </Card.Header>
                         <Card.Body>
-                          <div className="position-counts-table">
-                            {positionCounts.map((posCount) => (
+                          <div className="attribute-breakdown">
+                            {chartData.labels.map((label, index) => (
                               <div
-                                key={posCount.position}
-                                className="position-count-row mb-2 pb-2"
-                                style={{ borderBottom: "1px solid #f0f0f0" }}
+                                key={label}
+                                className="attribute-breakdown-item mb-2"
                               >
                                 <div className="d-flex justify-content-between align-items-center">
                                   <span
-                                    className="position-name"
-                                    style={{
-                                      fontSize: "0.85rem",
-                                      fontWeight: "500",
-                                    }}
+                                    className="attribute-name"
+                                    style={{ fontSize: "0.85rem" }}
                                   >
-                                    {posCount.position}
+                                    {label}
                                   </span>
                                   <span
-                                    className="badge bg-secondary"
+                                    className="badge"
                                     style={{
+                                      backgroundColor:
+                                        chartData.datasets[0].backgroundColor[
+                                          index
+                                        ],
+                                      color: "white !important",
+                                      fontWeight: "bold",
                                       fontSize: "0.75rem",
+                                      border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
                                     }}
                                   >
-                                    {posCount.report_count}{" "}
-                                    {posCount.report_count === 1
-                                      ? "report"
-                                      : "reports"}
+                                    {chartData.actualValues[index] === 0
+                                      ? "N/A"
+                                      : `${chartData.actualValues[index].toFixed(2)}/10`}
                                   </span>
                                 </div>
                               </div>
@@ -1380,14 +1374,63 @@ const PlayerProfilePage: React.FC = () => {
                           </div>
                         </Card.Body>
                       </Card>
-                    )}
-                  </Col>
-                </Row>
+                    </Col>
+
+                    <Col lg={6}>
+                      {/* Position Report Counts Table */}
+                      {positionCounts.length > 0 && (
+                        <Card
+                          className="shadow-sm h-100"
+                          style={{ borderRadius: "12px" }}
+                        >
+                          <Card.Header
+                            style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
+                          >
+                            <h6 className="mb-0">📍 Reports by Position</h6>
+                          </Card.Header>
+                          <Card.Body>
+                            <div className="position-counts-table">
+                              {positionCounts.map((posCount) => (
+                                <div
+                                  key={posCount.position}
+                                  className="position-count-row mb-2 pb-2"
+                                  style={{ borderBottom: "1px solid #f0f0f0" }}
+                                >
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <span
+                                      className="position-name"
+                                      style={{
+                                        fontSize: "0.85rem",
+                                        fontWeight: "500",
+                                      }}
+                                    >
+                                      {posCount.position}
+                                    </span>
+                                    <span
+                                      className="badge bg-secondary"
+                                      style={{
+                                        fontSize: "0.75rem",
+                                      }}
+                                    >
+                                      {posCount.report_count}{" "}
+                                      {posCount.report_count === 1
+                                        ? "report"
+                                        : "reports"}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      )}
+                    </Col>
+                  </Row>
+                </>
               );
             })()}
             </div>
-          </Col>
-        </Row>
+        </div>
       </Container>
 
       {/* Add Note Modal */}

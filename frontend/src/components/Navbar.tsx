@@ -22,11 +22,12 @@ import IntelModal from "./IntelModal";
 import AddPlayerModal from "./AddPlayerModal";
 import FeedbackModal from "./FeedbackModal";
 import ScoutingAssessmentModal from "./ScoutingAssessmentModal";
+import HelpModal from "./HelpModal";
 
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme, toggleDarkMode } = useTheme();
-  const { isAdmin, isLoanManager, canAccessPlayers, canAccessAnalytics, canAccessLoanReports } = useCurrentUser();
+  const { user, isAdmin, isLoanManager, canAccessPlayers, canAccessAnalytics, canAccessLoanReports } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
@@ -45,6 +46,7 @@ const AppNavbar: React.FC = () => {
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Draft indicator state
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
@@ -257,7 +259,9 @@ const AppNavbar: React.FC = () => {
       // Limit cache size to prevent memory leaks
       if (searchCacheRef.current.size > 20) {
         const firstKey = searchCacheRef.current.keys().next().value;
-        searchCacheRef.current.delete(firstKey);
+        if (firstKey) {
+          searchCacheRef.current.delete(firstKey);
+        }
       }
 
       setSearchResults(results);
@@ -496,8 +500,8 @@ const AppNavbar: React.FC = () => {
                         player.full_name ||
                         "Unknown Player";
                       const team =
-                        player.team || player.club || player.current_team || "";
-                      const position = player.position || player.pos || "";
+                        player.squad_name || player.team || player.club || player.current_team || "";
+                      const age = player.age || player.player_age || "";
 
                       return (
                         <div
@@ -533,7 +537,7 @@ const AppNavbar: React.FC = () => {
                           >
                             {playerName}
                           </div>
-                          {(team || position) && (
+                          {(team || age) && (
                             <div
                               style={{
                                 color: "#666666",
@@ -541,7 +545,7 @@ const AppNavbar: React.FC = () => {
                                 fontWeight: "500",
                               }}
                             >
-                              {[team, position].filter(Boolean).join(" • ")}
+                              {[team, age ? `Age ${age}` : ""].filter(Boolean).join(" • ")}
                             </div>
                           )}
                         </div>
@@ -566,10 +570,10 @@ const AppNavbar: React.FC = () => {
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
                   <Dropdown.Item onClick={() => setShowAssessmentModal(true)}>
-                    📊 Add Player Assessment
+                    📊 Add Assessment
                   </Dropdown.Item>
                   <Dropdown.Item onClick={() => setShowIntelModal(true)}>
-                    📝 Add Intel Report
+                    📝 Add Intel
                   </Dropdown.Item>
                   <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
                     ⚽ Add Fixture
@@ -652,6 +656,9 @@ const AppNavbar: React.FC = () => {
                   <Dropdown.Item onClick={toggleDarkMode}>
                     {theme.isDark ? "☀️ Light Mode" : "🌙 Dark Mode"}
                   </Dropdown.Item>
+                  <Dropdown.Item onClick={() => setShowHelpModal(true)}>
+                    ❓ Help
+                  </Dropdown.Item>
                   <Dropdown.Divider />
                   <Dropdown.Item onClick={logout}>
                     🚪 Logout
@@ -704,6 +711,12 @@ const AppNavbar: React.FC = () => {
         onHide={() => setShowFeedbackModal(false)}
       />
 
+      <HelpModal
+        show={showHelpModal}
+        onHide={() => setShowHelpModal(false)}
+        userRole={user?.role || "scout"}
+      />
+
       {/* Queue Review Modal */}
       <Modal show={showQueueModal} onHide={() => setShowQueueModal(false)} size="lg">
         <Modal.Header closeButton style={{ backgroundColor: "#007bff", color: "white" }}>
@@ -727,13 +740,53 @@ const AppNavbar: React.FC = () => {
                           {report.formData.performanceScore && ` - Score: ${report.formData.performanceScore}`}
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        onClick={() => handleRemoveFromQueue(report.id)}
-                      >
-                        🗑️ Remove
-                      </Button>
+                      <div>
+                        <Button
+                          size="sm"
+                          variant="outline-primary"
+                          onClick={() => {
+                            // Remove from queue
+                            const updatedQueue = queuedReports.filter((r: any) => r.id !== report.id);
+                            localStorage.setItem('reportQueue', JSON.stringify(updatedQueue));
+                            setQueuedReports(updatedQueue);
+                            setQueueCount(updatedQueue.length);
+
+                            // Save as draft for the modal to restore
+                            const draft = {
+                              selectedPlayer: {
+                                id: report.player.universal_id || report.player.player_id,
+                                name: report.player.player_name,
+                                position: report.player.position,
+                                team: report.player.squad_name,
+                              },
+                              playerSearch: report.player.player_name,
+                              selectedMatch: report.selectedMatch,
+                              assessmentType: report.assessmentType,
+                              formData: report.formData,
+                              fixtureDate: report.fixtureDate,
+                              strengths: report.strengths,
+                              weaknesses: report.weaknesses,
+                              attributeScores: report.attributeScores,
+                              positionAttributes: report.positionAttributes,
+                            };
+                            localStorage.setItem('scoutingAssessmentDraft', JSON.stringify(draft));
+
+                            // Close queue modal and open assessment modal
+                            setShowQueueModal(false);
+                            setShowAssessmentModal(true);
+                          }}
+                          className="me-2"
+                        >
+                          ✏️ Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          onClick={() => handleRemoveFromQueue(report.id)}
+                        >
+                          🗑️ Remove
+                        </Button>
+                      </div>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>

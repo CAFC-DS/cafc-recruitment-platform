@@ -2816,7 +2816,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         if has_cafc_id:
             cursor.execute(
                 f"""
-                SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE
+                SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
                 FROM players
                 WHERE {where_conditions}
                 ORDER BY
@@ -2833,7 +2833,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         else:
             cursor.execute(
                 f"""
-                SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE
+                SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
                 FROM players
                 WHERE {where_conditions}
                 ORDER BY
@@ -2866,6 +2866,19 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                     }
                     universal_id = get_player_universal_id(player_row)
 
+                    # Calculate age from birthdate
+                    age = None
+                    birthdate = row[6]
+                    if birthdate:
+                        from datetime import date
+                        try:
+                            if isinstance(birthdate, str):
+                                birthdate = date.fromisoformat(birthdate.split('T')[0])
+                            today = date.today()
+                            age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+                        except:
+                            age = None
+
                     player_data = {
                         "player_id": row[
                             1
@@ -2878,6 +2891,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                         "position": row[3],
                         "squad_name": row[4],
                         "data_source": row[5],
+                        "age": age,
                     }
                     player_list.append(player_data)
 
@@ -4163,7 +4177,7 @@ async def get_all_scout_reports(
         offset = (page - 1) * limit
 
         # Base SQL query for fetching reports - dual column approach for player separation
-        base_sql = """
+        base_sql = f"""
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -4171,6 +4185,9 @@ async def get_all_scout_reports(
             )
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
             LEFT JOIN users u ON sr.USER_ID = u.ID
+            LEFT JOIN SCOUT_REPORT_VIEWS srv ON (
+                sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
+            )
         """
 
         where_clauses = []
@@ -4261,7 +4278,8 @@ async def get_all_scout_reports(
                 sr.PURPOSE,
                 p.CAFC_PLAYER_ID,
                 p.DATA_SOURCE,
-                sr.IS_ARCHIVED
+                sr.IS_ARCHIVED,
+                CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END as HAS_BEEN_VIEWED
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -4324,6 +4342,7 @@ async def get_all_scout_reports(
                     "cafc_player_id": row[16],
                     "data_source": row[17],
                     "is_archived": row[18] if row[18] is not None else False,
+                    "has_been_viewed": row[19] if row[19] is not None else False,
                     "universal_id": nav_universal_id,  # Also include separately for clarity
                 }
             )
@@ -4616,6 +4635,48 @@ async def get_single_scout_report(
         logging.exception(e)
         raise HTTPException(
             status_code=500, detail=f"Error fetching single scout report: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/scout_reports/{report_id}/mark-viewed")
+async def mark_report_viewed(
+    report_id: int, current_user: User = Depends(get_current_user)
+):
+    """
+    Mark a scout report as viewed by the current user.
+    This tracks which reports each user has opened for unread indicators.
+    """
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Use MERGE to insert if not exists, or update if already exists
+        cursor.execute(
+            """
+            MERGE INTO SCOUT_REPORT_VIEWS AS target
+            USING (SELECT %s AS SCOUT_REPORT_ID, %s AS USER_ID) AS source
+            ON target.SCOUT_REPORT_ID = source.SCOUT_REPORT_ID
+               AND target.USER_ID = source.USER_ID
+            WHEN NOT MATCHED THEN
+                INSERT (SCOUT_REPORT_ID, USER_ID, VIEWED_AT)
+                VALUES (source.SCOUT_REPORT_ID, source.USER_ID, CURRENT_TIMESTAMP())
+            WHEN MATCHED THEN
+                UPDATE SET VIEWED_AT = CURRENT_TIMESTAMP()
+        """,
+            (report_id, current_user.id),
+        )
+
+        conn.commit()
+        return {"success": True, "message": "Report marked as viewed"}
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error marking report as viewed: {e}"
         )
     finally:
         if conn:
