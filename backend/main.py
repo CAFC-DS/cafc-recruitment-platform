@@ -679,7 +679,7 @@ class ScoutReport(BaseModel):
     assessmentSummary: str
     justificationRationale: Optional[str] = None
     strengths: Optional[List[str]] = None
-    weaknesses: Optional[List[str] = None
+    weaknesses: Optional[List[str]] = None
     attributeScores: Optional[dict] = None
     reportType: str
     flagCategory: Optional[str] = None
@@ -4729,9 +4729,9 @@ async def get_player_profile(
 
         # Get scout reports
         scout_sql = """
-            SELECT sr.ID, sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE, 
+            SELECT sr.ID, sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE,
                    sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
-                   u.USERNAME
+                   u.USERNAME, sr.IS_POTENTIAL
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
             WHERE sr.PLAYER_ID = %s
@@ -4870,6 +4870,7 @@ async def get_player_profile(
                         row[6][:100] + "..." if row[6] and len(row[6]) > 100 else row[6]
                     ),
                     "scout_name": row[7] or "Unknown",
+                    "is_potential": row[8] if row[8] is not None else False,
                 }
                 for row in scout_reports
             ],
@@ -5156,7 +5157,8 @@ async def get_player_scout_reports(
                 sr.FLAG_CATEGORY as flag_category,
                 sr.SCOUTING_TYPE as scouting_type,
                 sr.IS_ARCHIVED as is_archived,
-                sr.SUMMARY as summary
+                sr.SUMMARY as summary,
+                sr.IS_POTENTIAL as is_potential
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
@@ -5182,7 +5184,7 @@ async def get_player_scout_reports(
             pass
 
         base_query += """
-            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED, sr.SUMMARY
+            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED, sr.SUMMARY, sr.IS_POTENTIAL
             ORDER BY sr.CREATED_AT DESC
         """
 
@@ -5206,6 +5208,7 @@ async def get_player_scout_reports(
                 scouting_type,
                 is_archived,
                 summary,
+                is_potential,
             ) = report
             reports_data.append(
                 {
@@ -5223,6 +5226,7 @@ async def get_player_scout_reports(
                     "scouting_type": scouting_type,
                     "is_archived": is_archived if is_archived is not None else False,
                     "summary": summary,
+                    "is_potential": is_potential if is_potential is not None else False,
                 }
             )
 

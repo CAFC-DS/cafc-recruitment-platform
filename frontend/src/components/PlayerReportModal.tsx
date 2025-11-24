@@ -907,7 +907,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                 <Card className="h-100">
                   <Card.Header className="py-2">
                     <h6 className="mb-0" style={{ fontSize: "14px" }}>
-                      🏆 Performance Score
+                      {report.is_potential ? "⭐ Potential Score" : "🏆 Performance Score"}
                     </h6>
                   </Card.Header>
                   <Card.Body className="d-flex align-items-center justify-content-center py-2">
