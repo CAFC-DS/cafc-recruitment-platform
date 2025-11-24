@@ -486,6 +486,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           payload.scoutingType = queuedReport.formData.scoutingType;
           payload.purposeOfAssessment = queuedReport.formData.purposeOfAssessment;
           payload.performanceScore = queuedReport.formData.performanceScore;
+          payload.isPotential = queuedReport.formData.isPotential;
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.justificationRationale = queuedReport.formData.justificationRationale;
           payload.oppositionDetails = queuedReport.formData.oppositionDetails;
@@ -509,6 +510,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           payload.weaknesses = queuedReport.weaknesses.map((w: any) => w.value);
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.performanceScore = queuedReport.formData.performanceScore;
+          payload.isPotential = queuedReport.formData.isPotential;
         }
 
         await axiosInstance.post("/scout_reports", payload);
@@ -606,6 +608,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           payload.scoutingType = queuedReport.formData.scoutingType;
           payload.purposeOfAssessment = queuedReport.formData.purposeOfAssessment;
           payload.performanceScore = queuedReport.formData.performanceScore;
+          payload.isPotential = queuedReport.formData.isPotential;
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.justificationRationale = queuedReport.formData.justificationRationale;
           payload.oppositionDetails = queuedReport.formData.oppositionDetails;
@@ -629,6 +632,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           payload.weaknesses = queuedReport.weaknesses.map((w: any) => w.value);
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.performanceScore = queuedReport.formData.performanceScore;
+          payload.isPotential = queuedReport.formData.isPotential;
         }
 
         await axiosInstance.post("/scout_reports", payload);
@@ -1039,6 +1043,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         payload.scoutingType = formData.scoutingType;
         payload.purposeOfAssessment = formData.purposeOfAssessment;
         payload.performanceScore = formData.performanceScore;
+        payload.isPotential = formData.isPotential;
         payload.assessmentSummary = formData.assessmentSummary;
         payload.justificationRationale = formData.justificationRationale;
         payload.oppositionDetails = formData.oppositionDetails;
@@ -1062,6 +1067,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         payload.weaknesses = weaknesses.map((w) => w.value);
         payload.assessmentSummary = formData.assessmentSummary;
         payload.performanceScore = formData.performanceScore;
+        payload.isPotential = formData.isPotential;
       }
 
       if (editMode && reportId) {
