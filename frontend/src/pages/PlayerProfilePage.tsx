@@ -75,6 +75,16 @@ interface ScoutReportsData {
 const getFlagBadge = (report: ScoutReport) => {
   // For archived reports, show grade badge in table view
   if (report.is_archived && report.flag_category) {
+    // Format grade text to split on "/" for better wrapping
+    const gradeText = report.flag_category.includes('/')
+      ? report.flag_category.split('/').map((part, index, array) => (
+          <React.Fragment key={index}>
+            {part.trim()}{index < array.length - 1 && '/'}
+            {index < array.length - 1 && <br />}
+          </React.Fragment>
+        ))
+      : report.flag_category;
+
     return (
       <span
         className="badge-grade"
@@ -84,10 +94,11 @@ const getFlagBadge = (report: ScoutReport) => {
           fontSize: "0.8rem",
           padding: "4px 8px",
           fontWeight: "500",
+          lineHeight: "1.2",
         }}
         title={`Grade: ${report.flag_category}`}
       >
-        {report.flag_category}
+        {gradeText}
       </span>
     );
   }
@@ -854,10 +865,18 @@ const PlayerProfilePage: React.FC = () => {
                                     fontSize: "0.65rem",
                                     padding: "2px 6px",
                                     fontWeight: "500",
+                                    lineHeight: "1.2",
                                   }}
                                   title={`Grade: ${report.flag_category}`}
                                 >
-                                  {report.flag_category}
+                                  {report.flag_category.includes('/')
+                                    ? report.flag_category.split('/').map((part, index, array) => (
+                                        <React.Fragment key={index}>
+                                          {part.trim()}{index < array.length - 1 && '/'}
+                                          {index < array.length - 1 && <br />}
+                                        </React.Fragment>
+                                      ))
+                                    : report.flag_category}
                                 </span>
                               </span>
                             )}
@@ -1039,9 +1058,17 @@ const PlayerProfilePage: React.FC = () => {
                                     style={{
                                       backgroundColor: getGradeColor(report.flag_category),
                                       fontSize: "0.7rem",
+                                      lineHeight: "1.2",
                                     }}
                                   >
-                                    {report.flag_category}
+                                    {report.flag_category.includes('/')
+                                      ? report.flag_category.split('/').map((part, index, array) => (
+                                          <React.Fragment key={index}>
+                                            {part.trim()}{index < array.length - 1 && '/'}
+                                            {index < array.length - 1 && <br />}
+                                          </React.Fragment>
+                                        ))
+                                      : report.flag_category}
                                   </span>
                                   {report.summary && extractVSSScore(report.summary!) && (
                                     <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
