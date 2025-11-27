@@ -4173,7 +4173,11 @@ async def get_single_scout_report(
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
                 sr.REPORT_TYPE,
                 sr.FLAG_CATEGORY,
-                sr.OPPOSITION_DETAILS
+                sr.OPPOSITION_DETAILS,
+                p.PLAYERID,
+                p.CAFC_PLAYER_ID,
+                p.DATA_SOURCE,
+                sr.IS_POTENTIAL
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -4225,10 +4229,19 @@ async def get_single_scout_report(
             sum(non_zero_scores) / len(non_zero_scores) if non_zero_scores else 0
         )
 
+        # Generate universal player ID for frontend navigation
+        player_row = {
+            "CAFC_PLAYER_ID": report_data[23],
+            "PLAYERID": report_data[22],
+            "DATA_SOURCE": report_data[24],
+        }
+        player_universal_id = get_player_universal_id(player_row)
+
         report = {
             "report_id": report_id,
             "created_at": str(report_data[0]),
             "player_name": report_data[1],
+            "player_id": player_universal_id,  # Add player_id for modal lookup
             "age": age,
             "home_squad_name": report_data[3],
             "away_squad_name": report_data[4],
@@ -4251,6 +4264,7 @@ async def get_single_scout_report(
             "opposition_details": report_data[21],
             "individual_attribute_scores": individual_attribute_scores,
             "average_attribute_score": round(average_attribute_score, 2),
+            "is_potential": report_data[25] if report_data[25] is not None else False,
         }
 
         return report
