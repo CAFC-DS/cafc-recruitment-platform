@@ -62,7 +62,7 @@ const ScoutingPage: React.FC = () => {
   const { isAdmin, user } = useCurrentUser();
 
   // Only Admin role or specific users can add fixtures and players
-  const allowedUsers = ["Alistair Clarke", "Calvin Charlton"];
+  const allowedUsers = ["aclarke", "ccharlton"];
   const canAddFixtureOrPlayer = isAdmin || (user && allowedUsers.includes(user.username));
 
   const [playerSearch, setPlayerSearch] = useState("");
