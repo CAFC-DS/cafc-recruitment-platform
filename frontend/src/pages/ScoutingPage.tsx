@@ -59,10 +59,11 @@ const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
-  const { isAdmin } = useCurrentUser();
+  const { isAdmin, user } = useCurrentUser();
 
-  // Only Admin role can add fixtures and players
-  const canAddFixtureOrPlayer = isAdmin;
+  // Only Admin role or specific users can add fixtures and players
+  const allowedUsers = ["Alistair Clarke", "Calvin Charlton"];
+  const canAddFixtureOrPlayer = isAdmin || (user && allowedUsers.includes(user.username));
 
   const [playerSearch, setPlayerSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -627,7 +628,7 @@ const ScoutingPage: React.FC = () => {
             variant="outline-secondary"
             onClick={() => setShowAddPlayerModal(true)}
             disabled={!canAddFixtureOrPlayer}
-            title={!canAddFixtureOrPlayer ? "Only Admin role can add players" : ""}
+            title={!canAddFixtureOrPlayer ? "You don't have permission to add players" : ""}
           >
             Add Player
           </Button>
@@ -636,7 +637,7 @@ const ScoutingPage: React.FC = () => {
             variant="outline-secondary"
             onClick={() => setShowAddFixtureModal(true)}
             disabled={!canAddFixtureOrPlayer}
-            title={!canAddFixtureOrPlayer ? "Only Admin role can add fixtures" : ""}
+            title={!canAddFixtureOrPlayer ? "You don't have permission to add fixtures" : ""}
           >
             Add Fixture
           </Button>
