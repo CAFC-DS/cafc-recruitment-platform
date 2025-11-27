@@ -424,6 +424,7 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
               </Button>
             </div>
           </Form>
+          )}
         </Modal.Body>
       </Modal>
 
