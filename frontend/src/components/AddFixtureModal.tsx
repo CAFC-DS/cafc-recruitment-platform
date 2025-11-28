@@ -50,6 +50,8 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
   const [awaySearch, setAwaySearch] = useState("");
   const [showHomeDropdown, setShowHomeDropdown] = useState(false);
   const [showAwayDropdown, setShowAwayDropdown] = useState(false);
+  const [homeManualEntry, setHomeManualEntry] = useState(false);
+  const [awayManualEntry, setAwayManualEntry] = useState(false);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -151,6 +153,8 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
     setAwaySearch("");
     setShowHomeDropdown(false);
     setShowAwayDropdown(false);
+    setHomeManualEntry(false);
+    setAwayManualEntry(false);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -192,130 +196,192 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
           ) : (
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3" controlId="homeTeam">
-                <Form.Label>Home Team</Form.Label>
-                <div style={{ position: "relative" }}>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search for home team..."
-                    value={homeSearch}
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <Form.Label className="mb-0">Home Team</Form.Label>
+                  <Form.Check
+                    type="checkbox"
+                    label="Enter manually"
+                    checked={homeManualEntry}
                     onChange={(e) => {
-                      setHomeSearch(e.target.value);
-                      setShowHomeDropdown(true);
+                      setHomeManualEntry(e.target.checked);
+                      if (e.target.checked) {
+                        setShowHomeDropdown(false);
+                        setHomeSearch("");
+                      } else {
+                        setFormData({ ...formData, homeTeam: "" });
+                      }
                     }}
-                    onFocus={() => setShowHomeDropdown(true)}
-                    required={!formData.homeTeam}
+                    style={{ fontSize: "0.875rem" }}
                   />
-                  {formData.homeTeam && (
-                    <small className="text-success">
-                      ✓ Selected: {formData.homeTeam}
-                    </small>
-                  )}
-                  {showHomeDropdown && homeSearch && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "100%",
-                        left: 0,
-                        right: 0,
-                        maxHeight: "200px",
-                        overflowY: "auto",
-                        backgroundColor: "white",
-                        border: "1px solid #ced4da",
-                        borderRadius: "0.25rem",
-                        zIndex: 1000,
-                        marginTop: "2px",
-                      }}
-                    >
-                      {filterTeams(homeSearch).length > 0 ? (
-                        filterTeams(homeSearch).map((team) => (
-                          <div
-                            key={`home-${team.id}`}
-                            onClick={() => handleTeamSelect("homeTeam", team)}
-                            style={{
-                              padding: "8px 12px",
-                              cursor: "pointer",
-                              borderBottom: "1px solid #f0f0f0",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#f8f9fa")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "white")
-                            }
-                          >
-                            {team.name}
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ padding: "8px 12px", color: "#6c757d" }}>
-                          No teams found
+                </div>
+                <div style={{ position: "relative" }}>
+                  {homeManualEntry ? (
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter home team name..."
+                      value={formData.homeTeam}
+                      onChange={(e) =>
+                        setFormData({ ...formData, homeTeam: e.target.value })
+                      }
+                      required
+                    />
+                  ) : (
+                    <>
+                      <Form.Control
+                        type="text"
+                        placeholder="Search for home team..."
+                        value={homeSearch}
+                        onChange={(e) => {
+                          setHomeSearch(e.target.value);
+                          setShowHomeDropdown(true);
+                        }}
+                        onFocus={() => setShowHomeDropdown(true)}
+                        required={!formData.homeTeam}
+                      />
+                      {formData.homeTeam && (
+                        <small className="text-success">
+                          ✓ Selected: {formData.homeTeam}
+                        </small>
+                      )}
+                      {showHomeDropdown && homeSearch && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            maxHeight: "200px",
+                            overflowY: "auto",
+                            backgroundColor: "white",
+                            border: "1px solid #ced4da",
+                            borderRadius: "0.25rem",
+                            zIndex: 1000,
+                            marginTop: "2px",
+                          }}
+                        >
+                          {filterTeams(homeSearch).length > 0 ? (
+                            filterTeams(homeSearch).map((team) => (
+                              <div
+                                key={`home-${team.id}`}
+                                onClick={() => handleTeamSelect("homeTeam", team)}
+                                style={{
+                                  padding: "8px 12px",
+                                  cursor: "pointer",
+                                  borderBottom: "1px solid #f0f0f0",
+                                }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.backgroundColor = "#f8f9fa")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.backgroundColor = "white")
+                                }
+                              >
+                                {team.name}
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ padding: "8px 12px", color: "#6c757d" }}>
+                              No teams found
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               </Form.Group>
               <Form.Group className="mb-3" controlId="awayTeam">
-                <Form.Label>Away Team</Form.Label>
-                <div style={{ position: "relative" }}>
-                  <Form.Control
-                    type="text"
-                    placeholder="Search for away team..."
-                    value={awaySearch}
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <Form.Label className="mb-0">Away Team</Form.Label>
+                  <Form.Check
+                    type="checkbox"
+                    label="Enter manually"
+                    checked={awayManualEntry}
                     onChange={(e) => {
-                      setAwaySearch(e.target.value);
-                      setShowAwayDropdown(true);
+                      setAwayManualEntry(e.target.checked);
+                      if (e.target.checked) {
+                        setShowAwayDropdown(false);
+                        setAwaySearch("");
+                      } else {
+                        setFormData({ ...formData, awayTeam: "" });
+                      }
                     }}
-                    onFocus={() => setShowAwayDropdown(true)}
-                    required={!formData.awayTeam}
+                    style={{ fontSize: "0.875rem" }}
                   />
-                  {formData.awayTeam && (
-                    <small className="text-success">
-                      ✓ Selected: {formData.awayTeam}
-                    </small>
-                  )}
-                  {showAwayDropdown && awaySearch && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "100%",
-                        left: 0,
-                        right: 0,
-                        maxHeight: "200px",
-                        overflowY: "auto",
-                        backgroundColor: "white",
-                        border: "1px solid #ced4da",
-                        borderRadius: "0.25rem",
-                        zIndex: 1000,
-                        marginTop: "2px",
-                      }}
-                    >
-                      {filterTeams(awaySearch).length > 0 ? (
-                        filterTeams(awaySearch).map((team) => (
-                          <div
-                            key={`away-${team.id}`}
-                            onClick={() => handleTeamSelect("awayTeam", team)}
-                            style={{
-                              padding: "8px 12px",
-                              cursor: "pointer",
-                              borderBottom: "1px solid #f0f0f0",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#f8f9fa")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "white")
-                            }
-                          >
-                            {team.name}
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ padding: "8px 12px", color: "#6c757d" }}>
-                          No teams found
+                </div>
+                <div style={{ position: "relative" }}>
+                  {awayManualEntry ? (
+                    <Form.Control
+                      type="text"
+                      placeholder="Enter away team name..."
+                      value={formData.awayTeam}
+                      onChange={(e) =>
+                        setFormData({ ...formData, awayTeam: e.target.value })
+                      }
+                      required
+                    />
+                  ) : (
+                    <>
+                      <Form.Control
+                        type="text"
+                        placeholder="Search for away team..."
+                        value={awaySearch}
+                        onChange={(e) => {
+                          setAwaySearch(e.target.value);
+                          setShowAwayDropdown(true);
+                        }}
+                        onFocus={() => setShowAwayDropdown(true)}
+                        required={!formData.awayTeam}
+                      />
+                      {formData.awayTeam && (
+                        <small className="text-success">
+                          ✓ Selected: {formData.awayTeam}
+                        </small>
+                      )}
+                      {showAwayDropdown && awaySearch && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            right: 0,
+                            maxHeight: "200px",
+                            overflowY: "auto",
+                            backgroundColor: "white",
+                            border: "1px solid #ced4da",
+                            borderRadius: "0.25rem",
+                            zIndex: 1000,
+                            marginTop: "2px",
+                          }}
+                        >
+                          {filterTeams(awaySearch).length > 0 ? (
+                            filterTeams(awaySearch).map((team) => (
+                              <div
+                                key={`away-${team.id}`}
+                                onClick={() => handleTeamSelect("awayTeam", team)}
+                                style={{
+                                  padding: "8px 12px",
+                                  cursor: "pointer",
+                                  borderBottom: "1px solid #f0f0f0",
+                                }}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.backgroundColor = "#f8f9fa")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.backgroundColor = "white")
+                                }
+                              >
+                                {team.name}
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ padding: "8px 12px", color: "#6c757d" }}>
+                              No teams found
+                            </div>
+                          )}
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               </Form.Group>
