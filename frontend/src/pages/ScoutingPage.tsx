@@ -581,7 +581,7 @@ const ScoutingPage: React.FC = () => {
       <ScoutingAssessmentModal
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
-        selectedPlayer={editMode ? selectedPlayer : undefined}
+        selectedPlayer={editMode && selectedPlayer ? selectedPlayer : null}
         onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter, currentPage)}
         editMode={editMode}
         reportId={editReportId}
