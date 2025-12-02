@@ -20,7 +20,9 @@ import {
   getAverageAttributeScoreColor,
   getFlagColor,
   getContrastTextColor,
+  getGradeColor,
 } from "../utils/colorUtils";
+import { extractVSSScore } from "../utils/reportUtils";
 
 ChartJS.register(
   RadialLinearScale,
@@ -620,8 +622,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     if (hasFlag) {
       return {
         color: "warning",
-        icon: "🏳️",
-        title: "Flag Assessment Report",
+        icon: report.is_archived ? "📄" : "🏳️",
+        title: report.is_archived ? "Archived Report" : "Flag Assessment Report",
       };
     }
 
@@ -691,6 +693,13 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
         </Modal.Title>
       </Modal.Header>
       <Modal.Body ref={modalContentRef}>
+        {/* Archived Report Banner */}
+        {report.is_archived && (
+          <div className="archived-report-banner">
+            📦 ARCHIVED REPORT - This is a historical report and does not affect player statistics or analytics.
+          </div>
+        )}
+
         {isFlagReport ? (
           /* Simplified Flag Report Layout */
           <>
@@ -722,15 +731,25 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                       <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
                       {report.away_squad_name}
                     </p>
-                    <p className="mb-1">
-                      <strong>Position | Formation:</strong>{" "}
-                      {report.position_played || "Not specified"} |{" "}
-                      {report.formation || "Not specified"}
-                    </p>
-                    <p className="mb-0">
-                      <strong>Build | Height:</strong>{" "}
-                      {report.build || "N/A"} | {report.height || "N/A"}
-                    </p>
+                    {!report.is_archived && (
+                      <>
+                        <p className="mb-1">
+                          <strong>Position | Formation:</strong>{" "}
+                          {report.position_played || "Not specified"} |{" "}
+                          {report.formation || "Not specified"}
+                        </p>
+                        <p className="mb-0">
+                          <strong>Build | Height:</strong>{" "}
+                          {report.build || "N/A"} | {report.height || "N/A"}
+                        </p>
+                      </>
+                    )}
+                    {report.is_archived && (
+                      <p className="mb-0">
+                        <strong>Position:</strong>{" "}
+                        {report.position_played || "Not specified"}
+                      </p>
+                    )}
                   </Col>
                   <Col md={4}>
                     <p className="mb-1">
@@ -744,8 +763,28 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                       {new Date(report.created_at).toLocaleDateString("en-GB")}
                     </p>
                     <p className="mb-0">
-                      <strong>Scout:</strong> {report.scout_name} |{" "}
-                      {getFlagBadge(report.flag_category || "Not specified")}
+                      <strong>Scout:</strong> {report.scout_name}
+                    </p>
+                    <p className="mb-0 mt-2">
+                      {report.is_archived && report.flag_category ? (
+                        <>
+                          <span
+                            className="badge-grade me-2"
+                            style={{
+                              backgroundColor: getGradeColor(report.flag_category),
+                            }}
+                          >
+                            {report.flag_category}
+                          </span>
+                          {extractVSSScore(report.summary) && (
+                            <span className="badge-vss">
+                              VSS Score: {extractVSSScore(report.summary)}/32
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        getFlagBadge(report.flag_category || "Not specified")
+                      )}
                     </p>
                   </Col>
                 </Row>
@@ -817,15 +856,25 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                           <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
                           {report.away_squad_name}
                         </p>
-                        <p className="mb-1">
-                          <strong>Position | Formation:</strong>{" "}
-                          {report.position_played || "Not specified"} |{" "}
-                          {report.formation || "Not specified"}
-                        </p>
-                        <p className="mb-0">
-                          <strong>Build | Height:</strong>{" "}
-                          {report.build || "N/A"} | {report.height || "N/A"}
-                        </p>
+                        {!report.is_archived && (
+                          <>
+                            <p className="mb-1">
+                              <strong>Position | Formation:</strong>{" "}
+                              {report.position_played || "Not specified"} |{" "}
+                              {report.formation || "Not specified"}
+                            </p>
+                            <p className="mb-0">
+                              <strong>Build | Height:</strong>{" "}
+                              {report.build || "N/A"} | {report.height || "N/A"}
+                            </p>
+                          </>
+                        )}
+                        {report.is_archived && (
+                          <p className="mb-0">
+                            <strong>Position:</strong>{" "}
+                            {report.position_played || "Not specified"}
+                          </p>
+                        )}
                       </Col>
                       <Col md={4}>
                         <p className="mb-1">

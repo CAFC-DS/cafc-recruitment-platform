@@ -1789,3 +1789,110 @@ span.badge.badge-neutral-grey {
 }
 
 /* Ensure inline styles work properly - no Bootstrap class interference */
+
+/* ================================
+   DARK MODE QUICK FIXES
+   ================================ */
+
+/* Enhanced dark mode contrast for tables */
+[data-bs-theme="dark"] .table {
+  --bs-table-color: #f9fafb;
+  --bs-table-bg: #1f2937;
+  --bs-table-border-color: #4b5563;
+  --bs-table-striped-bg: #374151;
+  --bs-table-hover-bg: #4b5563;
+}
+
+/* Enhanced slider visibility in dark mode */
+[data-bs-theme="dark"] input[type="range"] {
+  accent-color: #ef4444;
+}
+
+[data-bs-theme="dark"] .tooltip-inner {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: 2px solid #ef4444 !important;
+}
+
+/* ================================
+   ARCHIVED REPORTS STYLING
+   ================================ */
+
+/* Archived report card styling */
+.report-card-archived {
+  position: relative;
+  border: 1px dashed #9ca3af !important;
+  background-color: #f9fafb !important;
+}
+
+/* Dark mode archived cards */
+[data-bs-theme="dark"] .report-card-archived {
+  background-color: #1f2937 !important;
+  border-color: #6b7280 !important;
+}
+
+/* Archived badge */
+.badge-archived {
+  background-color: #9ca3af;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+/* Grade badge styling for archived reports */
+.badge-grade {
+  font-weight: bold;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+/* VSS score badge for archived reports - white background like Add New button */
+.badge-vss {
+  background-color: white;
+  color: #000000;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 2px solid #dee2e6;
+}
+
+/* Archived report table row styling */
+.table-row-archived {
+  opacity: 0.7;
+  background-color: #f9fafb !important;
+}
+
+[data-bs-theme="dark"] .table-row-archived {
+  background-color: #1f2937 !important;
+}
+
+/* Archived report modal banner */
+.archived-report-banner {
+  background-color: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+[data-bs-theme="dark"] .archived-report-banner {
+  background-color: #78350f;
+  color: #fef3c7;
+}
+
+/* Disable actions for archived reports */
+.archived-report-actions-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}

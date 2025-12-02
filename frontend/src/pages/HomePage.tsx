@@ -20,7 +20,9 @@ import {
   getPerformanceScoreColor,
   getAttributeScoreColor,
   getFlagColor,
+  getGradeColor,
 } from "../utils/colorUtils";
+import { extractVSSScore } from "../utils/reportUtils";
 
 interface ScoutReport {
   report_id: number;
@@ -32,6 +34,8 @@ interface ScoutReport {
   scout_name: string;
   player_id: number;
   flag_category?: string;
+  is_archived?: boolean;
+  summary?: string;
 }
 
 interface IntelReport {
@@ -321,7 +325,7 @@ const HomePage: React.FC = () => {
                   recentScoutReports.map((report) => (
                     <div
                       key={report.report_id}
-                      className="border-bottom pb-2 mb-2"
+                      className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
                     >
                       <div className="d-flex justify-content-between align-items-start">
                         <div className="d-flex align-items-start">
@@ -357,6 +361,9 @@ const HomePage: React.FC = () => {
                           </div>
                         </div>
                         <div className="text-end">
+                          {report.is_archived && (
+                            <span className="badge-archived d-block mb-1">ARCHIVED</span>
+                          )}
                           <div className="mb-1">
                             <span
                               className={`badge me-1 ${
@@ -439,10 +446,12 @@ const HomePage: React.FC = () => {
                     No recent flag reports
                   </p>
                 ) : (
-                  recentFlagReports.map((report) => (
+                  recentFlagReports.map((report) => {
+                    const vssScore = report.summary ? extractVSSScore(report.summary) : null;
+                    return (
                     <div
                       key={report.report_id}
-                      className="border-bottom pb-2 mb-2"
+                      className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
                     >
                       <div className="d-flex justify-content-between align-items-start">
                         <div className="d-flex align-items-start">
@@ -479,24 +488,41 @@ const HomePage: React.FC = () => {
                         </div>
                         <div className="text-end">
                           <div className="mb-1">
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor: getFlagColor(
-                                  report.flag_category || "neutral",
-                                ),
-                                color: "white",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              {report.flag_category === "Positive"
-                                ? "Positive"
-                                : report.flag_category === "Negative"
-                                  ? "Negative"
-                                  : report.flag_category === "Neutral"
-                                    ? "Neutral"
-                                    : "Not specified"}
-                            </span>
+                            {report.is_archived && (
+                              <span className="badge-archived me-1">ARCHIVED</span>
+                            )}
+                            {report.is_archived && report.flag_category ? (
+                              <span
+                                className="badge-grade me-1"
+                                style={{
+                                  backgroundColor: getGradeColor(report.flag_category),
+                                }}
+                              >
+                                {report.flag_category}
+                              </span>
+                            ) : (
+                              <span
+                                className="badge"
+                                style={{
+                                  backgroundColor: getFlagColor(
+                                    report.flag_category || "neutral",
+                                  ),
+                                  color: "white",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                {report.flag_category === "Positive"
+                                  ? "Positive"
+                                  : report.flag_category === "Negative"
+                                    ? "Negative"
+                                    : report.flag_category === "Neutral"
+                                      ? "Neutral"
+                                      : "Not specified"}
+                              </span>
+                            )}
+                            {report.is_archived && vssScore && (
+                              <span className="badge-vss ms-1">VSS: {vssScore}/32</span>
+                            )}
                           </div>
                           <div className="small text-muted">
                             {new Date(report.created_at).toLocaleDateString()}
@@ -504,8 +530,9 @@ const HomePage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
+                    );
+                  }))
+                }
               </Card.Body>
             </Card>
           </Col>
