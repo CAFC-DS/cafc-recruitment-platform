@@ -6572,10 +6572,10 @@ async def get_player_analytics(
             FROM scout_reports sr
             WHERE sr.POSITION IS NOT NULL
             AND (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
-            {('AND ' + where_clauses[0]) if months else ''}
+            {date_filter}
             GROUP BY sr.POSITION
             ORDER BY total DESC
-        """, [params[0]] if months else [])
+        """)
         reports_by_position = []
         for row in cursor.fetchall():
             reports_by_position.append({
