@@ -3967,6 +3967,17 @@ async def get_all_scout_reports(
     page: int = 1,
     limit: int = 10,
     recency_days: Optional[int] = None,
+    scout_name: Optional[str] = None,
+    player_name: Optional[str] = None,
+    performance_scores: Optional[str] = None,  # comma-separated scores
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+    report_type: Optional[str] = None,
+    scouting_type: Optional[str] = None,
+    position: Optional[str] = None,
+    purpose: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
 ):
     conn = None
     try:
@@ -3989,52 +4000,82 @@ async def get_all_scout_reports(
         where_clauses = []
         sql_params = []
 
-        # Apply role-based filtering
-        print(f"🔍 START FILTERING - User: {current_user.username}, Role: {current_user.role}")
-        try:
-            test_cursor = conn.cursor()
-            # Check if USER_ID column exists by describing the table
-            test_cursor.execute("DESCRIBE TABLE scout_reports")
-            columns = test_cursor.fetchall()
-            column_names = [col[0] for col in columns]
-            print(f"🔍 USER_ID column exists: {'USER_ID' in column_names}")
-
-            if "USER_ID" in column_names:
-                # Column exists, apply role-based filtering
-                print(f"🔍 Applying filter for role: {current_user.role}")
-                if current_user.role == "scout":
-                    where_clauses.append("sr.USER_ID = %s")
-                    sql_params.append(current_user.id)
-                    logging.info(
-                        f"Applied scout filtering for user ID: {current_user.id}"
-                    )
-                elif current_user.role == "loan":
-                    # Loan users see their own reports OR any Loan Reports
-                    # Use UPPER() for case-insensitive comparison
-                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
-                    sql_params.append(current_user.id)
-                    sql_params.append("Loan Report")
-                    print(f"🔍 LOAN FILTER APPLIED - User: {current_user.username} (ID: {current_user.id})")
-                    print(f"🔍 Filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
-                    logging.info(
-                        f"Applied loan filtering for user ID: {current_user.id}, username: {current_user.username}"
-                    )
-                    logging.info(f"Loan filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
-                else:
-                    logging.info(
-                        f"User role '{current_user.role}' - no filtering applied"
-                    )
-            else:
-                logging.warning("USER_ID column does not exist in scout_reports table")
-        except Exception as e:
-            logging.error(f"Error checking USER_ID column: {e}")
-            # If we can't determine column existence, skip role filtering for safety
+        # Apply role-based filtering (USER_ID column is assumed to exist)
+        if current_user.role == "scout":
+            where_clauses.append("sr.USER_ID = %s")
+            sql_params.append(current_user.id)
+        elif current_user.role == "loan":
+            # Loan users see their own reports OR any Loan Reports
+            where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
+            sql_params.append(current_user.id)
+            sql_params.append("Loan Report")
 
         # Apply recency filter
         if recency_days is not None and recency_days > 0:
             # For Snowflake, use DATEADD to filter by date
             where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
             sql_params.append(recency_days)
+
+        # Apply scout name filter
+        if scout_name:
+            where_clauses.append(
+                "(UPPER(u.FIRSTNAME) LIKE UPPER(%s) OR UPPER(u.LASTNAME) LIKE UPPER(%s) OR UPPER(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)) LIKE UPPER(%s))"
+            )
+            search_pattern = f"%{scout_name}%"
+            sql_params.extend([search_pattern, search_pattern, search_pattern])
+
+        # Apply player name filter (accent-insensitive)
+        if player_name:
+            where_clauses.append("UPPER(p.PLAYERNAME) LIKE UPPER(%s)")
+            sql_params.append(f"%{player_name}%")
+
+        # Apply performance scores filter
+        if performance_scores:
+            scores = [int(s.strip()) for s in performance_scores.split(",") if s.strip().isdigit()]
+            if scores:
+                placeholders = ", ".join(["%s"] * len(scores))
+                where_clauses.append(f"sr.PERFORMANCE_SCORE IN ({placeholders})")
+                sql_params.extend(scores)
+
+        # Apply age range filter (using birthdate)
+        if min_age is not None or max_age is not None:
+            if max_age is not None:
+                # Player must be at least max_age years old (born before this date)
+                where_clauses.append("p.BIRTHDATE <= DATEADD(year, -%s, CURRENT_DATE())")
+                sql_params.append(max_age)
+            if min_age is not None:
+                # Player must be at most min_age years old (born after this date)
+                where_clauses.append("p.BIRTHDATE >= DATEADD(year, -%s, CURRENT_DATE())")
+                sql_params.append(min_age + 1)
+
+        # Apply report type filter
+        if report_type:
+            where_clauses.append("UPPER(sr.REPORT_TYPE) LIKE UPPER(%s)")
+            sql_params.append(f"%{report_type}%")
+
+        # Apply scouting type filter
+        if scouting_type:
+            where_clauses.append("UPPER(sr.SCOUTING_TYPE) = UPPER(%s)")
+            sql_params.append(scouting_type)
+
+        # Apply position filter
+        if position:
+            where_clauses.append("UPPER(sr.POSITION) LIKE UPPER(%s)")
+            sql_params.append(f"%{position}%")
+
+        # Apply purpose filter
+        if purpose:
+            where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
+            sql_params.append(purpose)
+
+        # Apply date range filter
+        if date_from:
+            where_clauses.append("sr.CREATED_AT >= %s")
+            sql_params.append(date_from)
+        if date_to:
+            # Add one day to include the entire end date
+            where_clauses.append("sr.CREATED_AT < DATEADD(day, 1, %s)")
+            sql_params.append(date_to)
 
         # Construct WHERE clause
         if where_clauses:

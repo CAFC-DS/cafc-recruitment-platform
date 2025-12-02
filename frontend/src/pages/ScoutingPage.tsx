@@ -14,12 +14,12 @@ import {
   Modal,
   Dropdown,
 } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
+import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
 import AddPlayerModal from "../components/AddPlayerModal";
 import AddFixtureModal from "../components/AddFixtureModal";
-import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import {
@@ -64,12 +64,12 @@ const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAdmin, user } = useCurrentUser();
 
   // Only Admin role or specific users can add fixtures and players
   const allowedUsers = ["aclarke", "ccharlton"];
   const canAddFixtureOrPlayer = isAdmin || (user && allowedUsers.includes(user.username));
-
   const [playerSearch, setPlayerSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -84,8 +84,8 @@ const ScoutingPage: React.FC = () => {
   // New states from IntelPage
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
-  const [itemsPerPage] = useState(20);
   const [recencyFilter, setRecencyFilter] = useState<string>("7");
+  const itemsPerPage = 50; // Server-side pagination: 50 items per page
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -109,6 +109,7 @@ const ScoutingPage: React.FC = () => {
   const [reportTypeFilter, setReportTypeFilter] = useState("");
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
+  const [purposeFilter, setPurposeFilter] = useState("");
 
   // Role-based permissions
   const [userRole, setUserRole] = useState("");
@@ -123,17 +124,71 @@ const ScoutingPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchScoutReports = useCallback(
-    async (recency: string) => {
+    async (recency: string, page: number = 1) => {
       setLoading(true);
       setErrorReports(null);
       try {
         const params: any = {
-          page: 1,
-          limit: 1000, // Load all reports for client-side filtering and pagination
+          page: page,
+          limit: 50, // Server-side pagination: 50 reports per page
         };
+
+        // Recency filter
         if (recency !== "all") {
           params.recency_days = parseInt(recency);
         }
+
+        // Scout name filter
+        if (scoutNameFilter) {
+          params.scout_name = scoutNameFilter;
+        }
+
+        // Player name filter
+        if (playerNameFilter) {
+          params.player_name = playerNameFilter;
+        }
+
+        // Performance scores filter
+        if (performanceScores.length > 0) {
+          params.performance_scores = performanceScores.join(",");
+        }
+
+        // Age range filter
+        if (minAge) {
+          params.min_age = parseInt(minAge);
+        }
+        if (maxAge) {
+          params.max_age = parseInt(maxAge);
+        }
+
+        // Report type filter
+        if (reportTypeFilter) {
+          params.report_type = reportTypeFilter;
+        }
+
+        // Scouting type filter
+        if (scoutingTypeFilter) {
+          params.scouting_type = scoutingTypeFilter;
+        }
+
+        // Position filter
+        if (positionFilter) {
+          params.position = positionFilter;
+        }
+
+        // Purpose filter
+        if (purposeFilter) {
+          params.purpose = purposeFilter;
+        }
+
+        // Date range filter
+        if (dateFromFilter) {
+          params.date_from = dateFromFilter;
+        }
+        if (dateToFilter) {
+          params.date_to = dateToFilter;
+        }
+
         const response = await axiosInstance.get("/scout_reports/all", {
           params,
         });
@@ -143,7 +198,7 @@ const ScoutingPage: React.FC = () => {
         // The backend already filters scout reports by USER_ID for scout users
 
         setScoutReports(reports);
-        setTotalReports(reports.length); // Use actual loaded reports count
+        setTotalReports(response.data.total_reports || reports.length); // Use backend total count
       } catch (error) {
         console.error("Error fetching scout reports:", error);
         setErrorReports("Failed to load scout reports. Please try again.");
@@ -153,7 +208,21 @@ const ScoutingPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [userRole, currentUsername],
+    [
+      userRole,
+      currentUsername,
+      scoutNameFilter,
+      playerNameFilter,
+      performanceScores,
+      minAge,
+      maxAge,
+      reportTypeFilter,
+      scoutingTypeFilter,
+      positionFilter,
+      purposeFilter,
+      dateFromFilter,
+      dateToFilter,
+    ],
   );
 
   // Fetch user role and username
@@ -208,7 +277,7 @@ const ScoutingPage: React.FC = () => {
       await axiosInstance.delete(`/scout_reports/${deleteReportId}`);
       setShowDeleteModal(false);
       setDeleteReportId(null);
-      fetchScoutReports(recencyFilter);
+      fetchScoutReports(recencyFilter, currentPage);
     } catch (error) {
       console.error("Error deleting report:", error);
     } finally {
@@ -223,13 +292,38 @@ const ScoutingPage: React.FC = () => {
     setEditReportData(null);
   };
 
+  // Initial fetch when component mounts
   useEffect(() => {
     if (token) {
-      fetchUserInfo().then(() => {
-        fetchScoutReports(recencyFilter);
-      });
+      fetchUserInfo();
     }
-  }, [token, recencyFilter, fetchScoutReports, fetchUserInfo]);
+  }, [token, fetchUserInfo]);
+
+  // Debounced effect for filters - wait 500ms after user stops typing
+  useEffect(() => {
+    if (!token) return;
+
+    const timeoutId = setTimeout(() => {
+      fetchScoutReports(recencyFilter, currentPage);
+    }, 500); // Wait 500ms after last filter change
+
+    return () => clearTimeout(timeoutId); // Cleanup previous timeout
+  }, [
+    token,
+    recencyFilter,
+    currentPage, // Add currentPage so pagination triggers refetch
+    scoutNameFilter,
+    playerNameFilter,
+    performanceScores,
+    minAge,
+    maxAge,
+    reportTypeFilter,
+    scoutingTypeFilter,
+    positionFilter,
+    purposeFilter,
+    dateFromFilter,
+    dateToFilter,
+  ]); // Don't include fetchScoutReports here to avoid circular dependency
 
   const performPlayerSearch = useCallback(async (query: string) => {
     const trimmedQuery = query.trim();
@@ -487,98 +581,12 @@ const ScoutingPage: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
-  // Filter reports based on advanced filters
-  const getFilteredReports = () => {
-    let filtered = scoutReports;
+  // All filtering AND pagination is now handled server-side
+  // Reports from backend are already filtered and paginated
+  const paginatedReports = scoutReports;
 
-    // Performance score filter - individual scores
-    if (performanceScores.length > 0) {
-      filtered = filtered.filter((report) =>
-        performanceScores.includes(report.performance_score),
-      );
-    }
-
-    // Age range filter
-    if (minAge || maxAge) {
-      filtered = filtered.filter((report) => {
-        if (!report.age) return false;
-        const min = minAge ? parseInt(minAge) : 0;
-        const max = maxAge ? parseInt(maxAge) : 100;
-        return report.age >= min && report.age <= max;
-      });
-    }
-
-    // Scout name filter
-    if (scoutNameFilter) {
-      filtered = filtered.filter((report) =>
-        report.scout_name.toLowerCase().includes(scoutNameFilter.toLowerCase()),
-      );
-    }
-
-    // Player name filter
-    if (playerNameFilter) {
-      filtered = filtered.filter((report) =>
-        containsAccentInsensitive(report.player_name, playerNameFilter),
-      );
-    }
-
-    // Report type filter
-    if (reportTypeFilter) {
-      filtered = filtered.filter((report) =>
-        report.report_type
-          .toLowerCase()
-          .includes(reportTypeFilter.toLowerCase()),
-      );
-    }
-
-    // Scouting type filter
-    if (scoutingTypeFilter) {
-      filtered = filtered.filter(
-        (report) =>
-          report.scouting_type.toLowerCase() ===
-          scoutingTypeFilter.toLowerCase(),
-      );
-    }
-
-    // Position filter
-    if (positionFilter) {
-      filtered = filtered.filter(
-        (report) =>
-          report.position_played &&
-          report.position_played
-            .toLowerCase()
-            .includes(positionFilter.toLowerCase()),
-      );
-    }
-
-    // Date range filter
-    if (dateFromFilter || dateToFilter) {
-      filtered = filtered.filter((report) => {
-        const reportDate = new Date(report.created_at);
-        const fromDate = dateFromFilter
-          ? new Date(dateFromFilter)
-          : new Date("1900-01-01");
-        const toDate = dateToFilter
-          ? new Date(dateToFilter)
-          : new Date("2100-12-31");
-        return reportDate >= fromDate && reportDate <= toDate;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredReports = getFilteredReports();
-
-  // Client-side pagination for filtered results
-  const getPaginatedReports = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredReports.slice(startIndex, endIndex);
-  };
-
-  const paginatedReports = getPaginatedReports();
-  const filteredTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
+  // Calculate total pages from server response
+  const filteredTotalPages = Math.ceil(totalReports / itemsPerPage);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -595,6 +603,40 @@ const ScoutingPage: React.FC = () => {
     scoutingTypeFilter,
     positionFilter,
   ]);
+
+
+  // Check if we should open the draft modal from URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('openDraft') === 'true') {
+      // Restore selected player from draft if available
+      const draftStr = localStorage.getItem('scoutingAssessmentDraft');
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          if (draft.selectedPlayer) {
+            setSelectedPlayer({
+              universal_id: draft.selectedPlayer.id,
+              player_id: draft.selectedPlayer.id,
+              player_name: draft.selectedPlayer.name,
+              position: draft.selectedPlayer.position,
+              squad_name: draft.selectedPlayer.team,
+            } as Player);
+          } else {
+            setSelectedPlayer(null);
+          }
+        } catch (error) {
+          console.error('Error parsing draft:', error);
+          setSelectedPlayer(null);
+        }
+      } else {
+        setSelectedPlayer(null);
+      }
+      setShowAssessmentModal(true);
+      // Remove the parameter from URL
+      navigate('/scouting', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   return (
     <Container className="mt-4">
@@ -709,8 +751,8 @@ const ScoutingPage: React.FC = () => {
       <ScoutingAssessmentModal
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
-        selectedPlayer={selectedPlayer}
-        onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter)}
+        selectedPlayer={editMode && selectedPlayer ? selectedPlayer : null}
+        onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter, currentPage)}
         editMode={editMode}
         reportId={editReportId}
         existingReportData={editReportData}
@@ -832,10 +874,9 @@ const ScoutingPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {Math.min(paginatedReports.length, itemsPerPage)} of{" "}
-            {filteredReports.length} filtered results
-            {filteredReports.length !== totalReports && (
-              <span> ({totalReports} total)</span>
+            Showing {paginatedReports.length} of {totalReports} total reports
+            {filteredTotalPages > 1 && (
+              <span> (Page {currentPage} of {filteredTotalPages})</span>
             )}
           </small>
         </Col>
@@ -978,6 +1019,26 @@ const ScoutingPage: React.FC = () => {
               </Col>
             </Row>
 
+            {/* Row 2.5: Report Purpose */}
+            <Row className="mb-3">
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">
+                    Report Purpose
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={purposeFilter}
+                    onChange={(e) => setPurposeFilter(e.target.value)}
+                  >
+                    <option value="">All Purposes</option>
+                    <option value="player report">Player Report</option>
+                    <option value="loan report">Loan Report</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
             {/* Row 3: Age Range, Date Range, Clear Filters & Report Count */}
             <Row className="mb-3">
               <Col md={4}>
@@ -1050,6 +1111,7 @@ const ScoutingPage: React.FC = () => {
                       setReportTypeFilter("");
                       setScoutingTypeFilter("");
                       setPositionFilter("");
+                      setPurposeFilter("");
                     }}
                     className="w-100"
                   >
@@ -1063,8 +1125,195 @@ const ScoutingPage: React.FC = () => {
       </Card>
 
       {loading ? (
-        <div className="text-center">
-          <Spinner animation="border" />
+        <div className="table-responsive">
+          <Table
+            responsive
+            hover
+            striped
+            className="table-compact table-sm"
+            style={{ textAlign: "center" }}
+          >
+            <thead className="table-dark">
+              <tr>
+                <th>Report Date</th>
+                <th>Player</th>
+                <th>Age</th>
+                <th>Position</th>
+                <th>Fixture Date</th>
+                <th>Fixture</th>
+                <th>Scout</th>
+                <th>Type</th>
+                <th>Score</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...Array(10)].map((_, index) => (
+                <tr key={index}>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "80px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "120px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "40px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "60px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "80px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "150px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "100px",
+                        height: "20px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "4px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "70px",
+                        height: "24px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "12px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      className="skeleton-box"
+                      style={{
+                        width: "50px",
+                        height: "28px",
+                        margin: "0 auto",
+                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                        backgroundSize: "200% 100%",
+                        animation: "shimmer 1.5s infinite",
+                        borderRadius: "14px",
+                      }}
+                    />
+                  </td>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "5px",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {[1, 2, 3].map((btn) => (
+                        <div
+                          key={btn}
+                          className="skeleton-box"
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "50%",
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+          <style>{`
+            @keyframes shimmer {
+              0% {
+                background-position: -200% 0;
+              }
+              100% {
+                background-position: 200% 0;
+              }
+            }
+          `}</style>
         </div>
       ) : errorReports ? (
         <Alert variant="danger">{errorReports}</Alert>
