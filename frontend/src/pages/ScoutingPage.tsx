@@ -18,6 +18,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
+import AddPlayerModal from "../components/AddPlayerModal";
+import AddFixtureModal from "../components/AddFixtureModal";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import {
@@ -31,6 +33,7 @@ import {
 } from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface ScoutReport {
   report_id: number;
@@ -57,6 +60,11 @@ const ScoutingPage: React.FC = () => {
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAdmin, user } = useCurrentUser();
+
+  // Only Admin role or specific users can add fixtures and players
+  const allowedUsers = ["aclarke", "ccharlton"];
+  const canAddFixtureOrPlayer = isAdmin || (user && allowedUsers.includes(user.username));
   const [playerSearch, setPlayerSearch] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -578,6 +586,114 @@ const ScoutingPage: React.FC = () => {
 
   return (
     <Container className="mt-4">
+      <Card className="mb-4">
+        <Card.Body>
+          <Card.Title>Player Search</Card.Title>
+          <div className="mb-3 p-3" style={{
+            backgroundColor: "#fff3cd",
+            border: "1px solid #ffc107",
+            borderRadius: "8px",
+            fontSize: "0.9rem"
+          }}>
+            <strong>⚠️ Note:</strong> Some players may show "NO_SQUAD" as their club. This occurs when:
+            <ul className="mb-0 mt-2" style={{ fontSize: "0.85rem" }}>
+              <li>The player is a free agent or retired</li>
+              <li>They're playing for a national team in international competitions (World Cup, Euros, etc.)</li>
+              <li>Their club squad wasn't included in the specific competition data</li>
+              <li>The data only tracks national teams for certain tournaments, not their club affiliations</li>
+            </ul>
+          </div>
+          <Form.Group as={Col} controlId="playerName">
+            <div className="position-relative">
+              <Form.Control
+                type="text"
+                placeholder="Enter player name"
+                value={playerSearch}
+                onChange={handlePlayerSearchChange}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
+              />
+              {playerSearchLoading && (
+                <div
+                  className="position-absolute top-50 end-0 translate-middle-y me-3"
+                  style={{ zIndex: 10 }}
+                >
+                  <Spinner animation="border" size="sm" />
+                </div>
+              )}
+            </div>
+            {showDropdown && players.length > 0 && (
+              <ListGroup
+                className="mt-2"
+                style={{
+                  position: "absolute",
+                  zIndex: 1000,
+                  width: "calc(100% - 30px)",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}
+              >
+                {players.map((player, index) => (
+                  <ListGroup.Item
+                    key={
+                      player.universal_id ||
+                      `fallback-${index}-${player.player_name}`
+                    }
+                    action
+                    onClick={() => handlePlayerSelect(player)}
+                    className="d-flex justify-content-between align-items-center"
+                  >
+                    <span>{player.player_name}</span>
+                    <small className="text-muted">({player.squad_name})</small>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            )}
+            {playerSearchError && (
+              <div className="mt-2">
+                <small className="text-danger d-block">
+                  ⚠️ {playerSearchError}
+                </small>
+              </div>
+            )}
+          </Form.Group>
+          <Button
+            className="mt-2"
+            variant="outline-secondary"
+            onClick={handleShowAssessmentModal}
+            disabled={!selectedPlayer}
+          >
+            Add Assessment
+          </Button>
+          <Button
+            className="mt-2 ms-2"
+            variant="outline-secondary"
+            onClick={() => setShowAddPlayerModal(true)}
+            disabled={!canAddFixtureOrPlayer}
+            title={!canAddFixtureOrPlayer ? "You don't have permission to add players" : ""}
+          >
+            Add Player
+          </Button>
+          <Button
+            className="mt-2 ms-2"
+            variant="outline-secondary"
+            onClick={() => setShowAddFixtureModal(true)}
+            disabled={!canAddFixtureOrPlayer}
+            title={!canAddFixtureOrPlayer ? "You don't have permission to add fixtures" : ""}
+          >
+            Add Fixture
+          </Button>
+        </Card.Body>
+      </Card>
+
+      <AddPlayerModal
+        show={showAddPlayerModal}
+        onHide={() => setShowAddPlayerModal(false)}
+      />
+      <AddFixtureModal
+        show={showAddFixtureModal}
+        onHide={() => setShowAddFixtureModal(false)}
+      />
       <ScoutingAssessmentModal
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
