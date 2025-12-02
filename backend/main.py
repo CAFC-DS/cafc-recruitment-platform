@@ -6587,6 +6587,7 @@ async def get_player_analytics(
 
         # 13. Top 10 Players by Performance Score (with optional position filter)
         top_players_by_performance = []
+        position_clause = f"AND sr.POSITION = '{position}'" if position else ""
         cursor.execute(f"""
             SELECT
                 COALESCE(p.PLAYERNAME, 'Unknown Player') as player_name,
@@ -6602,11 +6603,12 @@ async def get_player_analytics(
             )
             WHERE sr.REPORT_TYPE = 'Player Assessment'
             AND sr.PERFORMANCE_SCORE IS NOT NULL
-            {additional_filters}
+            {position_clause}
+            {date_filter}
             GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
             ORDER BY avg_performance_score DESC, report_count DESC
             LIMIT 10
-        """, params)
+        """)
         for row in cursor.fetchall():
             top_players_by_performance.append({
                 "player_name": row['PLAYER_NAME'] or "Unknown Player",
