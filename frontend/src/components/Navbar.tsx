@@ -31,20 +31,6 @@ const AppNavbar: React.FC = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Map<string, any[]>>(new Map());
 
-  // Draft indicator state
-  const [hasSavedDraft, setHasSavedDraft] = useState(false);
-
-  // Check for saved drafts periodically
-  useEffect(() => {
-    const checkDraft = () => {
-      const draftStr = localStorage.getItem('scoutingAssessmentDraft');
-      setHasSavedDraft(!!draftStr);
-    };
-    checkDraft();
-    const interval = setInterval(checkDraft, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Close search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -406,18 +392,6 @@ const AppNavbar: React.FC = () => {
 
           <Nav className="d-flex align-items-center">
             <DarkModeToggle />
-            {token && hasSavedDraft && (
-              <Button
-                variant="info"
-                onClick={() => navigate('/scouting?openDraft=true')}
-                size="sm"
-                className="ms-2 rounded-pill"
-                style={{ fontWeight: 600 }}
-                title="Click to restore your saved draft"
-              >
-                💾 Draft Saved
-              </Button>
-            )}
             {token ? (
               <Button
                 variant="outline-light"
