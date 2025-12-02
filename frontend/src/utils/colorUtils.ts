@@ -2,6 +2,7 @@
 
 /**
  * Get standardized performance score color (1-10 scale)
+ * 0: Grey (for No Action)
  * 1-3: Red variants (darkest red for 1)
  * 4-5: Amber/Orange
  * 6-8: Green variants
@@ -9,7 +10,8 @@
  * 10: Gold
  */
 export const getPerformanceScoreColor = (score: number): string => {
-  if (score <= 0) return "#ef4444"; // Red for invalid scores
+  if (score === 0) return "#6b7280"; // Grey for score 0 (No Action)
+  if (score < 0) return "#ef4444"; // Red for invalid scores
 
   if (score <= 1) return "#991b1b"; // Darkest red
   if (score <= 2) return "#dc2626"; // Dark red
@@ -121,4 +123,35 @@ export const getContrastTextColor = (backgroundColor: string): string => {
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
 
   return brightness > 128 ? "#000000" : "#ffffff";
+};
+
+/**
+ * Get color for archived report grades
+ * Maps old report grades to performance score color equivalents:
+ * - Outstanding/Above Level → 8 (Darker green)
+ * - Target → 6 (Light green)
+ * - Monitor → 4 (Orange)
+ * - Scout → 2 (Dark red)
+ * - No Action → 0 (Grey)
+ */
+export const getGradeColor = (grade: string): string => {
+  const gradeMap: { [key: string]: number } = {
+    "Outstanding/Above Level": 8,
+    "outstanding/above level": 8,
+    "Outstanding": 8,
+    "outstanding": 8,
+    "Above Level": 8,
+    "above level": 8,
+    "Target": 6,
+    "target": 6,
+    "Monitor": 4,
+    "monitor": 4,
+    "Scout": 2,
+    "scout": 2,
+    "No Action": 0,
+    "no action": 0,
+  };
+
+  const scoreEquivalent = gradeMap[grade] || 0;
+  return getPerformanceScoreColor(scoreEquivalent);
 };

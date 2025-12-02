@@ -86,8 +86,20 @@ const ExportButton: React.FC<ExportButtonProps> = ({
 
   if (type === "data") {
     return (
-      <Button variant="outline-secondary" size="sm" onClick={exportToCSV}>
-        📥 Export CSV
+      <Button
+        variant="link"
+        size="sm"
+        onClick={exportToCSV}
+        title="Export CSV"
+        style={{
+          color: '#fff',
+          padding: '4px 8px',
+          fontSize: '1.1rem',
+          textDecoration: 'none',
+          border: 'none'
+        }}
+      >
+        📥
       </Button>
     );
   }
