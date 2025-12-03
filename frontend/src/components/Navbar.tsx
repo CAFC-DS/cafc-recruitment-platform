@@ -129,7 +129,7 @@ const AppNavbar: React.FC = () => {
       case "ArrowDown":
         e.preventDefault();
         setSelectedIndex((prev) =>
-          prev < Math.min(searchResults.length, 8) - 1 ? prev + 1 : prev,
+          prev < Math.min(searchResults.length, 10) - 1 ? prev + 1 : prev,
         );
         break;
       case "ArrowUp":
@@ -263,9 +263,10 @@ const AppNavbar: React.FC = () => {
                     borderRadius: "8px",
                     boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
                     zIndex: 9999,
-                    maxHeight: "350px",
+                    maxHeight: "400px",
                     overflowY: "auto",
                     marginTop: "4px",
+                    scrollBehavior: "smooth",
                   }}
                 >
                   {isSearching && (
@@ -303,12 +304,12 @@ const AppNavbar: React.FC = () => {
                         borderBottom: "1px solid #eee",
                       }}
                     >
-                      Found {searchResults.length} results
+                      Showing {Math.min(searchResults.length, 10)} of {searchResults.length} results
                     </div>
                   )}
                   {!isSearching &&
                     searchResults.length > 0 &&
-                    searchResults.slice(0, 8).map((player, index) => {
+                    searchResults.slice(0, 10).map((player, index) => {
                       // Try different possible field names for player name
                       const playerName =
                         player.playername ||
@@ -333,7 +334,7 @@ const AppNavbar: React.FC = () => {
                             padding: "12px 16px",
                             cursor: "pointer",
                             borderBottom:
-                              index < Math.min(searchResults.length, 8) - 1
+                              index < Math.min(searchResults.length, 10) - 1
                                 ? "1px solid #f3f4f6"
                                 : "none",
                             backgroundColor:
@@ -369,22 +370,6 @@ const AppNavbar: React.FC = () => {
                         </div>
                       );
                     })}
-                  {searchResults.length > 8 && (
-                    <div
-                      style={{
-                        padding: "10px 16px",
-                        textAlign: "center",
-                        fontSize: "12px",
-                        color: "#6b7280",
-                        borderTop: "1px solid #f3f4f6",
-                        backgroundColor: "#f9fafb",
-                        fontWeight: "500",
-                      }}
-                    >
-                      +{searchResults.length - 8} more results - press Enter to
-                      see all
-                    </div>
-                  )}
                 </div>
               )}
             </div>
