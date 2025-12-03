@@ -1125,185 +1125,374 @@ const ScoutingPage: React.FC = () => {
       </Card>
 
       {loading ? (
-        <div className="table-responsive">
-          <Table
-            responsive
-            hover
-            striped
-            className="table-compact table-sm"
-            style={{ textAlign: "center" }}
-          >
-            <thead className="table-dark">
-              <tr>
-                <th>Report Date</th>
-                <th>Player</th>
-                <th>Age</th>
-                <th>Position</th>
-                <th>Fixture Date</th>
-                <th>Fixture</th>
-                <th>Scout</th>
-                <th>Type</th>
-                <th>Score</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...Array(10)].map((_, index) => (
-                <tr key={index}>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "80px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "120px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "40px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "60px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "80px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "150px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "100px",
-                        height: "20px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "70px",
-                        height: "24px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "12px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "50px",
-                        height: "28px",
-                        margin: "0 auto",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "14px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "5px",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {[1, 2, 3].map((btn) => (
+        <>
+          {viewMode === "table" ? (
+            <div className="table-responsive">
+              <Table
+                responsive
+                hover
+                striped
+                className="table-compact table-sm"
+                style={{ textAlign: "center" }}
+              >
+                <thead className="table-dark">
+                  <tr>
+                    <th>Report Date</th>
+                    <th>Player</th>
+                    <th>Age</th>
+                    <th>Position</th>
+                    <th>Fixture Date</th>
+                    <th>Fixture</th>
+                    <th>Scout</th>
+                    <th>Type</th>
+                    <th>Score</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...Array(10)].map((_, index) => (
+                    <tr key={index}>
+                      <td>
                         <div
-                          key={btn}
                           className="skeleton-box"
                           style={{
-                            width: "32px",
-                            height: "32px",
+                            width: "80px",
+                            height: "20px",
+                            margin: "0 auto",
                             background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
                             backgroundSize: "200% 100%",
                             animation: "shimmer 1.5s infinite",
-                            borderRadius: "50%",
+                            borderRadius: "4px",
                           }}
                         />
-                      ))}
-                    </div>
-                  </td>
-                </tr>
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "120px",
+                            height: "20px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "40px",
+                            height: "20px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "60px",
+                            height: "20px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "80px",
+                            height: "20px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "150px",
+                            height: "20px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "100px",
+                            height: "20px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "70px",
+                            height: "24px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "12px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          className="skeleton-box"
+                          style={{
+                            width: "50px",
+                            height: "28px",
+                            margin: "0 auto",
+                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.5s infinite",
+                            borderRadius: "14px",
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "5px",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {[1, 2, 3].map((btn) => (
+                            <div
+                              key={btn}
+                              className="skeleton-box"
+                              style={{
+                                width: "32px",
+                                height: "32px",
+                                background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                                backgroundSize: "200% 100%",
+                                animation: "shimmer 1.5s infinite",
+                                borderRadius: "50%",
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          ) : (
+            <Row>
+              {[...Array(8)].map((_, index) => (
+                <Col sm={6} md={4} lg={3} key={index} className="mb-4">
+                  <Card
+                    className="h-100 shadow-sm"
+                    style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                  >
+                    <Card.Body className="p-3">
+                      {/* Top Row - 2 columns */}
+                      <Row className="mb-3 pb-2 border-bottom">
+                        {/* Left: Player Info */}
+                        <Col xs={6}>
+                          <div
+                            className="skeleton-box mb-2"
+                            style={{
+                              width: "80%",
+                              height: "18px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <div
+                            className="skeleton-box mb-1"
+                            style={{
+                              width: "60%",
+                              height: "14px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <div
+                            className="skeleton-box"
+                            style={{
+                              width: "40%",
+                              height: "14px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                        </Col>
+
+                        {/* Right: Scout Info */}
+                        <Col xs={6} className="text-end">
+                          <div
+                            className="skeleton-box mb-1 ms-auto"
+                            style={{
+                              width: "70%",
+                              height: "14px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <div
+                            className="skeleton-box ms-auto"
+                            style={{
+                              width: "80%",
+                              height: "14px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                        </Col>
+                      </Row>
+
+                      {/* Middle Row - 2 columns */}
+                      <Row className="mb-3 pb-2 border-bottom">
+                        {/* Left: Fixture Info */}
+                        <Col xs={6}>
+                          <div
+                            className="skeleton-box mb-1"
+                            style={{
+                              width: "90%",
+                              height: "12px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <div
+                            className="skeleton-box"
+                            style={{
+                              width: "80%",
+                              height: "12px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                        </Col>
+
+                        {/* Right: Score */}
+                        <Col xs={6} className="text-end">
+                          <div
+                            className="skeleton-box mb-1 ms-auto"
+                            style={{
+                              width: "40%",
+                              height: "12px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "4px",
+                            }}
+                          />
+                          <div
+                            className="skeleton-box ms-auto"
+                            style={{
+                              width: "35px",
+                              height: "24px",
+                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                              backgroundSize: "200% 100%",
+                              animation: "shimmer 1.5s infinite",
+                              borderRadius: "12px",
+                            }}
+                          />
+                        </Col>
+                      </Row>
+
+                      {/* Bottom Row - Tags and Actions */}
+                      <Row className="align-items-center">
+                        {/* Left: Tags */}
+                        <Col xs={6}>
+                          <div className="d-flex align-items-center gap-1">
+                            <div
+                              className="skeleton-box"
+                              style={{
+                                width: "24px",
+                                height: "24px",
+                                background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                                backgroundSize: "200% 100%",
+                                animation: "shimmer 1.5s infinite",
+                                borderRadius: "12px",
+                              }}
+                            />
+                            <div
+                              className="skeleton-box"
+                              style={{
+                                width: "24px",
+                                height: "24px",
+                                background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                                backgroundSize: "200% 100%",
+                                animation: "shimmer 1.5s infinite",
+                                borderRadius: "12px",
+                              }}
+                            />
+                          </div>
+                        </Col>
+
+                        {/* Right: Actions */}
+                        <Col xs={6} className="text-end">
+                          <div className="d-flex justify-content-end gap-1">
+                            {[1, 2, 3].map((btn) => (
+                              <div
+                                key={btn}
+                                className="skeleton-box"
+                                style={{
+                                  width: "32px",
+                                  height: "32px",
+                                  background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+                                  backgroundSize: "200% 100%",
+                                  animation: "shimmer 1.5s infinite",
+                                  borderRadius: "50%",
+                                }}
+                              />
+                            ))}
+                          </div>
+                        </Col>
+                      </Row>
+                    </Card.Body>
+                  </Card>
+                </Col>
               ))}
-            </tbody>
-          </Table>
+            </Row>
+          )}
           <style>{`
             @keyframes shimmer {
               0% {
@@ -1314,7 +1503,7 @@ const ScoutingPage: React.FC = () => {
               }
             }
           `}</style>
-        </div>
+        </>
       ) : errorReports ? (
         <Alert variant="danger">{errorReports}</Alert>
       ) : (
