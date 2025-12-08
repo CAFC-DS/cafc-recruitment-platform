@@ -70,7 +70,7 @@ interface PlayerSearchResult {
 }
 
 const PlayerListsPage: React.FC = () => {
-  const { user, isAdmin, isManager } = useCurrentUser();
+  const { user, loading: userLoading, isAdmin, isManager } = useCurrentUser();
   const navigate = useNavigate();
 
   // Helper function to get player profile path from universal_id
@@ -108,10 +108,10 @@ const PlayerListsPage: React.FC = () => {
 
   // Check permissions
   useEffect(() => {
-    if (!isAdmin && !isManager) {
+    if (!userLoading && !isAdmin && !isManager) {
       navigate("/");
     }
-  }, [isAdmin, isManager, navigate]);
+  }, [userLoading, isAdmin, isManager, navigate]);
 
   // Fetch all lists
   const fetchLists = useCallback(async () => {
@@ -297,7 +297,7 @@ const PlayerListsPage: React.FC = () => {
     fetchListDetail(list.id);
   };
 
-  if (loadingLists) {
+  if (userLoading || loadingLists) {
     return (
       <Container className="text-center mt-5">
         <Spinner animation="border" />
