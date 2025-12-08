@@ -7639,7 +7639,8 @@ async def get_player_list_detail(
             "updated_at": list_row[5].isoformat() if list_row[5] else None,
         }
 
-        # Get players in the list with enriched data
+        # OPTIMIZED: Get all player stats in ONE query instead of N queries
+        # First, get all players in the list
         cursor.execute(
             """
             SELECT
@@ -7669,8 +7670,60 @@ async def get_player_list_detail(
             (list_id,),
         )
 
+        player_rows = cursor.fetchall()
+
+        # OPTIMIZED: Fetch stats for ALL players in a single query
+        # Build a stats lookup dictionary
+        stats_lookup = {}
+        if player_rows:
+            # Get all external player IDs and internal player IDs
+            external_ids = [row[1] for row in player_rows if row[1]]
+            internal_ids = [row[2] for row in player_rows if row[2]]
+
+            if external_ids or internal_ids:
+                # Build dynamic query to get stats for all players at once
+                conditions = []
+                params = []
+
+                if external_ids:
+                    placeholders = ', '.join(['%s'] * len(external_ids))
+                    conditions.append(f"sr.PLAYER_ID IN ({placeholders})")
+                    params.extend(external_ids)
+
+                if internal_ids:
+                    placeholders = ', '.join(['%s'] * len(internal_ids))
+                    conditions.append(f"sr.CAFC_PLAYER_ID IN ({placeholders})")
+                    params.extend(internal_ids)
+
+                where_clause = ' OR '.join(conditions)
+
+                cursor.execute(
+                    f"""
+                    SELECT
+                        sr.PLAYER_ID,
+                        sr.CAFC_PLAYER_ID,
+                        COUNT(*) as report_count,
+                        AVG(sr.PERFORMANCE_SCORE) as avg_performance_score
+                    FROM scout_reports sr
+                    WHERE ({where_clause})
+                      AND sr.PERFORMANCE_SCORE IS NOT NULL
+                      AND sr.PERFORMANCE_SCORE > 0
+                    GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
+                """,
+                    params,
+                )
+
+                # Build lookup dictionary: key is (player_id, cafc_player_id)
+                for stats_row in cursor.fetchall():
+                    key = (stats_row[0], stats_row[1])
+                    stats_lookup[key] = {
+                        'report_count': stats_row[2] or 0,
+                        'avg_score': round(stats_row[3], 1) if stats_row[3] else None
+                    }
+
+        # Now process all players using the pre-fetched stats
         players = []
-        for row in cursor.fetchall():
+        for row in player_rows:
             player_id = row[1]
             cafc_player_id = row[2]
 
@@ -7685,23 +7738,9 @@ async def get_player_list_detail(
                     - ((today.month, today.day) < (birthdate.month, birthdate.day))
                 )
 
-            # Get scout report statistics for this player
-            cursor.execute(
-                """
-                SELECT
-                    COUNT(*) as report_count,
-                    AVG(PERFORMANCE_SCORE) as avg_performance_score
-                FROM scout_reports
-                WHERE (PLAYER_ID = %s OR CAFC_PLAYER_ID = %s)
-                  AND PERFORMANCE_SCORE IS NOT NULL
-                  AND PERFORMANCE_SCORE > 0
-            """,
-                (player_id, cafc_player_id),
-            )
-
-            stats_row = cursor.fetchone()
-            report_count = stats_row[0] if stats_row else 0
-            avg_score = round(stats_row[1], 1) if stats_row and stats_row[1] else None
+            # OPTIMIZED: Look up stats from pre-fetched dictionary
+            stats_key = (player_id, cafc_player_id)
+            stats = stats_lookup.get(stats_key, {'report_count': 0, 'avg_score': None})
 
             # Build universal ID
             if cafc_player_id:
@@ -7726,8 +7765,8 @@ async def get_player_list_detail(
                     "squad_name": row[11],
                     "age": age,
                     "added_by_username": row[13],
-                    "report_count": report_count,
-                    "avg_performance_score": avg_score,
+                    "report_count": stats['report_count'],
+                    "avg_performance_score": stats['avg_score'],
                 }
             )
 

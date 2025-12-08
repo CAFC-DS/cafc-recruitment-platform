@@ -11,10 +11,17 @@ import {
   Modal,
   Table,
   Badge,
+  Card,
+  ButtonGroup,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useViewMode } from "../contexts/ViewModeContext";
+import {
+  getPerformanceScoreColor,
+  getContrastTextColor,
+} from "../utils/colorUtils";
 
 interface PlayerList {
   id: number;
@@ -72,6 +79,7 @@ interface PlayerSearchResult {
 const PlayerListsPage: React.FC = () => {
   const { user, loading: userLoading, isAdmin, isManager } = useCurrentUser();
   const navigate = useNavigate();
+  const { viewMode, setViewMode } = useViewMode();
 
   // Helper function to get player profile path from universal_id
   const getPlayerPath = (universalId: string): string => {
@@ -320,162 +328,351 @@ const PlayerListsPage: React.FC = () => {
 
       <Row>
         {/* Left Sidebar - Lists */}
-        <Col md={3} className="border-end">
+        <Col lg={3} md={4} className="border-end pe-4">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4>Player Lists</h4>
-            <Button variant="primary" size="sm" onClick={openCreateModal}>
-              + New List
+            <h4 className="mb-0">Player Lists</h4>
+            <Button
+              variant="dark"
+              size="sm"
+              onClick={openCreateModal}
+              style={{
+                borderRadius: "20px",
+                fontWeight: "600",
+                padding: "6px 16px"
+              }}
+            >
+              + New
             </Button>
           </div>
 
-          <ListGroup>
-            {lists.length === 0 ? (
-              <ListGroup.Item>
-                <em>No lists yet. Create one!</em>
-              </ListGroup.Item>
-            ) : (
-              lists.map((list) => (
-                <ListGroup.Item
-                  key={list.id}
-                  action
-                  active={selectedList?.id === list.id}
-                  onClick={() => handleSelectList(list)}
-                  className="d-flex justify-content-between align-items-start"
-                >
-                  <div className="flex-grow-1">
-                    <div className="fw-bold">{list.list_name}</div>
-                    <small className="text-muted">
-                      {list.player_count} player
-                      {list.player_count !== 1 ? "s" : ""}
-                    </small>
-                  </div>
-                  <div className="d-flex gap-1">
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditModal(list);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteList(list.id);
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </ListGroup.Item>
-              ))
-            )}
-          </ListGroup>
+          <div style={{ maxHeight: "75vh", overflowY: "auto" }}>
+            <ListGroup variant="flush">
+              {lists.length === 0 ? (
+                <div className="text-center py-4">
+                  <div style={{ fontSize: "3rem", opacity: 0.3 }}>📋</div>
+                  <p className="text-muted small mt-2">
+                    No lists yet.<br />Create your first one!
+                  </p>
+                </div>
+              ) : (
+                lists.map((list) => (
+                  <ListGroup.Item
+                    key={list.id}
+                    action
+                    active={selectedList?.id === list.id}
+                    onClick={() => handleSelectList(list)}
+                    className="border-0 border-bottom px-2 py-3"
+                    style={{
+                      cursor: "pointer",
+                      transition: "background-color 0.2s ease",
+                      backgroundColor: selectedList?.id === list.id ? "#f8f9fa" : "transparent"
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="flex-grow-1">
+                        <div className="fw-bold" style={{ fontSize: "0.95rem" }}>
+                          {list.list_name}
+                        </div>
+                        <small className="text-muted">
+                          {list.player_count} player{list.player_count !== 1 ? "s" : ""}
+                        </small>
+                      </div>
+                      <div className="d-flex gap-1">
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="p-1 text-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(list);
+                          }}
+                          style={{ fontSize: "0.85rem" }}
+                        >
+                          ✏️
+                        </Button>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="p-1 text-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteList(list.id);
+                          }}
+                          style={{ fontSize: "0.85rem" }}
+                        >
+                          🗑️
+                        </Button>
+                      </div>
+                    </div>
+                  </ListGroup.Item>
+                ))
+              )}
+            </ListGroup>
+          </div>
         </Col>
 
         {/* Right Content - List Detail */}
-        <Col md={9}>
+        <Col lg={9} md={8}>
           {!selectedList ? (
-            <div className="text-center text-muted mt-5">
-              <h5>Select a list to view details</h5>
-              <p>or create a new list to get started</p>
+            <div className="text-center mt-5 pt-5">
+              <div style={{ fontSize: "5rem", opacity: 0.2 }}>📋</div>
+              <h4 className="mt-3 text-muted">Select a list to view players</h4>
+              <p className="text-muted">or create a new list to get started</p>
+              <Button
+                variant="dark"
+                onClick={openCreateModal}
+                style={{ borderRadius: "20px", padding: "10px 24px" }}
+              >
+                Create Your First List
+              </Button>
             </div>
           ) : loadingDetail ? (
-            <div className="text-center mt-5">
-              <Spinner animation="border" />
+            <div className="text-center mt-5 pt-5">
+              <Spinner animation="border" style={{ width: "3rem", height: "3rem" }} />
+              <p className="mt-3 text-muted">Loading players...</p>
             </div>
           ) : (
             <>
-              <div className="d-flex justify-content-between align-items-center mb-4">
+              {/* Header with view toggle */}
+              <div className="d-flex justify-content-between align-items-start mb-4">
                 <div>
-                  <h2>{selectedList.list_name}</h2>
+                  <h2 className="mb-1">{selectedList.list_name}</h2>
                   {selectedList.description && (
-                    <p className="text-muted">{selectedList.description}</p>
+                    <p className="text-muted mb-2">{selectedList.description}</p>
                   )}
+                  <small className="text-muted">
+                    {selectedList.players.length} player{selectedList.players.length !== 1 ? "s" : ""}
+                  </small>
                 </div>
-                <Button
-                  variant="success"
-                  onClick={() => setShowAddPlayerModal(true)}
-                >
-                  + Add Player
-                </Button>
+                <div className="d-flex gap-2 align-items-center">
+                  {/* View Mode Toggle */}
+                  <ButtonGroup size="sm">
+                    <Button
+                      variant={viewMode === "cards" ? "dark" : "outline-dark"}
+                      onClick={() => setViewMode("cards")}
+                      style={{ minWidth: "70px" }}
+                    >
+                      Cards
+                    </Button>
+                    <Button
+                      variant={viewMode === "table" ? "dark" : "outline-dark"}
+                      onClick={() => setViewMode("table")}
+                      style={{ minWidth: "70px" }}
+                    >
+                      Table
+                    </Button>
+                  </ButtonGroup>
+                  <Button
+                    variant="success"
+                    onClick={() => setShowAddPlayerModal(true)}
+                    style={{ borderRadius: "20px", fontWeight: "600" }}
+                  >
+                    + Add Player
+                  </Button>
+                </div>
               </div>
 
               {selectedList.players.length === 0 ? (
-                <Alert variant="info">
-                  No players in this list yet. Click "Add Player" to get
-                  started.
-                </Alert>
+                <div className="text-center py-5 mt-4">
+                  <div style={{ fontSize: "4rem", opacity: 0.3 }}>⚽</div>
+                  <h5 className="mt-3">No players in this list yet</h5>
+                  <p className="text-muted">Add players to start building your list</p>
+                  <Button
+                    variant="success"
+                    onClick={() => setShowAddPlayerModal(true)}
+                    style={{ borderRadius: "20px", padding: "10px 24px" }}
+                  >
+                    + Add First Player
+                  </Button>
+                </div>
+              ) : viewMode === "cards" ? (
+                /* Cards View */
+                <Row className="g-3">
+                  {selectedList.players.map((player, index) => {
+                    const scoreColor = player.avg_performance_score
+                      ? getPerformanceScoreColor(player.avg_performance_score)
+                      : "#6b7280";
+                    const textColor = getContrastTextColor(scoreColor);
+
+                    return (
+                      <Col key={player.item_id} lg={4} md={6} sm={12}>
+                        <Card
+                          className="h-100 shadow-sm"
+                          style={{
+                            transition: "all 0.2s ease",
+                            cursor: "pointer",
+                            border: "1px solid #e5e7eb"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "translateY(-4px)";
+                            e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "translateY(0)";
+                            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+                          }}
+                          onClick={() => navigate(getPlayerPath(player.universal_id))}
+                        >
+                          <Card.Body className="p-3">
+                            <div className="d-flex justify-content-between align-items-start mb-3 pb-2 border-bottom">
+                              <div className="flex-grow-1">
+                                <h6 className="mb-1 fw-bold">{player.player_name}</h6>
+                                <small className="text-muted">
+                                  {player.position || "Unknown"} • Age {player.age || "N/A"}
+                                </small>
+                              </div>
+                              <Badge
+                                style={{
+                                  backgroundColor: scoreColor,
+                                  color: textColor,
+                                  fontWeight: "bold",
+                                  fontSize: "0.9rem",
+                                  padding: "6px 10px"
+                                }}
+                              >
+                                {player.avg_performance_score?.toFixed(1) || "N/A"}
+                              </Badge>
+                            </div>
+
+                            <div className="mb-2">
+                              <small className="text-muted d-block">
+                                🏟️ {player.squad_name || "Unknown Club"}
+                              </small>
+                              <small className="text-muted d-block">
+                                📊 {player.report_count} report{player.report_count !== 1 ? "s" : ""}
+                              </small>
+                            </div>
+
+                            <div className="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePlayer(player.item_id);
+                                }}
+                                style={{
+                                  borderRadius: "50%",
+                                  width: "32px",
+                                  height: "32px",
+                                  padding: "0",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
+                              >
+                                ×
+                              </Button>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
               ) : (
-                <Table striped bordered hover responsive>
-                  <thead>
+                /* Table View */
+                <Table hover responsive className="shadow-sm" style={{ backgroundColor: "white" }}>
+                  <thead style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
                     <tr>
-                      <th>#</th>
+                      <th style={{ width: "50px" }}>#</th>
                       <th>Player Name</th>
                       <th>Position</th>
                       <th>Club</th>
-                      <th>Age</th>
-                      <th>Avg Score</th>
-                      <th>Reports</th>
-                      <th>Actions</th>
+                      <th style={{ width: "80px" }}>Age</th>
+                      <th style={{ width: "100px" }}>Avg Score</th>
+                      <th style={{ width: "90px" }}>Reports</th>
+                      <th style={{ width: "90px" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedList.players.map((player, index) => (
-                      <tr key={player.item_id}>
-                        <td>{index + 1}</td>
-                        <td>
-                          <a
-                            href={getPlayerPath(player.universal_id)}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              navigate(getPlayerPath(player.universal_id));
-                            }}
-                            style={{
-                              cursor: "pointer",
-                              textDecoration: "none",
-                              color: "#0d6efd",
-                            }}
-                          >
-                            {player.player_name}
-                          </a>
-                        </td>
-                        <td>{player.position || "-"}</td>
-                        <td>{player.squad_name || "-"}</td>
-                        <td>{player.age !== null ? player.age : "-"}</td>
-                        <td>
-                          {player.avg_performance_score !== null ? (
-                            <Badge
-                              bg={
-                                player.avg_performance_score >= 7
-                                  ? "success"
-                                  : player.avg_performance_score >= 5
-                                    ? "warning"
-                                    : "danger"
-                              }
+                    {selectedList.players.map((player, index) => {
+                      const scoreColor = player.avg_performance_score
+                        ? getPerformanceScoreColor(player.avg_performance_score)
+                        : "#6b7280";
+                      const textColor = getContrastTextColor(scoreColor);
+
+                      return (
+                        <tr
+                          key={player.item_id}
+                          style={{
+                            cursor: "pointer",
+                            transition: "background-color 0.15s ease"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f8f9fa";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "transparent";
+                          }}
+                        >
+                          <td className="align-middle">
+                            <span className="text-muted fw-bold">{index + 1}</span>
+                          </td>
+                          <td className="align-middle">
+                            <a
+                              href={getPlayerPath(player.universal_id)}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate(getPlayerPath(player.universal_id));
+                              }}
+                              style={{
+                                cursor: "pointer",
+                                textDecoration: "none",
+                                color: "#000",
+                                fontWeight: "600"
+                              }}
                             >
-                              {player.avg_performance_score.toFixed(1)}
-                            </Badge>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td>{player.report_count}</td>
-                        <td>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => handleRemovePlayer(player.item_id)}
-                          >
-                            Remove
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                              {player.player_name}
+                            </a>
+                          </td>
+                          <td className="align-middle">{player.position || "-"}</td>
+                          <td className="align-middle">{player.squad_name || "-"}</td>
+                          <td className="align-middle text-center">{player.age !== null ? player.age : "-"}</td>
+                          <td className="align-middle text-center">
+                            {player.avg_performance_score !== null ? (
+                              <Badge
+                                style={{
+                                  backgroundColor: scoreColor,
+                                  color: textColor,
+                                  fontWeight: "bold",
+                                  fontSize: "0.85rem",
+                                  padding: "5px 10px"
+                                }}
+                              >
+                                {player.avg_performance_score.toFixed(1)}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
+                          </td>
+                          <td className="align-middle text-center">{player.report_count}</td>
+                          <td className="align-middle text-center">
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemovePlayer(player.item_id);
+                              }}
+                              style={{
+                                borderRadius: "50%",
+                                width: "32px",
+                                height: "32px",
+                                padding: "0",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "1.2rem",
+                                lineHeight: 1
+                              }}
+                            >
+                              ×
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </Table>
               )}
