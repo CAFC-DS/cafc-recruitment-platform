@@ -190,6 +190,11 @@ const AppNavbar: React.FC = () => {
                   🕵️ Intel
                 </Nav.Link>
                 {canAccessAnalytics && (
+                  <Nav.Link as={Link} to="/lists">
+                    📋 Lists
+                  </Nav.Link>
+                )}
+                {canAccessAnalytics && (
                   <Nav.Link as={Link} to="/analytics">
                     📊 Analytics
                   </Nav.Link>

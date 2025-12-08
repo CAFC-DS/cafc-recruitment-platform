@@ -7413,6 +7413,647 @@ async def submit_feedback(
         )
 
 
+# =====================================================
+# PLAYER LISTS ENDPOINTS
+# =====================================================
+
+
+# Pydantic models for player lists
+class PlayerListCreate(BaseModel):
+    list_name: str
+    description: Optional[str] = None
+
+
+class PlayerListUpdate(BaseModel):
+    list_name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class PlayerListAddPlayer(BaseModel):
+    player_id: Optional[int] = None  # For external players
+    cafc_player_id: Optional[int] = None  # For internal players
+    notes: Optional[str] = None
+
+
+class PlayerListReorder(BaseModel):
+    item_orders: List[dict]  # List of {item_id: int, display_order: int}
+
+
+@app.post("/player-lists")
+async def create_player_list(
+    list_data: PlayerListCreate, current_user: User = Depends(get_current_user)
+):
+    """Create a new player list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can create lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Create tables if they don't exist
+        try:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_lists (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_NAME VARCHAR(500),
+                    DESCRIPTION VARCHAR(2000),
+                    USER_ID INTEGER,
+                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID)
+                )
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_list_items (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_ID INTEGER,
+                    PLAYER_ID INTEGER,
+                    CAFC_PLAYER_ID INTEGER,
+                    DISPLAY_ORDER INTEGER DEFAULT 0,
+                    NOTES VARCHAR(2000),
+                    ADDED_BY INTEGER,
+                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID)
+                )
+            """
+            )
+        except Exception as e:
+            logging.warning(f"Tables may already exist: {e}")
+
+        # Insert new list
+        cursor.execute(
+            """
+            INSERT INTO player_lists (LIST_NAME, DESCRIPTION, USER_ID)
+            VALUES (%s, %s, %s)
+        """,
+            (list_data.list_name, list_data.description, current_user.id),
+        )
+
+        # Get the ID of the newly created list
+        cursor.execute("SELECT LAST_INSERT_ID()")
+        list_id = cursor.fetchone()[0]
+
+        conn.commit()
+
+        return {
+            "message": "List created successfully",
+            "list_id": list_id,
+            "list_name": list_data.list_name,
+        }
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error creating list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/player-lists")
+async def get_all_player_lists(current_user: User = Depends(get_current_user)):
+    """Get all player lists (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Get all lists with player counts and creator info
+        cursor.execute(
+            """
+            SELECT
+                pl.ID,
+                pl.LIST_NAME,
+                pl.DESCRIPTION,
+                pl.USER_ID,
+                pl.CREATED_AT,
+                pl.UPDATED_AT,
+                u.USERNAME,
+                u.FIRSTNAME,
+                u.LASTNAME,
+                COUNT(pli.ID) as PLAYER_COUNT
+            FROM player_lists pl
+            LEFT JOIN users u ON pl.USER_ID = u.ID
+            LEFT JOIN player_list_items pli ON pl.ID = pli.LIST_ID
+            GROUP BY pl.ID, pl.LIST_NAME, pl.DESCRIPTION, pl.USER_ID,
+                     pl.CREATED_AT, pl.UPDATED_AT, u.USERNAME, u.FIRSTNAME, u.LASTNAME
+            ORDER BY pl.UPDATED_AT DESC
+        """
+        )
+
+        lists = []
+        for row in cursor.fetchall():
+            lists.append(
+                {
+                    "id": row[0],
+                    "list_name": row[1],
+                    "description": row[2],
+                    "user_id": row[3],
+                    "created_at": row[4].isoformat() if row[4] else None,
+                    "updated_at": row[5].isoformat() if row[5] else None,
+                    "created_by_username": row[6],
+                    "created_by_firstname": row[7],
+                    "created_by_lastname": row[8],
+                    "player_count": row[9],
+                }
+            )
+
+        return {"lists": lists, "total": len(lists)}
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching lists: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/player-lists/{list_id}")
+async def get_player_list_detail(
+    list_id: int, current_user: User = Depends(get_current_user)
+):
+    """Get a specific player list with enriched player data"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Get list metadata
+        cursor.execute(
+            """
+            SELECT ID, LIST_NAME, DESCRIPTION, USER_ID, CREATED_AT, UPDATED_AT
+            FROM player_lists
+            WHERE ID = %s
+        """,
+            (list_id,),
+        )
+
+        list_row = cursor.fetchone()
+        if not list_row:
+            raise HTTPException(status_code=404, detail="List not found")
+
+        list_data = {
+            "id": list_row[0],
+            "list_name": list_row[1],
+            "description": list_row[2],
+            "user_id": list_row[3],
+            "created_at": list_row[4].isoformat() if list_row[4] else None,
+            "updated_at": list_row[5].isoformat() if list_row[5] else None,
+        }
+
+        # Get players in the list with enriched data
+        cursor.execute(
+            """
+            SELECT
+                pli.ID,
+                pli.PLAYER_ID,
+                pli.CAFC_PLAYER_ID,
+                pli.DISPLAY_ORDER,
+                pli.NOTES,
+                pli.ADDED_BY,
+                pli.CREATED_AT,
+                p.PLAYERNAME,
+                p.FIRSTNAME,
+                p.LASTNAME,
+                p.POSITION,
+                p.SQUADNAME,
+                p.BIRTHDATE,
+                u.USERNAME
+            FROM player_list_items pli
+            LEFT JOIN players p ON (
+                pli.PLAYER_ID = p.PLAYERID OR
+                pli.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID
+            )
+            LEFT JOIN users u ON pli.ADDED_BY = u.ID
+            WHERE pli.LIST_ID = %s
+            ORDER BY pli.DISPLAY_ORDER ASC, pli.CREATED_AT DESC
+        """,
+            (list_id,),
+        )
+
+        players = []
+        for row in cursor.fetchall():
+            player_id = row[1]
+            cafc_player_id = row[2]
+
+            # Calculate age from birthdate
+            age = None
+            if row[12]:
+                birthdate = row[12]
+                today = datetime.today()
+                age = (
+                    today.year
+                    - birthdate.year
+                    - ((today.month, today.day) < (birthdate.month, birthdate.day))
+                )
+
+            # Get scout report statistics for this player
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) as report_count,
+                    AVG(PERFORMANCE_SCORE) as avg_performance_score
+                FROM scout_reports
+                WHERE (PLAYER_ID = %s OR CAFC_PLAYER_ID = %s)
+                  AND PERFORMANCE_SCORE IS NOT NULL
+                  AND PERFORMANCE_SCORE > 0
+            """,
+                (player_id, cafc_player_id),
+            )
+
+            stats_row = cursor.fetchone()
+            report_count = stats_row[0] if stats_row else 0
+            avg_score = round(stats_row[1], 1) if stats_row and stats_row[1] else None
+
+            # Build universal ID
+            if cafc_player_id:
+                universal_id = f"internal_{cafc_player_id}"
+            else:
+                universal_id = f"external_{player_id}"
+
+            players.append(
+                {
+                    "item_id": row[0],
+                    "player_id": player_id,
+                    "cafc_player_id": cafc_player_id,
+                    "universal_id": universal_id,
+                    "display_order": row[3],
+                    "notes": row[4],
+                    "added_by": row[5],
+                    "created_at": row[6].isoformat() if row[6] else None,
+                    "player_name": row[7],
+                    "first_name": row[8],
+                    "last_name": row[9],
+                    "position": row[10],
+                    "squad_name": row[11],
+                    "age": age,
+                    "added_by_username": row[13],
+                    "report_count": report_count,
+                    "avg_performance_score": avg_score,
+                }
+            )
+
+        list_data["players"] = players
+
+        return list_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}")
+async def update_player_list(
+    list_id: int,
+    list_data: PlayerListUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update a player list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can update lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Build update query dynamically
+        update_fields = []
+        params = []
+
+        if list_data.list_name is not None:
+            update_fields.append("LIST_NAME = %s")
+            params.append(list_data.list_name)
+
+        if list_data.description is not None:
+            update_fields.append("DESCRIPTION = %s")
+            params.append(list_data.description)
+
+        if not update_fields:
+            return {"message": "No fields to update"}
+
+        update_fields.append("UPDATED_AT = %s")
+        params.append(datetime.utcnow())
+
+        params.append(list_id)
+
+        cursor.execute(
+            f"""
+            UPDATE player_lists
+            SET {', '.join(update_fields)}
+            WHERE ID = %s
+        """,
+            params,
+        )
+
+        conn.commit()
+
+        return {"message": "List updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.delete("/player-lists/{list_id}")
+async def delete_player_list(
+    list_id: int, current_user: User = Depends(get_current_user)
+):
+    """Delete a player list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can delete lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Delete all items in the list first
+        cursor.execute("DELETE FROM player_list_items WHERE LIST_ID = %s", (list_id,))
+
+        # Delete the list
+        cursor.execute("DELETE FROM player_lists WHERE ID = %s", (list_id,))
+
+        conn.commit()
+
+        return {"message": "List deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error deleting list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/player-lists/{list_id}/players")
+async def add_player_to_list(
+    list_id: int,
+    player_data: PlayerListAddPlayer,
+    current_user: User = Depends(get_current_user),
+):
+    """Add a player to a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can add players to lists"
+        )
+
+    if not player_data.player_id and not player_data.cafc_player_id:
+        raise HTTPException(
+            status_code=400, detail="Either player_id or cafc_player_id is required"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Check if player already in list
+        if player_data.player_id:
+            cursor.execute(
+                """
+                SELECT ID FROM player_list_items
+                WHERE LIST_ID = %s AND PLAYER_ID = %s
+            """,
+                (list_id, player_data.player_id),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT ID FROM player_list_items
+                WHERE LIST_ID = %s AND CAFC_PLAYER_ID = %s
+            """,
+                (list_id, player_data.cafc_player_id),
+            )
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=400, detail="Player already in this list"
+            )
+
+        # Get max display order
+        cursor.execute(
+            """
+            SELECT COALESCE(MAX(DISPLAY_ORDER), 0)
+            FROM player_list_items
+            WHERE LIST_ID = %s
+        """,
+            (list_id,),
+        )
+        max_order = cursor.fetchone()[0]
+
+        # Add player to list
+        cursor.execute(
+            """
+            INSERT INTO player_list_items
+            (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+            (
+                list_id,
+                player_data.player_id,
+                player_data.cafc_player_id,
+                max_order + 1,
+                player_data.notes,
+                current_user.id,
+            ),
+        )
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        return {"message": "Player added to list successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error adding player: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.delete("/player-lists/{list_id}/players/{item_id}")
+async def remove_player_from_list(
+    list_id: int, item_id: int, current_user: User = Depends(get_current_user)
+):
+    """Remove a player from a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins and managers can remove players from lists",
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if item exists
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (item_id, list_id),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Player not found in list")
+
+        # Delete the item
+        cursor.execute("DELETE FROM player_list_items WHERE ID = %s", (item_id,))
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        return {"message": "Player removed from list successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error removing player: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}/reorder")
+async def reorder_players_in_list(
+    list_id: int,
+    reorder_data: PlayerListReorder,
+    current_user: User = Depends(get_current_user),
+):
+    """Reorder players in a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can reorder players"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Update display orders
+        for item in reorder_data.item_orders:
+            cursor.execute(
+                """
+                UPDATE player_list_items
+                SET DISPLAY_ORDER = %s
+                WHERE ID = %s AND LIST_ID = %s
+            """,
+                (item["display_order"], item["item_id"], list_id),
+            )
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        return {"message": "Players reordered successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error reordering players: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 if __name__ == "__main__":
     import uvicorn
 
