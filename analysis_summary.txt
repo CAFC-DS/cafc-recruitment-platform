@@ -1,0 +1,12 @@
+ARCHIVED REPORTS IMPORT ANALYSIS
+================================================================================
+
+Total reports: 3215
+Can be imported: 2484 (77.3%)
+Will fail: 731 (22.7%)
+
+Missing players: 55
+Missing fixtures: 257
+Missing scouts: 1
+Skipped (too many fixtures for fuzzy match): 0
+Fuzzy fixture matches: 319

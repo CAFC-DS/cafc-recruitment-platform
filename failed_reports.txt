@@ -1,0 +1,5217 @@
+FAILED REPORTS
+================================================================================
+
+Row 21 (Master Scout Reports_new.xlsx):
+  Player: Matthew Sheridan
+  Fixture: Wellington Phoenix 1-0 Brisbane Roar
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Wellington Phoenix 1-0 Brisbane Roar on 2025-05-14
+
+Row 22 (Master Scout Reports_new.xlsx):
+  Player: Lukas Kelly-Heald
+  Fixture: Wellington Phoenix 1-0 Brisbane Roar
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Wellington Phoenix 1-0 Brisbane Roar on 2025-05-14
+
+Row 23 (Master Scout Reports_new.xlsx):
+  Player: Sam Klein
+  Fixture: Wellington Phoenix 1-0 Brisbane Roar
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Wellington Phoenix 1-0 Brisbane Roar on 2025-05-14
+
+Row 24 (Master Scout Reports_new.xlsx):
+  Player: Lucas Herrington
+  Fixture: Wellington Phoenix 1-0 Brisbane Roar
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Wellington Phoenix 1-0 Brisbane Roar on 2025-05-14
+
+Row 36 (Master Scout Reports_new.xlsx):
+  Player: Jordan Lawrence-Gabriel
+  Fixture: Blackpool 1-1 Lincoln City
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Jordan Lawrence-Gabriel
+
+Row 43 (Master Scout Reports_new.xlsx):
+  Player: Shinnosuke Fukuda
+  Fixture: Yamagata 0-1 Kyoto Sanga FC
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Yamagata 0-1 Kyoto Sanga FC on 2025-04-09
+
+Row 60 (Master Scout Reports_new.xlsx):
+  Player: Kim Ju-Sung
+  Fixture: FC Seoul 0-1 Jeonbuk
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Kim Ju-Sung
+
+Row 86 (Master Scout Reports_new.xlsx):
+  Player: Juho Talvitie
+  Fixture: Finland U21 0-2 Ukraine U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Finland U21 0-2 Ukraine U21 on 2025-06-15
+
+Row 87 (Master Scout Reports_new.xlsx):
+  Player: Eduard Kozik
+  Fixture: Finland U21 0-2 Ukraine U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Finland U21 0-2 Ukraine U21 on 2025-06-15
+
+Row 88 (Master Scout Reports_new.xlsx):
+  Player: Maksym Bragaru
+  Fixture: Finland U21 0-2 Ukraine U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Finland U21 0-2 Ukraine U21 on 2025-06-15
+
+Row 89 (Master Scout Reports_new.xlsx):
+  Player: Vladyslav Veleten
+  Fixture: Finland U21 0-2 Ukraine U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Finland U21 0-2 Ukraine U21 on 2025-06-15
+
+Row 98 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 99 (Master Scout Reports_new.xlsx):
+  Player: Owen Goodman
+  Fixture: AFC Wimbledon 0-0 Chesterfield
+  Scout: nan
+  Errors:
+    - Empty scout name
+
+Row 102 (Master Scout Reports_new.xlsx):
+  Player: Charlie Casper
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 103 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 104 (Master Scout Reports_new.xlsx):
+  Player: Reggie Rose
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 105 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 107 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 119 (Master Scout Reports_new.xlsx):
+  Player: Eduard Kozik
+  Fixture: Finland U21 0-2 Ukraine U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Finland U21 0-2 Ukraine U21 on 2025-06-15
+
+Row 120 (Master Scout Reports_new.xlsx):
+  Player: Josef Kvida
+  Fixture: Aris 2-1 Apollon
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Josef Kvida
+    - Fixture not found: Aris 2-1 Apollon on 2025-04-13
+
+Row 144 (Master Scout Reports_new.xlsx):
+  Player: Jaden Montnor
+  Fixture: Aris 2-1 Apollon
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Aris 2-1 Apollon on 2025-04-13
+
+Row 160 (Master Scout Reports_new.xlsx):
+  Player: Dimitar Mitov
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 164 (Master Scout Reports_new.xlsx):
+  Player: Olly Pimlott
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Player not found: Olly Pimlott
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 165 (Master Scout Reports_new.xlsx):
+  Player: Derrick Abu
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 166 (Master Scout Reports_new.xlsx):
+  Player: Vonnte Williams
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 174 (Master Scout Reports_new.xlsx):
+  Player: Adam Forrester
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 175 (Master Scout Reports_new.xlsx):
+  Player: Hamzat Balogun
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 176 (Master Scout Reports_new.xlsx):
+  Player: Lewis Payne
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 177 (Master Scout Reports_new.xlsx):
+  Player: Caelan Avenell
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 186 (Master Scout Reports_new.xlsx):
+  Player: Mats Knoester
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 190 (Master Scout Reports_new.xlsx):
+  Player: Logan Pye
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 191 (Master Scout Reports_new.xlsx):
+  Player: Nico Lawrence
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 192 (Master Scout Reports_new.xlsx):
+  Player: Joshua Stephenson
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 193 (Master Scout Reports_new.xlsx):
+  Player: Benjamin Fredrick
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 194 (Master Scout Reports_new.xlsx):
+  Player: Jayden Moore
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 209 (Master Scout Reports_new.xlsx):
+  Player: Collins Sichenje
+  Fixture: Vojvodina 0-3 Crvena zvezda
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Vojvodina 0-3 Crvena zvezda on 2025-05-21
+
+Row 211 (Master Scout Reports_new.xlsx):
+  Player: Alfie Dorrington
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 214 (Master Scout Reports_new.xlsx):
+  Player: Murray Campbell
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 215 (Master Scout Reports_new.xlsx):
+  Player: Joachim Kayi Sanda
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 216 (Master Scout Reports_new.xlsx):
+  Player: Benjamin Arthur
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 223 (Master Scout Reports_new.xlsx):
+  Player: Seid Korac
+  Fixture: Vojvodina 0-3 Crvena zvezda
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Vojvodina 0-3 Crvena zvezda on 2025-05-21
+
+Row 224 (Master Scout Reports_new.xlsx):
+  Player: Cammy Devlin
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 234 (Master Scout Reports_new.xlsx):
+  Player: Joe Bauress
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 235 (Master Scout Reports_new.xlsx):
+  Player: Troy Savage
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 236 (Master Scout Reports_new.xlsx):
+  Player: Cameron Bragg
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 237 (Master Scout Reports_new.xlsx):
+  Player: Ethan Brierley
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 245 (Master Scout Reports_new.xlsx):
+  Player: Romeo Akachukwu
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 255 (Master Scout Reports_new.xlsx):
+  Player: Tommy McDermott
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 256 (Master Scout Reports_new.xlsx):
+  Player: Moses Sesay
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 268 (Master Scout Reports_new.xlsx):
+  Player: Shayden Morris
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 273 (Master Scout Reports_new.xlsx):
+  Player: Franco Umeh
+  Fixture: Crystal Palace U21 3-1 Brighton & Hove Albion U21
+  Scout: Calvin Charlton
+  Errors:
+    - Player not found: Franco Umeh
+
+Row 274 (Master Scout Reports_new.xlsx):
+  Player: Julien Vetro
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 275 (Master Scout Reports_new.xlsx):
+  Player: Tom Tweedy
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 285 (Master Scout Reports_new.xlsx):
+  Player: Max Dickov
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 291 (Master Scout Reports_new.xlsx):
+  Player: Isaac Olaofe
+  Fixture: Peterborough United 1-1 Stockport County
+  Scout: Calvin Charlton
+  Errors:
+    - Player not found: Isaac Olaofe
+
+Row 292 (Master Scout Reports_new.xlsx):
+  Player: Elton Kabangu
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 293 (Master Scout Reports_new.xlsx):
+  Player: Kevin Nisbet
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 295 (Master Scout Reports_new.xlsx):
+  Player: Kian McMahon-Brown
+  Fixture: Queens Park Rangers U21 2-0 Burnley U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 2-0 Burnley U21 on 2025-04-30
+
+Row 296 (Master Scout Reports_new.xlsx):
+  Player: Will Merry
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 306 (Master Scout Reports_new.xlsx):
+  Player: Lawrence Shankland
+  Fixture: Heart of Midlothian FC 1-2 Aberdeen
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Heart of Midlothian FC 1-2 Aberdeen on 2025-04-19
+
+Row 310 (Master Scout Reports_new.xlsx):
+  Player: Princewill Ehibhatiomhan
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 311 (Master Scout Reports_new.xlsx):
+  Player: Iwan Morgan
+  Fixture: Southampton U21 0-2 Brentford U21
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Southampton U21 0-2 Brentford U21 on 2025-05-01
+
+Row 316 (Master Scout Reports_new.xlsx):
+  Player: Cherif Ndiaye
+  Fixture: Vojvodina 0-3 Crvena zvezda
+  Scout: Calvin Charlton
+  Errors:
+    - Fixture not found: Vojvodina 0-3 Crvena zvezda on 2025-05-21
+
+Row 337 (Master Scout Reports_new.xlsx):
+  Player: Mamadou Sangare
+  Fixture: SK Rapid Wien 1-1 Shamrock Rovers
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: SK Rapid Wien 1-1 Shamrock Rovers on 2025-11-28
+
+Row 350 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: REPEAT REPORT - KEEP BLANK FOR ID PURPOSES
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture date
+    - Empty scout name
+
+Row 367 (Master Scout Reports_new.xlsx):
+  Player: Giannis Niarchos
+  Fixture: FC Kosice 0-1 Slovan Bratislava
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: FC Kosice 0-1 Slovan Bratislava on 2025-03-12
+
+Row 385 (Master Scout Reports_new.xlsx):
+  Player: Elliot Stroud
+  Fixture: Mjallby 0-1 Hacken
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Mjallby 0-1 Hacken on 2025-03-08
+
+Row 393 (Master Scout Reports_new.xlsx):
+  Player: Silas Andersen
+  Fixture: Mjallby 0-1 Hacken
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Mjallby 0-1 Hacken on 2025-03-08
+
+Row 419 (Master Scout Reports_new.xlsx):
+  Player: Onel Hernández
+  Fixture: Crystal Palace 4-0 Norwich City
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Crystal Palace 4-0 Norwich City on 2025-08-27
+
+Row 422 (Master Scout Reports_new.xlsx):
+  Player: Topi Keskinen
+  Fixture: Finland U21 2-2 Netherlands U21
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Finland U21 2-2 Netherlands U21 on 2025-06-12
+
+Row 431 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: REPEAT REPORT - KEEP BLANK FOR ID PURPOSES
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture date
+    - Empty scout name
+
+Row 434 (Master Scout Reports_new.xlsx):
+  Player: Abdoulaye Faye
+  Fixture: Mjallby 0-1 Hacken
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Mjallby 0-1 Hacken on 2025-03-08
+
+Row 439 (Master Scout Reports_new.xlsx):
+  Player: Arlind Kurt
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 440 (Master Scout Reports_new.xlsx):
+  Player: Gabriel Ramaj
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 441 (Master Scout Reports_new.xlsx):
+  Player: Furkan Demir
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 442 (Master Scout Reports_new.xlsx):
+  Player: Hamza Gureler
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 443 (Master Scout Reports_new.xlsx):
+  Player: Burak Ince
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 444 (Master Scout Reports_new.xlsx):
+  Player: Kerr Smith
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 445 (Master Scout Reports_new.xlsx):
+  Player: Triston Rowe
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 446 (Master Scout Reports_new.xlsx):
+  Player: Todd Alcock
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 447 (Master Scout Reports_new.xlsx):
+  Player: Kane Taylor
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 457 (Master Scout Reports_new.xlsx):
+  Player: Luka Hyrylainen
+  Fixture: Finland U21 2-2 Netherlands U21
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Finland U21 2-2 Netherlands U21 on 2025-06-12
+
+Row 461 (Master Scout Reports_new.xlsx):
+  Player: Enver Kulasin
+  Fixture: Siroki Brijeg 0-1 Borac Banja Luka
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Siroki Brijeg 0-1 Borac Banja Luka on 2025-05-03
+
+Row 476 (Master Scout Reports_new.xlsx):
+  Player: Noel Tornqvist
+  Fixture: Mjallby 0-1 Hacken
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Mjallby 0-1 Hacken on 2025-03-08
+
+Row 494 (Master Scout Reports_new.xlsx):
+  Player: Naatan Skyttä
+  Fixture: Finland U21 2-2 Netherlands U21
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Finland U21 2-2 Netherlands U21 on 2025-06-12
+
+Row 495 (Master Scout Reports_new.xlsx):
+  Player: Noah Ohio
+  Fixture: Finland U21 2-2 Netherlands U21
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Finland U21 2-2 Netherlands U21 on 2025-06-12
+
+Row 507 (Master Scout Reports_new.xlsx):
+  Player: Kayne Van Oevelen
+  Fixture: Jong Ajax 0-2 Volendam
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Jong Ajax 0-2 Volendam on 2025-03-31
+
+Row 529 (Master Scout Reports_new.xlsx):
+  Player: Yannick Leliendal
+  Fixture: Jong Ajax 0-2 Volendam
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Jong Ajax 0-2 Volendam on 2025-03-31
+
+Row 531 (Master Scout Reports_new.xlsx):
+  Player: Lee Tae-Seok
+  Fixture: Ulsan HD 1-1 Pohang Steelers
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Lee Tae-Seok
+
+Row 547 (Master Scout Reports_new.xlsx):
+  Player: Kalidou Sidibe
+  Fixture: nan
+  Scout: Thomas White
+  Errors:
+    - Empty fixture
+
+Row 548 (Master Scout Reports_new.xlsx):
+  Player: Malik Mothersille
+  Fixture: Wrexham 2-2 Peterborough (P)
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Wrexham 2-2 Peterborough (P) on 2025-02-26
+
+Row 561 (Master Scout Reports_new.xlsx):
+  Player: Josh Stevenson
+  Fixture: Queens Park Rangers U21 3-1 Brentford U21
+  Scout: Darren Sarl
+  Errors:
+    - Player not found: Josh Stevenson
+    - Fixture not found: Queens Park Rangers U21 3-1 Brentford U21 on 2025-05-15
+
+Row 562 (Master Scout Reports_new.xlsx):
+  Player: Benjamin Arthur
+  Fixture: Queens Park Rangers U21 3-1 Brentford U21
+  Scout: Darren Sarl
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 3-1 Brentford U21 on 2025-05-15
+
+Row 563 (Master Scout Reports_new.xlsx):
+  Player: Alfie Tuck
+  Fixture: Queens Park Rangers U21 3-1 Brentford U21
+  Scout: Darren Sarl
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 3-1 Brentford U21 on 2025-05-15
+
+Row 565 (Master Scout Reports_new.xlsx):
+  Player: Kieran Morgan
+  Fixture: Queens Park Rangers U21 3-1 Brentford U21
+  Scout: Darren Sarl
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 3-1 Brentford U21 on 2025-05-15
+
+Row 568 (Master Scout Reports_new.xlsx):
+  Player: Franco Umeh
+  Fixture: Crystal Palace U21 6-0 Chelsea U21
+  Scout: Darren Sarl
+  Errors:
+    - Player not found: Franco Umeh
+
+Row 569 (Master Scout Reports_new.xlsx):
+  Player: Iwan Morgan
+  Fixture: Queens Park Rangers U21 3-1 Brentford U21
+  Scout: Darren Sarl
+  Errors:
+    - Fixture not found: Queens Park Rangers U21 3-1 Brentford U21 on 2025-05-15
+
+Row 573 (Master Scout Reports_new.xlsx):
+  Player: Luke Campbell
+  Fixture: Burnley U21 2-0 Chelsea U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Burnley U21 2-0 Chelsea U21 on 2025-04-07
+
+Row 601 (Master Scout Reports_new.xlsx):
+  Player: Abemly "Metinho" Silu
+  Fixture: FC Basel 1893 vs Yverdon Sport FC
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Abemly "Metinho" Silu
+
+Row 629 (Master Scout Reports_new.xlsx):
+  Player: Adrian Kapralik
+  Fixture: Slovakia U21 3-3 Netherlands U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Slovakia U21 3-3 Netherlands U21 on 2024-11-14
+
+Row 630 (Master Scout Reports_new.xlsx):
+  Player: Nino Marcelli
+  Fixture: Slovakia U21 3-3 Netherlands U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Slovakia U21 3-3 Netherlands U21 on 2024-11-14
+
+Row 640 (Master Scout Reports_new.xlsx):
+  Player: Noah Ohio
+  Fixture: Slovakia U21 3-3 Netherlands U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Slovakia U21 3-3 Netherlands U21 on 2024-11-14
+
+Row 646 (Master Scout Reports_new.xlsx):
+  Player: Ishé Samuels-Smith
+  Fixture: Burnley U21 2-0 Chelsea U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Burnley U21 2-0 Chelsea U21 on 2025-04-07
+
+Row 654 (Master Scout Reports_new.xlsx):
+  Player: Ümit Akdağ
+  Fixture: Romania U21 1-2 Slovakia U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Romania U21 1-2 Slovakia U21 on 2025-06-17
+
+Row 666 (Master Scout Reports_new.xlsx):
+  Player: Tomas Rigo
+  Fixture: Romania U21 1-2 Slovakia U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Romania U21 1-2 Slovakia U21 on 2025-06-17
+
+Row 668 (Master Scout Reports_new.xlsx):
+  Player: Donnell McNeilly
+  Fixture: Burnley U21 2-0 Chelsea U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Burnley U21 2-0 Chelsea U21 on 2025-04-07
+
+Row 670 (Master Scout Reports_new.xlsx):
+  Player: Rareș Ilie
+  Fixture: Romania U21 1-2 Slovakia U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Romania U21 1-2 Slovakia U21 on 2025-06-17
+
+Row 671 (Master Scout Reports_new.xlsx):
+  Player: Triston Rowe
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 674 (Master Scout Reports_new.xlsx):
+  Player: Furkan Demir
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 684 (Master Scout Reports_new.xlsx):
+  Player: Arlind Kurt
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 691 (Master Scout Reports_new.xlsx):
+  Player: Kang Min-Woo
+  Fixture: Ulsan HD 1-1 Pohang Steelers
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Kang Min-Woo
+
+Row 695 (Master Scout Reports_new.xlsx):
+  Player: Richard King
+  Fixture: Jamaica 3-2 Trinidad and Tobago
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Jamaica 3-2 Trinidad and Tobago on 2025-05-27
+
+Row 703 (Master Scout Reports_new.xlsx):
+  Player: Kerr Smith
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 708 (Master Scout Reports_new.xlsx):
+  Player: Gabriel Ramaj
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 709 (Master Scout Reports_new.xlsx):
+  Player: Hamza Gureler
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 729 (Master Scout Reports_new.xlsx):
+  Player: Adrian Kapralik
+  Fixture: Romania U21 1-2 Slovakia U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Romania U21 1-2 Slovakia U21 on 2025-06-17
+
+Row 732 (Master Scout Reports_new.xlsx):
+  Player: Isaac Olaofe
+  Fixture: Stockport County 1-1 Orient
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: Isaac Olaofe
+
+Row 739 (Master Scout Reports_new.xlsx):
+  Player: Abemly "Metinho" Silu
+  Fixture: Winterthur 0-2 Basel
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Abemly "Metinho" Silu
+
+Row 747 (Master Scout Reports_new.xlsx):
+  Player: Todd Alcock
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2024-11-12
+
+Row 751 (Master Scout Reports_new.xlsx):
+  Player: Connor Metcalf
+  Fixture: Hallescher 2-3E St.Pauli
+  Scout: Elliot Young
+  Errors:
+    - Could not parse fixture: Hallescher 2-3E St.Pauli
+
+Row 784 (Master Scout Reports_new.xlsx):
+  Player: Burak Ince
+  Fixture: Turkey U21 1-0 Albania U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Turkey U21 1-0 Albania U21 on 2025-06-08
+
+Row 792 (Master Scout Reports_new.xlsx):
+  Player: Yoon Jae-Seok
+  Fixture: Ulsan HD 1-1 Pohang Steelers
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Yoon Jae-Seok
+
+Row 797 (Master Scout Reports_new.xlsx):
+  Player: Kane Taylor
+  Fixture: AFC Barrow 3-0 Aston Villa U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: AFC Barrow 3-0 Aston Villa U21 on 2025-11-12
+
+Row 801 (Master Scout Reports_new.xlsx):
+  Player: Esteban Crucci
+  Fixture: Venezuela U20 1-0 Uruguay
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Venezuela U20 1-0 Uruguay on 2025-01-31
+
+Row 802 (Master Scout Reports_new.xlsx):
+  Player: Isaac Olaofe
+  Fixture: Stockport County 2-1 Huddersfield Town
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Isaac Olaofe
+
+Row 803 (Master Scout Reports_new.xlsx):
+  Player: Rumarn Burrell
+  Fixture: Jamaica 3-2 Trinidad and Tobago
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Jamaica 3-2 Trinidad and Tobago on 2025-05-27
+
+Row 819 (Master Scout Reports_new.xlsx):
+  Player: Oli Coker
+  Fixture: Southend United 1-1 York City
+  Scout: Liam Burden
+  Errors:
+    - Player not found: Oli Coker
+
+Row 821 (Master Scout Reports_new.xlsx):
+  Player: Tyler Bindon
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 822 (Master Scout Reports_new.xlsx):
+  Player: Svetoslav Vutsov
+  Fixture: Slavia Sofia v Hebar 1918
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Slavia Sofia v Hebar 1918 on 2024-12-05
+
+Row 830 (Master Scout Reports_new.xlsx):
+  Player: Milan Van Ewijk
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 832 (Master Scout Reports_new.xlsx):
+  Player: Nick Freeman
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 838 (Master Scout Reports_new.xlsx):
+  Player: Adam Davies
+  Fixture: Burnley 2-0 Sheffield United
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Burnley 2-0 Sheffield United on 2023-04-10
+
+Row 839 (Master Scout Reports_new.xlsx):
+  Player: Harvey Knibbs
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 850 (Master Scout Reports_new.xlsx):
+  Player: Edgardo Farina
+  Fixture: Bolivia 1-3 Panama- Copa America
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Bolivia 1-3 Panama- Copa America on 2024-07-02
+
+Row 854 (Master Scout Reports_new.xlsx):
+  Player: Damola Ajayi
+  Fixture: Arsenal U21 2-5 Tottenham U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Arsenal U21 2-5 Tottenham U21 on 2024-10-05
+
+Row 857 (Master Scout Reports_new.xlsx):
+  Player: Arthur Read
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 860 (Master Scout Reports_new.xlsx):
+  Player: Alex Gilbert
+  Fixture: Middlesbrough 0:1 Blackburn Rovers
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Middlesbrough 0:1 Blackburn Rovers on 2025-01-11
+
+Row 874 (Master Scout Reports_new.xlsx):
+  Player: Kwame Poku
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 881 (Master Scout Reports_new.xlsx):
+  Player: Brendan Sarpong-Wiredu
+  Fixture: Grimsby Town 2-1 Fleetwood Town
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Brendan Sarpong-Wiredu
+
+Row 889 (Master Scout Reports_new.xlsx):
+  Player: Kaide Gordon
+  Fixture: Poland U20 1-1 England U20
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Poland U20 1-1 England U20 on 2024-11-19
+
+Row 891 (Master Scout Reports_new.xlsx):
+  Player: Elkan Baggott
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 893 (Master Scout Reports_new.xlsx):
+  Player: Kristian Pedersen
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 901 (Master Scout Reports_new.xlsx):
+  Player: Kanayo Megwa
+  Fixture: Airdrieonians 2-2 Partick Thistle
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Airdrieonians 2-2 Partick Thistle on 2024-05-07
+
+Row 905 (Master Scout Reports_new.xlsx):
+  Player: Josh Eccles
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 917 (Master Scout Reports_new.xlsx):
+  Player: Ismail Oulad M'Hand
+  Fixture: Arsenal U21 vs Nottingham Forest U21
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Arsenal U21 vs Nottingham Forest U21 on 2025-01-23
+
+Row 920 (Master Scout Reports_new.xlsx):
+  Player: Kane Smith
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 924 (Master Scout Reports_new.xlsx):
+  Player: Mandela Egbo
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 926 (Master Scout Reports_new.xlsx):
+  Player: Luke Faxon
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 937 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Getafe 0:0 Real Sociedad
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: John Patrick Finn
+
+Row 939 (Master Scout Reports_new.xlsx):
+  Player: Tommy Leigh
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 940 (Master Scout Reports_new.xlsx):
+  Player: Kamarai Simon-Swyer
+  Fixture: West Ham United U21 5-1 Southampton U21
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Kamarai Simon-Swyer
+
+Row 941 (Master Scout Reports_new.xlsx):
+  Player: Jordan Courtney-Perkins
+  Fixture: Qatar U23 0-0 Australia U23
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Qatar U23 0-0 Australia U23 on 2024-04-21
+
+Row 944 (Master Scout Reports_new.xlsx):
+  Player: Tyrese Hall
+  Fixture: Arsenal U21 2-5 Tottenham U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Arsenal U21 2-5 Tottenham U21 on 2024-10-05
+
+Row 946 (Master Scout Reports_new.xlsx):
+  Player: Alex Stepien-Iwumene
+  Fixture: Chelsea U21 2-1 Derby County U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Chelsea U21 2-1 Derby County U21 on 2025-01-31
+
+Row 948 (Master Scout Reports_new.xlsx):
+  Player: Ricky-Jade Jones
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 951 (Master Scout Reports_new.xlsx):
+  Player: Josh Honohan
+  Fixture: Sligo Rovers 2-1 Excelsior
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Sligo Rovers 2-1 Excelsior on 2025-03-03
+
+Row 956 (Master Scout Reports_new.xlsx):
+  Player: Jonathan Williams
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 961 (Master Scout Reports_new.xlsx):
+  Player: Josh Edwards
+  Fixture: Airdrieonians 2-1 Dunfermline Athletic
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Airdrieonians 2-1 Dunfermline Athletic on 2024-04-13
+
+Row 962 (Master Scout Reports_new.xlsx):
+  Player: James Shea
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 969 (Master Scout Reports_new.xlsx):
+  Player: Connal Trueman
+  Fixture: Bristol Rovers v Crawley Town 16.11.24 Wycombe Wanderers v Crawley Town 12.11.24 Crawley Town v Huddersfield Town 09.11.24
+  Scout: Stephen Henderson
+  Errors:
+    - Empty fixture date
+
+Row 971 (Master Scout Reports_new.xlsx):
+  Player: Kaheim Dixon
+  Fixture: Arnett Gardens 2-1 Harbour View
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Arnett Gardens 2-1 Harbour View on 2024-01-30
+
+Row 979 (Master Scout Reports_new.xlsx):
+  Player: Momodou Nije
+  Fixture: KFUM 0-1 Tromsø
+  Scout: Thomas White
+  Errors:
+    - Player not found: Momodou Nije
+
+Row 980 (Master Scout Reports_new.xlsx):
+  Player: Svetoslav Vutsov
+  Fixture: Slavia Sofia 0-1 Ludogorets
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Slavia Sofia 0-1 Ludogorets on 2024-09-18
+
+Row 981 (Master Scout Reports_new.xlsx):
+  Player: Filip Bilbija
+  Fixture: Hamburger SV vs SC Paderborn 07
+  Scout: Greg Spires
+  Errors:
+    - Fixture not found: Hamburger SV vs SC Paderborn 07 on 2024-09-29
+
+Row 982 (Master Scout Reports_new.xlsx):
+  Player: Robbie McKenzie
+  Fixture: Swansea City 3-1 Gillingham
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Swansea City 3-1 Gillingham on 2024-08-13
+
+Row 989 (Master Scout Reports_new.xlsx):
+  Player: Nathan Thompson
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 994 (Master Scout Reports_new.xlsx):
+  Player: Jay Robinson
+  Fixture: Southampton U21 2-2 Swansea U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Southampton U21 2-2 Swansea U21 on 2025-01-31
+
+Row 998 (Master Scout Reports_new.xlsx):
+  Player: Brendan Sarpong-Wiredu
+  Fixture: Fleetwood 2-2 Notts County
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: Brendan Sarpong-Wiredu
+
+Row 1004 (Master Scout Reports_new.xlsx):
+  Player: Calvin Brackelmann
+  Fixture: Hamburger SV vs SC Paderborn 07
+  Scout: Greg Spires
+  Errors:
+    - Fixture not found: Hamburger SV vs SC Paderborn 07 on 2024-09-29
+
+Row 1006 (Master Scout Reports_new.xlsx):
+  Player: Oliver Dovin
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 1008 (Master Scout Reports_new.xlsx):
+  Player: Ibrahim Cissoko
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-24
+
+Row 1009 (Master Scout Reports_new.xlsx):
+  Player: Lewis Gibson
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1014 (Master Scout Reports_new.xlsx):
+  Player: Harvey Vale
+  Fixture: West Ham United 3-2 Chelsea
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: West Ham United 3-2 Chelsea on 2024-09-27
+
+Row 1024 (Master Scout Reports_new.xlsx):
+  Player: Artur Gajdos
+  Fixture: Spain U21 0:2 Slovakia U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Spain U21 0:2 Slovakia U21 on 2024-03-21
+
+Row 1025 (Master Scout Reports_new.xlsx):
+  Player: Junior Olaitan
+  Fixture: Benin 1:0 Rwanda
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Benin 1:0 Rwanda on 2024-06-06
+
+Row 1028 (Master Scout Reports_new.xlsx):
+  Player: Ethan Coleman
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1032 (Master Scout Reports_new.xlsx):
+  Player: Jadel Katongo
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1036 (Master Scout Reports_new.xlsx):
+  Player: Jayden Moore
+  Fixture: Woking 4- 4 Southampton U21
+  Scout: Thomas White
+  Errors:
+    - Could not parse fixture: Woking 4- 4 Southampton U21
+
+Row 1048 (Master Scout Reports_new.xlsx):
+  Player: Jacob Widell Zetterström
+  Fixture: Malmö FF (P) 1:1 Djurgarden
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Malmö FF (P) 1:1 Djurgarden on 2024-05-01
+
+Row 1053 (Master Scout Reports_new.xlsx):
+  Player: Malcolm Ebiowei
+  Fixture: Crystal Palace U21 v RB Leipzig U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crystal Palace U21 v RB Leipzig U21 on 2025-01-17
+
+Row 1055 (Master Scout Reports_new.xlsx):
+  Player: Ben Wilson
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1056 (Master Scout Reports_new.xlsx):
+  Player: Isaac Olaofe
+  Fixture: Wigan Athletic 0-2 Stockport County
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: Isaac Olaofe
+
+Row 1057 (Master Scout Reports_new.xlsx):
+  Player: Jak Alnwick
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1060 (Master Scout Reports_new.xlsx):
+  Player: Jeon Byung-Kwan (Jeonbuk Motors)
+  Fixture: Ulsan Hyundai 1-0 Jeonbuk Motors
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Jeon Byung-Kwan (Jeonbuk Motors)
+
+Row 1064 (Master Scout Reports_new.xlsx):
+  Player: Julian Eyestone
+  Fixture: Brentford B v Chelsea U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Brentford B v Chelsea U21 on 2025-01-27
+
+Row 1071 (Master Scout Reports_new.xlsx):
+  Player: Laurence Maguire
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1079 (Master Scout Reports_new.xlsx):
+  Player: Trivante Stewart (Radnicki Nis)
+  Fixture: Radnicki Nis 1-0 Backa Topola
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Trivante Stewart (Radnicki Nis)
+
+Row 1083 (Master Scout Reports_new.xlsx):
+  Player: Karl Hein
+  Fixture: Estonia 0-2 Austria
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Estonia 0-2 Austria on 2023-11-16
+
+Row 1085 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Navalcarnero 0-0 Getafe B
+  Scout: Thomas White
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Navalcarnero 0-0 Getafe B on 2024-03-17
+
+Row 1088 (Master Scout Reports_new.xlsx):
+  Player: Emmanuel Fernandez
+  Fixture: Peterborough vs Northampton Town
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Peterborough vs Northampton Town on 2024-12-17
+
+Row 1090 (Master Scout Reports_new.xlsx):
+  Player: Simon Eastwood
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 1099 (Master Scout Reports_new.xlsx):
+  Player: Lee Ho-Jae
+  Fixture: Incheon United 1-3 Pohang Steelers
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Lee Ho-Jae
+
+Row 1101 (Master Scout Reports_new.xlsx):
+  Player: Callum Hendry
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1103 (Master Scout Reports_new.xlsx):
+  Player: Sam Sherring
+  Fixture: Milton Keynes Dons 1:1 Portsmouth (live)
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Milton Keynes Dons 1:1 Portsmouth (live) on 2024-07-30
+
+Row 1104 (Master Scout Reports_new.xlsx):
+  Player: Jesse Derry
+  Fixture: Crystal Palace U21 v RB Leipzig U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crystal Palace U21 v RB Leipzig U21 on 2025-01-17
+
+Row 1105 (Master Scout Reports_new.xlsx):
+  Player: Adam Davies
+  Fixture: Wrexham 3-3 Sheffield United
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Wrexham 3-3 Sheffield United on 2023-01-29
+
+Row 1116 (Master Scout Reports_new.xlsx):
+  Player: William Jenkins Davies
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1117 (Master Scout Reports_new.xlsx):
+  Player: Fin Stevens
+  Fixture: Wales U21 1:2 Czech Republic U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wales U21 1:2 Czech Republic U21 on 2024-10-11
+
+Row 1118 (Master Scout Reports_new.xlsx):
+  Player: Louis Munteanu
+  Fixture: Romania U21 3-1 Switzerland U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Romania U21 3-1 Switzerland U21 on 2024-10-15
+
+Row 1119 (Master Scout Reports_new.xlsx):
+  Player: Noah Ganaus
+  Fixture: Jahn Regensburg 2-2 Wehen Wiesbaden
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Jahn Regensburg 2-2 Wehen Wiesbaden on 2024-05-24
+
+Row 1124 (Master Scout Reports_new.xlsx):
+  Player: Harry Amass
+  Fixture: Manchester United U21 1-3 FC Nordsjaelland U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Manchester United U21 1-3 FC Nordsjaelland U21 on 2025-01-21
+
+Row 1126 (Master Scout Reports_new.xlsx):
+  Player: Jaheim Headley
+  Fixture: Bolton 3-1 Huddersfield Town
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Bolton 3-1 Huddersfield Town on 2024-12-10
+
+Row 1127 (Master Scout Reports_new.xlsx):
+  Player: Harvey White
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1130 (Master Scout Reports_new.xlsx):
+  Player: Damerai Singh-Hurditt
+  Fixture: Milton Keynes Dons 2:2 Arsenal U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Milton Keynes Dons 2:2 Arsenal U21 on 2024-10-08
+
+Row 1136 (Master Scout Reports_new.xlsx):
+  Player: Medin Memeti
+  Fixture: China PR U20 1-2 Australia U20
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: China PR U20 1-2 Australia U20 on 2025-02-18
+
+Row 1139 (Master Scout Reports_new.xlsx):
+  Player: Viv Solomon-Otabor
+  Fixture: Cangzhou Mighty Lions 0-1 Shanghai Port
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Cangzhou Mighty Lions 0-1 Shanghai Port on 2024-10-27
+
+Row 1143 (Master Scout Reports_new.xlsx):
+  Player: Ivan Minchev
+  Fixture: Slavia Sofia 2-1 Lokomotiv Plovdiv
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Slavia Sofia 2-1 Lokomotiv Plovdiv on 2024-11-09
+
+Row 1145 (Master Scout Reports_new.xlsx):
+  Player: Bleon Kurtulus
+  Fixture: Sweden U18 1-0 Denmark U18
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Sweden U18 1-0 Denmark U18 on 2024-09-10
+
+Row 1147 (Master Scout Reports_new.xlsx):
+  Player: Josh Stephenson
+  Fixture: Brentford B 3:2 Charlton Athletic U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Brentford B 3:2 Charlton Athletic U21 on 2025-01-07
+
+Row 1148 (Master Scout Reports_new.xlsx):
+  Player: Karl Hein
+  Fixture: Estonia 0-3 Belgium
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Estonia 0-3 Belgium on 2023-06-20
+
+Row 1152 (Master Scout Reports_new.xlsx):
+  Player: Junior Olaitan
+  Fixture: Libya 0-0 Benin
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Libya 0-0 Benin on 2024-11-18
+
+Row 1153 (Master Scout Reports_new.xlsx):
+  Player: Damola Ajayi
+  Fixture: Exeter City 2-0 Tottenham Hotspur U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Exeter City 2-0 Tottenham Hotspur U21 on 2024-09-24
+
+Row 1157 (Master Scout Reports_new.xlsx):
+  Player: Jack Payne
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1161 (Master Scout Reports_new.xlsx):
+  Player: Luther Wildin
+  Fixture: Stevenage 3-0 Barnsley
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Luther Wildin
+
+Row 1168 (Master Scout Reports_new.xlsx):
+  Player: Nathan Butler-Oyedeji
+  Fixture: Milton Keynes Dons 2:2 Arsenal U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Milton Keynes Dons 2:2 Arsenal U21 on 2024-10-08
+
+Row 1169 (Master Scout Reports_new.xlsx):
+  Player: Kornelius Hansen
+  Fixture: Almere City 0-1 AZ
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Kornelius Hansen
+
+Row 1172 (Master Scout Reports_new.xlsx):
+  Player: Cheick Oumar Konate
+  Fixture: nan
+  Scout: Thomas White
+  Errors:
+    - Empty fixture
+
+Row 1182 (Master Scout Reports_new.xlsx):
+  Player: Pierce Charles
+  Fixture: Luxembourg - Northern Ireland 18.11.24 Northern Ireland - Belarus 15.11.24 Brentford - Sheffield Wednesday 29.10.24
+  Scout: Stephen Henderson
+  Errors:
+    - Empty fixture date
+
+Row 1186 (Master Scout Reports_new.xlsx):
+  Player: Beryly Lubala
+  Fixture: Wycombe Wanderers 3-2 Watford
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Beryly Lubala
+
+Row 1190 (Master Scout Reports_new.xlsx):
+  Player: Sonny Perkins
+  Fixture: Leyton Orient vs Newport County
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Leyton Orient vs Newport County on 2024-08-13
+
+Row 1199 (Master Scout Reports_new.xlsx):
+  Player: Matthew Cox
+  Fixture: Cheltenham v Bristol Rovers- Bristol Rovers v Exeter City - Bristol Rovers v Blackpool
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Cheltenham v Bristol Rovers- Bristol Rovers v Exeter City - Bristol Rovers v Blackpool on 2023-04-13
+
+Row 1206 (Master Scout Reports_new.xlsx):
+  Player: Ishe Samuels-Smith
+  Fixture: Chelsea U21 2-1 Derby County U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Chelsea U21 2-1 Derby County U21 on 2025-01-31
+
+Row 1214 (Master Scout Reports_new.xlsx):
+  Player: Chris Conn-Clarke
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1218 (Master Scout Reports_new.xlsx):
+  Player: Joe Gauci
+  Fixture: Melbourne Victory vs Adelaide United
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Melbourne Victory vs Adelaide United on 2023-12-23
+
+Row 1222 (Master Scout Reports_new.xlsx):
+  Player: Daniel Fila
+  Fixture: Czech Republic U21 4:1 Iceland U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Czech Republic U21 4:1 Iceland U21 on 2024-03-26
+
+Row 1224 (Master Scout Reports_new.xlsx):
+  Player: Jovon Makama
+  Fixture: Crawley Town v Lincoln City
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crawley Town v Lincoln City on 2024-11-30
+
+Row 1226 (Master Scout Reports_new.xlsx):
+  Player: Gaga Slonina
+  Fixture: Stevenage 3-0 Barnsley
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Gaga Slonina
+
+Row 1227 (Master Scout Reports_new.xlsx):
+  Player: Raees Bangura-Williams
+  Fixture: Watford U21 1-3 Millwall U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Watford U21 1-3 Millwall U21 on 2024-12-02
+
+Row 1228 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Navalcarnero 3-2 Getafe B
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Navalcarnero 3-2 Getafe B on 2024-10-27
+
+Row 1232 (Master Scout Reports_new.xlsx):
+  Player: Kaheim Dixon
+  Fixture: Cavalier 3-1 Arnett Gardens
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Cavalier 3-1 Arnett Gardens on 2024-05-13
+
+Row 1238 (Master Scout Reports_new.xlsx):
+  Player: Emmanuel Osho
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1242 (Master Scout Reports_new.xlsx):
+  Player: Kristian Pedersen
+  Fixture: Swansea City 3-1 Gillingham
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Swansea City 3-1 Gillingham on 2024-08-13
+
+Row 1263 (Master Scout Reports_new.xlsx):
+  Player: Jewison Bennette
+  Fixture: Saudi Arabia 1-3 Costa Rica
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Saudi Arabia 1-3 Costa Rica on 2023-09-08
+
+Row 1266 (Master Scout Reports_new.xlsx):
+  Player: Luca Ashby-Hammond
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1269 (Master Scout Reports_new.xlsx):
+  Player: Max Ehmer
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1276 (Master Scout Reports_new.xlsx):
+  Player: Apostolos Stamatelopoulos
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1282 (Master Scout Reports_new.xlsx):
+  Player: Murat Satin
+  Fixture: SC Rheindorf Altach 1-2 Grazer AK 1902
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: SC Rheindorf Altach 1-2 Grazer AK 1902 on 2025-02-08
+
+Row 1284 (Master Scout Reports_new.xlsx):
+  Player: Coli Saco
+  Fixture: Ancona 0-0 Lucchese
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Ancona 0-0 Lucchese on 2024-04-28
+
+Row 1291 (Master Scout Reports_new.xlsx):
+  Player: Nicolas Milanovic
+  Fixture: Qatar U23 0-0 Australia U23
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Qatar U23 0-0 Australia U23 on 2024-04-21
+
+Row 1306 (Master Scout Reports_new.xlsx):
+  Player: Lewis Warrington
+  Fixture: Leyton Orient vs Newport County
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Leyton Orient vs Newport County on 2024-08-13
+
+Row 1307 (Master Scout Reports_new.xlsx):
+  Player: Louis Appere
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1312 (Master Scout Reports_new.xlsx):
+  Player: Kaheim Dixon
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1313 (Master Scout Reports_new.xlsx):
+  Player: Timotej Jambor
+  Fixture: Spain U21 0:2 Slovakia U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Spain U21 0:2 Slovakia U21 on 2024-03-21
+
+Row 1316 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Rayo Majadahonda vs Getafe B
+  Scout: Zak Mansuri
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Rayo Majadahonda vs Getafe B on 2024-09-29
+
+Row 1322 (Master Scout Reports_new.xlsx):
+  Player: Adam Davies
+  Fixture: Sheffield United 3-1 Wrexham
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Sheffield United 3-1 Wrexham on 2023-02-07
+
+Row 1324 (Master Scout Reports_new.xlsx):
+  Player: Matt Ingram
+  Fixture: Luton Town 0-0 Hull City
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Luton Town 0-0 Hull City on 2023-05-08
+
+Row 1328 (Master Scout Reports_new.xlsx):
+  Player: Fiacre Kelleher
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1329 (Master Scout Reports_new.xlsx):
+  Player: Armandas Kucys
+  Fixture: Clje 1:1 Slovan Bratislava
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Clje 1:1 Slovan Bratislava on 2024-07-24
+
+Row 1330 (Master Scout Reports_new.xlsx):
+  Player: Abraham Odoh
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1336 (Master Scout Reports_new.xlsx):
+  Player: Frederick Issaka
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Frederick Issaka
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1345 (Master Scout Reports_new.xlsx):
+  Player: Abraham Kanu
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1346 (Master Scout Reports_new.xlsx):
+  Player: Oliver Middleton
+  Fixture: Auckland United 3-3 Napier City Rovers
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Auckland United 3-3 Napier City Rovers on 2023-11-18
+
+Row 1353 (Master Scout Reports_new.xlsx):
+  Player: Yacine Bourhane
+  Fixture: Esbjerg 0-2 Aalborg BK
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Esbjerg 0-2 Aalborg BK on 2024-10-30
+
+Row 1354 (Master Scout Reports_new.xlsx):
+  Player: Luke Offord
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1356 (Master Scout Reports_new.xlsx):
+  Player: Antonio Tikvic
+  Fixture: SC Rheindorf Altach 1-2 Grazer AK 1902
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: SC Rheindorf Altach 1-2 Grazer AK 1902 on 2025-02-08
+
+Row 1357 (Master Scout Reports_new.xlsx):
+  Player: Armani Little
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1360 (Master Scout Reports_new.xlsx):
+  Player: Brad Collins
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1364 (Master Scout Reports_new.xlsx):
+  Player: Josh Bowler
+  Fixture: Preston North End (P) 1:1 Fulham
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Preston North End (P) 1:1 Fulham on 2024-09-17
+
+Row 1366 (Master Scout Reports_new.xlsx):
+  Player: Fin Stevens
+  Fixture: Wales U21 2-1 Lithuania U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wales U21 2-1 Lithuania U21 on 2024-03-22
+
+Row 1369 (Master Scout Reports_new.xlsx):
+  Player: Divin Mubama
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1371 (Master Scout Reports_new.xlsx):
+  Player: Jack Nolan
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1374 (Master Scout Reports_new.xlsx):
+  Player: Ruben Iranzo
+  Fixture: Spurs U21 1-3 Valencia U23
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Spurs U21 1-3 Valencia U23 on 2024-09-17
+
+Row 1375 (Master Scout Reports_new.xlsx):
+  Player: Pedro Aleman
+  Fixture: Spurs U21 1-3 Valencia U23
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Spurs U21 1-3 Valencia U23 on 2024-09-17
+
+Row 1392 (Master Scout Reports_new.xlsx):
+  Player: Callum Wright
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1397 (Master Scout Reports_new.xlsx):
+  Player: Alby Kelly-Heald
+  Fixture: Napier City v Wellington
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Napier City v Wellington on 2024-12-13
+
+Row 1405 (Master Scout Reports_new.xlsx):
+  Player: Danny Ormerod
+  Fixture: Fylde 0:4 Wigan Athletic- Live
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Fylde 0:4 Wigan Athletic- Live on 2024-07-20
+
+Row 1409 (Master Scout Reports_new.xlsx):
+  Player: Ethan Hamilton
+  Fixture: Crawley Town v Lincoln City
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crawley Town v Lincoln City on 2024-11-30
+
+Row 1414 (Master Scout Reports_new.xlsx):
+  Player: Zachary Obiero
+  Fixture: Leyton Orient vs Newport County
+  Scout: Hashim Umarji
+  Errors:
+    - Player not found: Zachary Obiero
+    - Fixture not found: Leyton Orient vs Newport County on 2024-08-13
+
+Row 1415 (Master Scout Reports_new.xlsx):
+  Player: Charlie Savage
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1419 (Master Scout Reports_new.xlsx):
+  Player: Jayden Clarke
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1426 (Master Scout Reports_new.xlsx):
+  Player: Sam Sherring
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1428 (Master Scout Reports_new.xlsx):
+  Player: William Fish
+  Fixture: Hibernian FC 2 - 1 Dundee FC
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: William Fish
+
+Row 1434 (Master Scout Reports_new.xlsx):
+  Player: Adrian Akande
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1437 (Master Scout Reports_new.xlsx):
+  Player: Etienne Amenyido
+  Fixture: Fortuna Dusseldorf 1-0 St Pauli
+  Scout: Charlie Irwin
+  Errors:
+    - No fixtures found on 2022-11-05
+
+Row 1440 (Master Scout Reports_new.xlsx):
+  Player: Will Alves
+  Fixture: Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Wycombe Wanderers 5-3 Brighton & Hove Albion U21 on 2024-04-26
+
+Row 1444 (Master Scout Reports_new.xlsx):
+  Player: Harvey White
+  Fixture: Leyton Orient 0-1 Stevenage
+  Scout: Zak Mansuri
+  Errors:
+    - Fixture not found: Leyton Orient 0-1 Stevenage on 2025-01-21
+
+Row 1453 (Master Scout Reports_new.xlsx):
+  Player: Habeeb Ogunneye
+  Fixture: Manchester United U21 1-3 FC Nordsjaelland U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Manchester United U21 1-3 FC Nordsjaelland U21 on 2025-01-21
+
+Row 1458 (Master Scout Reports_new.xlsx):
+  Player: Svetoslav Vutsov
+  Fixture: Slavia Sofia 2-1 Lokomotiv Plovdiv
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Slavia Sofia 2-1 Lokomotiv Plovdiv on 2024-11-09
+
+Row 1460 (Master Scout Reports_new.xlsx):
+  Player: Charles Herrmann
+  Fixture: Blackburn Rovers U21 3-1 Borussia Mönchengladbach U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Blackburn Rovers U21 3-1 Borussia Mönchengladbach U21 on 2024-10-22
+
+Row 1464 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Getafe B 2:0 Tenerife B
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Getafe B 2:0 Tenerife B on 2024-11-03
+
+Row 1467 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Getafe B 1:0 CD Coria
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Getafe B 1:0 CD Coria on 2024-10-20
+
+Row 1478 (Master Scout Reports_new.xlsx):
+  Player: Luka Lynch
+  Fixture: Blackpool 1-1 Aston Villa U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Blackpool 1-1 Aston Villa U21 on 2024-12-17
+
+Row 1480 (Master Scout Reports_new.xlsx):
+  Player: Tony Yogane
+  Fixture: Brentford B 1-1 AIK
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Brentford B 1-1 AIK on 2023-02-06
+
+Row 1483 (Master Scout Reports_new.xlsx):
+  Player: Kamarai Simon-Swyer
+  Fixture: Cheltenham Town 3:1 West Ham United U21
+  Scout: Thomas Evans
+  Errors:
+    - Player not found: Kamarai Simon-Swyer
+
+Row 1486 (Master Scout Reports_new.xlsx):
+  Player: Bobby Thomas
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1491 (Master Scout Reports_new.xlsx):
+  Player: Ciaran Gilligan
+  Fixture: Burton Albion Vs Stevenage
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Burton Albion Vs Stevenage on 2024-12-10
+
+Row 1501 (Master Scout Reports_new.xlsx):
+  Player: Nathaniel Ogbeta
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1502 (Master Scout Reports_new.xlsx):
+  Player: Johnson Osong
+  Fixture: Chelsea U21 2-1 Derby County U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Chelsea U21 2-1 Derby County U21 on 2025-01-31
+
+Row 1503 (Master Scout Reports_new.xlsx):
+  Player: Nicholas Bilokapic
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1504 (Master Scout Reports_new.xlsx):
+  Player: Andrei Florea
+  Fixture: Germany U19 2-3 Romania U19
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Germany U19 2-3 Romania U19 on 2024-03-23
+
+Row 1509 (Master Scout Reports_new.xlsx):
+  Player: Kristian Sekularac
+  Fixture: Shrewsbury Town 1:2 Fulham U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Shrewsbury Town 1:2 Fulham U21 on 2024-08-20
+
+Row 1515 (Master Scout Reports_new.xlsx):
+  Player: Kaheim Dixon
+  Fixture: Waterhouse 1-5 Arnett Gardens- (Poor pitch conditions)
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Waterhouse 1-5 Arnett Gardens- (Poor pitch conditions) on 2024-05-19
+
+Row 1529 (Master Scout Reports_new.xlsx):
+  Player: Luis Vega
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1531 (Master Scout Reports_new.xlsx):
+  Player: Joe Gauci
+  Fixture: Australia 1-2 Ecuador
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Australia 1-2 Ecuador on 2023-03-28
+
+Row 1532 (Master Scout Reports_new.xlsx):
+  Player: Kaili Shimbo (Renofa Yamaguchi)
+  Fixture: Renofa Yamaguchi 0-0 Yokohama FC
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Kaili Shimbo (Renofa Yamaguchi)
+
+Row 1536 (Master Scout Reports_new.xlsx):
+  Player: Eli King
+  Fixture: Burton Albion Vs Stevenage
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Burton Albion Vs Stevenage on 2024-12-10
+
+Row 1542 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Gimnastica 1-1 Getafe B
+  Scout: Liam Burden
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Gimnastica 1-1 Getafe B on 2024-02-04
+
+Row 1548 (Master Scout Reports_new.xlsx):
+  Player: Karl Hein
+  Fixture: Estonia 0-2 Azerbaijan
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Estonia 0-2 Azerbaijan on 2023-10-13
+
+Row 1552 (Master Scout Reports_new.xlsx):
+  Player: Ahmed Diomande (Ittifaq Marrakech)
+  Fixture: Paraguay U23 1-0 Mali U23
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Ahmed Diomande (Ittifaq Marrakech)
+    - Fixture not found: Paraguay U23 1-0 Mali U23 on 2024-07-30
+
+Row 1553 (Master Scout Reports_new.xlsx):
+  Player: Owura Edwards
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1556 (Master Scout Reports_new.xlsx):
+  Player: Charlie Patino
+  Fixture: Blackpool 4-2 Preston North End
+  Scout: Thomas White
+  Errors:
+    - No fixtures found on 2022-10-22
+
+Row 1558 (Master Scout Reports_new.xlsx):
+  Player: Dom Quina
+  Fixture: Portimonense 0-0 Vizela
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: Dom Quina
+
+Row 1560 (Master Scout Reports_new.xlsx):
+  Player: Ryan Trevitt
+  Fixture: Brentford B 1-1 AIK
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Brentford B 1-1 AIK on 2023-02-06
+
+Row 1562 (Master Scout Reports_new.xlsx):
+  Player: Viv Solomon-Otabor
+  Fixture: Zhejiang Professional 2-2 Cangzhou Mighty Lions
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Zhejiang Professional 2-2 Cangzhou Mighty Lions on 2024-09-22
+
+Row 1563 (Master Scout Reports_new.xlsx):
+  Player: Ilay Feingold
+  Fixture: Israel U23 0-1 Japan U23
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Israel U23 0-1 Japan U23 on 2024-07-30
+
+Row 1583 (Master Scout Reports_new.xlsx):
+  Player: Svetoslav Vutsov
+  Fixture: Slavia Sofia 0:1 Levski Sofia
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Slavia Sofia 0:1 Levski Sofia on 2024-09-22
+
+Row 1588 (Master Scout Reports_new.xlsx):
+  Player: Julio Pleguezuelo
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1589 (Master Scout Reports_new.xlsx):
+  Player: Aaron Loupolo-Bi
+  Fixture: Aldershot 2:1 Fulham U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Aldershot 2:1 Fulham U21 on 2025-01-21
+
+Row 1590 (Master Scout Reports_new.xlsx):
+  Player: Habeeb Ogunneye
+  Fixture: Rosenborg 1-0 Manchester United
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Rosenborg 1-0 Manchester United on 2024-07-15
+
+Row 1592 (Master Scout Reports_new.xlsx):
+  Player: Nardin Mulahusejnovic
+  Fixture: ASK Bravo 1-3 Zrinjski (Poor Pitch Conditions)
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: ASK Bravo 1-3 Zrinjski (Poor Pitch Conditions) on 2024-08-01
+
+Row 1593 (Master Scout Reports_new.xlsx):
+  Player: Jonny Stuttle
+  Fixture: Aldershot 8-0 Chertsey Town
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Aldershot 8-0 Chertsey Town on 2025-01-04
+
+Row 1598 (Master Scout Reports_new.xlsx):
+  Player: Joseph Hungbo
+  Fixture: Rotherham 1-3 Cheltenham
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Rotherham 1-3 Cheltenham on 2024-11-02
+
+Row 1600 (Master Scout Reports_new.xlsx):
+  Player: Victor Palsson
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1604 (Master Scout Reports_new.xlsx):
+  Player: Calvin Ramsay
+  Fixture: Wigan Athletic (P) 0:0 Nottingham Forest U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wigan Athletic (P) 0:0 Nottingham Forest U21 on 2024-11-12
+
+Row 1611 (Master Scout Reports_new.xlsx):
+  Player: Donnell McNeilly
+  Fixture: West Ham United U21 3-2 Chelsea U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: West Ham United U21 3-2 Chelsea U21 on 2024-09-27
+
+Row 1613 (Master Scout Reports_new.xlsx):
+  Player: Mason Terry
+  Fixture: Enfield Town v Hornchurch
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Enfield Town v Hornchurch on 2024-11-16
+
+Row 1614 (Master Scout Reports_new.xlsx):
+  Player: Derensili Sanches Fernandes
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 1625 (Master Scout Reports_new.xlsx):
+  Player: Raimonds Krollis
+  Fixture: Latvia 0-2 Lithuania
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Latvia 0-2 Lithuania on 2024-06-08
+
+Row 1631 (Master Scout Reports_new.xlsx):
+  Player: Etienne Green
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 1637 (Master Scout Reports_new.xlsx):
+  Player: Lee Ho-Jae
+  Fixture: Daegu 3-3 Pohang Steelers
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Lee Ho-Jae
+
+Row 1643 (Master Scout Reports_new.xlsx):
+  Player: Junior Olaitan
+  Fixture: Senegal 1-0 Benin
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Senegal 1-0 Benin on 2024-03-26
+
+Row 1644 (Master Scout Reports_new.xlsx):
+  Player: Jayden Wareham
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1649 (Master Scout Reports_new.xlsx):
+  Player: Radek Vitek
+  Fixture: Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz / Hartberg - Blau-Weiß Linz
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz / Hartberg - Blau-Weiß Linz on 2024-11-03
+
+Row 1651 (Master Scout Reports_new.xlsx):
+  Player: Lucas Bergström
+  Fixture: Montenegro U21 1:2 Finland U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Montenegro U21 1:2 Finland U21 on 2024-03-26
+
+Row 1657 (Master Scout Reports_new.xlsx):
+  Player: Samson Tovide
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1659 (Master Scout Reports_new.xlsx):
+  Player: Ahmetcan Kaplan
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 1660 (Master Scout Reports_new.xlsx):
+  Player: Dom Quina
+  Fixture: Sporting Braga 2-1 Vizela
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: Dom Quina
+    - Fixture not found: Sporting Braga 2-1 Vizela on 2024-04-20
+
+Row 1665 (Master Scout Reports_new.xlsx):
+  Player: Rajmund Tóth
+  Fixture: Hungary U20 2-0 Iceland U20
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Hungary U20 2-0 Iceland U20 on 2024-03-20
+
+Row 1673 (Master Scout Reports_new.xlsx):
+  Player: Luis Vega
+  Fixture: Marathón 1-1 Motagua
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Marathón 1-1 Motagua on 2024-04-07
+
+Row 1677 (Master Scout Reports_new.xlsx):
+  Player: Joel Colwill
+  Fixture: Rotherham 1-3 Cheltenham
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Rotherham 1-3 Cheltenham on 2024-11-02
+
+Row 1681 (Master Scout Reports_new.xlsx):
+  Player: Kaleel Green
+  Fixture: Colchester United U21 2-3 Sheffield United U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Colchester United U21 2-3 Sheffield United U21 on 2024-05-10
+
+Row 1692 (Master Scout Reports_new.xlsx):
+  Player: Tom Hopper
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1695 (Master Scout Reports_new.xlsx):
+  Player: Alex Mitchell
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1696 (Master Scout Reports_new.xlsx):
+  Player: Riley Moloney
+  Fixture: Chelsea U21 2-1 Derby County U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Chelsea U21 2-1 Derby County U21 on 2025-01-31
+
+Row 1698 (Master Scout Reports_new.xlsx):
+  Player: Malik Mothersille
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1702 (Master Scout Reports_new.xlsx):
+  Player: Jamie Allen
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1706 (Master Scout Reports_new.xlsx):
+  Player: Ben Sheaf
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1710 (Master Scout Reports_new.xlsx):
+  Player: Ted Collins
+  Fixture: Colchester United U21 2-3 Sheffield United U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Colchester United U21 2-3 Sheffield United U21 on 2024-05-10
+
+Row 1712 (Master Scout Reports_new.xlsx):
+  Player: Sam Silvera
+  Fixture: Bahrain 0-2 Australia
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Bahrain 0-2 Australia on 2024-01-06
+
+Row 1713 (Master Scout Reports_new.xlsx):
+  Player: Aleksandre Kalandadze
+  Fixture: Torpedo 2:0 Dinamo Tbilisi
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Torpedo 2:0 Dinamo Tbilisi on 2024-10-28
+
+Row 1714 (Master Scout Reports_new.xlsx):
+  Player: Kelvin Ehibhatiomhan
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1715 (Master Scout Reports_new.xlsx):
+  Player: Oliver Kamdem
+  Fixture: Slavia Sofia 2-1 Lokomotiv Plovdiv
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Oliver Kamdem
+    - Fixture not found: Slavia Sofia 2-1 Lokomotiv Plovdiv on 2024-11-09
+
+Row 1718 (Master Scout Reports_new.xlsx):
+  Player: Zachary Obiero
+  Fixture: Leyton Orient 1-2 Bolton
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Zachary Obiero
+
+Row 1723 (Master Scout Reports_new.xlsx):
+  Player: Damola Ajayi
+  Fixture: Arsenal U21 2-5 Tottenham U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Arsenal U21 2-5 Tottenham U21 on 2024-10-05
+
+Row 1726 (Master Scout Reports_new.xlsx):
+  Player: Luis Vega
+  Fixture: Vida 1-2 Motagua
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Vida 1-2 Motagua on 2024-04-28
+
+Row 1727 (Master Scout Reports_new.xlsx):
+  Player: Luis Vega
+  Fixture: Olimpia 3-3 Motagua
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Olimpia 3-3 Motagua on 2024-05-09
+
+Row 1729 (Master Scout Reports_new.xlsx):
+  Player: Kaide Gordon
+  Fixture: England U20 4:0 Germany U20
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: England U20 4:0 Germany U20 on 2024-11-15
+
+Row 1732 (Master Scout Reports_new.xlsx):
+  Player: Luther Wildin
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Luther Wildin
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1734 (Master Scout Reports_new.xlsx):
+  Player: Hristo Ivanov
+  Fixture: Lokomotiv Plovdiv 1-0 CSKA Sofia
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Lokomotiv Plovdiv 1-0 CSKA Sofia on 2024-05-26
+
+Row 1736 (Master Scout Reports_new.xlsx):
+  Player: Svetoslav Vutsov
+  Fixture: Spartak Varna v Slavia Sofia
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Spartak Varna v Slavia Sofia on 2024-12-09
+
+Row 1737 (Master Scout Reports_new.xlsx):
+  Player: William Fish
+  Fixture: St. Mirren FC 2-2 Hibernian FC
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: William Fish
+
+Row 1739 (Master Scout Reports_new.xlsx):
+  Player: Travis Patterson
+  Fixture: Blackpool 1-1 Aston Villa U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Blackpool 1-1 Aston Villa U21 on 2024-12-17
+
+Row 1740 (Master Scout Reports_new.xlsx):
+  Player: Robbe Decostere
+  Fixture: Zulte Waregem 1-1 Genk II
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Robbe Decostere
+    - Fixture not found: Zulte Waregem 1-1 Genk II on 2024-01-21
+
+Row 1743 (Master Scout Reports_new.xlsx):
+  Player: Noah Ganaus
+  Fixture: Wehen Wiesbaden 1-2 Jahn Regensburg
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Wehen Wiesbaden 1-2 Jahn Regensburg on 2024-05-28
+
+Row 1746 (Master Scout Reports_new.xlsx):
+  Player: Luke Faxon
+  Fixture: Colchester United U21 2-3 Sheffield United U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Colchester United U21 2-3 Sheffield United U21 on 2024-05-10
+
+Row 1748 (Master Scout Reports_new.xlsx):
+  Player: Adam Zadrazil
+  Fixture: Banik Ostrava 1-0 Hradec Kralove
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Banik Ostrava 1-0 Hradec Kralove on 2024-08-11
+
+Row 1752 (Master Scout Reports_new.xlsx):
+  Player: Oliver Kamdem
+  Fixture: Lokomotiv Plovdiv 1-0 CSKA Sofia
+  Scout: Thomas White
+  Errors:
+    - Player not found: Oliver Kamdem
+    - Fixture not found: Lokomotiv Plovdiv 1-0 CSKA Sofia on 2024-05-26
+
+Row 1754 (Master Scout Reports_new.xlsx):
+  Player: Mahlon Romeo
+  Fixture: Cardiff City 2-1 Southampton
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Mahlon Romeo
+
+Row 1757 (Master Scout Reports_new.xlsx):
+  Player: Edgardo Farina
+  Fixture: Uruguay 3-1 Panama
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Uruguay 3-1 Panama on 2024-06-23
+
+Row 1758 (Master Scout Reports_new.xlsx):
+  Player: Liam Kelly
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1762 (Master Scout Reports_new.xlsx):
+  Player: Raimonds Krollis
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1769 (Master Scout Reports_new.xlsx):
+  Player: Siemen Voet
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1770 (Master Scout Reports_new.xlsx):
+  Player: Jonny Stuttle
+  Fixture: Aldershot 2:1 Fulham U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Aldershot 2:1 Fulham U21 on 2025-01-21
+
+Row 1776 (Master Scout Reports_new.xlsx):
+  Player: Murphy Mahoney
+  Fixture: Stevenage 0-1 Lincoln City
+  Scout: Thomas White
+  Errors:
+    - Player not found: Murphy Mahoney
+
+Row 1778 (Master Scout Reports_new.xlsx):
+  Player: Donay O'Brien-Brady
+  Fixture: Peterborough vs Crystal Palace U21’s
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Peterborough vs Crystal Palace U21’s on 2024-11-05
+
+Row 1780 (Master Scout Reports_new.xlsx):
+  Player: Shurandy Sambo
+  Fixture: Wolverhampton Wanderers 2-0 Burnley
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wolverhampton Wanderers 2-0 Burnley on 2024-09-28
+
+Row 1783 (Master Scout Reports_new.xlsx):
+  Player: Besard Sabovic
+  Fixture: Djurgården 1-0 Maribor
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Djurgården 1-0 Maribor on 2024-08-22
+
+Row 1787 (Master Scout Reports_new.xlsx):
+  Player: Áron Csongvai
+  Fixture: Omonia Nicosia 1-0 Fehervar FC
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Omonia Nicosia 1-0 Fehervar FC on 2024-08-08
+
+Row 1791 (Master Scout Reports_new.xlsx):
+  Player: Alex Woodyard
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1795 (Master Scout Reports_new.xlsx):
+  Player: Ephron Mason-Clarke
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1796 (Master Scout Reports_new.xlsx):
+  Player: Amadou Salif Mbengue
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1797 (Master Scout Reports_new.xlsx):
+  Player: Harvey White
+  Fixture: Burton Albion Vs Stevenage
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Burton Albion Vs Stevenage on 2024-12-10
+
+Row 1800 (Master Scout Reports_new.xlsx):
+  Player: Sadik Fofana
+  Fixture: SC Rheindorf Altach 1-2 Grazer AK 1902
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: SC Rheindorf Altach 1-2 Grazer AK 1902 on 2025-02-08
+
+Row 1804 (Master Scout Reports_new.xlsx):
+  Player: Kelly N'Mai
+  Fixture: Salford City vs Cheltenham Town (FA Cup)
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Salford City vs Cheltenham Town (FA Cup) on 2024-11-30
+
+Row 1812 (Master Scout Reports_new.xlsx):
+  Player: Stephen Wearne
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1814 (Master Scout Reports_new.xlsx):
+  Player: Ryan Doherty
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1816 (Master Scout Reports_new.xlsx):
+  Player: Brendan Galloway
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1821 (Master Scout Reports_new.xlsx):
+  Player: Hakeem Sandah
+  Fixture: Colchester United U21 2-3 Sheffield United U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Colchester United U21 2-3 Sheffield United U21 on 2024-05-10
+
+Row 1825 (Master Scout Reports_new.xlsx):
+  Player: Rares Ilie
+  Fixture: Romania U21 3-1 Switzerland U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Romania U21 3-1 Switzerland U21 on 2024-10-15
+
+Row 1828 (Master Scout Reports_new.xlsx):
+  Player: Ethan Galbraith
+  Fixture: Leyton Orient 1:1 Derby County
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Leyton Orient 1:1 Derby County on 2025-01-14
+
+Row 1833 (Master Scout Reports_new.xlsx):
+  Player: Will Alves
+  Fixture: Notts County 1-0 Leicester City U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Notts County 1-0 Leicester City U21 on 2024-11-12
+
+Row 1836 (Master Scout Reports_new.xlsx):
+  Player: Nassef Chourak
+  Fixture: Ajax U21 3-2 Exclesior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Exclesior on 2025-02-10
+
+Row 1837 (Master Scout Reports_new.xlsx):
+  Player: Jake Richards
+  Fixture: Exeter City 1-2 Birmingham City
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Exeter City 1-2 Birmingham City on 2024-12-10
+
+Row 1840 (Master Scout Reports_new.xlsx):
+  Player: Francisco Domingues
+  Fixture: West Ham United U21 vs Benfica Lissabon U21
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Francisco Domingues
+
+Row 1842 (Master Scout Reports_new.xlsx):
+  Player: Emilio Lawrence
+  Fixture: Lincoln City 5-0 Manchester City U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Lincoln City 5-0 Manchester City U21 on 2024-11-12
+
+Row 1843 (Master Scout Reports_new.xlsx):
+  Player: Sil Swinkels
+  Fixture: Aston Villa U21 vs Bradford City
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Aston Villa U21 vs Bradford City on 2025-01-13
+
+Row 1852 (Master Scout Reports_new.xlsx):
+  Player: Malcolm Ebiowei
+  Fixture: Stevenage 5-2 Crystal Palace U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Stevenage 5-2 Crystal Palace U21 on 2023-11-14
+
+Row 1853 (Master Scout Reports_new.xlsx):
+  Player: Tamás Nikitscher
+  Fixture: Hungary 0:0 Bosnia-Herzegovina
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Hungary 0:0 Bosnia-Herzegovina on 2024-09-10
+
+Row 1857 (Master Scout Reports_new.xlsx):
+  Player: George Lapslie
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1858 (Master Scout Reports_new.xlsx):
+  Player: Brandon Charles
+  Fixture: Woking 4- 4 Southampton U21
+  Scout: Thomas White
+  Errors:
+    - Could not parse fixture: Woking 4- 4 Southampton U21
+
+Row 1860 (Master Scout Reports_new.xlsx):
+  Player: Callum Osmand
+  Fixture: Aldershot 2:1 Fulham U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Aldershot 2:1 Fulham U21 on 2025-01-21
+
+Row 1870 (Master Scout Reports_new.xlsx):
+  Player: Kiano Dyer
+  Fixture: Brentford B v Chelsea U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Brentford B v Chelsea U21 on 2025-01-27
+
+Row 1871 (Master Scout Reports_new.xlsx):
+  Player: Hristo Ivanov
+  Fixture: Beroe 0-2 Lokomotiv Plovdiv
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Beroe 0-2 Lokomotiv Plovdiv on 2024-08-10
+
+Row 1872 (Master Scout Reports_new.xlsx):
+  Player: Bradley Ihionvien
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 1874 (Master Scout Reports_new.xlsx):
+  Player: Kasey Palmer
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1877 (Master Scout Reports_new.xlsx):
+  Player: Matt Macey
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 1878 (Master Scout Reports_new.xlsx):
+  Player: Matthew Dennis
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1879 (Master Scout Reports_new.xlsx):
+  Player: Mark Spanring
+  Fixture: ASK Bravo 1-3 Zrinjski (Poor Pitch Conditions)
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: ASK Bravo 1-3 Zrinjski (Poor Pitch Conditions) on 2024-08-01
+
+Row 1881 (Master Scout Reports_new.xlsx):
+  Player: Jack Moylan
+  Fixture: Birmingham City vs Lincoln City
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Birmingham City vs Lincoln City on 2025-01-11
+
+Row 1885 (Master Scout Reports_new.xlsx):
+  Player: Jordan Roberts
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1896 (Master Scout Reports_new.xlsx):
+  Player: Joshua Eijgenraam
+  Fixture: Ajax U21 3-2 Exclesior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Exclesior on 2025-02-10
+
+Row 1898 (Master Scout Reports_new.xlsx):
+  Player: Lewis Freestone
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 1902 (Master Scout Reports_new.xlsx):
+  Player: John Buckley
+  Fixture: Middlesbrough 0:1 Blackburn Rovers
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Middlesbrough 0:1 Blackburn Rovers on 2025-01-11
+
+Row 1904 (Master Scout Reports_new.xlsx):
+  Player: Adam Mayor
+  Fixture: Watford U21 1-3 Millwall U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Watford U21 1-3 Millwall U21 on 2024-12-02
+
+Row 1905 (Master Scout Reports_new.xlsx):
+  Player: Luke Harris
+  Fixture: Exeter City 1-2 Birmingham City
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Exeter City 1-2 Birmingham City on 2024-12-10
+
+Row 1908 (Master Scout Reports_new.xlsx):
+  Player: Armandas Kucys
+  Fixture: Lithuania 0-1 Cyprus
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Lithuania 0-1 Cyprus on 2024-09-06
+
+Row 1911 (Master Scout Reports_new.xlsx):
+  Player: Joe Tomlinson
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1917 (Master Scout Reports_new.xlsx):
+  Player: Raimonds Krollis
+  Fixture: Vyskov 2-1 Varnsdorf
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Vyskov 2-1 Varnsdorf on 2024-04-27
+
+Row 1920 (Master Scout Reports_new.xlsx):
+  Player: Noel Buck
+  Fixture: New England Revolution 3-2 Vancouver Whitecaps
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: New England Revolution 3-2 Vancouver Whitecaps on 2024-06-16
+
+Row 1921 (Master Scout Reports_new.xlsx):
+  Player: Fin Stevens
+  Fixture: Iceland U21 1-2 Wales U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Iceland U21 1-2 Wales U21 on 2024-09-10
+
+Row 1923 (Master Scout Reports_new.xlsx):
+  Player: Fabio Jalo Soares
+  Fixture: Stevenage 3-0 Barnsley
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Fabio Jalo Soares
+
+Row 1927 (Master Scout Reports_new.xlsx):
+  Player: Jacob Karlstrom
+  Fixture: Malmö FF v IFK Göteborg 28.10.24 - IFK Göteborg v AIK 21.10.24 - IFK Norrköping v IFK Göteborg 06.10.24
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Malmö FF v IFK Göteborg 28.10.24 - IFK Göteborg v AIK 21.10.24 - IFK Norrköping v IFK Göteborg 06.10.24 on 2024-10-28
+
+Row 1928 (Master Scout Reports_new.xlsx):
+  Player: Morgan Whittaker
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1929 (Master Scout Reports_new.xlsx):
+  Player: Harvey Vale
+  Fixture: Fulham U21 0:6 Chelsea U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Fulham U21 0:6 Chelsea U21 on 2024-10-04
+
+Row 1934 (Master Scout Reports_new.xlsx):
+  Player: Tom Carroll
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1939 (Master Scout Reports_new.xlsx):
+  Player: Toyosi Olusanya
+  Fixture: Aberdeen FC 3:1 St. Mirren FC
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Aberdeen FC 3:1 St. Mirren FC on 2025-01-11
+
+Row 1940 (Master Scout Reports_new.xlsx):
+  Player: Aune Selland Heggebo
+  Fixture: Odds 0-3 Brann
+  Scout: Thomas White
+  Errors:
+    - Player not found: Aune Selland Heggebo
+
+Row 1949 (Master Scout Reports_new.xlsx):
+  Player: Radek Vitek
+  Fixture: Rosenborg 1-0 Manchester United
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Rosenborg 1-0 Manchester United on 2024-07-15
+
+Row 1957 (Master Scout Reports_new.xlsx):
+  Player: Viv Solomon-Otabor
+  Fixture: Qingdao Hainiu 1-0 Cangzhou Mighty Lions
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Qingdao Hainiu 1-0 Cangzhou Mighty Lions on 2024-11-02
+
+Row 1958 (Master Scout Reports_new.xlsx):
+  Player: Jack Moylan
+  Fixture: Crawley Town v Lincoln City
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crawley Town v Lincoln City on 2024-11-30
+
+Row 1971 (Master Scout Reports_new.xlsx):
+  Player: Luke Mbete-Tabu
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Player not found: Luke Mbete-Tabu
+    - Empty fixture
+
+Row 1973 (Master Scout Reports_new.xlsx):
+  Player: Albert Wood
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 1986 (Master Scout Reports_new.xlsx):
+  Player: Rayane Bounida
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 1989 (Master Scout Reports_new.xlsx):
+  Player: Damola Ajayi
+  Fixture: Swindon Town 2-1 Tottenham Hotspur U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Swindon Town 2-1 Tottenham Hotspur U21 on 2024-11-05
+
+Row 1998 (Master Scout Reports_new.xlsx):
+  Player: Robbie McCrorie
+  Fixture: Hibernian FC 1-3 Rangers
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Hibernian FC 1-3 Rangers on 2023-05-21
+
+Row 1999 (Master Scout Reports_new.xlsx):
+  Player: Kamarai Simon-Swyer
+  Fixture: Newcastle U21 0-1 West Ham United U21
+  Scout: Thomas White
+  Errors:
+    - Player not found: Kamarai Simon-Swyer
+    - Fixture not found: Newcastle U21 0-1 West Ham United U21 on 2025-09-20
+
+Row 2000 (Master Scout Reports_new.xlsx):
+  Player: Romeo Akachukwu
+  Fixture: Southampton U21 3-1 Anderlecht U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Southampton U21 3-1 Anderlecht U21 on 2025-01-21
+
+Row 2001 (Master Scout Reports_new.xlsx):
+  Player: Ellis Simms
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2005 (Master Scout Reports_new.xlsx):
+  Player: Lewis Neilson
+  Fixture: Partick Thistle 1:0 Inverness CT
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Partick Thistle 1:0 Inverness CT on 2024-03-30
+
+Row 2008 (Master Scout Reports_new.xlsx):
+  Player: Kaide Gordon
+  Fixture: England U20 3:0 Czech Republic
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: England U20 3:0 Czech Republic on 2024-10-14
+
+Row 2016 (Master Scout Reports_new.xlsx):
+  Player: Danny Imray
+  Fixture: Solihull vs Bromley
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Solihull vs Bromley on 2024-12-01
+
+Row 2026 (Master Scout Reports_new.xlsx):
+  Player: Kota Takai
+  Fixture: Japan U23 1:0 Mali U23
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Japan U23 1:0 Mali U23 on 2024-07-27
+
+Row 2029 (Master Scout Reports_new.xlsx):
+  Player: Tony Yogane
+  Fixture: Bristol City 0-4 Brentford U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Bristol City 0-4 Brentford U21 on 2024-12-09
+
+Row 2035 (Master Scout Reports_new.xlsx):
+  Player: Beryly Lubala
+  Fixture: Wycombe Wanderers 2-1 Cambridge United
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Beryly Lubala
+
+Row 2048 (Master Scout Reports_new.xlsx):
+  Player: Jay Robinson
+  Fixture: Woking 4- 4 Southampton U21
+  Scout: Thomas White
+  Errors:
+    - Could not parse fixture: Woking 4- 4 Southampton U21
+
+Row 2050 (Master Scout Reports_new.xlsx):
+  Player: Paudie O'Connor
+  Fixture: Birmingham City vs Lincoln City
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Birmingham City vs Lincoln City on 2025-01-11
+
+Row 2062 (Master Scout Reports_new.xlsx):
+  Player: Bailey Peacock-Farrell
+  Fixture: Nordsjaelland 2-3 AGF
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Nordsjaelland 2-3 AGF on 2024-03-29
+
+Row 2063 (Master Scout Reports_new.xlsx):
+  Player: Raul Jimenez
+  Fixture: Spurs U21 1-3 Valencia U23
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Spurs U21 1-3 Valencia U23 on 2024-09-17
+
+Row 2064 (Master Scout Reports_new.xlsx):
+  Player: Tyrique George
+  Fixture: West Ham United U21 3-2 Chelsea U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: West Ham United U21 3-2 Chelsea U21 on 2024-09-27
+
+Row 2066 (Master Scout Reports_new.xlsx):
+  Player: Ishe Samuels-Smith
+  Fixture: West Ham United 3-2 Chelsea
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: West Ham United 3-2 Chelsea on 2024-09-27
+
+Row 2067 (Master Scout Reports_new.xlsx):
+  Player: Nick Verschuren
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 2070 (Master Scout Reports_new.xlsx):
+  Player: Robbie McCrorie
+  Fixture: Dundee United - Kilmarnock 07.12.24 Rangers - Kilmarnock 04.12.24 Kilmarnock - Dundee 30.11.24
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Dundee United - Kilmarnock 07.12.24 Rangers - Kilmarnock 04.12.24 Kilmarnock - Dundee 30.11.24 on 2024-12-07
+
+Row 2073 (Master Scout Reports_new.xlsx):
+  Player: Andreas Lausen
+  Fixture: Esbjerg Fb 0-2 Aalborg BK
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Esbjerg Fb 0-2 Aalborg BK on 2024-10-30
+
+Row 2084 (Master Scout Reports_new.xlsx):
+  Player: Raimonds Krollis
+  Fixture: Latvia 0-2 Wales
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Latvia 0-2 Wales on 2023-09-11
+
+Row 2090 (Master Scout Reports_new.xlsx):
+  Player: Joel Colwill
+  Fixture: Salford City vs Cheltenham Town (FA Cup)
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Salford City vs Cheltenham Town (FA Cup) on 2024-11-30
+
+Row 2096 (Master Scout Reports_new.xlsx):
+  Player: Harry Webster
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2098 (Master Scout Reports_new.xlsx):
+  Player: Ethan Erhahon
+  Fixture: Crawley Town v Lincoln City
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crawley Town v Lincoln City on 2024-11-30
+
+Row 2104 (Master Scout Reports_new.xlsx):
+  Player: Dan Sweeney
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2106 (Master Scout Reports_new.xlsx):
+  Player: Thijmen Goppel
+  Fixture: Wehen Wiesbaden 1-2 Jahn Regensburg
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Wehen Wiesbaden 1-2 Jahn Regensburg on 2024-05-28
+
+Row 2107 (Master Scout Reports_new.xlsx):
+  Player: Kamarai Simon-Swyer
+  Fixture: Newport County 1-0 West Ham United United U21
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Kamarai Simon-Swyer
+
+Row 2118 (Master Scout Reports_new.xlsx):
+  Player: Paul Koller
+  Fixture: SC Rheindorf Altach 1-2 Grazer AK 1902
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: SC Rheindorf Altach 1-2 Grazer AK 1902 on 2025-02-08
+
+Row 2120 (Master Scout Reports_new.xlsx):
+  Player: Teddy Bishop
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2122 (Master Scout Reports_new.xlsx):
+  Player: Phoenix Patterson
+  Fixture: Milton Keynes Dons vs Fleetwood
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Milton Keynes Dons vs Fleetwood on 2025-03-01
+
+Row 2126 (Master Scout Reports_new.xlsx):
+  Player: Ellis Iandolo
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2129 (Master Scout Reports_new.xlsx):
+  Player: Josh Keeley
+  Fixture: Leyton Orient 0-1 Stevenage
+  Scout: Zak Mansuri
+  Errors:
+    - Fixture not found: Leyton Orient 0-1 Stevenage on 2025-01-21
+
+Row 2132 (Master Scout Reports_new.xlsx):
+  Player: Svetoslav Vutsov
+  Fixture: Cherno More v Slavia Sofia
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Cherno More v Slavia Sofia on 2024-12-14
+
+Row 2135 (Master Scout Reports_new.xlsx):
+  Player: Roman Dixon
+  Fixture: Accrington Stanley 2:1 Everton U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Accrington Stanley 2:1 Everton U21 on 2024-10-29
+
+Row 2137 (Master Scout Reports_new.xlsx):
+  Player: Nejc Gradisar
+  Fixture: Omonia Nicosia 1-0 Fehervar FC
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Omonia Nicosia 1-0 Fehervar FC on 2024-08-08
+
+Row 2141 (Master Scout Reports_new.xlsx):
+  Player: Dan Kemp
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2144 (Master Scout Reports_new.xlsx):
+  Player: Conor Hazard
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2145 (Master Scout Reports_new.xlsx):
+  Player: Seung-bin Kim
+  Fixture: Bohemian 3-3 Slovacko
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Bohemian 3-3 Slovacko on 2024-12-30
+
+Row 2156 (Master Scout Reports_new.xlsx):
+  Player: Joe O'Brien Whitmarsh
+  Fixture: Southampton U21 4-1 RB Leipzig U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Southampton U21 4-1 RB Leipzig U21 on 2024-10-29
+
+Row 2162 (Master Scout Reports_new.xlsx):
+  Player: Joel Cotterill
+  Fixture: Wales U21 1:2 Czech Republic U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wales U21 1:2 Czech Republic U21 on 2024-10-11
+
+Row 2163 (Master Scout Reports_new.xlsx):
+  Player: Towa Yamane (Yokohama FC)
+  Fixture: Renofa Yamaguchi 0-0 Yokohama FC
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Towa Yamane (Yokohama FC)
+
+Row 2175 (Master Scout Reports_new.xlsx):
+  Player: Robbe Decostere
+  Fixture: Lierse Kempenzonen 0-1 Zulte-Waregem
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Robbe Decostere
+
+Row 2180 (Master Scout Reports_new.xlsx):
+  Player: George Evans
+  Fixture: Watford U21 1-3 Millwall U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Watford U21 1-3 Millwall U21 on 2024-12-02
+
+Row 2182 (Master Scout Reports_new.xlsx):
+  Player: Will Alves
+  Fixture: Northampton Town 3-0 Leicester City U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Northampton Town 3-0 Leicester City U21 on 2024-11-05
+
+Row 2183 (Master Scout Reports_new.xlsx):
+  Player: Joel Randall
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2185 (Master Scout Reports_new.xlsx):
+  Player: Archie Collins
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2192 (Master Scout Reports_new.xlsx):
+  Player: Andreas Bruus
+  Fixture: Troyes 0-1 Nice
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Troyes 0-1 Nice on 2023-04-30
+
+Row 2194 (Master Scout Reports_new.xlsx):
+  Player: Frankie Terry
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2201 (Master Scout Reports_new.xlsx):
+  Player: Carl Piergianni
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2207 (Master Scout Reports_new.xlsx):
+  Player: Jo Jin-Ho
+  Fixture: Radnicki Nis 1-0 Backa Topola
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Jo Jin-Ho
+
+Row 2212 (Master Scout Reports_new.xlsx):
+  Player: Mark Tamas
+  Fixture: Sabail 1-1 Neftci
+  Scout: Liam Burden
+  Errors:
+    - Empty fixture date
+
+Row 2216 (Master Scout Reports_new.xlsx):
+  Player: Nathan Paul-Lavaly
+  Fixture: Bromley 1-2 AFC Wimbledon
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Bromley 1-2 AFC Wimbledon on 2024-08-13
+
+Row 2221 (Master Scout Reports_new.xlsx):
+  Player: Callum Tripp
+  Fixture: Milton Keynes Dons 2:2 Arsenal U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Milton Keynes Dons 2:2 Arsenal U21 on 2024-10-08
+
+Row 2236 (Master Scout Reports_new.xlsx):
+  Player: Dan Rigge
+  Fixture: West Ham United U21 5-1 Southampton U21
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Dan Rigge
+
+Row 2239 (Master Scout Reports_new.xlsx):
+  Player: Kelvin Abrefa
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2243 (Master Scout Reports_new.xlsx):
+  Player: Sun-Woo Ham
+  Fixture: China PR U19 2:0 Korea Republic U19
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: China PR U19 2:0 Korea Republic U19 on 2024-06-10
+
+Row 2246 (Master Scout Reports_new.xlsx):
+  Player: Terence Kongolo
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2247 (Master Scout Reports_new.xlsx):
+  Player: Yahya Kalley
+  Fixture: IFK Norrkoping 4-2 Orebro
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: IFK Norrkoping 4-2 Orebro on 2025-02-22
+
+Row 2252 (Master Scout Reports_new.xlsx):
+  Player: Kaheim Dixon
+  Fixture: Arnett Gardens 1-1 Portmore United
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Arnett Gardens 1-1 Portmore United on 2024-04-01
+
+Row 2260 (Master Scout Reports_new.xlsx):
+  Player: Andres Caro
+  Fixture: Spurs U21 1-3 Valencia U23
+  Scout: Andy Scott
+  Errors:
+    - Empty fixture date
+
+Row 2265 (Master Scout Reports_new.xlsx):
+  Player: Nuha Jutta
+  Fixture: Crystal Palace U21 v RB Leipzig U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crystal Palace U21 v RB Leipzig U21 on 2025-01-17
+
+Row 2268 (Master Scout Reports_new.xlsx):
+  Player: Brandon Austin
+  Fixture: K leagueXL v Tottenham 31.07.24 - Queens Park Rangers V Tottenham 20.07.24-Tottenham v Westham 18.07.23
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: K leagueXL v Tottenham 31.07.24 - Queens Park Rangers V Tottenham 20.07.24-Tottenham v Westham 18.07.23 on 2024-07-31
+
+Row 2269 (Master Scout Reports_new.xlsx):
+  Player: Jay Dasilva
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2275 (Master Scout Reports_new.xlsx):
+  Player: daijiro Florencio Chirino
+  Fixture: FC Cadiz 0-0 CD Castellon
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: daijiro Florencio Chirino
+
+Row 2276 (Master Scout Reports_new.xlsx):
+  Player: Donay O'Brien-Brady
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2281 (Master Scout Reports_new.xlsx):
+  Player: Kwon Hyeok-kyu
+  Fixture: St. Mirren FC vs Aberdeen FC
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Kwon Hyeok-kyu
+
+Row 2286 (Master Scout Reports_new.xlsx):
+  Player: Callum Wright
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2295 (Master Scout Reports_new.xlsx):
+  Player: Brahima Diarra
+  Fixture: Paraguay U23 1-0 Mali U23
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Paraguay U23 1-0 Mali U23 on 2024-07-30
+
+Row 2299 (Master Scout Reports_new.xlsx):
+  Player: Gaga Slonina
+  Fixture: Anderlecht 1-0 Eupen
+  Scout: Liam Burden
+  Errors:
+    - Player not found: Gaga Slonina
+
+Row 2301 (Master Scout Reports_new.xlsx):
+  Player: Calvin Ramsay
+  Fixture: Chesterfield 3-2 Wigan Athletic
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Chesterfield 3-2 Wigan Athletic on 2024-12-10
+
+Row 2310 (Master Scout Reports_new.xlsx):
+  Player: Momodou Nije
+  Fixture: KFUM 2-0 Lillestrøm
+  Scout: Thomas White
+  Errors:
+    - Player not found: Momodou Nije
+
+Row 2313 (Master Scout Reports_new.xlsx):
+  Player: Coniah Boyce-Clarke
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2314 (Master Scout Reports_new.xlsx):
+  Player: Zachary Obiero
+  Fixture: Leyton Orient 1-2 Birmingham City
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Zachary Obiero
+
+Row 2318 (Master Scout Reports_new.xlsx):
+  Player: Lewis Orford
+  Fixture: Newcastle U21 0-1 West Ham United U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Newcastle U21 0-1 West Ham United U21 on 2025-09-20
+
+Row 2319 (Master Scout Reports_new.xlsx):
+  Player: Pablo Lopez
+  Fixture: Spurs U21 1-3 Valencia U23
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Spurs U21 1-3 Valencia U23 on 2024-09-17
+
+Row 2320 (Master Scout Reports_new.xlsx):
+  Player: Paul Okon
+  Fixture: West Ham United U21 vs Benfica Lissabon U21
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Paul Okon
+
+Row 2322 (Master Scout Reports_new.xlsx):
+  Player: Maldini Kacurri
+  Fixture: Milton Keynes Dons 2:2 Arsenal U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Milton Keynes Dons 2:2 Arsenal U21 on 2024-10-08
+
+Row 2324 (Master Scout Reports_new.xlsx):
+  Player: Elliott Nevitt
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2331 (Master Scout Reports_new.xlsx):
+  Player: Malcolm Ebiowei
+  Fixture: AFC Wimbledon 2-0 Crystal Palace U21
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: AFC Wimbledon 2-0 Crystal Palace U21 on 2023-11-07
+
+Row 2338 (Master Scout Reports_new.xlsx):
+  Player: Kaheim Dixon
+  Fixture: Tivoli Gardens 3-1 Arnett Gardens
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Tivoli Gardens 3-1 Arnett Gardens on 2024-05-02
+
+Row 2339 (Master Scout Reports_new.xlsx):
+  Player: Peter Pokorny
+  Fixture: Radomiak 1-1 Slask Wroclaw
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Radomiak 1-1 Slask Wroclaw on 2025-02-08
+
+Row 2342 (Master Scout Reports_new.xlsx):
+  Player: Cameron Congreve
+  Fixture: Bromley 1-2 AFC Wimbledon
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Bromley 1-2 AFC Wimbledon on 2024-08-13
+
+Row 2346 (Master Scout Reports_new.xlsx):
+  Player: Dajaune Brown
+  Fixture: Leyton Orient 1:1 Derby County
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Leyton Orient 1:1 Derby County on 2025-01-14
+
+Row 2348 (Master Scout Reports_new.xlsx):
+  Player: Tony Yogane
+  Fixture: Brentford B 3:2 Charlton Athletic U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Brentford B 3:2 Charlton Athletic U21 on 2025-01-07
+
+Row 2352 (Master Scout Reports_new.xlsx):
+  Player: Ben Elliott
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2360 (Master Scout Reports_new.xlsx):
+  Player: Adam Forshaw
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2362 (Master Scout Reports_new.xlsx):
+  Player: Luis Vega
+  Fixture: Ecuador 2:1 Honduras
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Ecuador 2:1 Honduras on 2024-06-16
+
+Row 2366 (Master Scout Reports_new.xlsx):
+  Player: Elliott List
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2372 (Master Scout Reports_new.xlsx):
+  Player: Baylee Dipepa
+  Fixture: Southampton U21 3-1 Anderlecht U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Southampton U21 3-1 Anderlecht U21 on 2025-01-21
+
+Row 2376 (Master Scout Reports_new.xlsx):
+  Player: Tony Springett
+  Fixture: Norwich U21 1-3 Middlesbrough U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Norwich U21 1-3 Middlesbrough U21 on 2025-12-13
+
+Row 2382 (Master Scout Reports_new.xlsx):
+  Player: Eli King
+  Fixture: Wales U21 1:2 Czech Republic U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wales U21 1:2 Czech Republic U21 on 2024-10-11
+
+Row 2383 (Master Scout Reports_new.xlsx):
+  Player: Ademola Ola-Adebomi
+  Fixture: Crystal Palace U21 v RB Leipzig U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Crystal Palace U21 v RB Leipzig U21 on 2025-01-17
+
+Row 2384 (Master Scout Reports_new.xlsx):
+  Player: Apostolos Stamatelopoulos
+  Fixture: Australia 5-0 Palestine (cameo subbed in 64th)
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Australia 5-0 Palestine (cameo subbed in 64th) on 2024-05-06
+
+Row 2388 (Master Scout Reports_new.xlsx):
+  Player: Jamie Donley
+  Fixture: Leyton Orient 1:1 Derby County
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Leyton Orient 1:1 Derby County on 2025-01-14
+
+Row 2390 (Master Scout Reports_new.xlsx):
+  Player: Manadi Camara
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2395 (Master Scout Reports_new.xlsx):
+  Player: Muhamed Tijani
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2397 (Master Scout Reports_new.xlsx):
+  Player: William Fish
+  Fixture: Hibernian FC 1-2 Celtic
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: William Fish
+
+Row 2400 (Master Scout Reports_new.xlsx):
+  Player: Jordan Houghton
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2401 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Illescas 1-0 Getafe B
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Illescas 1-0 Getafe B on 2024-10-13
+
+Row 2405 (Master Scout Reports_new.xlsx):
+  Player: Jonas Thomas Kersken
+  Fixture: Erzgebirge Aue 1:0 Arminia Bielefeld
+  Scout: Thomas Evans
+  Errors:
+    - Player not found: Jonas Thomas Kersken
+
+Row 2408 (Master Scout Reports_new.xlsx):
+  Player: Joel Latibeaudiere
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2412 (Master Scout Reports_new.xlsx):
+  Player: Lucas Bergström
+  Fixture: Estonia U21 1-0 Finland U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Estonia U21 1-0 Finland U21 on 2024-06-06
+
+Row 2415 (Master Scout Reports_new.xlsx):
+  Player: Arpad Tordai
+  Fixture: Zaligiris 2-1 Pafos
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Zaligiris 2-1 Pafos on 2024-07-25
+
+Row 2416 (Master Scout Reports_new.xlsx):
+  Player: Sil Swinkels
+  Fixture: Blackpool 1-1 Aston Villa U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Blackpool 1-1 Aston Villa U21 on 2024-12-17
+
+Row 2419 (Master Scout Reports_new.xlsx):
+  Player: Chukwubuikem Ikwuemes
+  Fixture: Fiorentina 3-0 Salernitana
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Fiorentina 3-0 Salernitana on 2023-12-03
+
+Row 2420 (Master Scout Reports_new.xlsx):
+  Player: Dan Rigge
+  Fixture: West Ham United U21 vs Benfica Lissabon U21
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Dan Rigge
+
+Row 2426 (Master Scout Reports_new.xlsx):
+  Player: Plamen Andreev
+  Fixture: Lokomotiv Plovdiv 1-2 Levski Sofia
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Lokomotiv Plovdiv 1-2 Levski Sofia on 2024-05-18
+
+Row 2427 (Master Scout Reports_new.xlsx):
+  Player: Lewis Wing
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2428 (Master Scout Reports_new.xlsx):
+  Player: Marian Huja
+  Fixture: Sepsi 1:1 Petrolul 52
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Sepsi 1:1 Petrolul 52 on 2024-11-02
+
+Row 2436 (Master Scout Reports_new.xlsx):
+  Player: Gaga Slonina
+  Fixture: Crawley Town 0-3 Barnsley
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Gaga Slonina
+
+Row 2437 (Master Scout Reports_new.xlsx):
+  Player: James Berry
+  Fixture: Chesterfield 3-2 Grimsby Town
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Chesterfield 3-2 Grimsby Town on 2024-11-12
+
+Row 2438 (Master Scout Reports_new.xlsx):
+  Player: Tim Krul
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2439 (Master Scout Reports_new.xlsx):
+  Player: David Kamara
+  Fixture: Peterborough vs Northampton Town
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Peterborough vs Northampton Town on 2024-12-17
+
+Row 2441 (Master Scout Reports_new.xlsx):
+  Player: Adam Randell
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2444 (Master Scout Reports_new.xlsx):
+  Player: MJ Williams
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2453 (Master Scout Reports_new.xlsx):
+  Player: Derrick Abu
+  Fixture: Southampton U21 4-1 RB Leipzig U21
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Southampton U21 4-1 RB Leipzig U21 on 2024-10-29
+
+Row 2457 (Master Scout Reports_new.xlsx):
+  Player: Tatsuhiro Sakamoto
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2458 (Master Scout Reports_new.xlsx):
+  Player: Harvey Araujo
+  Fixture: Chesterfield vs Horsham (FAC)
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Chesterfield vs Horsham (FAC) on 2024-11-02
+
+Row 2461 (Master Scout Reports_new.xlsx):
+  Player: Kluiverth Aguilar
+  Fixture: Genk II 1:1 Lommel SK
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Genk II 1:1 Lommel SK on 2024-02-25
+
+Row 2471 (Master Scout Reports_new.xlsx):
+  Player: Harley Mills
+  Fixture: Peterborough vs Northampton Town
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Peterborough vs Northampton Town on 2024-12-17
+
+Row 2475 (Master Scout Reports_new.xlsx):
+  Player: Finn Surman
+  Fixture: Mura 2-2 Rogaska
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Mura 2-2 Rogaska on 2024-04-25
+
+Row 2479 (Master Scout Reports_new.xlsx):
+  Player: Alex Giles
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2486 (Master Scout Reports_new.xlsx):
+  Player: Godfrey Bitok Stephen
+  Fixture: MTK Budapest 1-1 Diosgyor
+  Scout: Thomas White
+  Errors:
+    - Player not found: Godfrey Bitok Stephen
+
+Row 2487 (Master Scout Reports_new.xlsx):
+  Player: Ben Thompson
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2490 (Master Scout Reports_new.xlsx):
+  Player: Gaga Slonina
+  Fixture: Kortrijk 1-0 Eupen
+  Scout: Reece Jackson
+  Errors:
+    - Player not found: Gaga Slonina
+
+Row 2495 (Master Scout Reports_new.xlsx):
+  Player: James Berry
+  Fixture: Chesterfield vs Horsham (FAC)
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Chesterfield vs Horsham (FAC) on 2024-11-02
+
+Row 2496 (Master Scout Reports_new.xlsx):
+  Player: Fabio Tavares
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2498 (Master Scout Reports_new.xlsx):
+  Player: Sam Sherring
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2501 (Master Scout Reports_new.xlsx):
+  Player: Tomas Vaclik
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Player not found: Tomas Vaclik
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2503 (Master Scout Reports_new.xlsx):
+  Player: Karl Hein
+  Fixture: Finland 2-1 Estonia- (Poor pitch conditions)
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Finland 2-1 Estonia- (Poor pitch conditions) on 2024-03-26
+
+Row 2505 (Master Scout Reports_new.xlsx):
+  Player: Liam Kitching
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2506 (Master Scout Reports_new.xlsx):
+  Player: Alex Gilbert
+  Fixture: Brentford B 1-1 AIK
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Brentford B 1-1 AIK on 2023-02-06
+
+Row 2507 (Master Scout Reports_new.xlsx):
+  Player: Florian Wiegele
+  Fixture: SC Rheindorf Altach 1-2 Grazer AK 1902
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: SC Rheindorf Altach 1-2 Grazer AK 1902 on 2025-02-08
+
+Row 2509 (Master Scout Reports_new.xlsx):
+  Player: Jake Bidwell
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2510 (Master Scout Reports_new.xlsx):
+  Player: Thomas Waddingham
+  Fixture: Australia U23 1:1 Egypt U23
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Australia U23 1:1 Egypt U23 on 2024-03-23
+
+Row 2515 (Master Scout Reports_new.xlsx):
+  Player: Lee Ho-Jae
+  Fixture: Pohang Steelers 1-2 Gimcheon Sangmu
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Lee Ho-Jae
+
+Row 2518 (Master Scout Reports_new.xlsx):
+  Player: Max Clark
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2519 (Master Scout Reports_new.xlsx):
+  Player: Joshua Thomas
+  Fixture: Wales U21 1:2 Czech Republic U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Wales U21 1:2 Czech Republic U21 on 2024-10-11
+
+Row 2527 (Master Scout Reports_new.xlsx):
+  Player: Jonathan Afolabi
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2533 (Master Scout Reports_new.xlsx):
+  Player: Tom McGill
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2538 (Master Scout Reports_new.xlsx):
+  Player: Alby Kelly-Heald
+  Fixture: Wellington v Wellington Olympic
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Wellington v Wellington Olympic on 2024-12-17
+
+Row 2550 (Master Scout Reports_new.xlsx):
+  Player: Sonny Finch
+  Fixture: Milton Keynes Dons 2:2 Arsenal U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Milton Keynes Dons 2:2 Arsenal U21 on 2024-10-08
+
+Row 2557 (Master Scout Reports_new.xlsx):
+  Player: Jewison Bennette
+  Fixture: Costa Rica U23 2-2 Colombia U23
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Costa Rica U23 2-2 Colombia U23 on 2023-10-15
+
+Row 2558 (Master Scout Reports_new.xlsx):
+  Player: Bradley Mayo
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2560 (Master Scout Reports_new.xlsx):
+  Player: Bradley Ihionvien
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2561 (Master Scout Reports_new.xlsx):
+  Player: Levy Nene
+  Fixture: Manchester United U21 1-3 FC Nordsjaelland U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Manchester United U21 1-3 FC Nordsjaelland U21 on 2025-01-21
+
+Row 2564 (Master Scout Reports_new.xlsx):
+  Player: Gaga Slonina
+  Fixture: Barnsley v Charlton Athletic
+  Scout: Stephen Henderson
+  Errors:
+    - Player not found: Gaga Slonina
+
+Row 2566 (Master Scout Reports_new.xlsx):
+  Player: Owen Goodman
+  Fixture: Milton Keynes Dons 0:2 AFC Wimbledon
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0:2 AFC Wimbledon on 2024-11-03
+
+Row 2567 (Master Scout Reports_new.xlsx):
+  Player: Gabriel Ortelli
+  Fixture: Watford U21 1-3 Millwall U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Watford U21 1-3 Millwall U21 on 2024-12-02
+
+Row 2577 (Master Scout Reports_new.xlsx):
+  Player: Ilan Kebbal
+  Fixture: nan
+  Scout: Reece Jackson
+  Errors:
+    - Empty fixture
+
+Row 2578 (Master Scout Reports_new.xlsx):
+  Player: Simeon Petrov
+  Fixture: Lodzki KS 1-2 Slask Wroclaw
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Lodzki KS 1-2 Slask Wroclaw on 2024-05-04
+
+Row 2590 (Master Scout Reports_new.xlsx):
+  Player: Kiano Dyer
+  Fixture: Chelsea U21 2-1 Derby County U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Chelsea U21 2-1 Derby County U21 on 2025-01-31
+
+Row 2591 (Master Scout Reports_new.xlsx):
+  Player: Jack Rudoni
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2597 (Master Scout Reports_new.xlsx):
+  Player: Harlee Dean
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2601 (Master Scout Reports_new.xlsx):
+  Player: Alex Gilbey
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2603 (Master Scout Reports_new.xlsx):
+  Player: Etienne Beugre
+  Fixture: Djurgården 1-0 Maribor
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Djurgården 1-0 Maribor on 2024-08-22
+
+Row 2606 (Master Scout Reports_new.xlsx):
+  Player: Noel Törnqvist
+  Fixture: Mjallby 1:1 GAIS
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Mjallby 1:1 GAIS on 2024-10-26
+
+Row 2608 (Master Scout Reports_new.xlsx):
+  Player: John-Kymani Gordon
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2612 (Master Scout Reports_new.xlsx):
+  Player: Ethan Galbraith
+  Fixture: Leyton Orient 0-1 Stevenage
+  Scout: Zak Mansuri
+  Errors:
+    - Fixture not found: Leyton Orient 0-1 Stevenage on 2025-01-21
+
+Row 2613 (Master Scout Reports_new.xlsx):
+  Player: Edouard Michut
+  Fixture: France U20 1-0 Korea Republic U21
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: France U20 1-0 Korea Republic U21 on 2024-06-07
+
+Row 2621 (Master Scout Reports_new.xlsx):
+  Player: Arda Kurtulan (Adana Demirspor)
+  Fixture: Albania U21 0-0 Finland U21
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Arda Kurtulan (Adana Demirspor)
+    - Fixture not found: Albania U21 0-0 Finland U21 on 2024-03-22
+
+Row 2625 (Master Scout Reports_new.xlsx):
+  Player: Ryan Lowe
+  Fixture: Milton Keynes Dons 1-0 Walsall
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Ryan Lowe
+
+Row 2628 (Master Scout Reports_new.xlsx):
+  Player: Luis Binks
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2629 (Master Scout Reports_new.xlsx):
+  Player: James Dornelly
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2633 (Master Scout Reports_new.xlsx):
+  Player: Derrick Abu
+  Fixture: Southampton U21 3-1 Anderlecht U21
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Southampton U21 3-1 Anderlecht U21 on 2025-01-21
+
+Row 2634 (Master Scout Reports_new.xlsx):
+  Player: Jack Sparkes
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2645 (Master Scout Reports_new.xlsx):
+  Player: Karl Hein
+  Fixture: Swindon 2-2 Arsenal U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Swindon 2-2 Arsenal U21 on 2023-08-22
+
+Row 2648 (Master Scout Reports_new.xlsx):
+  Player: Bali Mumba
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2652 (Master Scout Reports_new.xlsx):
+  Player: Josh Austerfield
+  Fixture: Salford City vs Cheltenham Town (FA Cup)
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Salford City vs Cheltenham Town (FA Cup) on 2024-11-30
+
+Row 2659 (Master Scout Reports_new.xlsx):
+  Player: Luke Butterfield
+  Fixture: Watford vs Everton U21
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Watford vs Everton U21 on 2024-11-25
+
+Row 2661 (Master Scout Reports_new.xlsx):
+  Player: Sam De Grand
+  Fixture: Genk II 1:1 Lommel SK
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Genk II 1:1 Lommel SK on 2024-02-25
+
+Row 2676 (Master Scout Reports_new.xlsx):
+  Player: Braydon Johnson
+  Fixture: Eastbourne Borough 1-0 Bath City- Poor Weather conditions and Poor camera
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Eastbourne Borough 1-0 Bath City- Poor Weather conditions and Poor camera on 2024-11-23
+
+Row 2683 (Master Scout Reports_new.xlsx):
+  Player: Casper Widell
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 2686 (Master Scout Reports_new.xlsx):
+  Player: Issac Holland
+  Fixture: Brentford B v Chelsea U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Brentford B v Chelsea U21 on 2025-01-27
+
+Row 2689 (Master Scout Reports_new.xlsx):
+  Player: Milton Oni
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2696 (Master Scout Reports_new.xlsx):
+  Player: Matt Young
+  Fixture: Salford City vs Cheltenham Town
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Salford City vs Cheltenham Town on 2024-11-30
+
+Row 2700 (Master Scout Reports_new.xlsx):
+  Player: Tyrese Hall
+  Fixture: Swindon Town 2-1 Tottenham Hotspur U21
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Swindon Town 2-1 Tottenham Hotspur U21 on 2024-11-05
+
+Row 2704 (Master Scout Reports_new.xlsx):
+  Player: Mehmed Cosic
+  Fixture: Partizan 2-2 Radnicki Kragujevac
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Partizan 2-2 Radnicki Kragujevac on 2024-11-10
+
+Row 2708 (Master Scout Reports_new.xlsx):
+  Player: Kein Sato
+  Fixture: Israel U23 0-1 Japan U23
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Israel U23 0-1 Japan U23 on 2024-07-30
+
+Row 2712 (Master Scout Reports_new.xlsx):
+  Player: Jacky Donkor
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 2714 (Master Scout Reports_new.xlsx):
+  Player: Tommy Leigh
+  Fixture: Milton Keynes Dons 1:1 Portsmouth (live)
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Milton Keynes Dons 1:1 Portsmouth (live) on 2024-07-30
+
+Row 2715 (Master Scout Reports_new.xlsx):
+  Player: Daniel Agyei
+  Fixture: Leyton Orient 0-0 Burton Albion
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Daniel Agyei
+
+Row 2716 (Master Scout Reports_new.xlsx):
+  Player: Joseph Gbode
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2717 (Master Scout Reports_new.xlsx):
+  Player: Hindolo Mustapha
+  Fixture: Peterborough United vs Crystal Palace U21
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Peterborough United vs Crystal Palace U21 on 2024-11-05
+
+Row 2719 (Master Scout Reports_new.xlsx):
+  Player: Leo Black
+  Fixture: Spurs U21 1-3 Valencia U21
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Spurs U21 1-3 Valencia U21 on 2024-09-17
+
+Row 2721 (Master Scout Reports_new.xlsx):
+  Player: Callum Tripp
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2723 (Master Scout Reports_new.xlsx):
+  Player: Marcus McGuane
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2733 (Master Scout Reports_new.xlsx):
+  Player: Krisztofer Horvath
+  Fixture: Debrecen 1-0 Kecskemeti
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Debrecen 1-0 Kecskemeti on 2024-04-13
+
+Row 2737 (Master Scout Reports_new.xlsx):
+  Player: Fin Stevens
+  Fixture: Eintracht Braunschweig 1-1 St Pauli
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Eintracht Braunschweig 1-1 St Pauli on 2024-11-14
+
+Row 2740 (Master Scout Reports_new.xlsx):
+  Player: Jonas Thomas Kersken
+  Fixture: Ingolstadt 1-1 Arminia Bielefeld
+  Scout: Thomas White
+  Errors:
+    - Player not found: Jonas Thomas Kersken
+
+Row 2747 (Master Scout Reports_new.xlsx):
+  Player: Rafael Bandeira
+  Fixture: Kryvbas Kryvyi Rig 0-1 FK Oleksandriya
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Rafael Bandeira
+
+Row 2748 (Master Scout Reports_new.xlsx):
+  Player: Josef Bursik
+  Fixture: Ross County - Hibernian 30.10.24 Hibernian - Hearts 27.10.24 Dundee United - Hibernian 19.10.24
+  Scout: Stephen Henderson
+  Errors:
+    - Empty fixture date
+
+Row 2750 (Master Scout Reports_new.xlsx):
+  Player: Rob Hunt
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2752 (Master Scout Reports_new.xlsx):
+  Player: Mustapha Bundu
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2754 (Master Scout Reports_new.xlsx):
+  Player: Nico Lawrence
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2759 (Master Scout Reports_new.xlsx):
+  Player: Adrian Mazilu
+  Fixture: Germany U19 2-3 Romania U19
+  Scout: Thomas White
+  Errors:
+    - Player not found: Adrian Mazilu
+    - Fixture not found: Germany U19 2-3 Romania U19 on 2024-03-23
+
+Row 2760 (Master Scout Reports_new.xlsx):
+  Player: Adam Davies
+  Fixture: Sheffield United 1:0 Bristol City
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Sheffield United 1:0 Bristol City on 2023-04-18
+
+Row 2763 (Master Scout Reports_new.xlsx):
+  Player: Filip Beckman
+  Fixture: Mjallby 1:1 GAIS
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Mjallby 1:1 GAIS on 2024-10-26
+
+Row 2765 (Master Scout Reports_new.xlsx):
+  Player: Kai Andrews
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2770 (Master Scout Reports_new.xlsx):
+  Player: Tom Iorpenda
+  Fixture: Bolton 3-1 Huddersfield Town
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Bolton 3-1 Huddersfield Town on 2024-12-10
+
+Row 2778 (Master Scout Reports_new.xlsx):
+  Player: Gísli Thórdarson
+  Fixture: Hungary U20 2-0 Iceland U20
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Hungary U20 2-0 Iceland U20 on 2024-03-20
+
+Row 2783 (Master Scout Reports_new.xlsx):
+  Player: Donnell McNeilly
+  Fixture: Chelsea U21 2-1 Derby County U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Chelsea U21 2-1 Derby County U21 on 2025-01-31
+
+Row 2784 (Master Scout Reports_new.xlsx):
+  Player: Collin Andeng Ndi
+  Fixture: Southend v Charlton Athletic
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Southend v Charlton Athletic on 2024-11-02
+
+Row 2785 (Master Scout Reports_new.xlsx):
+  Player: Andre Garcia
+  Fixture: Colchester 2-2 Reading
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Colchester 2-2 Reading on 2024-08-13
+
+Row 2792 (Master Scout Reports_new.xlsx):
+  Player: Nathan Bishop
+  Fixture: Wycombe Wanderers 3-2 Watford
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Wycombe Wanderers 3-2 Watford on 2024-09-17
+
+Row 2796 (Master Scout Reports_new.xlsx):
+  Player: Joe O'Brien Whitmarsh
+  Fixture: Woking 4-4 Southampton U21
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Woking 4-4 Southampton U21 on 2024-11-05
+
+Row 2799 (Master Scout Reports_new.xlsx):
+  Player: Pijus Širvys
+  Fixture: Lithuania 0-1 Cyprus
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Lithuania 0-1 Cyprus on 2024-09-06
+
+Row 2801 (Master Scout Reports_new.xlsx):
+  Player: Sam Klein
+  Fixture: Perth Glory 1-3 Brisbane Roar
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Perth Glory 1-3 Brisbane Roar on 2025-03-13
+
+Row 2802 (Master Scout Reports_new.xlsx):
+  Player: Ben Hamer
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2809 (Master Scout Reports_new.xlsx):
+  Player: Jack Tucker
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2810 (Master Scout Reports_new.xlsx):
+  Player: Lewis Neilson
+  Fixture: Airdrieonians 2-2 Partick Thistle
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Airdrieonians 2-2 Partick Thistle on 2024-05-07
+
+Row 2811 (Master Scout Reports_new.xlsx):
+  Player: Karl Hein
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2820 (Master Scout Reports_new.xlsx):
+  Player: Tommy Simkin
+  Fixture: Walsall v Charlton Athletic
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Walsall v Charlton Athletic on 2024-11-30
+
+Row 2822 (Master Scout Reports_new.xlsx):
+  Player: Yacine Bourhane
+  Fixture: Esbjerg Fb 0-2 Aalborg BK
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Esbjerg Fb 0-2 Aalborg BK on 2024-10-30
+
+Row 2824 (Master Scout Reports_new.xlsx):
+  Player: Justin Obikwu
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2825 (Master Scout Reports_new.xlsx):
+  Player: Martial Godo
+  Fixture: Fulham U21 0:6 Chelsea U21
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Fulham U21 0:6 Chelsea U21 on 2024-10-04
+
+Row 2827 (Master Scout Reports_new.xlsx):
+  Player: Jack Burroughs
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2838 (Master Scout Reports_new.xlsx):
+  Player: Thijmen Goppel
+  Fixture: Jahn Regensburg 2-2 Wehen Wiesbaden
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Jahn Regensburg 2-2 Wehen Wiesbaden on 2024-05-24
+
+Row 2848 (Master Scout Reports_new.xlsx):
+  Player: Adam Davies
+  Fixture: Birmingham City 1-2 Sheffield United
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Birmingham City 1-2 Sheffield United on 2023-05-08
+
+Row 2850 (Master Scout Reports_new.xlsx):
+  Player: Abdoulie Manneh
+  Fixture: Mjallby 1:1 GAIS
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Mjallby 1:1 GAIS on 2024-10-26
+
+Row 2853 (Master Scout Reports_new.xlsx):
+  Player: Edouard Michut
+  Fixture: Italy U21 1-0 France U20
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Italy U21 1-0 France U20 on 2024-06-16
+
+Row 2854 (Master Scout Reports_new.xlsx):
+  Player: Arthur Zagre
+  Fixture: Ajax U21 3-2 Excelsior
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Ajax U21 3-2 Excelsior on 2025-02-10
+
+Row 2863 (Master Scout Reports_new.xlsx):
+  Player: Jake Beesley
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2864 (Master Scout Reports_new.xlsx):
+  Player: Momodou Nije
+  Fixture: Sarpsborg 08 0:2 KFUM
+  Scout: Thomas Evans
+  Errors:
+    - Player not found: Momodou Nije
+
+Row 2866 (Master Scout Reports_new.xlsx):
+  Player: Aune Heggebo
+  Fixture: St. Mirren FC 1:1 Brann
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: St. Mirren FC 1:1 Brann on 2024-08-08
+
+Row 2873 (Master Scout Reports_new.xlsx):
+  Player: Devin Haen
+  Fixture: Vitesse Arnheim 1-4 VVV-Venlo
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: Vitesse Arnheim 1-4 VVV-Venlo on 2025-03-14
+
+Row 2874 (Master Scout Reports_new.xlsx):
+  Player: Jonny Yull
+  Fixture: China PR U20 1-2 Australia U20
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: China PR U20 1-2 Australia U20 on 2025-02-18
+
+Row 2879 (Master Scout Reports_new.xlsx):
+  Player: John Patrick Finn
+  Fixture: Getafe B 4:1 Conquense
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: John Patrick Finn
+    - Fixture not found: Getafe B 4:1 Conquense on 2024-10-06
+
+Row 2880 (Master Scout Reports_new.xlsx):
+  Player: Josh Edwards
+  Fixture: Dunfermline Athletic 1-1 Inverness CT
+  Scout: Liam Burden
+  Errors:
+    - Fixture not found: Dunfermline Athletic 1-1 Inverness CT on 2024-04-27
+
+Row 2881 (Master Scout Reports_new.xlsx):
+  Player: Ryan Howley
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2882 (Master Scout Reports_new.xlsx):
+  Player: Edouard Michut
+  Fixture: France U20 0:2 Cote DIvorie U20
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: France U20 0:2 Cote DIvorie U20 on 2024-06-03
+
+Row 2886 (Master Scout Reports_new.xlsx):
+  Player: Noah Ohio
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2887 (Master Scout Reports_new.xlsx):
+  Player: Paik Seung-Ho
+  Fixture: Leyton Orient 1-2 Birmingham City
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Paik Seung-Ho
+
+Row 2899 (Master Scout Reports_new.xlsx):
+  Player: Isaac Olaofe
+  Fixture: Reading 1:3 Stockport County
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Isaac Olaofe
+
+Row 2903 (Master Scout Reports_new.xlsx):
+  Player: Andy Fisher
+  Fixture: Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2904 (Master Scout Reports_new.xlsx):
+  Player: Charlie Patino
+  Fixture: Norwich City 0-1 Blackpool
+  Scout: Thomas White
+  Errors:
+    - Fixture not found: Norwich City 0-1 Blackpool on 2023-05-08
+
+Row 2906 (Master Scout Reports_new.xlsx):
+  Player: Bradley Dack
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2910 (Master Scout Reports_new.xlsx):
+  Player: Kamarai Simon-Swyer
+  Fixture: West Ham United U21 1:0 Sunderland U21
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Kamarai Simon-Swyer
+
+Row 2911 (Master Scout Reports_new.xlsx):
+  Player: Aidan Dausch
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2913 (Master Scout Reports_new.xlsx):
+  Player: Isaac Olaofe
+  Fixture: Cambridge United 2-0 Stockport County
+  Scout: Elliot Young
+  Errors:
+    - Player not found: Isaac Olaofe
+
+Row 2914 (Master Scout Reports_new.xlsx):
+  Player: Roman Dixon
+  Fixture: Watford vs Everton U21
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Watford vs Everton U21 on 2024-11-25
+
+Row 2915 (Master Scout Reports_new.xlsx):
+  Player: Daniel Phillips
+  Fixture: Stevenage 1-3 Coventry
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Stevenage 1-3 Coventry on 2024-07-23
+
+Row 2924 (Master Scout Reports_new.xlsx):
+  Player: Ryan Hardie
+  Fixture: Milton Keynes Dons 0-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Milton Keynes Dons 0-1 Plymouth Argyle on 2024-08-03
+
+Row 2927 (Master Scout Reports_new.xlsx):
+  Player: Garang Kuol
+  Fixture: Australia U23 1:1 Egypt U23
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Australia U23 1:1 Egypt U23 on 2024-03-23
+
+Row 2928 (Master Scout Reports_new.xlsx):
+  Player: Junior Olaitan
+  Fixture: nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2943 (Master Scout Reports_new.xlsx):
+  Player: Chris Forino-Joseph
+  Fixture: Wycombe Wanderers 1-0 Charlton Athletic
+  Scout: Charlie Irwin
+  Errors:
+    - Player not found: Chris Forino-Joseph
+
+Row 2945 (Master Scout Reports_new.xlsx):
+  Player: Emmanuel Fernandez
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2952 (Master Scout Reports_new.xlsx):
+  Player: Kiban Rai
+  Fixture: Leyton Orient vs Newport County
+  Scout: Hashim Umarji
+  Errors:
+    - Fixture not found: Leyton Orient vs Newport County on 2024-08-13
+
+Row 2953 (Master Scout Reports_new.xlsx):
+  Player: Cian Hayes
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2954 (Master Scout Reports_new.xlsx):
+  Player: Ryan One
+  Fixture: Colchester United U21 2-3 Sheffield United U21
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: Colchester United U21 2-3 Sheffield United U21 on 2024-05-10
+
+Row 2958 (Master Scout Reports_new.xlsx):
+  Player: Jonathan Afolabi
+  Fixture: Bohemians 1-3 St. Pats Athletic
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Bohemians 1-3 St. Pats Athletic on 2023-11-12
+
+Row 2966 (Master Scout Reports_new.xlsx):
+  Player: Charlie Webster
+  Fixture: Burton Albion Vs Stevenage
+  Scout: Adam Temple
+  Errors:
+    - Fixture not found: Burton Albion Vs Stevenage on 2024-12-10
+
+Row 2968 (Master Scout Reports_new.xlsx):
+  Player: Aodhan Doherty
+  Fixture: Blackburn Rovers U21 3-1 Borussia Mönchengladbach U21
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Blackburn Rovers U21 3-1 Borussia Mönchengladbach U21 on 2024-10-22
+
+Row 2974 (Master Scout Reports_new.xlsx):
+  Player: Josh Griffiths
+  Fixture: West Bromwich Albion vs Wolverhampton Wanderers
+  Scout: Charlie Irwin
+  Errors:
+    - Fixture not found: West Bromwich Albion vs Wolverhampton Wanderers on 2024-01-21
+
+Row 2975 (Master Scout Reports_new.xlsx):
+  Player: Brad Dolaghan
+  Fixture: West Ham United United U21 2-2 Benfica B
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: West Ham United United U21 2-2 Benfica B on 2024-09-24
+
+Row 2976 (Master Scout Reports_new.xlsx):
+  Player: Josh Andrews
+  Fixture: Gillingham 1-2 Peterborough
+  Scout: Andy Scott
+  Errors:
+    - Fixture not found: Gillingham 1-2 Peterborough on 2024-09-03
+
+Row 2983 (Master Scout Reports_new.xlsx):
+  Player: Luke Harris
+  Fixture: Birmingham City vs Lincoln City
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Birmingham City vs Lincoln City on 2025-01-11
+
+Row 2985 (Master Scout Reports_new.xlsx):
+  Player: Kamarai Simon-Swyer
+  Fixture: West Ham United United U21 vs Stoke City U21
+  Scout: Darren Sarll
+  Errors:
+    - Player not found: Kamarai Simon-Swyer
+
+Row 2990 (Master Scout Reports_new.xlsx):
+  Player: Salah Oulad M'Hand
+  Fixture: Milton Keynes Dons 2:2 Arsenal U21
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Salah Oulad M'Hand
+    - Fixture not found: Milton Keynes Dons 2:2 Arsenal U21 on 2024-10-08
+
+Row 3001 (Master Scout Reports_new.xlsx):
+  Player: Richard Taylor
+  Fixture: St. Mirren FC 1:1 Brann
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: St. Mirren FC 1:1 Brann on 2024-08-08
+
+Row 3004 (Master Scout Reports_new.xlsx):
+  Player: Johan Meyer
+  Fixture: Esbjerg 0-2 Aalborg BK
+  Scout: Reece Jackson
+  Errors:
+    - Fixture not found: Esbjerg 0-2 Aalborg BK on 2024-10-30
+
+Row 3015 (Master Scout Reports_new.xlsx):
+  Player: Devan Tanton
+  Fixture: Chesterfield vs Horsham (FAC)
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: Chesterfield vs Horsham (FAC) on 2024-11-02
+
+Row 3020 (Master Scout Reports_new.xlsx):
+  Player: Hristo Ivanov
+  Fixture: Locomotives Plovdiv 1-2 Levski Sofia
+  Scout: Alfie Shaw
+  Errors:
+    - Fixture not found: Locomotives Plovdiv 1-2 Levski Sofia on 2024-05-18
+
+Row 3021 (Master Scout Reports_new.xlsx):
+  Player: Frederick Issaka
+  Fixture: Queens Park Rangers 1-1 Plymouth Argyle
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Frederick Issaka
+
+Row 3029 (Master Scout Reports_new.xlsx):
+  Player: Áron Csongvai
+  Fixture: nan
+  Scout: Reece Jackson
+  Errors:
+    - Empty fixture
+
+Row 3031 (Master Scout Reports_new.xlsx):
+  Player: Hyun-Jun Yang
+  Fixture: Celtic 4-0 Newcastle
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Celtic 4-0 Newcastle on 2025-07-19
+
+Row 3032 (Master Scout Reports_new.xlsx):
+  Player: Johnny Kenny
+  Fixture: Celtic 4-0 Newcastle
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Celtic 4-0 Newcastle on 2025-07-19
+
+Row 3033 (Master Scout Reports_new.xlsx):
+  Player: Luke McGowan
+  Fixture: Celtic 4-0 Newcastle
+  Scout: Elliot Young
+  Errors:
+    - Fixture not found: Celtic 4-0 Newcastle on 2025-07-19
+
+Row 3057 (Master Scout Reports_new.xlsx):
+  Player: Will Ferry
+  Fixture: Dundee United 2:2 (P) Rapid Wien
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Dundee United 2:2 (P) Rapid Wien on 2025-08-14
+
+Row 3061 (Master Scout Reports_new.xlsx):
+  Player: Ishe Samuels-Smith
+  Fixture: Chelsea U21 1:2 West Bromwich Albion U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Chelsea U21 1:2 West Bromwich Albion U21 on 2024-09-21
+
+Row 3076 (Master Scout Reports_new.xlsx):
+  Player: Bendeguz Bolla
+  Fixture: Dundee United 2:2 (P) Rapid Wien
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Dundee United 2:2 (P) Rapid Wien on 2025-08-14
+
+Row 3077 (Master Scout Reports_new.xlsx):
+  Player: Samuel Gidi
+  Fixture: Zilina 0:2 Spartak Trnava
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Zilina 0:2 Spartak Trnava on 2025-03-11
+
+Row 3086 (Master Scout Reports_new.xlsx):
+  Player: Krisztián Keresztes
+  Fixture: Dundee United 2:2 (P) Rapid Wien
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Dundee United 2:2 (P) Rapid Wien on 2025-08-14
+
+Row 3102 (Master Scout Reports_new.xlsx):
+  Player: Abemly "Metinho" Silu
+  Fixture: Basel 2:1 Grasshopper
+  Scout: Thomas Evans
+  Errors:
+    - Player not found: Abemly "Metinho" Silu
+
+Row 3109 (Master Scout Reports_new.xlsx):
+  Player: Romeo Amane
+  Fixture: Dundee United 2:2 (P) Rapid Wien
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Dundee United 2:2 (P) Rapid Wien on 2025-08-14
+
+Row 3122 (Master Scout Reports_new.xlsx):
+  Player: Devante Cole
+  Fixture: Chelsea U21 1:2 West Bromwich Albion U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Chelsea U21 1:2 West Bromwich Albion U21 on 2024-09-21
+
+Row 3180 (Master Scout Reports_new.xlsx):
+  Player: Ivan Dolcek
+  Fixture: Dundee United 2:2 (P) Rapid Wien
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Dundee United 2:2 (P) Rapid Wien on 2025-08-14
+
+Row 3182 (Master Scout Reports_new.xlsx):
+  Player: Harvey Vale
+  Fixture: Chelsea U21 1:2 West Bromwich Albion U21
+  Scout: Thomas Evans
+  Errors:
+    - Fixture not found: Chelsea U21 1:2 West Bromwich Albion U21 on 2024-09-21
+
+Row 3186 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3187 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3188 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3189 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3190 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3191 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3192 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3193 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3194 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3195 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3196 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3197 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3198 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3199 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3200 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3201 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3202 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3203 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3204 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3205 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3206 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3207 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3208 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3209 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3210 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3211 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3212 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3213 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3214 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+
+Row 3215 (Master Scout Reports_new.xlsx):
+  Player: nan
+  Fixture: nan
+  Scout: nan
+  Errors:
+    - Empty player name
+    - Empty fixture
+    - Empty scout name
+

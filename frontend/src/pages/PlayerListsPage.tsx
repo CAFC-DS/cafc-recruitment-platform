@@ -371,7 +371,7 @@ const PlayerListsPage: React.FC = () => {
                 </div>
               ) : (
                 lists.map((list) => {
-                  const scoreColor = list.avg_performance_score
+                  const scoreColor = list.avg_performance_score != null
                     ? getPerformanceScoreColor(list.avg_performance_score)
                     : "#6b7280";
                   const textColor = getContrastTextColor(scoreColor);
@@ -406,7 +406,7 @@ const PlayerListsPage: React.FC = () => {
                             </small>
                           )}
                         </div>
-                        {list.avg_performance_score !== null && (
+                        {list.avg_performance_score != null && (
                           <Badge
                             style={{
                               backgroundColor: scoreColor,
