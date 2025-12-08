@@ -7497,8 +7497,15 @@ async def create_player_list(
             (list_data.list_name, list_data.description, current_user.id),
         )
 
-        # Get the ID of the newly created list
-        cursor.execute("SELECT LAST_INSERT_ID()")
+        # Get the ID of the newly created list (Snowflake-compatible approach)
+        cursor.execute(
+            """
+            SELECT ID FROM player_lists
+            WHERE USER_ID = %s AND LIST_NAME = %s
+            ORDER BY CREATED_AT DESC LIMIT 1
+        """,
+            (current_user.id, list_data.list_name),
+        )
         list_id = cursor.fetchone()[0]
 
         conn.commit()
