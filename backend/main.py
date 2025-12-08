@@ -7532,6 +7532,40 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
+        # Create tables if they don't exist
+        try:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_lists (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_NAME VARCHAR(500),
+                    DESCRIPTION VARCHAR(2000),
+                    USER_ID INTEGER,
+                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID)
+                )
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_list_items (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_ID INTEGER,
+                    PLAYER_ID INTEGER,
+                    CAFC_PLAYER_ID INTEGER,
+                    DISPLAY_ORDER INTEGER DEFAULT 0,
+                    NOTES VARCHAR(2000),
+                    ADDED_BY INTEGER,
+                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID)
+                )
+            """
+            )
+        except Exception as e:
+            logging.warning(f"Tables may already exist: {e}")
+
         # Get all lists with player counts and creator info
         cursor.execute(
             """
