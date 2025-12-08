@@ -7532,81 +7532,59 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Create tables if they don't exist
+        # Get all lists with player counts and creator info
+        # If table doesn't exist, return empty list
         try:
             cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS player_lists (
-                    ID INTEGER AUTOINCREMENT,
-                    LIST_NAME VARCHAR(500),
-                    DESCRIPTION VARCHAR(2000),
-                    USER_ID INTEGER,
-                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (ID)
+                SELECT
+                    pl.ID,
+                    pl.LIST_NAME,
+                    pl.DESCRIPTION,
+                    pl.USER_ID,
+                    pl.CREATED_AT,
+                    pl.UPDATED_AT,
+                    u.USERNAME,
+                    u.FIRSTNAME,
+                    u.LASTNAME,
+                    COUNT(pli.ID) as PLAYER_COUNT
+                FROM player_lists pl
+                LEFT JOIN users u ON pl.USER_ID = u.ID
+                LEFT JOIN player_list_items pli ON pl.ID = pli.LIST_ID
+                GROUP BY pl.ID, pl.LIST_NAME, pl.DESCRIPTION, pl.USER_ID,
+                         pl.CREATED_AT, pl.UPDATED_AT, u.USERNAME, u.FIRSTNAME, u.LASTNAME
+                ORDER BY pl.UPDATED_AT DESC
+            """
+            )
+
+            lists = []
+            for row in cursor.fetchall():
+                lists.append(
+                    {
+                        "id": row[0],
+                        "list_name": row[1],
+                        "description": row[2],
+                        "user_id": row[3],
+                        "created_at": row[4].isoformat() if row[4] else None,
+                        "updated_at": row[5].isoformat() if row[5] else None,
+                        "created_by_username": row[6],
+                        "created_by_firstname": row[7],
+                        "created_by_lastname": row[8],
+                        "player_count": row[9],
+                    }
                 )
-            """
-            )
 
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS player_list_items (
-                    ID INTEGER AUTOINCREMENT,
-                    LIST_ID INTEGER,
-                    PLAYER_ID INTEGER,
-                    CAFC_PLAYER_ID INTEGER,
-                    DISPLAY_ORDER INTEGER DEFAULT 0,
-                    NOTES VARCHAR(2000),
-                    ADDED_BY INTEGER,
-                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (ID)
-                )
-            """
-            )
-        except Exception as e:
-            logging.warning(f"Tables may already exist: {e}")
+            return {"lists": lists, "total": len(lists)}
 
-        # Get all lists with player counts and creator info
-        cursor.execute(
-            """
-            SELECT
-                pl.ID,
-                pl.LIST_NAME,
-                pl.DESCRIPTION,
-                pl.USER_ID,
-                pl.CREATED_AT,
-                pl.UPDATED_AT,
-                u.USERNAME,
-                u.FIRSTNAME,
-                u.LASTNAME,
-                COUNT(pli.ID) as PLAYER_COUNT
-            FROM player_lists pl
-            LEFT JOIN users u ON pl.USER_ID = u.ID
-            LEFT JOIN player_list_items pli ON pl.ID = pli.LIST_ID
-            GROUP BY pl.ID, pl.LIST_NAME, pl.DESCRIPTION, pl.USER_ID,
-                     pl.CREATED_AT, pl.UPDATED_AT, u.USERNAME, u.FIRSTNAME, u.LASTNAME
-            ORDER BY pl.UPDATED_AT DESC
-        """
-        )
-
-        lists = []
-        for row in cursor.fetchall():
-            lists.append(
-                {
-                    "id": row[0],
-                    "list_name": row[1],
-                    "description": row[2],
-                    "user_id": row[3],
-                    "created_at": row[4].isoformat() if row[4] else None,
-                    "updated_at": row[5].isoformat() if row[5] else None,
-                    "created_by_username": row[6],
-                    "created_by_firstname": row[7],
-                    "created_by_lastname": row[8],
-                    "player_count": row[9],
-                }
-            )
-
-        return {"lists": lists, "total": len(lists)}
+        except Exception as query_error:
+            # If table doesn't exist, return empty list
+            error_msg = str(query_error).lower()
+            if "does not exist" in error_msg or "object does not exist" in error_msg:
+                logging.info("Player lists tables don't exist yet. Returning empty list.")
+                return {"lists": [], "total": 0}
+            else:
+                # Re-raise if it's a different error
+                raise
 
     except Exception as e:
         logging.exception(e)
