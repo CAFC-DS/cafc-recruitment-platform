@@ -34,6 +34,7 @@ interface PlayerList {
   created_by_firstname: string | null;
   created_by_lastname: string | null;
   player_count: number;
+  avg_performance_score: number | null;
 }
 
 interface PlayerInList {
@@ -104,6 +105,7 @@ const PlayerListsPage: React.FC = () => {
   const [editingList, setEditingList] = useState<PlayerList | null>(null);
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
+  const [savingList, setSavingList] = useState(false);
 
   // Add Player Modal
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
@@ -112,6 +114,8 @@ const PlayerListsPage: React.FC = () => {
     PlayerSearchResult[]
   >([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check permissions
@@ -159,6 +163,7 @@ const PlayerListsPage: React.FC = () => {
   // Create or update list
   const handleSaveList = async () => {
     try {
+      setSavingList(true);
       if (editingList) {
         // Update existing list
         await axiosInstance.put(`/player-lists/${editingList.id}`, {
@@ -184,6 +189,8 @@ const PlayerListsPage: React.FC = () => {
     } catch (err: any) {
       console.error("Error saving list:", err);
       setError("Failed to save list");
+    } finally {
+      setSavingList(false);
     }
   };
 
@@ -247,11 +254,13 @@ const PlayerListsPage: React.FC = () => {
     if (!selectedList) return;
 
     try {
+      setAddingPlayer(true);
       await axiosInstance.post(`/player-lists/${selectedList.id}/players`, {
         player_id: player.player_id,
         cafc_player_id: player.cafc_player_id,
       });
       await fetchListDetail(selectedList.id);
+      await fetchLists(); // Refresh lists to update average score
       setShowAddPlayerModal(false);
       setPlayerSearchQuery("");
       setPlayerSearchResults([]);
@@ -262,6 +271,8 @@ const PlayerListsPage: React.FC = () => {
       } else {
         setError("Failed to add player");
       }
+    } finally {
+      setAddingPlayer(false);
     }
   };
 
@@ -274,13 +285,17 @@ const PlayerListsPage: React.FC = () => {
     }
 
     try {
+      setRemovingPlayerId(itemId);
       await axiosInstance.delete(
         `/player-lists/${selectedList.id}/players/${itemId}`
       );
       await fetchListDetail(selectedList.id);
+      await fetchLists(); // Refresh lists to update average score
     } catch (err: any) {
       console.error("Error removing player:", err);
       setError("Failed to remove player");
+    } finally {
+      setRemovingPlayerId(null);
     }
   };
 
@@ -355,29 +370,57 @@ const PlayerListsPage: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                lists.map((list) => (
-                  <ListGroup.Item
-                    key={list.id}
-                    action
-                    active={selectedList?.id === list.id}
-                    onClick={() => handleSelectList(list)}
-                    className="border-0 border-bottom px-2 py-3"
-                    style={{
-                      cursor: "pointer",
-                      transition: "background-color 0.2s ease",
-                      backgroundColor: selectedList?.id === list.id ? "#f8f9fa" : "transparent"
-                    }}
-                  >
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div className="flex-grow-1">
-                        <div className="fw-bold" style={{ fontSize: "0.95rem" }}>
-                          {list.list_name}
+                lists.map((list) => {
+                  const scoreColor = list.avg_performance_score
+                    ? getPerformanceScoreColor(list.avg_performance_score)
+                    : "#6b7280";
+                  const textColor = getContrastTextColor(scoreColor);
+                  const creatorName = list.created_by_firstname && list.created_by_lastname
+                    ? `${list.created_by_firstname} ${list.created_by_lastname}`
+                    : list.created_by_username;
+
+                  return (
+                    <ListGroup.Item
+                      key={list.id}
+                      action
+                      active={selectedList?.id === list.id}
+                      onClick={() => handleSelectList(list)}
+                      className="border-0 border-bottom px-2 py-3"
+                      style={{
+                        cursor: "pointer",
+                        transition: "background-color 0.2s ease",
+                        backgroundColor: selectedList?.id === list.id ? "#f8f9fa" : "transparent"
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <div className="flex-grow-1">
+                          <div className="fw-bold" style={{ fontSize: "0.95rem" }}>
+                            {list.list_name}
+                          </div>
+                          <small className="text-muted d-block">
+                            {list.player_count} player{list.player_count !== 1 ? "s" : ""}
+                          </small>
+                          {creatorName && (
+                            <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
+                              by {creatorName}
+                            </small>
+                          )}
                         </div>
-                        <small className="text-muted">
-                          {list.player_count} player{list.player_count !== 1 ? "s" : ""}
-                        </small>
+                        {list.avg_performance_score !== null && (
+                          <Badge
+                            style={{
+                              backgroundColor: scoreColor,
+                              color: textColor,
+                              fontWeight: "bold",
+                              fontSize: "0.75rem",
+                              padding: "4px 8px"
+                            }}
+                          >
+                            {list.avg_performance_score.toFixed(1)}
+                          </Badge>
+                        )}
                       </div>
-                      <div className="d-flex gap-1">
+                      <div className="d-flex gap-1 justify-content-end">
                         <Button
                           variant="link"
                           size="sm"
@@ -403,9 +446,9 @@ const PlayerListsPage: React.FC = () => {
                           🗑️
                         </Button>
                       </div>
-                    </div>
-                  </ListGroup.Item>
-                ))
+                    </ListGroup.Item>
+                  );
+                })
               )}
             </ListGroup>
           </div>
@@ -551,6 +594,7 @@ const PlayerListsPage: React.FC = () => {
                                   e.stopPropagation();
                                   handleRemovePlayer(player.item_id);
                                 }}
+                                disabled={removingPlayerId === player.item_id}
                                 style={{
                                   borderRadius: "50%",
                                   width: "32px",
@@ -561,7 +605,11 @@ const PlayerListsPage: React.FC = () => {
                                   justifyContent: "center"
                                 }}
                               >
-                                ×
+                                {removingPlayerId === player.item_id ? (
+                                  <Spinner animation="border" size="sm" style={{ width: "14px", height: "14px" }} />
+                                ) : (
+                                  "×"
+                                )}
                               </Button>
                             </div>
                           </Card.Body>
@@ -655,6 +703,7 @@ const PlayerListsPage: React.FC = () => {
                                 e.stopPropagation();
                                 handleRemovePlayer(player.item_id);
                               }}
+                              disabled={removingPlayerId === player.item_id}
                               style={{
                                 borderRadius: "50%",
                                 width: "32px",
@@ -667,7 +716,11 @@ const PlayerListsPage: React.FC = () => {
                                 lineHeight: 1
                               }}
                             >
-                              ×
+                              {removingPlayerId === player.item_id ? (
+                                <Spinner animation="border" size="sm" style={{ width: "14px", height: "14px" }} />
+                              ) : (
+                                "×"
+                              )}
                             </Button>
                           </td>
                         </tr>
@@ -712,15 +765,33 @@ const PlayerListsPage: React.FC = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowListModal(false)}>
+          <Button
+            variant="secondary"
+            onClick={() => setShowListModal(false)}
+            disabled={savingList}
+          >
             Cancel
           </Button>
           <Button
             variant="primary"
             onClick={handleSaveList}
-            disabled={!listName.trim()}
+            disabled={!listName.trim() || savingList}
           >
-            {editingList ? "Update" : "Create"}
+            {savingList ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                {editingList ? "Updating..." : "Creating..."}
+              </>
+            ) : (
+              editingList ? "Update" : "Create"
+            )}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -750,8 +821,14 @@ const PlayerListsPage: React.FC = () => {
           </Form.Group>
 
           {searchingPlayers ? (
-            <div className="text-center">
-              <Spinner animation="border" size="sm" />
+            <div className="text-center py-4">
+              <Spinner animation="border" size="sm" className="me-2" />
+              <span className="text-muted">Searching...</span>
+            </div>
+          ) : addingPlayer ? (
+            <div className="text-center py-4">
+              <Spinner animation="border" className="me-2" />
+              <span className="text-muted">Adding player...</span>
             </div>
           ) : playerSearchResults.length > 0 ? (
             <ListGroup>
@@ -761,6 +838,10 @@ const PlayerListsPage: React.FC = () => {
                   action
                   onClick={() => handleAddPlayer(player)}
                   className="d-flex justify-content-between align-items-center"
+                  style={{
+                    cursor: addingPlayer ? "not-allowed" : "pointer",
+                    opacity: addingPlayer ? 0.6 : 1
+                  }}
                 >
                   <div>
                     <strong>{player.player_name}</strong>
@@ -770,7 +851,7 @@ const PlayerListsPage: React.FC = () => {
                       {player.age && ` • Age ${player.age}`}
                     </div>
                   </div>
-                  <Button variant="primary" size="sm">
+                  <Button variant="primary" size="sm" disabled={addingPlayer}>
                     Add
                   </Button>
                 </ListGroup.Item>

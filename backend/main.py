@@ -7554,10 +7554,15 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
                     u.USERNAME,
                     u.FIRSTNAME,
                     u.LASTNAME,
-                    COUNT(pli.ID) as PLAYER_COUNT
+                    COUNT(DISTINCT pli.ID) as PLAYER_COUNT,
+                    AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as AVG_SCORE
                 FROM player_lists pl
                 LEFT JOIN users u ON pl.USER_ID = u.ID
                 LEFT JOIN player_list_items pli ON pl.ID = pli.LIST_ID
+                LEFT JOIN scout_reports sr ON (
+                    (pli.PLAYER_ID IS NOT NULL AND sr.PLAYER_ID = pli.PLAYER_ID) OR
+                    (pli.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = pli.CAFC_PLAYER_ID)
+                )
                 GROUP BY pl.ID, pl.LIST_NAME, pl.DESCRIPTION, pl.USER_ID,
                          pl.CREATED_AT, pl.UPDATED_AT, u.USERNAME, u.FIRSTNAME, u.LASTNAME
                 ORDER BY pl.UPDATED_AT DESC
@@ -7578,6 +7583,7 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
                         "created_by_firstname": row[7],
                         "created_by_lastname": row[8],
                         "player_count": row[9],
+                        "avg_performance_score": round(row[10], 1) if row[10] else None,
                     }
                 )
 
