@@ -3951,6 +3951,17 @@ async def get_all_scout_reports(
     page: int = 1,
     limit: int = 10,
     recency_days: Optional[int] = None,
+    scout_name: Optional[str] = None,
+    player_name: Optional[str] = None,
+    performance_scores: Optional[str] = None,
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+    report_type: Optional[str] = None,
+    scouting_type: Optional[str] = None,
+    position: Optional[str] = None,
+    purpose: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
 ):
     conn = None
     try:
@@ -4019,6 +4030,68 @@ async def get_all_scout_reports(
             # For Snowflake, use DATEADD to filter by date
             where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
             sql_params.append(recency_days)
+
+        # Apply scout name filter
+        if scout_name:
+            where_clauses.append("COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME) ILIKE %s")
+            sql_params.append(f"%{scout_name}%")
+
+        # Apply player name filter
+        if player_name:
+            where_clauses.append("p.PLAYERNAME ILIKE %s")
+            sql_params.append(f"%{player_name}%")
+
+        # Apply performance scores filter
+        if performance_scores:
+            scores = [int(s.strip()) for s in performance_scores.split(",")]
+            placeholders = ", ".join(["%s"] * len(scores))
+            where_clauses.append(f"sr.PERFORMANCE_SCORE IN ({placeholders})")
+            sql_params.extend(scores)
+
+        # Apply age range filter
+        if min_age is not None or max_age is not None:
+            from datetime import date as date_class
+            today = date_class.today()
+            if max_age is not None:
+                # max_age means "at most this old" - birthdate must be >= (today - max_age) to be younger/equal
+                max_age_birthdate = today.replace(year=today.year - max_age)
+                where_clauses.append("p.BIRTHDATE >= %s")
+                sql_params.append(max_age_birthdate)
+            if min_age is not None:
+                # min_age means "at least this old" - birthdate must be <= (today - min_age) to be older/equal
+                min_age_birthdate = today.replace(year=today.year - min_age)
+                where_clauses.append("p.BIRTHDATE <= %s")
+                sql_params.append(min_age_birthdate)
+
+        # Apply report type filter (case-insensitive)
+        if report_type:
+            where_clauses.append("UPPER(sr.REPORT_TYPE) = UPPER(%s)")
+            sql_params.append(report_type)
+
+        # Apply scouting type filter (case-insensitive)
+        if scouting_type:
+            where_clauses.append("UPPER(sr.SCOUTING_TYPE) = UPPER(%s)")
+            sql_params.append(scouting_type)
+
+        # Apply position filter
+        if position:
+            where_clauses.append("sr.POSITION ILIKE %s")
+            sql_params.append(f"%{position}%")
+
+        # Apply purpose filter (case-insensitive)
+        if purpose:
+            where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
+            sql_params.append(purpose)
+
+        # Apply date range filter
+        if date_from:
+            # Use CAST to ensure proper date comparison - includes start of day
+            where_clauses.append("sr.CREATED_AT >= CAST(%s AS DATE)")
+            sql_params.append(date_from)
+        if date_to:
+            # Use CAST and add 1 day to include the entire end date (exclusive upper bound)
+            where_clauses.append("sr.CREATED_AT < DATEADD(day, 1, CAST(%s AS DATE))")
+            sql_params.append(date_to)
 
         # Construct WHERE clause
         if where_clauses:
