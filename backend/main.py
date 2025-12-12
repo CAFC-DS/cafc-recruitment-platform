@@ -350,6 +350,14 @@ def get_cache(cache_key: str) -> any:
     return None
 
 
+def invalidate_cache(cache_key: str):
+    """Invalidate a specific cache entry"""
+    if cache_key in _data_cache:
+        del _data_cache[cache_key]
+    if cache_key in _cache_expiry:
+        del _cache_expiry[cache_key]
+
+
 def get_snowflake_connection():
     """Optimized connection function using cached private key"""
     try:
@@ -7485,8 +7493,14 @@ async def create_player_list(
                 )
             """
             )
+
+            # Create indexes for performance optimization
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_list_id ON player_list_items(LIST_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_player_id ON player_list_items(PLAYER_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_cafc_player_id ON player_list_items(CAFC_PLAYER_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sr_scouting_type ON scout_reports(SCOUTING_TYPE)")
         except Exception as e:
-            logging.warning(f"Tables may already exist: {e}")
+            logging.warning(f"Tables/indexes may already exist: {e}")
 
         # Insert new list
         cursor.execute(
@@ -7509,6 +7523,9 @@ async def create_player_list(
         list_id = cursor.fetchone()[0]
 
         conn.commit()
+
+        # Invalidate cache after creating list
+        invalidate_cache("player_lists_all")
 
         return {
             "message": "List created successfully",
@@ -7533,6 +7550,12 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
         raise HTTPException(
             status_code=403, detail="Only admins and managers can view lists"
         )
+
+    # Check cache first
+    cache_key = "player_lists_all"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
 
     conn = None
     try:
@@ -7587,7 +7610,10 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
                     }
                 )
 
-            return {"lists": lists, "total": len(lists)}
+            result = {"lists": lists, "total": len(lists)}
+            # Cache for 5 minutes
+            set_cache(cache_key, result, expiry_minutes=5)
+            return result
 
         except Exception as query_error:
             # If table doesn't exist, return empty list
@@ -7709,7 +7735,9 @@ async def get_player_list_detail(
                         sr.PLAYER_ID,
                         sr.CAFC_PLAYER_ID,
                         COUNT(*) as report_count,
-                        AVG(sr.PERFORMANCE_SCORE) as avg_performance_score
+                        AVG(sr.PERFORMANCE_SCORE) as avg_performance_score,
+                        COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
+                        COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
                     FROM scout_reports sr
                     WHERE ({where_clause})
                       AND sr.PERFORMANCE_SCORE IS NOT NULL
@@ -7724,7 +7752,9 @@ async def get_player_list_detail(
                     key = (stats_row[0], stats_row[1])
                     stats_lookup[key] = {
                         'report_count': stats_row[2] or 0,
-                        'avg_score': round(stats_row[3], 1) if stats_row[3] else None
+                        'avg_score': round(stats_row[3], 1) if stats_row[3] else None,
+                        'live_reports': stats_row[4] or 0,
+                        'video_reports': stats_row[5] or 0
                     }
 
         # Now process all players using the pre-fetched stats
@@ -7746,7 +7776,12 @@ async def get_player_list_detail(
 
             # OPTIMIZED: Look up stats from pre-fetched dictionary
             stats_key = (player_id, cafc_player_id)
-            stats = stats_lookup.get(stats_key, {'report_count': 0, 'avg_score': None})
+            stats = stats_lookup.get(stats_key, {
+                'report_count': 0,
+                'avg_score': None,
+                'live_reports': 0,
+                'video_reports': 0
+            })
 
             # Build universal ID
             if cafc_player_id:
@@ -7773,6 +7808,8 @@ async def get_player_list_detail(
                     "added_by_username": row[13],
                     "report_count": stats['report_count'],
                     "avg_performance_score": stats['avg_score'],
+                    "live_reports": stats['live_reports'],
+                    "video_reports": stats['video_reports'],
                 }
             )
 
@@ -7843,6 +7880,9 @@ async def update_player_list(
 
         conn.commit()
 
+        # Invalidate cache after updating list
+        invalidate_cache("player_lists_all")
+
         return {"message": "List updated successfully"}
 
     except HTTPException:
@@ -7884,6 +7924,9 @@ async def delete_player_list(
         cursor.execute("DELETE FROM player_lists WHERE ID = %s", (list_id,))
 
         conn.commit()
+
+        # Invalidate cache after deleting list
+        invalidate_cache("player_lists_all")
 
         return {"message": "List deleted successfully"}
 
@@ -7989,6 +8032,9 @@ async def add_player_to_list(
 
         conn.commit()
 
+        # Invalidate cache after adding player
+        invalidate_cache("player_lists_all")
+
         return {"message": "Player added to list successfully"}
 
     except HTTPException:
@@ -8044,6 +8090,9 @@ async def remove_player_from_list(
         )
 
         conn.commit()
+
+        # Invalidate cache after removing player
+        invalidate_cache("player_lists_all")
 
         return {"message": "Player removed from list successfully"}
 
@@ -8103,6 +8152,9 @@ async def reorder_players_in_list(
         )
 
         conn.commit()
+
+        # Invalidate cache after reordering
+        invalidate_cache("player_lists_all")
 
         return {"message": "Players reordered successfully"}
 

@@ -55,6 +55,8 @@ interface PlayerInList {
   added_by_username: string;
   report_count: number;
   avg_performance_score: number | null;
+  live_reports: number;
+  video_reports: number;
 }
 
 interface ListDetail {
@@ -117,6 +119,11 @@ const PlayerListsPage: React.FC = () => {
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Table sorting state
+  type SortField = 'name' | 'position' | 'club' | 'age' | 'score' | 'reports' | 'live';
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Check permissions
   useEffect(() => {
@@ -318,6 +325,63 @@ const PlayerListsPage: React.FC = () => {
   // Select list
   const handleSelectList = (list: PlayerList) => {
     fetchListDetail(list.id);
+  };
+
+  // Handle sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Get sorted players
+  const getSortedPlayers = (players: PlayerInList[]) => {
+    return [...players].sort((a, b) => {
+      let compareA: any;
+      let compareB: any;
+
+      switch (sortField) {
+        case 'name':
+          compareA = a.player_name?.toLowerCase() || '';
+          compareB = b.player_name?.toLowerCase() || '';
+          break;
+        case 'position':
+          compareA = a.position?.toLowerCase() || '';
+          compareB = b.position?.toLowerCase() || '';
+          break;
+        case 'club':
+          compareA = a.squad_name?.toLowerCase() || '';
+          compareB = b.squad_name?.toLowerCase() || '';
+          break;
+        case 'age':
+          compareA = a.age ?? -1;
+          compareB = b.age ?? -1;
+          break;
+        case 'score':
+          compareA = a.avg_performance_score ?? -1;
+          compareB = b.avg_performance_score ?? -1;
+          break;
+        case 'reports':
+          compareA = a.report_count ?? 0;
+          compareB = b.report_count ?? 0;
+          break;
+        case 'live':
+          compareA = a.live_reports ?? 0;
+          compareB = b.live_reports ?? 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (compareA < compareB) return sortDirection === 'asc' ? -1 : 1;
+      if (compareA > compareB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
   };
 
   if (userLoading || loadingLists) {
@@ -584,6 +648,9 @@ const PlayerListsPage: React.FC = () => {
                               <small className="text-muted d-block">
                                 📊 {player.report_count} report{player.report_count !== 1 ? "s" : ""}
                               </small>
+                              <small className="text-muted d-block">
+                                👁️ {player.live_reports} live {player.live_reports !== 1 ? "watches" : "watch"}
+                              </small>
                             </div>
 
                             <div className="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
@@ -620,21 +687,68 @@ const PlayerListsPage: React.FC = () => {
                 </Row>
               ) : (
                 /* Table View */
-                <Table hover responsive className="shadow-sm" style={{ backgroundColor: "white" }}>
-                  <thead style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
+                <Table hover responsive className="shadow-sm" style={{
+                  backgroundColor: "white",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  border: "1px solid #dee2e6"
+                }}>
+                  <thead style={{
+                    backgroundColor: "#f8f9fa",
+                    borderBottom: "2px solid #dee2e6",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 10
+                  }}>
                     <tr>
                       <th style={{ width: "50px" }}>#</th>
-                      <th>Player Name</th>
-                      <th>Position</th>
-                      <th>Club</th>
-                      <th style={{ width: "80px" }}>Age</th>
-                      <th style={{ width: "100px" }}>Avg Score</th>
-                      <th style={{ width: "90px" }}>Reports</th>
+                      <th
+                        onClick={() => handleSort('name')}
+                        style={{ cursor: "pointer", userSelect: "none" }}
+                      >
+                        Player Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('position')}
+                        style={{ cursor: "pointer", userSelect: "none" }}
+                      >
+                        Position {sortField === 'position' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('club')}
+                        style={{ cursor: "pointer", userSelect: "none" }}
+                      >
+                        Club {sortField === 'club' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('age')}
+                        style={{ width: "80px", cursor: "pointer", userSelect: "none" }}
+                      >
+                        Age {sortField === 'age' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('score')}
+                        style={{ width: "100px", cursor: "pointer", userSelect: "none" }}
+                      >
+                        Avg Score {sortField === 'score' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('reports')}
+                        style={{ width: "90px", cursor: "pointer", userSelect: "none" }}
+                      >
+                        Reports {sortField === 'reports' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        onClick={() => handleSort('live')}
+                        style={{ width: "100px", cursor: "pointer", userSelect: "none" }}
+                      >
+                        Live Watches {sortField === 'live' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
                       <th style={{ width: "90px" }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedList.players.map((player, index) => {
+                    {getSortedPlayers(selectedList.players).map((player, index) => {
                       const scoreColor = player.avg_performance_score
                         ? getPerformanceScoreColor(player.avg_performance_score)
                         : "#6b7280";
@@ -645,13 +759,14 @@ const PlayerListsPage: React.FC = () => {
                           key={player.item_id}
                           style={{
                             cursor: "pointer",
-                            transition: "background-color 0.15s ease"
+                            transition: "background-color 0.15s ease",
+                            backgroundColor: index % 2 === 0 ? "white" : "#f9fafb"
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f8f9fa";
+                            e.currentTarget.style.backgroundColor = "#e3f2fd";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "transparent";
+                            e.currentTarget.style.backgroundColor = index % 2 === 0 ? "white" : "#f9fafb";
                           }}
                         >
                           <td className="align-middle">
@@ -695,6 +810,18 @@ const PlayerListsPage: React.FC = () => {
                             )}
                           </td>
                           <td className="align-middle text-center">{player.report_count}</td>
+                          <td className="align-middle text-center">
+                            <Badge
+                              bg="primary"
+                              style={{
+                                fontSize: "0.85rem",
+                                padding: "5px 10px",
+                                fontWeight: "600"
+                              }}
+                            >
+                              {player.live_reports}
+                            </Badge>
+                          </td>
                           <td className="align-middle text-center">
                             <Button
                               variant="outline-danger"
