@@ -87,7 +87,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   // Get performance score color using existing utility
@@ -125,7 +125,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
       className="kanban-card"
       onClick={handleCardClick}
     >
-      {/* Card container with Bootstrap styling */}
+      {/* Card container with refined platform styling */}
       <div
         style={{
           backgroundColor: "white",
@@ -136,19 +136,20 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
           cursor: isDragging ? "grabbing" : "grab",
           boxShadow: isDragging
             ? "0 8px 16px rgba(0,0,0,0.15)"
-            : "0 1px 3px rgba(0,0,0,0.1)",
-          transition: "box-shadow 0.2s ease, transform 0.2s ease",
+            : "0 1px 3px rgba(0,0,0,0.05)",
+          transition: "all 0.2s ease",
           userSelect: "none",
+          transform: isDragging ? "scale(1.02)" : "scale(1)",
         }}
         onMouseEnter={(e) => {
           if (!isDragging) {
-            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.12)";
-            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+            e.currentTarget.style.transform = "translateY(-1px)";
           }
         }}
         onMouseLeave={(e) => {
           if (!isDragging) {
-            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)";
             e.currentTarget.style.transform = "translateY(0)";
           }
         }}

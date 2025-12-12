@@ -485,11 +485,15 @@ const KanbanPage: React.FC = () => {
           <Button
             variant="outline-secondary"
             onClick={() => navigate("/lists")}
+            style={{
+              borderRadius: "20px",
+              padding: "8px 16px",
+            }}
           >
             Switch to Table View
           </Button>
           <Button
-            variant="primary"
+            variant="dark"
             onClick={openCreateModal}
             style={{
               borderRadius: "20px",

@@ -408,20 +408,37 @@ const PlayerListsPage: React.FC = () => {
       <Row>
         {/* Left Sidebar - Lists */}
         <Col lg={3} md={4} className="border-end pe-4">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4 className="mb-0">Player Lists</h4>
-            <Button
-              variant="dark"
-              size="sm"
-              onClick={openCreateModal}
-              style={{
-                borderRadius: "20px",
-                fontWeight: "600",
-                padding: "6px 16px"
-              }}
-            >
-              + New
-            </Button>
+          <div className="mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <h4 className="mb-0">Player Lists</h4>
+              <Button
+                variant="dark"
+                size="sm"
+                onClick={openCreateModal}
+                style={{
+                  borderRadius: "20px",
+                  fontWeight: "600",
+                  padding: "6px 16px"
+                }}
+              >
+                + New
+              </Button>
+            </div>
+            <div className="d-flex justify-content-center">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => navigate("/lists/kanban")}
+                style={{
+                  borderRadius: "20px",
+                  padding: "6px 16px",
+                  fontSize: "0.8rem",
+                  width: "100%"
+                }}
+              >
+                Switch to Kanban View
+              </Button>
+            </div>
           </div>
 
           <div style={{ maxHeight: "75vh", overflowY: "auto" }}>
@@ -610,19 +627,20 @@ const PlayerListsPage: React.FC = () => {
                     return (
                       <Col key={player.item_id} lg={4} md={6} sm={12}>
                         <Card
-                          className="h-100 shadow-sm"
+                          className="h-100"
                           style={{
                             transition: "all 0.2s ease",
                             cursor: "pointer",
-                            border: "1px solid #e5e7eb"
+                            border: "1px solid #e5e7eb",
+                            boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = "translateY(-4px)";
-                            e.currentTarget.style.boxShadow = "0 8px 16px rgba(0,0,0,0.1)";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
+                            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)";
                           }}
                           onClick={() => navigate(getPlayerPath(player.universal_id))}
                         >

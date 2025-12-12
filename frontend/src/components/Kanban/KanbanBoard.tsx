@@ -307,7 +307,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* Drag Overlay: Shows a copy of the card being dragged */}
       <DragOverlay>
         {activePlayer && (
-          <div style={{ opacity: 0.9, cursor: "grabbing" }}>
+          <div style={{ opacity: 0.95, cursor: "grabbing", transform: "rotate(2deg)" }}>
             <PlayerKanbanCard
               player={activePlayer}
               onRemove={() => {}}

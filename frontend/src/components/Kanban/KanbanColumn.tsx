@@ -106,13 +106,14 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
         flexDirection: "column",
         height: "calc(100vh - 200px)",
         border: isOver ? "2px solid #3b82f6" : "1px solid #e5e7eb",
-        transition: "border-color 0.2s ease",
+        transition: "all 0.2s ease",
+        boxShadow: isOver ? "0 2px 8px rgba(59, 130, 246, 0.15)" : "none",
       }}
     >
       {/* Column Header */}
       <div
         style={{
-          padding: "16px",
+          padding: "14px",
           borderBottom: "1px solid #e5e7eb",
           backgroundColor: "white",
           borderRadius: "8px 8px 0 0",
@@ -195,13 +196,14 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
 
           {/* Add Player Button */}
           <Button
-            variant="primary"
+            variant="success"
             size="sm"
             onClick={() => onAddPlayer(list.id)}
             style={{
               fontSize: "0.75rem",
-              padding: "4px 8px",
-              borderRadius: "4px",
+              padding: "6px 12px",
+              borderRadius: "20px",
+              fontWeight: "600",
             }}
           >
             + Add Player
