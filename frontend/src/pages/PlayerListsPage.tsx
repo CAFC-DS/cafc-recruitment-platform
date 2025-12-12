@@ -485,30 +485,36 @@ const PlayerListsPage: React.FC = () => {
                         )}
                       </div>
                       <div className="d-flex gap-1 justify-content-end">
-                        <Button
-                          variant="link"
-                          size="sm"
+                        <span
+                          role="button"
                           className="p-1 text-secondary"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEditModal(list);
                           }}
-                          style={{ fontSize: "0.85rem" }}
+                          style={{
+                            fontSize: "0.85rem",
+                            cursor: "pointer",
+                            textDecoration: "none"
+                          }}
                         >
                           ✏️
-                        </Button>
-                        <Button
-                          variant="link"
-                          size="sm"
+                        </span>
+                        <span
+                          role="button"
                           className="p-1 text-danger"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteList(list.id);
                           }}
-                          style={{ fontSize: "0.85rem" }}
+                          style={{
+                            fontSize: "0.85rem",
+                            cursor: "pointer",
+                            textDecoration: "none"
+                          }}
                         >
                           🗑️
-                        </Button>
+                        </span>
                       </div>
                     </ListGroup.Item>
                   );
@@ -978,9 +984,16 @@ const PlayerListsPage: React.FC = () => {
                       {player.age && ` • Age ${player.age}`}
                     </div>
                   </div>
-                  <Button variant="primary" size="sm" disabled={addingPlayer}>
+                  <Badge
+                    bg="primary"
+                    className="px-2 py-1"
+                    style={{
+                      cursor: addingPlayer ? "not-allowed" : "pointer",
+                      opacity: addingPlayer ? 0.6 : 1
+                    }}
+                  >
                     Add
-                  </Button>
+                  </Badge>
                 </ListGroup.Item>
               ))}
             </ListGroup>
