@@ -1,7 +1,7 @@
 FUZZY FIXTURE MATCHES
 ================================================================================
 
-Total: 254 fixtures matched via fuzzy logic
+Total: 431 fixtures matched via fuzzy logic
 Similarity threshold: 85%
 
 ================================================================================
@@ -10,35 +10,63 @@ SEARCHED FOR: CF Montreal vs Columbus Crew
 MATCHED WITH: CF Montréal vs Columbus Crew
 DATE: 2025-05-14
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 59
+FIXTURES ON DATE: 60
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: CF Montreal vs Columbus Crew
 MATCHED WITH: CF Montréal vs Columbus Crew
 DATE: 2025-05-14
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 59
+FIXTURES ON DATE: 60
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: CF Montreal vs Columbus Crew
 MATCHED WITH: CF Montréal vs Columbus Crew
 DATE: 2025-05-14
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 59
+FIXTURES ON DATE: 60
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: CF Montreal vs Columbus Crew
 MATCHED WITH: CF Montréal vs Columbus Crew
 DATE: 2025-05-14
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 59
+FIXTURES ON DATE: 60
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: CF Montreal vs Columbus Crew
 MATCHED WITH: CF Montréal vs Columbus Crew
 DATE: 2025-05-14
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 59
+FIXTURES ON DATE: 60
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Ukraine U21
+MATCHED WITH: Finnland U21 vs Ukraine U21
+DATE: 2025-06-15
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 75
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Ukraine U21
+MATCHED WITH: Finnland U21 vs Ukraine U21
+DATE: 2025-06-15
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 75
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Ukraine U21
+MATCHED WITH: Finnland U21 vs Ukraine U21
+DATE: 2025-06-15
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 75
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Ukraine U21
+MATCHED WITH: Finnland U21 vs Ukraine U21
+DATE: 2025-06-15
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 75
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FC Arouca vs FC Famalicao
@@ -67,6 +95,13 @@ MATCHED WITH: FC Arouca vs FC Famalicão
 DATE: 2025-04-05
 SIMILARITY: 100.00%
 FIXTURES ON DATE: 359
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Vfl Osnabruck vs Borussia Dortmund II
@@ -94,14 +129,21 @@ SEARCHED FOR: EA Guingamp vs Gronoble Foot
 MATCHED WITH: EA Guingamp vs Grenoble Foot 38
 DATE: 2024-11-02
 SIMILARITY: 91.38%
-FIXTURES ON DATE: 319
+FIXTURES ON DATE: 355
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Ukraine U21
+MATCHED WITH: Finnland U21 vs Ukraine U21
+DATE: 2025-06-15
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 75
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: EA Guingamp vs Gronoble Foot
 MATCHED WITH: EA Guingamp vs Grenoble Foot 38
 DATE: 2024-11-02
 SIMILARITY: 91.38%
-FIXTURES ON DATE: 319
+FIXTURES ON DATE: 355
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FK Jablonec vs Slavia Prague
@@ -115,7 +157,7 @@ SEARCHED FOR: EA Guingamp vs Gronoble Foot
 MATCHED WITH: EA Guingamp vs Grenoble Foot 38
 DATE: 2024-11-02
 SIMILARITY: 91.38%
-FIXTURES ON DATE: 319
+FIXTURES ON DATE: 355
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FK Jablonec vs Slavia Prague
@@ -129,14 +171,84 @@ SEARCHED FOR: EA Guingamp vs Gronoble Foot
 MATCHED WITH: EA Guingamp vs Grenoble Foot 38
 DATE: 2024-11-02
 SIMILARITY: 91.38%
-FIXTURES ON DATE: 319
+FIXTURES ON DATE: 355
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: CF Montreal vs Columbus Crew
 MATCHED WITH: CF Montréal vs Columbus Crew
 DATE: 2025-05-14
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 59
+FIXTURES ON DATE: 60
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FK Teplice vs Slavia Prague
@@ -153,11 +265,60 @@ SIMILARITY: 90.74%
 FIXTURES ON DATE: 140
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: AIK Solna vs Malmo FF
-MATCHED WITH: AIK Solna vs Malmö FF
-DATE: 2025-04-14
-SIMILARITY: 100.00%
-FIXTURES ON DATE: 63
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Southampton U21 vs Brentford U21
+MATCHED WITH: FC Southampton U21 vs Brentford FC U23
+DATE: 2025-05-01
+SIMILARITY: 86.83%
+FIXTURES ON DATE: 53
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: AIK Solna vs Malmo FF
@@ -167,10 +328,17 @@ SIMILARITY: 100.00%
 FIXTURES ON DATE: 63
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Malmo FF vs Brommapojkarna
+SEARCHED FOR: AIK Solna vs Malmo FF
+MATCHED WITH: AIK Solna vs Malmö FF
+DATE: 2025-04-14
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 63
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmo FF vs IF Brommapojkarna
 MATCHED WITH: Malmö FF vs IF Brommapojkarna
 DATE: 2025-05-05
-SIMILARITY: 95.16%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
@@ -178,7 +346,7 @@ SEARCHED FOR: Daegu FC 1 vs 2 Daejeon Hana Citizen
 MATCHED WITH: Daegu FC vs Daejeon Hana Citizen
 DATE: 2025-03-08
 SIMILARITY: 92.06%
-FIXTURES ON DATE: 317
+FIXTURES ON DATE: 318
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Vfl Osnabruck vs Borussia Dortmund II
@@ -188,17 +356,17 @@ SIMILARITY: 100.00%
 FIXTURES ON DATE: 176
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Malmo FF vs Brommapojkarna
+SEARCHED FOR: Malmo FF vs IF Brommapojkarna
 MATCHED WITH: Malmö FF vs IF Brommapojkarna
 DATE: 2025-05-05
-SIMILARITY: 95.16%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Malmo FF vs Brommapojkarna
+SEARCHED FOR: Malmo FF vs IF Brommapojkarna
 MATCHED WITH: Malmö FF vs IF Brommapojkarna
 DATE: 2025-05-05
-SIMILARITY: 95.16%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
@@ -230,11 +398,18 @@ SIMILARITY: 87.50%
 FIXTURES ON DATE: 250
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Malmo FF vs Brommapojkarna
+SEARCHED FOR: Malmo FF vs IF Brommapojkarna
 MATCHED WITH: Malmö FF vs IF Brommapojkarna
 DATE: 2025-05-05
-SIMILARITY: 95.16%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 71
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs BK Hacken
+MATCHED WITH: Mjällby AIF vs BK Häcken
+DATE: 2025-03-08
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 318
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Elfsborg vs IFK Norrkoping
@@ -244,67 +419,95 @@ SIMILARITY: 92.11%
 FIXTURES ON DATE: 356
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
-MATCHED WITH: RAAL La Louvière vs RSC Charleroi
-DATE: 2025-08-10
+SEARCHED FOR: Mjallby AIF vs BK Hacken
+MATCHED WITH: Mjällby AIF vs BK Häcken
+DATE: 2025-03-08
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 318
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
 MATCHED WITH: RAAL La Louvière vs RSC Charleroi
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
 MATCHED WITH: RAAL La Louvière vs RSC Charleroi
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
 MATCHED WITH: RAAL La Louvière vs RSC Charleroi
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
 MATCHED WITH: RAAL La Louvière vs RSC Charleroi
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
+MATCHED WITH: RAAL La Louvière vs RSC Charleroi
+DATE: 2025-08-10
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 211
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Netherlands U21
+MATCHED WITH: Finnland U21 vs Niederlande U21
+DATE: 2025-06-12
+SIMILARITY: 87.83%
+FIXTURES ON DATE: 14
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Norrkoping vs Osters IF
+MATCHED WITH: IFK Norrköping vs Östers IF
+DATE: 2025-03-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 252
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs BK Hacken
+MATCHED WITH: Mjällby AIF vs BK Häcken
+DATE: 2025-03-08
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 318
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FC Granada vs CD Castellón
 MATCHED WITH: FC Granada vs CD Castellón
 DATE: 2025-05-25
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 162
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FC Granada vs CD Castellón
 MATCHED WITH: FC Granada vs CD Castellón
 DATE: 2025-05-25
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 162
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FC Granada vs CD Castellón
 MATCHED WITH: FC Granada vs CD Castellón
 DATE: 2025-05-25
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 162
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FC Granada vs CD Castellón
 MATCHED WITH: FC Granada vs CD Castellón
 DATE: 2025-05-25
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 162
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Vfl Osnabruck vs Borussia Dortmund II
@@ -314,11 +517,53 @@ SIMILARITY: 100.00%
 FIXTURES ON DATE: 176
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Finland U21 vs Netherlands U21
+MATCHED WITH: Finnland U21 vs Niederlande U21
+DATE: 2025-06-12
+SIMILARITY: 87.83%
+FIXTURES ON DATE: 14
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Norrkoping vs Osters IF
+MATCHED WITH: IFK Norrköping vs Östers IF
+DATE: 2025-03-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 252
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Siroki Brijeg vs Borac Banja Luka
+MATCHED WITH: NK Široki Brijeg vs FK Borac Banja Luka
+DATE: 2025-05-03
+SIMILARITY: 90.54%
+FIXTURES ON DATE: 340
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs BK Hacken
+MATCHED WITH: Mjällby AIF vs BK Häcken
+DATE: 2025-03-08
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 318
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Vfl Osnabruck vs Borussia Dortmund II
 MATCHED WITH: VfL Osnabrück vs Borussia Dortmund II
 DATE: 2025-02-09
 SIMILARITY: 100.00%
 FIXTURES ON DATE: 176
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Netherlands U21
+MATCHED WITH: Finnland U21 vs Niederlande U21
+DATE: 2025-06-12
+SIMILARITY: 87.83%
+FIXTURES ON DATE: 14
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Finland U21 vs Netherlands U21
+MATCHED WITH: Finnland U21 vs Niederlande U21
+DATE: 2025-06-12
+SIMILARITY: 87.83%
+FIXTURES ON DATE: 14
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Varnamo vs Sirius
@@ -328,10 +573,10 @@ SIMILARITY: 90.00%
 FIXTURES ON DATE: 51
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Malmo FF vs Brommapojkarna
+SEARCHED FOR: Malmo FF vs IF Brommapojkarna
 MATCHED WITH: Malmö FF vs IF Brommapojkarna
 DATE: 2025-05-05
-SIMILARITY: 95.16%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
@@ -360,7 +605,7 @@ SEARCHED FOR: Standard Luttich vs RSC Charleroi
 MATCHED WITH: Standard Lüttich vs RSC Charleroi
 DATE: 2024-10-20
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 252
+FIXTURES ON DATE: 272
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: ETO FC Gyor vs MTK Budapest
@@ -374,7 +619,42 @@ SEARCHED FOR: Ulsan HD vs Pohang Steelers
 MATCHED WITH: Pohang Steelers vs Ulsan Hyundai
 DATE: 2025-09-13
 SIMILARITY: 88.10%
-FIXTURES ON DATE: 363
+FIXTURES ON DATE: 368
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Queens Park Rangers U21 vs Brentford U21
+MATCHED WITH: Queens Park Rangers U23 vs Brentford FC U23
+DATE: 2025-05-15
+SIMILARITY: 89.21%
+FIXTURES ON DATE: 48
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Queens Park Rangers U21 vs Brentford U21
+MATCHED WITH: Queens Park Rangers U23 vs Brentford FC U23
+DATE: 2025-05-15
+SIMILARITY: 89.21%
+FIXTURES ON DATE: 48
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Queens Park Rangers U21 vs Brentford U21
+MATCHED WITH: Queens Park Rangers U23 vs Brentford FC U23
+DATE: 2025-05-15
+SIMILARITY: 89.21%
+FIXTURES ON DATE: 48
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Queens Park Rangers U21 vs Brentford U21
+MATCHED WITH: Queens Park Rangers U23 vs Brentford FC U23
+DATE: 2025-05-15
+SIMILARITY: 89.21%
+FIXTURES ON DATE: 48
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Queens Park Rangers U21 vs Brentford U21
+MATCHED WITH: Queens Park Rangers U23 vs Brentford FC U23
+DATE: 2025-05-15
+SIMILARITY: 89.21%
+FIXTURES ON DATE: 48
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Stoke City vs (P) Cardiff City
@@ -384,18 +664,18 @@ SIMILARITY: 92.86%
 FIXTURES ON DATE: 252
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Nyiregyhaza Spartacus vs Fehervar
+SEARCHED FOR: Nyiregyhaza Spartacus vs Fehervar FC
 MATCHED WITH: Nyíregyháza Spartacus vs Fehérvár FC
 DATE: 2025-04-13
-SIMILARITY: 92.11%
-FIXTURES ON DATE: 235
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 236
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: IF Elfsborg vs Brommapojkarna IF
+SEARCHED FOR: IF Elfsborg vs IF Brommapojkarna IF
 MATCHED WITH: IF Elfsborg vs IF Brommapojkarna
 DATE: 2025-05-15
-SIMILARITY: 91.18%
-FIXTURES ON DATE: 47
+SIMILARITY: 95.95%
+FIXTURES ON DATE: 48
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Stoke City vs (P) Cardiff City
@@ -487,6 +767,13 @@ MATCHED WITH: VfL Osnabrück vs SV Wehen Wiesbaden
 DATE: 2025-03-07
 SIMILARITY: 95.45%
 FIXTURES ON DATE: 121
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Granada vs CD Casetellon
+MATCHED WITH: FC Granada vs CD Castellón
+DATE: 2025-05-25
+SIMILARITY: 98.00%
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Mjallby AIF vs IK Sirius
@@ -500,7 +787,7 @@ SEARCHED FOR: Standard Luttich vs RSC Charleroi
 MATCHED WITH: Standard Lüttich vs RSC Charleroi
 DATE: 2024-10-20
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 252
+FIXTURES ON DATE: 272
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden
@@ -517,6 +804,13 @@ SIMILARITY: 88.10%
 FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Jamaica vs Trinidad and Tobago
+MATCHED WITH: Jamaika vs Trinidad und Tobago
+DATE: 2025-05-27
+SIMILARITY: 90.23%
+FIXTURES ON DATE: 16
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Nashville vs Columbus Crewe
 MATCHED WITH: Nashville SC vs Columbus Crew
 DATE: 2025-07-17
@@ -528,14 +822,28 @@ SEARCHED FOR: Shalke 04 vs Hannover 96
 MATCHED WITH: FC Schalke 04 vs Hannover 96
 DATE: 2025-03-14
 SIMILARITY: 90.91%
-FIXTURES ON DATE: 116
+FIXTURES ON DATE: 117
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Hammarby IF
 MATCHED WITH: IFK Norrköping vs Hammarby IF
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Granada vs CD Casetellon
+MATCHED WITH: FC Granada vs CD Castellón
+DATE: 2025-05-25
+SIMILARITY: 98.00%
+FIXTURES ON DATE: 163
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Granada vs CD Casetellon
+MATCHED WITH: FC Granada vs CD Castellón
+DATE: 2025-05-25
+SIMILARITY: 98.00%
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Stade Lavallois vs SC Bastia
@@ -549,7 +857,7 @@ SEARCHED FOR: Standard Luttich vs RSC Charleroi
 MATCHED WITH: Standard Lüttich vs RSC Charleroi
 DATE: 2024-10-20
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 252
+FIXTURES ON DATE: 272
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: ETO FC Gyor vs MTK Budapest
@@ -557,13 +865,6 @@ MATCHED WITH: ETO FC Győr vs MTK Budapest
 DATE: 2025-03-29
 SIMILARITY: 100.00%
 FIXTURES ON DATE: 365
---------------------------------------------------------------------------------
-
-SEARCHED FOR: Western Sydney Wanderers vs Melbourne Victory
-MATCHED WITH: Western Sydney Wanderers vs Melbourne City FC
-DATE: 2024-04-20
-SIMILARITY: 85.29%
-FIXTURES ON DATE: 292
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Nashville vs Columbus Crewe
@@ -577,14 +878,14 @@ SEARCHED FOR: Shalke 04 vs Hannover 96
 MATCHED WITH: FC Schalke 04 vs Hannover 96
 DATE: 2025-03-14
 SIMILARITY: 90.91%
-FIXTURES ON DATE: 116
+FIXTURES ON DATE: 117
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Hammarby IF
 MATCHED WITH: IFK Norrköping vs Hammarby IF
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Rot-Weiss Essen vs VfL Osnabrück
@@ -601,20 +902,6 @@ SIMILARITY: 92.31%
 FIXTURES ON DATE: 94
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Western Sydney Wanderers vs Melbourne Victory
-MATCHED WITH: Western Sydney Wanderers vs Melbourne City FC
-DATE: 2024-04-20
-SIMILARITY: 85.29%
-FIXTURES ON DATE: 292
---------------------------------------------------------------------------------
-
-SEARCHED FOR: Western Sydney Wanderers vs Melbourne Victory
-MATCHED WITH: Western Sydney Wanderers vs Melbourne City FC
-DATE: 2024-04-20
-SIMILARITY: 85.29%
-FIXTURES ON DATE: 292
---------------------------------------------------------------------------------
-
 SEARCHED FOR: Ulsan HD vs Pohang Steelers
 MATCHED WITH: Ulsan Hyundai vs Pohang Steelers
 DATE: 2025-05-05
@@ -626,7 +913,7 @@ SEARCHED FOR: Shalke 04 vs Hannover 96
 MATCHED WITH: FC Schalke 04 vs Hannover 96
 DATE: 2025-03-14
 SIMILARITY: 90.91%
-FIXTURES ON DATE: 116
+FIXTURES ON DATE: 117
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Stade Lavallois vs SC Bastia
@@ -647,14 +934,21 @@ SEARCHED FOR: IFK Norrkoping vs Hammarby IF
 MATCHED WITH: IFK Norrköping vs Hammarby IF
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Hammarby IF
 MATCHED WITH: IFK Norrköping vs Hammarby IF
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Luttich vs RSC Charleroi
+MATCHED WITH: Standard Lüttich vs RSC Charleroi
+DATE: 2024-10-20
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 272
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Ulsan HD vs Pohang Steelers
@@ -664,6 +958,13 @@ SIMILARITY: 88.10%
 FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Jamaica vs Trinidad and Tobago
+MATCHED WITH: Jamaika vs Trinidad und Tobago
+DATE: 2025-05-27
+SIMILARITY: 90.23%
+FIXTURES ON DATE: 16
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Stade Lavallois vs SC Bastia
 MATCHED WITH: Stade Laval vs SC Bastia
 DATE: 2024-11-08
@@ -683,6 +984,13 @@ MATCHED WITH: Mjällby AIF vs IK Sirius
 DATE: 2025-07-27
 SIMILARITY: 100.00%
 FIXTURES ON DATE: 116
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Granada vs CD Casetellon
+MATCHED WITH: FC Granada vs CD Castellón
+DATE: 2025-05-25
+SIMILARITY: 98.00%
+FIXTURES ON DATE: 163
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: GAIS Göteborg vs IFK Göteborg
@@ -703,7 +1011,7 @@ SEARCHED FOR: Millwall U23 vs Ipswich Town U23
 MATCHED WITH: Millwall FC U23 vs Ipswich Town U23
 DATE: 2024-12-10
 SIMILARITY: 94.44%
-FIXTURES ON DATE: 48
+FIXTURES ON DATE: 61
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Kilmarnock vs St Johnstone
@@ -717,7 +1025,14 @@ SEARCHED FOR: Avispa Fukuoka vs Urawa Reds
 MATCHED WITH: Avispa Fukuoka vs Urawa Red Diamonds
 DATE: 2024-11-30
 SIMILARITY: 85.71%
-FIXTURES ON DATE: 246
+FIXTURES ON DATE: 294
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Poland U20 vs England U20
+MATCHED WITH: Polen U20 vs England U20
+DATE: 2024-11-19
+SIMILARITY: 92.11%
+FIXTURES ON DATE: 26
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Brisbane Roar
@@ -731,7 +1046,7 @@ SEARCHED FOR: Mjällby AIF vs Västeras SK
 MATCHED WITH: Mjällby AIF vs Västerås SK
 DATE: 2024-10-05
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 368
+FIXTURES ON DATE: 369
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Viktoria Plzen vs Hradec Kralove
@@ -741,11 +1056,11 @@ SIMILARITY: 85.79%
 FIXTURES ON DATE: 103
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Newcastle Jets vs Wellington Phoenix
-MATCHED WITH: Newcastle United Jets vs Wellington Phoenix
-DATE: 2024-04-19
-SIMILARITY: 90.00%
-FIXTURES ON DATE: 94
+SEARCHED FOR: Qatar U23 vs Australia U23
+MATCHED WITH: Qatar U20 vs Australien U20
+DATE: 2024-04-21
+SIMILARITY: 85.19%
+FIXTURES ON DATE: 196
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Wellington Phoenix
@@ -753,6 +1068,34 @@ MATCHED WITH: Newcastle United Jets vs Wellington Phoenix
 DATE: 2024-04-19
 SIMILARITY: 90.00%
 FIXTURES ON DATE: 94
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Halmstads BK vs Mjallby AIF
+MATCHED WITH: Halmstads BK vs Mjällby AIF
+DATE: 2024-05-11
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 236
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kecskeméti TE vs ETO FC Györi
+MATCHED WITH: Kecskeméti TE vs ETO FC Győr
+DATE: 2024-08-16
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 96
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Wellington Phoenix
+MATCHED WITH: Newcastle United Jets vs Wellington Phoenix
+DATE: 2024-04-19
+SIMILARITY: 90.00%
+FIXTURES ON DATE: 94
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Spain U21 vs Slovakia U21
+MATCHED WITH: Spanien U21 vs Slowakei U21
+DATE: 2024-03-21
+SIMILARITY: 86.67%
+FIXTURES ON DATE: 5
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Ipswich Town U21 vs Swansea City U21
@@ -766,7 +1109,21 @@ SEARCHED FOR: Brisbane Roar vs Newcastle Jets
 MATCHED WITH: Brisbane Roar vs Newcastle United Jets
 DATE: 2025-01-07
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 16
+FIXTURES ON DATE: 17
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmö FF vs Djurgarden IF
+MATCHED WITH: Malmö FF vs Djurgårdens IF
+DATE: 2024-05-01
+SIMILARITY: 98.15%
+FIXTURES ON DATE: 50
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Crystal Palace U21 vs RB Leipzig U21
+MATCHED WITH: Crystal Palace U21 vs RasenBallsport Leipzig U21
+DATE: 2025-01-17
+SIMILARITY: 85.00%
+FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Ulsan Hyundai vs Jeonbuk Motors
@@ -780,7 +1137,28 @@ SEARCHED FOR: Newcastle Jets vs Central Coast Mariners
 MATCHED WITH: Newcastle United Jets vs Central Coast Mariners
 DATE: 2024-11-22
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 88
+FIXTURES ON DATE: 89
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs GAIS Goteborg
+MATCHED WITH: Mjällby AIF vs GAIS Göteborg
+DATE: 2024-10-26
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 391
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Estland vs Österreich
+MATCHED WITH: Estland vs Österreich
+DATE: 2023-11-16
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 4
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Girondins Bordeaux vs AS Saint-Etienne
+MATCHED WITH: FC Girondins Bordeaux vs AS Saint-Étienne
+DATE: 2023-12-16
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 167
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: GAIS Göteborg vs IFK Göteborg
@@ -790,11 +1168,53 @@ SIMILARITY: 100.00%
 FIXTURES ON DATE: 58
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Crystal Palace U21 vs RB Leipzig U21
+MATCHED WITH: Crystal Palace U21 vs RasenBallsport Leipzig U21
+DATE: 2025-01-17
+SIMILARITY: 85.00%
+FIXTURES ON DATE: 71
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Hammarby vs Vasteras SK
 MATCHED WITH: Hammarby IF vs Västerås SK
 DATE: 2024-04-29
 SIMILARITY: 92.11%
 FIXTURES ON DATE: 42
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: China PR U20 vs Australia U20
+MATCHED WITH: China U20 vs Australien U20
+DATE: 2025-02-18
+SIMILARITY: 87.30%
+FIXTURES ON DATE: 55
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sweden U18 vs Denmark U18
+MATCHED WITH: Schweden U18 vs Dänemark U18
+DATE: 2024-09-10
+SIMILARITY: 88.93%
+FIXTURES ON DATE: 41
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Brentford U23 vs Charlton Athletic U23
+MATCHED WITH: Brentford FC U23 vs Charlton Athletic U23
+DATE: 2025-01-07
+SIMILARITY: 94.83%
+FIXTURES ON DATE: 17
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Estland vs Belgium
+MATCHED WITH: Estland vs Belgien
+DATE: 2023-06-20
+SIMILARITY: 85.71%
+FIXTURES ON DATE: 4
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmo FF vs Mjallby AIF
+MATCHED WITH: Malmö FF vs Mjällby AIF
+DATE: 2024-09-29
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 280
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Hammarby vs Vasteras SK
@@ -808,14 +1228,21 @@ SEARCHED FOR: Millwall U23 vs Ipswich Town U23
 MATCHED WITH: Millwall FC U23 vs Ipswich Town U23
 DATE: 2024-12-10
 SIMILARITY: 94.44%
-FIXTURES ON DATE: 48
+FIXTURES ON DATE: 61
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Peteborough United vs Crawley Town
 MATCHED WITH: Peterborough United vs Crawley Town
 DATE: 2024-01-23
 SIMILARITY: 98.65%
-FIXTURES ON DATE: 46
+FIXTURES ON DATE: 47
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: KV Oostende vs Standard Luttich 16 FC
+MATCHED WITH: KV Oostende vs Standard Lüttich 16 FC
+DATE: 2024-04-19
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 94
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Ipswich Town U23 vs FC Brentford U23
@@ -832,11 +1259,53 @@ SIMILARITY: 90.23%
 FIXTURES ON DATE: 100
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: IFK Göteborg vs Halmstad
+SEARCHED FOR: Kecskeméti TE vs ETO FC Györi
+MATCHED WITH: Kecskeméti TE vs ETO FC Győr
+DATE: 2024-08-16
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 96
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: CDA Navalcarnero vs Getafe B
+MATCHED WITH: CDA Navalcarnero vs GetafeB
+DATE: 2024-10-27
+SIMILARITY: 96.67%
+FIXTURES ON DATE: 286
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hamarkameratene vs FK Bodo/Glimt
+MATCHED WITH: Hamarkameratene vs FK Bodø/Glimt
+DATE: 2023-09-03
+SIMILARITY: 96.15%
+FIXTURES ON DATE: 219
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IF Brommapojkarna vs Mjällby AIF
+MATCHED WITH: IF Brommapojkarna vs Mjällby AIF
+DATE: 2024-09-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 362
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Saudi Arabia vs Costa Rica
+MATCHED WITH: Saudi-Arabien vs Costa Rica
+DATE: 2023-09-08
+SIMILARITY: 90.00%
+FIXTURES ON DATE: 11
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Göteborg vs Halmstads BK
 MATCHED WITH: IFK Göteborg vs Halmstads BK
 DATE: 2024-09-23
-SIMILARITY: 90.00%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 50
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Qatar U23 vs Australia U23
+MATCHED WITH: Qatar U20 vs Australien U20
+DATE: 2024-04-21
+SIMILARITY: 85.19%
+FIXTURES ON DATE: 196
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Western Sydney Wanderers vs Newcastle Jets
@@ -846,67 +1315,102 @@ SIMILARITY: 90.00%
 FIXTURES ON DATE: 94
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: IFK Göteborg vs Kalmar
+SEARCHED FOR: MTK Budapest vs Ujpest
+MATCHED WITH: MTK Budapest vs Újpest FC
+DATE: 2024-02-02
+SIMILARITY: 90.00%
+FIXTURES ON DATE: 51
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kecskeméti TE vs ETO FC Györi
+MATCHED WITH: Kecskeméti TE vs ETO FC Győr
+DATE: 2024-08-16
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 96
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Spain U21 vs Slovakia U21
+MATCHED WITH: Spanien U21 vs Slowakei U21
+DATE: 2024-03-21
+SIMILARITY: 86.67%
+FIXTURES ON DATE: 5
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Göteborg vs Kalmar FF
 MATCHED WITH: IFK Göteborg vs Kalmar FF
 DATE: 2024-11-02
-SIMILARITY: 90.00%
-FIXTURES ON DATE: 319
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 355
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs GAIS Goteborg
+MATCHED WITH: Mjällby AIF vs GAIS Göteborg
+DATE: 2024-10-26
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 391
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FK Teplice vs Bohemians 1905
 MATCHED WITH: FK Teplice vs Bohemians Prag 1905
 DATE: 2024-10-27
 SIMILARITY: 92.42%
-FIXTURES ON DATE: 230
+FIXTURES ON DATE: 286
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Kristiansund vs Stromsgodset
 MATCHED WITH: Kristiansund BK vs Strømsgodset IF
 DATE: 2024-10-20
 SIMILARITY: 85.19%
-FIXTURES ON DATE: 252
+FIXTURES ON DATE: 272
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmo FF vs Mjallby AIF
+MATCHED WITH: Malmö FF vs Mjällby AIF
+DATE: 2024-09-29
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 280
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Varnamo vs IFK Norrkoping
 MATCHED WITH: IFK Värnamo vs IFK Norrköping
 DATE: 2024-10-27
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 230
+FIXTURES ON DATE: 286
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: MTK Budapest vs Ferencvaros
 MATCHED WITH: MTK Budapest vs Ferencváros Budapest
 DATE: 2024-09-20
 SIMILARITY: 85.48%
-FIXTURES ON DATE: 112
+FIXTURES ON DATE: 113
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: FK Teplice vs Dukla Praha
 MATCHED WITH: FK Teplice vs FK Dukla Prag
 DATE: 2024-10-05
 SIMILARITY: 87.50%
-FIXTURES ON DATE: 368
+FIXTURES ON DATE: 369
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Melbourne City
 MATCHED WITH: Newcastle United Jets vs Melbourne City FC
 DATE: 2024-10-19
 SIMILARITY: 85.16%
-FIXTURES ON DATE: 370
+FIXTURES ON DATE: 382
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Vasteras
 MATCHED WITH: IFK Norrköping vs Västerås SK
 DATE: 2024-08-10
 SIMILARITY: 92.11%
-FIXTURES ON DATE: 238
+FIXTURES ON DATE: 239
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Carlise United vs Blackpool
 MATCHED WITH: Carlisle United vs FC Blackpool
 DATE: 2024-04-13
 SIMILARITY: 91.13%
-FIXTURES ON DATE: 287
+FIXTURES ON DATE: 291
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Kilmarnock vs St Johnstone
@@ -923,6 +1427,13 @@ SIMILARITY: 96.15%
 FIXTURES ON DATE: 195
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: AIK Solna vs Mjällby AIF
+MATCHED WITH: AIK Solna vs Mjällby AIF
+DATE: 2024-08-11
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 182
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: IFK Göteborg vs Mjällby
 MATCHED WITH: IFK Göteborg vs Mjällby AIF
 DATE: 2024-05-21
@@ -930,32 +1441,60 @@ SIMILARITY: 88.89%
 FIXTURES ON DATE: 26
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Hibernian 2 vs 1 Dundee FC
+SEARCHED FOR: Hibernian FC 2 vs 1 Dundee FC
 MATCHED WITH: Hibernian FC vs Dundee FC
 DATE: 2024-02-24
-SIMILARITY: 88.48%
-FIXTURES ON DATE: 219
+SIMILARITY: 91.15%
+FIXTURES ON DATE: 222
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kecskeméti TE vs ETO FC Györi
+MATCHED WITH: Kecskeméti TE vs ETO FC Győr
+DATE: 2024-08-16
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 96
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Fortuna Dusseldorf vs St Pauli
+MATCHED WITH: Fortuna Düsseldorf vs FC St. Pauli
+DATE: 2022-11-05
+SIMILARITY: 90.00%
+FIXTURES ON DATE: 186
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Heart of Midlothian FC 1 vs 2 Kilmarnock
+MATCHED WITH: Heart of Midlothian FC vs Kilmarnock FC
+DATE: 2024-10-30
+SIMILARITY: 87.83%
+FIXTURES ON DATE: 98
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Brondby IF vs Vejle Boldklub
 MATCHED WITH: Bröndby IF vs Vejle Boldklub
 DATE: 2024-03-03
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 182
+FIXTURES ON DATE: 183
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Blackburn Rovers U21 vs Borussia Mönchengladbach U21
+MATCHED WITH: Blackburn Rovers U21 vs Borussia Mönchengladbach U21
+DATE: 2024-10-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 113
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Slask Wroclaw vs Puszcza Niepolomice
 MATCHED WITH: Śląsk Wrocław vs Puszcza Niepolomice
 DATE: 2024-03-16
 SIMILARITY: 96.15%
-FIXTURES ON DATE: 276
+FIXTURES ON DATE: 278
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Widzew Lodz vs Piast Gliwice
 MATCHED WITH: Widzew Łódź vs Piast Gliwice
 DATE: 2024-09-21
 SIMILARITY: 95.45%
-FIXTURES ON DATE: 352
+FIXTURES ON DATE: 362
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Guingamp vs Saint-Etienne
@@ -969,35 +1508,49 @@ SEARCHED FOR: FK Teplice vs Sigma Olomouc
 MATCHED WITH: FK Teplice vs SK Sigma Olmütz
 DATE: 2024-11-30
 SIMILARITY: 85.71%
-FIXTURES ON DATE: 246
+FIXTURES ON DATE: 294
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Cardiff City U21 vs Ipswich Town U21
 MATCHED WITH: Cardiff City U23 vs Ipswich Town U23
 DATE: 2024-10-01
 SIMILARITY: 93.75%
-FIXTURES ON DATE: 80
+FIXTURES ON DATE: 81
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Vasteras
 MATCHED WITH: IFK Norrköping vs Västerås SK
 DATE: 2024-08-10
 SIMILARITY: 92.11%
-FIXTURES ON DATE: 238
+FIXTURES ON DATE: 239
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IK Sirius vs Mjallby
 MATCHED WITH: IK Sirius vs Mjällby AIF
 DATE: 2024-11-03
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 275
+FIXTURES ON DATE: 283
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FK Dukla Prague vs AC Sparta Prag
+MATCHED WITH: FK Dukla Prag vs AC Sparta Prag
+DATE: 2024-11-30
+SIMILARITY: 96.43%
+FIXTURES ON DATE: 294
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: MTK Budapest vs Ferencvaros
 MATCHED WITH: MTK Budapest vs Ferencváros Budapest
 DATE: 2024-09-20
 SIMILARITY: 85.48%
-FIXTURES ON DATE: 112
+FIXTURES ON DATE: 113
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Australia vs Ecuador
+MATCHED WITH: Australien vs Ecuador
+DATE: 2023-03-28
+SIMILARITY: 92.11%
+FIXTURES ON DATE: 11
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Mjällby vs Malmö FF
@@ -1007,11 +1560,32 @@ SIMILARITY: 88.89%
 FIXTURES ON DATE: 57
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: MTK Budapest vs Fehérvár FC
+MATCHED WITH: MTK Budapest vs Fehérvár FC
+DATE: 2024-02-10
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 190
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Southampton U21 0 vs 2 Crystal Palace U21
 MATCHED WITH: FC Southampton U21 vs Crystal Palace U21
 DATE: 2024-10-25
 SIMILARITY: 90.23%
 FIXTURES ON DATE: 100
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Paraguay Olynpia vs Mali Olympia
+MATCHED WITH: Paraguay Olympia vs Mali Olympia
+DATE: 2024-07-30
+SIMILARITY: 96.88%
+FIXTURES ON DATE: 19
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjällby AIF vs BK Häcken
+MATCHED WITH: Mjällby AIF vs BK Häcken
+DATE: 2024-05-29
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 28
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Lechia Gdańsk vs Slask Wroclaw
@@ -1032,28 +1606,63 @@ SEARCHED FOR: MTK Budapest vs Nyiregyhaza Spartacus
 MATCHED WITH: MTK Budapest vs Nyíregyháza Spartacus
 DATE: 2024-08-03
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 138
+FIXTURES ON DATE: 141
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IK Sirius vs Mjallby
 MATCHED WITH: IK Sirius vs Mjällby AIF
 DATE: 2024-11-03
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 275
+FIXTURES ON DATE: 283
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Wigan Athletic (P) vs Nottingham Forest U21
+MATCHED WITH: Wigan Athletic vs Nottingham Forest U21
+DATE: 2024-11-12
+SIMILARITY: 93.75%
+FIXTURES ON DATE: 39
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Varnamo vs IFK Norrkoping
 MATCHED WITH: IFK Värnamo vs IFK Norrköping
 DATE: 2024-10-27
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 230
+FIXTURES ON DATE: 286
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Varnamo vs IFK Norrkoping
 MATCHED WITH: IFK Värnamo vs IFK Norrköping
 DATE: 2024-10-27
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 230
+FIXTURES ON DATE: 286
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Girondins Bordeaux vs AS Saint-Etienne
+MATCHED WITH: FC Girondins Bordeaux vs AS Saint-Étienne
+DATE: 2023-12-16
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 167
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Újpest FC vs Diósgyőri VTK
+MATCHED WITH: Újpest FC vs Diósgyőri VTK
+DATE: 2024-09-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 362
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: 1. FC Nürnberg vs SSV Ulm 1846
+MATCHED WITH: 1. FC Nürnberg vs SSV Ulm 1846
+DATE: 2025-02-16
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 193
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hungary U20 vs Iceland U20
+MATCHED WITH: Ungarn U20 vs Island U20
+DATE: 2024-03-20
+SIMILARITY: 85.71%
+FIXTURES ON DATE: 18
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Vikingur Reykjavik vs Cercle Brugge
@@ -1063,32 +1672,74 @@ SIMILARITY: 100.00%
 FIXTURES ON DATE: 56
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Marathón vs CD Motagua Tegucigalpa
+MATCHED WITH: Marathón  vs CD Motagua Tegucigalpa
+DATE: 2024-04-07
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 197
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: FK Teplice vs Bohemians 1905
 MATCHED WITH: FK Teplice vs Bohemians Prag 1905
 DATE: 2024-10-27
 SIMILARITY: 92.42%
-FIXTURES ON DATE: 230
+FIXTURES ON DATE: 286
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Colchester United U21 vs Sheffield United U21
+MATCHED WITH: Colchester United vs Sheffield United U21
+DATE: 2024-05-10
+SIMILARITY: 94.74%
+FIXTURES ON DATE: 100
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Hull City vs Portsmouth 1-1
 MATCHED WITH: Hull City vs FC Portsmouth
 DATE: 2024-11-02
 SIMILARITY: 87.04%
-FIXTURES ON DATE: 319
+FIXTURES ON DATE: 355
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Varnamo vs Halmstads BK
+MATCHED WITH: IFK Värnamo vs Halmstads BK
+DATE: 2024-04-28
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 223
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Brisbane Roar vs Newcastle Jets
 MATCHED WITH: Brisbane Roar vs Newcastle United Jets
 DATE: 2024-04-13
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 287
+FIXTURES ON DATE: 291
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Varnamo vs Halmstads BK
+MATCHED WITH: IFK Värnamo vs Halmstads BK
+DATE: 2024-04-28
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 223
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: MTK Budapest vs Ferencvaros
 MATCHED WITH: MTK Budapest vs Ferencváros Budapest
 DATE: 2024-09-20
 SIMILARITY: 85.48%
-FIXTURES ON DATE: 112
+FIXTURES ON DATE: 113
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Colchester United U21 vs Sheffield United U21
+MATCHED WITH: Colchester United vs Sheffield United U21
+DATE: 2024-05-10
+SIMILARITY: 94.74%
+FIXTURES ON DATE: 100
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Bahrain vs Australia
+MATCHED WITH: Bahrain vs Australien
+DATE: 2024-01-06
+SIMILARITY: 92.11%
+FIXTURES ON DATE: 85
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Gornik Zabrze vs Slask Wroclaw
@@ -1102,42 +1753,84 @@ SEARCHED FOR: Sparta Praha vs FK Teplice
 MATCHED WITH: AC Sparta Prag vs FK Teplice
 DATE: 2024-11-23
 SIMILARITY: 88.46%
-FIXTURES ON DATE: 257
+FIXTURES ON DATE: 266
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Pogon Szczecin vs Stal Mielec
 MATCHED WITH: Pogoń Szczecin vs Stal Mielec
 DATE: 2024-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 238
+FIXTURES ON DATE: 239
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Dordrecht vs VVV Venlo
-MATCHED WITH: FC Dordrecht vs VVV-Venlo
-DATE: 2025-03-14
-SIMILARITY: 87.30%
-FIXTURES ON DATE: 116
+SEARCHED FOR: Colchester United U21 vs Sheffield United U21
+MATCHED WITH: Colchester United vs Sheffield United U21
+DATE: 2024-05-10
+SIMILARITY: 94.74%
+FIXTURES ON DATE: 100
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: MTK Budapest vs Ferencvaros
 MATCHED WITH: MTK Budapest vs Ferencváros Budapest
 DATE: 2024-04-28
 SIMILARITY: 85.48%
-FIXTURES ON DATE: 221
+FIXTURES ON DATE: 223
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Peterborough vs Crystal Palace U21’s
+MATCHED WITH: Peterborough United vs Crystal Palace U21
+DATE: 2024-11-05
+SIMILARITY: 86.08%
+FIXTURES ON DATE: 73
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: MTK Budapest vs Ferencvaros
 MATCHED WITH: MTK Budapest vs Ferencváros Budapest
 DATE: 2024-09-20
 SIMILARITY: 85.48%
-FIXTURES ON DATE: 112
+FIXTURES ON DATE: 113
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: IFK Göteborg vs Kalmar
+SEARCHED FOR: Djurgården IF vs NK Maribor
+MATCHED WITH: Djurgårdens IF vs NK Maribor
+DATE: 2024-08-22
+SIMILARITY: 98.15%
+FIXTURES ON DATE: 22
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Omonia Nicosia vs Fehervar FC
+MATCHED WITH: Omonia Nikosia vs Fehérvár FC
+DATE: 2024-08-08
+SIMILARITY: 96.43%
+FIXTURES ON DATE: 11
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs IFK Varnamo
+MATCHED WITH: Mjällby AIF vs IFK Värnamo
+DATE: 2024-09-25
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 63
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Salford City vs Cheltenham Town (FA Cup)
+MATCHED WITH: Salford City vs Cheltenham Town
+DATE: 2024-11-30
+SIMILARITY: 88.46%
+FIXTURES ON DATE: 294
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Göteborg vs Kalmar FF
 MATCHED WITH: IFK Göteborg vs Kalmar FF
 DATE: 2024-11-02
-SIMILARITY: 90.00%
-FIXTURES ON DATE: 319
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 355
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Colchester United U21 vs Sheffield United U21
+MATCHED WITH: Colchester United vs Sheffield United U21
+DATE: 2024-05-10
+SIMILARITY: 94.74%
+FIXTURES ON DATE: 100
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: St Johnstone vs Motherwell
@@ -1147,25 +1840,60 @@ SIMILARITY: 86.34%
 FIXTURES ON DATE: 327
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Fehervar vs MTK Budapest
+SEARCHED FOR: Kecskeméti TE vs ETO FC Györi
+MATCHED WITH: Kecskeméti TE vs ETO FC Győr
+DATE: 2024-08-16
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 96
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hungary vs Bosnia-Herzegovina
+MATCHED WITH: Hungary vs Bosnien-Herzegowina
+DATE: 2024-09-10
+SIMILARITY: 93.24%
+FIXTURES ON DATE: 41
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FK Dukla Prague vs AC Sparta Prag
+MATCHED WITH: FK Dukla Prag vs AC Sparta Prag
+DATE: 2024-11-30
+SIMILARITY: 96.43%
+FIXTURES ON DATE: 294
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Fehervar FC vs MTK Budapest
 MATCHED WITH: Fehérvár FC vs MTK Budapest
 DATE: 2024-08-30
-SIMILARITY: 92.11%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 120
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Iceland U21 vs Wales U21
+MATCHED WITH: Island U21 vs Wales U21
+DATE: 2024-09-10
+SIMILARITY: 92.86%
+FIXTURES ON DATE: 41
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: St Mirren vs Dundee United
 MATCHED WITH: St. Mirren FC vs Dundee United FC
 DATE: 2025-01-11
 SIMILARITY: 85.74%
-FIXTURES ON DATE: 129
+FIXTURES ON DATE: 139
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hillerod Fodbold vs Esbjerg fB
+MATCHED WITH: Hilleröd Fodbold vs Esbjerg fB
+DATE: 2024-11-24
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 185
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Charlton Athletic U21 vs Brentford U21
 MATCHED WITH: Charlton Athletic U23 vs Brentford FC U23
 DATE: 2024-10-01
 SIMILARITY: 89.00%
-FIXTURES ON DATE: 80
+FIXTURES ON DATE: 81
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Adelaide United vs Macaurthur
@@ -1179,21 +1907,49 @@ SEARCHED FOR: IK Sirius vs Mjallby
 MATCHED WITH: IK Sirius vs Mjällby AIF
 DATE: 2024-11-03
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 275
+FIXTURES ON DATE: 283
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle U21 vs West Ham United U21
+MATCHED WITH: Newcastle United U21 vs West Ham United U21
+DATE: 2024-09-20
+SIMILARITY: 89.39%
+FIXTURES ON DATE: 113
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Partick Thistle FC vs Inverness Caldeonian Thistle FC
+MATCHED WITH: Partick Thistle FC vs Inverness Caledonian Thistle FC
+DATE: 2024-03-30
+SIMILARITY: 98.39%
+FIXTURES ON DATE: 229
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kalmar FF vs Mjällby AIF
+MATCHED WITH: Kalmar FF vs Mjällby AIF
+DATE: 2024-10-20
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 272
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmo FF vs IFK Goteborg
+MATCHED WITH: Malmö FF vs IFK Göteborg
+DATE: 2024-10-28
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 46
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Watford U21 vs Charlton Athletic U21
 MATCHED WITH: Watford FC U23 vs Charlton Athletic U23
 DATE: 2024-09-20
 SIMILARITY: 87.62%
-FIXTURES ON DATE: 112
+FIXTURES ON DATE: 113
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Watford U21 vs Charlton Athletic U21
 MATCHED WITH: Watford FC U23 vs Charlton Athletic U23
 DATE: 2024-09-20
 SIMILARITY: 87.62%
-FIXTURES ON DATE: 112
+FIXTURES ON DATE: 113
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Mjallby
@@ -1201,13 +1957,27 @@ MATCHED WITH: IFK Norrköping vs Mjällby AIF
 DATE: 2024-08-26
 SIMILARITY: 88.89%
 FIXTURES ON DATE: 84
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmo FF vs IFK Goteborg
+MATCHED WITH: Malmö FF vs IFK Göteborg
+DATE: 2024-10-28
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 46
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Charlton Athletic U21 vs Ipswich Town U21
 MATCHED WITH: Charlton Athletic U23 vs Ipswich Town U23
 DATE: 2024-10-15
 SIMILARITY: 94.49%
-FIXTURES ON DATE: 18
+FIXTURES ON DATE: 21
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Debreceni VSC vs Kecskemeti TE
+MATCHED WITH: Debreceni VSC vs Kecskeméti TE
+DATE: 2024-04-13
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 291
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Mjallby
@@ -1217,32 +1987,53 @@ SIMILARITY: 88.89%
 FIXTURES ON DATE: 84
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Fehervar vs MTK Budapest
+SEARCHED FOR: Fehervar FC vs MTK Budapest
 MATCHED WITH: Fehérvár FC vs MTK Budapest
 DATE: 2024-08-30
-SIMILARITY: 92.11%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 120
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Dordrecht vs VVV Venlo
-MATCHED WITH: FC Dordrecht vs VVV-Venlo
-DATE: 2025-03-14
-SIMILARITY: 87.30%
-FIXTURES ON DATE: 116
+SEARCHED FOR: ESTAC Troyes vs AS Saint-Etienne
+MATCHED WITH: ESTAC Troyes vs AS Saint-Étienne
+DATE: 2023-09-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 276
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Wellington Pheonix vs Brisbane Roar
 MATCHED WITH: Wellington Phoenix vs Brisbane Roar
 DATE: 2025-02-06
 SIMILARITY: 97.22%
-FIXTURES ON DATE: 27
+FIXTURES ON DATE: 28
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Salford City vs Cheltenham Town (FA Cup)
+MATCHED WITH: Salford City vs Cheltenham Town
+DATE: 2024-11-30
+SIMILARITY: 88.46%
+FIXTURES ON DATE: 294
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newport County vs West Ham United United U21
 MATCHED WITH: Newport County vs West Ham United U21
 DATE: 2024-09-17
 SIMILARITY: 92.22%
-FIXTURES ON DATE: 63
+FIXTURES ON DATE: 68
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgårdens IF vs Mjällby AIF
+MATCHED WITH: Djurgårdens IF vs Mjällby AIF
+DATE: 2024-09-15
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 235
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Varnamo vs IFK Norrkoping
+MATCHED WITH: IFK Värnamo vs IFK Norrköping
+DATE: 2024-10-27
+SIMILARITY: 88.89%
+FIXTURES ON DATE: 286
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Kilmarnok vs St. Johnstone
@@ -1250,6 +2041,13 @@ MATCHED WITH: Kilmarnock FC vs St. Johnstone FC
 DATE: 2024-08-11
 SIMILARITY: 85.74%
 FIXTURES ON DATE: 182
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Omonia Nicosia vs Fehervar FC
+MATCHED WITH: Omonia Nikosia vs Fehérvár FC
+DATE: 2024-08-08
+SIMILARITY: 96.43%
+FIXTURES ON DATE: 11
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Brisbane Roar
@@ -1270,7 +2068,7 @@ SEARCHED FOR: Lierse Kempenzonen vs Zulte-Waregem
 MATCHED WITH: KSK Lierse Kempenzonen vs SV Zulte Waregem
 DATE: 2023-12-09
 SIMILARITY: 86.38%
-FIXTURES ON DATE: 164
+FIXTURES ON DATE: 166
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Milton Keynes Dons 1 vs 2 Morecambe
@@ -1291,14 +2089,21 @@ SEARCHED FOR: Newcastle Jets vs Central Coast Mariners
 MATCHED WITH: Newcastle United Jets vs Central Coast Mariners
 DATE: 2024-11-22
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 88
+FIXTURES ON DATE: 89
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs Malmo FF
+MATCHED WITH: Hammarby IF vs Malmö FF
+DATE: 2024-11-02
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 355
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Wigan Athletic vs (P) Barnsley
 MATCHED WITH: Wigan Athletic vs FC Barnsley
 DATE: 2024-08-13
 SIMILARITY: 89.13%
-FIXTURES ON DATE: 28
+FIXTURES ON DATE: 48
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Western Sydney Wanderers vs Newcastle Jets
@@ -1308,25 +2113,60 @@ SIMILARITY: 90.00%
 FIXTURES ON DATE: 94
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: KV Oostende vs Standard Luttich 16 FC
+MATCHED WITH: KV Oostende vs Standard Lüttich 16 FC
+DATE: 2024-04-19
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 94
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: China U19 vs Sudkorea U19
+MATCHED WITH: China U19 vs Südkorea U19
+DATE: 2024-06-10
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 2
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: IFK Norrkoping vs Orebro
+MATCHED WITH: IFK Norrköping vs Orebro
+DATE: 2025-02-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 311
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Jamaica vs Honduras
 MATCHED WITH: Jamaika vs Honduras
 DATE: 2024-10-15
 SIMILARITY: 92.86%
-FIXTURES ON DATE: 18
+FIXTURES ON DATE: 21
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Slavia Praha vs FK Teplice
-MATCHED WITH: SK Slavia Prag vs FK Teplice
-DATE: 2024-08-17
-SIMILARITY: 88.46%
-FIXTURES ON DATE: 285
+SEARCHED FOR: Hillerod Fodbold vs Esbjerg fB
+MATCHED WITH: Hilleröd Fodbold vs Esbjerg fB
+DATE: 2024-11-24
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 185
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Crystal Palace U21 vs RB Leipzig U21
+MATCHED WITH: Crystal Palace U21 vs RasenBallsport Leipzig U21
+DATE: 2025-01-17
+SIMILARITY: 85.00%
+FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: West Ham United vs Bristol City- FA Cup
 MATCHED WITH: West Ham United vs Bristol City
 DATE: 2024-01-07
 SIMILARITY: 87.50%
-FIXTURES ON DATE: 47
+FIXTURES ON DATE: 57
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Cadiz vs CD Castellon
+MATCHED WITH: FC Cádiz vs CD Castellón
+DATE: 2025-02-23
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 214
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Legia Warszawa vs Motor Lublin
@@ -1340,21 +2180,77 @@ SEARCHED FOR: Dunfermline Athletic vs Queens Park
 MATCHED WITH: Dunfermline Athletic FC vs Queen's Park FC
 DATE: 2024-04-20
 SIMILARITY: 88.82%
-FIXTURES ON DATE: 292
+FIXTURES ON DATE: 294
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Fehervar vs Zalaegerszegi TE
+SEARCHED FOR: Fehervar FC vs Zalaegerszegi TE
 MATCHED WITH: Fehérvár FC vs Zalaegerszegi TE FC
 DATE: 2024-08-18
-SIMILARITY: 87.82%
+SIMILARITY: 95.71%
 FIXTURES ON DATE: 181
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: MTK Budapest vs Kecskeméti TE
+MATCHED WITH: MTK Budapest vs Kecskeméti TE
+DATE: 2024-03-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 229
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Paraguay Olynpia vs Mali Olympia
+MATCHED WITH: Paraguay Olympia vs Mali Olympia
+DATE: 2024-07-30
+SIMILARITY: 96.88%
+FIXTURES ON DATE: 19
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle U21 vs West Ham United U21
+MATCHED WITH: Newcastle United U21 vs West Ham United U21
+DATE: 2024-09-20
+SIMILARITY: 89.39%
+FIXTURES ON DATE: 113
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Radomiak Radom vs Slask Wroclaw
+MATCHED WITH: Radomiak Radom vs Śląsk Wrocław
+DATE: 2025-02-08
+SIMILARITY: 96.15%
+FIXTURES ON DATE: 252
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Brentford U23 vs Charlton Athletic U23
+MATCHED WITH: Brentford FC U23 vs Charlton Athletic U23
+DATE: 2025-01-07
+SIMILARITY: 94.83%
+FIXTURES ON DATE: 17
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Western United FC vs Newcastle Jets
 MATCHED WITH: Western United FC vs Newcastle United Jets
 DATE: 2025-01-17
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 70
+FIXTURES ON DATE: 71
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Norwich U21 vs Middlesbrough U21
+MATCHED WITH: Norwich City U21 vs FC Middlesbrough U21
+DATE: 2024-12-13
+SIMILARITY: 86.69%
+FIXTURES ON DATE: 67
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Crystal Palace U21 vs RB Leipzig U21
+MATCHED WITH: Crystal Palace U21 vs RasenBallsport Leipzig U21
+DATE: 2025-01-17
+SIMILARITY: 85.00%
+FIXTURES ON DATE: 71
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Australia vs Palästina
+MATCHED WITH: Australien vs Palästina
+DATE: 2024-06-11
+SIMILARITY: 92.11%
+FIXTURES ON DATE: 8
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Vikingur Reykjavik vs Cercle Brugge
@@ -1364,11 +2260,11 @@ SIMILARITY: 100.00%
 FIXTURES ON DATE: 56
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: VVV Venlo vs Volendam
-MATCHED WITH: VVV-Venlo vs FC Volendam
-DATE: 2025-02-22
-SIMILARITY: 86.55%
-FIXTURES ON DATE: 310
+SEARCHED FOR: IFK Goteborg vs AIK Solna
+MATCHED WITH: IFK Göteborg vs AIK Solna
+DATE: 2024-10-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 52
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Holstein Kiel vs Nürnberg
@@ -1378,18 +2274,74 @@ SIMILARITY: 86.36%
 FIXTURES ON DATE: 178
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Malmo FF vs IFK Goteborg
+MATCHED WITH: Malmö FF vs IFK Göteborg
+DATE: 2024-10-28
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 46
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: PreuBen Munster vs Schalke 04
 MATCHED WITH: Preußen Münster vs FC Schalke 04
 DATE: 2024-09-28
 SIMILARITY: 88.64%
-FIXTURES ON DATE: 352
+FIXTURES ON DATE: 353
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: FC Girondins Bordeaux vs AS Saint-Etienne
+MATCHED WITH: FC Girondins Bordeaux vs AS Saint-Étienne
+DATE: 2023-12-16
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 167
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Central Coast Mariners
 MATCHED WITH: Newcastle United Jets vs Central Coast Mariners
 DATE: 2024-04-27
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 272
+FIXTURES ON DATE: 276
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: SonderjyskE vs Vejle Boldklub
+MATCHED WITH: SönderjyskE vs Vejle Boldklub
+DATE: 2024-09-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 304
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Malmo FF vs IFK Goteborg
+MATCHED WITH: Malmö FF vs IFK Göteborg
+DATE: 2024-10-28
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 46
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: MTK Budapest vs Diosgyor
+MATCHED WITH: MTK Budapest vs Diósgyőri VTK
+DATE: 2024-04-14
+SIMILARITY: 88.10%
+FIXTURES ON DATE: 195
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Halmstads BK vs Mjallby AIF
+MATCHED WITH: Halmstads BK vs Mjällby AIF
+DATE: 2023-10-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 206
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Australia U23 vs Egypt U23
+MATCHED WITH: Australien U23 vs Egypt U23
+DATE: 2024-03-23
+SIMILARITY: 94.44%
+FIXTURES ON DATE: 93
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kuopian Palloseura vs FC Haka
+MATCHED WITH: Kuopion Palloseura vs FC Haka
+DATE: 2024-09-29
+SIMILARITY: 97.22%
+FIXTURES ON DATE: 280
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Mjallby
@@ -1403,14 +2355,63 @@ SEARCHED FOR: Manchester City U21 vs Norwich U21
 MATCHED WITH: Manchester City U21 vs Norwich City U21
 DATE: 2024-11-01
 SIMILARITY: 90.74%
-FIXTURES ON DATE: 90
+FIXTURES ON DATE: 92
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Costa Rica U23 vs Colombia U23
+MATCHED WITH: Costa Rica U23 vs Kolumbien U23
+DATE: 2023-10-18
+SIMILARITY: 86.00%
+FIXTURES ON DATE: 11
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kalmar FF vs Mjällby AIF
+MATCHED WITH: Kalmar FF vs Mjällby AIF
+DATE: 2024-10-20
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 272
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: LKS Lodz vs Slask Wroclaw
+MATCHED WITH: LKS Lodz vs Śląsk Wrocław
+DATE: 2024-05-04
+SIMILARITY: 96.15%
+FIXTURES ON DATE: 217
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Varnamo vs IFK Norrkoping
 MATCHED WITH: IFK Värnamo vs IFK Norrköping
 DATE: 2024-10-27
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 230
+FIXTURES ON DATE: 286
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: ETO FC Gyor vs MTK Budapest
+MATCHED WITH: ETO FC Győr vs MTK Budapest
+DATE: 2024-08-11
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 182
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgården IF vs NK Maribor
+MATCHED WITH: Djurgårdens IF vs NK Maribor
+DATE: 2024-08-22
+SIMILARITY: 98.15%
+FIXTURES ON DATE: 22
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjallby AIF vs GAIS Goteborg
+MATCHED WITH: Mjällby AIF vs GAIS Göteborg
+DATE: 2024-10-26
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 391
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Frankreich U20 vs Südkorea U20
+MATCHED WITH: Frankreich U20 vs Südkorea U20
+DATE: 2024-06-07
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 15
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Sporting KC vs Colorado Rapids
@@ -1420,25 +2421,25 @@ SIMILARITY: 85.48%
 FIXTURES ON DATE: 54
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Albania U21 vs Finland U21
+MATCHED WITH: Albanien U21 vs Finnland U19
+DATE: 2024-03-22
+SIMILARITY: 86.96%
+FIXTURES ON DATE: 12
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Saint-Etienne vs Guingamp
 MATCHED WITH: AS Saint-Étienne vs EA Guingamp
 DATE: 2023-12-05
 SIMILARITY: 86.93%
-FIXTURES ON DATE: 41
+FIXTURES ON DATE: 45
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Melbourne City
 MATCHED WITH: Newcastle United Jets vs Melbourne City FC
 DATE: 2024-10-19
 SIMILARITY: 85.16%
-FIXTURES ON DATE: 370
---------------------------------------------------------------------------------
-
-SEARCHED FOR: St Mirren vs Dundee United
-MATCHED WITH: St. Mirren FC vs Dundee United FC
-DATE: 2025-01-11
-SIMILARITY: 85.74%
-FIXTURES ON DATE: 129
+FIXTURES ON DATE: 382
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Bristol City U21 vs Bournemouth U21
@@ -1452,21 +2453,35 @@ SEARCHED FOR: Cercle Brugge vs RWD Molenbeek
 MATCHED WITH: Cercle Brügge vs RWD Molenbeek
 DATE: 2024-03-17
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 166
+FIXTURES ON DATE: 168
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Salford City vs Cheltenham Town (FA Cup)
+MATCHED WITH: Salford City vs Cheltenham Town
+DATE: 2024-11-30
+SIMILARITY: 88.46%
+FIXTURES ON DATE: 294
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Western United FC vs Newcastle Jets
 MATCHED WITH: Western United FC vs Newcastle United Jets
 DATE: 2025-01-17
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 70
+FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Sigma Olomouc vs FK Teplice
 MATCHED WITH: SK Sigma Olmütz vs FK Teplice
 DATE: 2024-08-03
 SIMILARITY: 85.71%
-FIXTURES ON DATE: 138
+FIXTURES ON DATE: 141
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: SpVgg Greuther Furth vs FC Schalke 04
+MATCHED WITH: SpVgg Greuther Fürth vs FC Schalke 04
+DATE: 2024-05-19
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 176
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: IFK Norrkoping vs Mjallby
@@ -1480,21 +2495,35 @@ SEARCHED FOR: Perth Glory vs Newcastle Jets
 MATCHED WITH: Perth Glory vs Newcastle United Jets
 DATE: 2024-03-09
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 256
+FIXTURES ON DATE: 259
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: MTK Budapest vs Diosgyor
+MATCHED WITH: MTK Budapest vs Diósgyőri VTK
+DATE: 2024-04-14
+SIMILARITY: 88.10%
+FIXTURES ON DATE: 195
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Peterbough United vs Exeter City
 MATCHED WITH: Peterborough United vs Exeter City
 DATE: 2025-01-21
 SIMILARITY: 97.22%
-FIXTURES ON DATE: 52
+FIXTURES ON DATE: 57
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Perth Glory vs Newcastle Jets
 MATCHED WITH: Perth Glory vs Newcastle United Jets
 DATE: 2024-03-09
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 256
+FIXTURES ON DATE: 259
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Debreceni VSC vs Kecskemeti TE
+MATCHED WITH: Debreceni VSC vs Kecskeméti TE
+DATE: 2024-04-13
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 291
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Wellington Phoenix
@@ -1508,28 +2537,42 @@ SEARCHED FOR: Greuther Fürth vs Fortuna Düsseldorf
 MATCHED WITH: SpVgg Greuther Fürth vs Fortuna Düsseldorf
 DATE: 2024-09-27
 SIMILARITY: 91.18%
-FIXTURES ON DATE: 113
+FIXTURES ON DATE: 114
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Eintracht Braunschweig vs St Pauli
+MATCHED WITH: Eintracht Braunschweig vs FC St. Pauli
+DATE: 2024-11-14
+SIMILARITY: 90.00%
+FIXTURES ON DATE: 16
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Ipswich Town U21 vs Bournemouth U21
 MATCHED WITH: Ipswich Town U23 vs AFC Bournemouth U23
 DATE: 2024-11-04
 SIMILARITY: 88.05%
-FIXTURES ON DATE: 61
+FIXTURES ON DATE: 62
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: PreuBen Munster vs Schalke 04
 MATCHED WITH: Preußen Münster vs FC Schalke 04
 DATE: 2024-09-28
 SIMILARITY: 88.64%
-FIXTURES ON DATE: 352
+FIXTURES ON DATE: 353
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjällby AIF vs GAIS Goteborg
+MATCHED WITH: Mjällby AIF vs GAIS Göteborg
+DATE: 2024-10-26
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 391
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Malmö FF vs Värnamo
 MATCHED WITH: Malmö FF vs IFK Värnamo
 DATE: 2024-10-06
 SIMILARITY: 88.89%
-FIXTURES ON DATE: 274
+FIXTURES ON DATE: 275
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Wellington Phoenix
@@ -1539,25 +2582,39 @@ SIMILARITY: 90.00%
 FIXTURES ON DATE: 94
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Hungary U20 vs Iceland U20
+MATCHED WITH: Ungarn U20 vs Island U20
+DATE: 2024-03-20
+SIMILARITY: 85.71%
+FIXTURES ON DATE: 18
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kecskeméti TE vs ETO FC Györi
+MATCHED WITH: Kecskeméti TE vs ETO FC Győr
+DATE: 2024-08-16
+SIMILARITY: 97.83%
+FIXTURES ON DATE: 96
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Ipswich Town U21 vs Bournemouth U21
 MATCHED WITH: Ipswich Town U23 vs AFC Bournemouth U23
 DATE: 2024-11-04
 SIMILARITY: 88.05%
-FIXTURES ON DATE: 61
+FIXTURES ON DATE: 62
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Jamaica vs Honduras
 MATCHED WITH: Jamaika vs Honduras
 DATE: 2024-10-15
 SIMILARITY: 92.86%
-FIXTURES ON DATE: 18
+FIXTURES ON DATE: 21
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: St Mirren vs Dundee FC
-MATCHED WITH: St. Mirren FC vs Dundee FC
-DATE: 2024-12-29
-SIMILARITY: 90.91%
-FIXTURES ON DATE: 73
+SEARCHED FOR: ETO FC Gyor vs Paksi FC
+MATCHED WITH: ETO FC Győr vs Paksi FC
+DATE: 2024-09-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 304
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle jets vs Perth Glory
@@ -1567,53 +2624,95 @@ SIMILARITY: 90.00%
 FIXTURES ON DATE: 220
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Dordrecht vs VVV Venlo
-MATCHED WITH: FC Dordrecht vs VVV-Venlo
-DATE: 2025-03-14
+SEARCHED FOR: Mjällby AIF vs GAIS Goteborg
+MATCHED WITH: Mjällby AIF vs GAIS Göteborg
+DATE: 2024-10-26
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 391
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle United Jets 3 vs 1 Sydney FC
+MATCHED WITH: Newcastle United Jets vs Sydney FC
+DATE: 2024-04-07
+SIMILARITY: 92.73%
+FIXTURES ON DATE: 197
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: China PR U20 vs Australia U20
+MATCHED WITH: China U20 vs Australien U20
+DATE: 2025-02-18
 SIMILARITY: 87.30%
-FIXTURES ON DATE: 116
+FIXTURES ON DATE: 55
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: MTK Budapest vs ETO FC Györ
+MATCHED WITH: MTK Budapest vs ETO FC Győr
+DATE: 2024-11-23
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 266
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Frankreich U20 vs Elfenbeinküste U20
+MATCHED WITH: Frankreich U20 vs Elfenbeinküste U20
+DATE: 2024-06-03
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 11
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Kalmar FF vs Mjällby AIF
+MATCHED WITH: Kalmar FF vs Mjällby AIF
+DATE: 2024-10-20
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 272
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Atletico Madrid vs Slovan Bratislava
 MATCHED WITH: Atlético de Madrid vs Slovan Bratislava
 DATE: 2024-12-11
 SIMILARITY: 95.45%
-FIXTURES ON DATE: 38
+FIXTURES ON DATE: 45
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Greuther Fürth vs Fortuna Düsseldorf
 MATCHED WITH: SpVgg Greuther Fürth vs Fortuna Düsseldorf
 DATE: 2024-09-27
 SIMILARITY: 91.18%
-FIXTURES ON DATE: 113
+FIXTURES ON DATE: 114
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Australia U23 vs Egypt U23
+MATCHED WITH: Australien U23 vs Egypt U23
+DATE: 2024-03-23
+SIMILARITY: 94.44%
+FIXTURES ON DATE: 93
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Western United FC vs Newcastle Jets
 MATCHED WITH: Western United FC vs Newcastle United Jets
 DATE: 2025-01-17
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 70
+FIXTURES ON DATE: 71
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Fehervar vs MTK Budapest
+SEARCHED FOR: MTK Budapest vs ETO FC Györ
+MATCHED WITH: MTK Budapest vs ETO FC Győr
+DATE: 2024-11-23
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 266
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Fehervar FC vs MTK Budapest
 MATCHED WITH: Fehérvár FC vs MTK Budapest
 DATE: 2024-08-30
-SIMILARITY: 92.11%
+SIMILARITY: 100.00%
 FIXTURES ON DATE: 120
---------------------------------------------------------------------------------
-
-SEARCHED FOR: St Mirren vs Dundee FC
-MATCHED WITH: St. Mirren FC vs Dundee FC
-DATE: 2024-12-29
-SIMILARITY: 90.91%
-FIXTURES ON DATE: 73
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Newcastle Jets vs Melbourne City
 MATCHED WITH: Newcastle United Jets vs Melbourne City FC
 DATE: 2024-10-19
 SIMILARITY: 85.16%
-FIXTURES ON DATE: 370
+FIXTURES ON DATE: 382
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Nürnberg vs Hannover 96
@@ -1623,18 +2722,46 @@ SIMILARITY: 86.36%
 FIXTURES ON DATE: 129
 --------------------------------------------------------------------------------
 
+SEARCHED FOR: Colchester United U21 vs Sheffield United U21
+MATCHED WITH: Colchester United vs Sheffield United U21
+DATE: 2024-05-10
+SIMILARITY: 94.74%
+FIXTURES ON DATE: 100
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Blackburn Rovers U21 vs Borussia Mönchengladbach U21
+MATCHED WITH: Blackburn Rovers U21 vs Borussia Mönchengladbach U21
+DATE: 2024-10-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 113
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: West Ham United United U21 vs Benfica Lissabon B
+MATCHED WITH: West Ham United U21 vs Benfica Lissabon U21
+DATE: 2024-09-24
+SIMILARITY: 86.96%
+FIXTURES ON DATE: 95
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Puskás Akademia FC vs MTK Budapest
+MATCHED WITH: Puskás Akadémia FC vs MTK Budapest
+DATE: 2024-08-18
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 181
+--------------------------------------------------------------------------------
+
 SEARCHED FOR: Peterborough U21 vs Sheffield United U21
 MATCHED WITH: Peterborough United U23 vs Sheffield United U23
 DATE: 2024-11-19
 SIMILARITY: 85.96%
-FIXTURES ON DATE: 24
+FIXTURES ON DATE: 26
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: West Ham United United U21 vs Stoke City U21
 MATCHED WITH: West Ham United U21 vs Stoke City U21
 DATE: 2025-01-31
 SIMILARITY: 92.22%
-FIXTURES ON DATE: 83
+FIXTURES ON DATE: 86
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Leyton Orient vs Birmigham
@@ -1644,46 +2771,74 @@ SIMILARITY: 87.50%
 FIXTURES ON DATE: 324
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Sporting Gijon vs Burgos
-MATCHED WITH: Sporting Gijón vs Burgos CF
-DATE: 2025-09-14
-SIMILARITY: 90.00%
-FIXTURES ON DATE: 242
+SEARCHED FOR: ETO FC Gyor vs Paksi FC
+MATCHED WITH: ETO FC Győr vs Paksi FC
+DATE: 2024-09-22
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 304
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Sporting Gijon vs Burgos
 MATCHED WITH: Sporting Gijón vs Burgos CF
 DATE: 2025-09-14
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 242
+FIXTURES ON DATE: 246
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sporting Gijon vs Burgos
+MATCHED WITH: Sporting Gijón vs Burgos CF
+DATE: 2025-09-14
+SIMILARITY: 90.00%
+FIXTURES ON DATE: 246
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Sporting Gijón vs Burgos
 MATCHED WITH: Sporting Gijón vs Burgos CF
 DATE: 2025-09-14
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 242
+FIXTURES ON DATE: 246
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Sporting Gijon vs Burgos
 MATCHED WITH: Sporting Gijón vs Burgos CF
 DATE: 2025-09-14
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 242
+FIXTURES ON DATE: 246
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Sporting Gijon vs Burgos
 MATCHED WITH: Sporting Gijón vs Burgos CF
 DATE: 2025-09-14
 SIMILARITY: 90.00%
-FIXTURES ON DATE: 242
+FIXTURES ON DATE: 246
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Ujpest FC vs Fehervar FC
+MATCHED WITH: Újpest FC vs Fehérvár FC
+DATE: 2025-03-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 252
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Angers SCO vs Montpellier HSC
 MATCHED WITH: Angers SCO vs HSC Montpellier
 DATE: 2025-04-13
 SIMILARITY: 86.67%
-FIXTURES ON DATE: 235
+FIXTURES ON DATE: 236
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Dundee United vs (P) Rapid Wien
+MATCHED WITH: Dundee United FC vs SK Rapid Wien
+DATE: 2025-08-14
+SIMILARITY: 85.57%
+FIXTURES ON DATE: 12
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs Djurgårdens IF
+MATCHED WITH: Hammarby IF vs Djurgårdens IF
+DATE: 2025-04-13
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 236
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Melbourne Victory vs Newcastle Jets
@@ -1700,18 +2855,39 @@ SIMILARITY: 96.88%
 FIXTURES ON DATE: 327
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Slask Wroclaw vs Rakow Czestochowa
-MATCHED WITH: Śląsk Wrocław vs Rakow Czestochowa
-DATE: 2024-10-26
-SIMILARITY: 96.15%
-FIXTURES ON DATE: 333
+SEARCHED FOR: Hammarby IF vs BK Hacken
+MATCHED WITH: Hammarby IF vs BK Häcken
+DATE: 2025-09-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 250
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Dundee United vs (P) Rapid Wien
+MATCHED WITH: Dundee United FC vs SK Rapid Wien
+DATE: 2025-08-14
+SIMILARITY: 85.57%
+FIXTURES ON DATE: 12
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Slask Wroclaw vs Rakow Czestochowa
 MATCHED WITH: Śląsk Wrocław vs Rakow Czestochowa
 DATE: 2024-10-26
 SIMILARITY: 96.15%
-FIXTURES ON DATE: 333
+FIXTURES ON DATE: 391
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Dundee United vs (P) Rapid Wien
+MATCHED WITH: Dundee United FC vs SK Rapid Wien
+DATE: 2025-08-14
+SIMILARITY: 85.57%
+FIXTURES ON DATE: 12
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Slask Wroclaw vs Rakow Czestochowa
+MATCHED WITH: Śląsk Wrocław vs Rakow Czestochowa
+DATE: 2024-10-26
+SIMILARITY: 96.15%
+FIXTURES ON DATE: 391
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Melbourne Victory vs Newcastle Jets
@@ -1721,25 +2897,60 @@ SIMILARITY: 90.00%
 FIXTURES ON DATE: 223
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Angers SCO vs Montpellier HSC
-MATCHED WITH: Angers SCO vs HSC Montpellier
+SEARCHED FOR: Dundee United vs (P) Rapid Wien
+MATCHED WITH: Dundee United FC vs SK Rapid Wien
+DATE: 2025-08-14
+SIMILARITY: 85.57%
+FIXTURES ON DATE: 12
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs Djurgårdens IF
+MATCHED WITH: Hammarby IF vs Djurgårdens IF
 DATE: 2025-04-13
-SIMILARITY: 86.67%
-FIXTURES ON DATE: 235
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 236
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Angers SCO vs Montpellier HSC
 MATCHED WITH: Angers SCO vs HSC Montpellier
 DATE: 2025-04-13
 SIMILARITY: 86.67%
-FIXTURES ON DATE: 235
+FIXTURES ON DATE: 236
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Angers SCO vs Montpellier HSC
 MATCHED WITH: Angers SCO vs HSC Montpellier
 DATE: 2025-04-13
 SIMILARITY: 86.67%
-FIXTURES ON DATE: 235
+FIXTURES ON DATE: 236
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs BK Hacken
+MATCHED WITH: Hammarby IF vs BK Häcken
+DATE: 2025-09-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 250
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Ujpest FC vs Fehervar FC
+MATCHED WITH: Újpest FC vs Fehérvár FC
+DATE: 2025-03-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 252
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Ujpest FC vs Fehervar FC
+MATCHED WITH: Újpest FC vs Fehérvár FC
+DATE: 2025-03-30
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 252
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Angers SCO vs Montpellier HSC
+MATCHED WITH: Angers SCO vs HSC Montpellier
+DATE: 2025-04-13
+SIMILARITY: 86.67%
+FIXTURES ON DATE: 236
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Hapoel Haifa vs Maccabi Tel-Aviv
@@ -1774,13 +2985,41 @@ SEARCHED FOR: RAAL La Louviere vs RSC Charleroi
 MATCHED WITH: RAAL La Louvière vs RSC Charleroi
 DATE: 2025-08-10
 SIMILARITY: 100.00%
-FIXTURES ON DATE: 206
+FIXTURES ON DATE: 211
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs BK Hacken
+MATCHED WITH: Hammarby IF vs BK Häcken
+DATE: 2025-09-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 250
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs BK Hacken
+MATCHED WITH: Hammarby IF vs BK Häcken
+DATE: 2025-09-21
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 250
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Dundee United vs (P) Rapid Wien
+MATCHED WITH: Dundee United FC vs SK Rapid Wien
+DATE: 2025-08-14
+SIMILARITY: 85.57%
+FIXTURES ON DATE: 12
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hammarby IF vs Djurgårdens IF
+MATCHED WITH: Hammarby IF vs Djurgårdens IF
+DATE: 2025-04-13
+SIMILARITY: 100.00%
+FIXTURES ON DATE: 236
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: Slask Wroclaw vs Rakow Czestochowa
 MATCHED WITH: Śląsk Wrocław vs Rakow Czestochowa
 DATE: 2024-10-26
 SIMILARITY: 96.15%
-FIXTURES ON DATE: 333
+FIXTURES ON DATE: 391
 --------------------------------------------------------------------------------
 

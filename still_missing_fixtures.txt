@@ -1,0 +1,17 @@
+FIXTURES STILL MISSING AFTER UNLIMITED FUZZY MATCHING
+================================================================================
+
+Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz / Hartberg - Blau-Weiß Linz on 2024-11-03 00:00:00
+Bristol Rovers v Crawley Town 16.11.24 Wycombe Wanderers v Crawley Town 12.11.24 Crawley Town v Huddersfield Town 09.11.24 on NaT
+Cheltenham v Bristol Rovers- Bristol Rovers v Exeter City - Bristol Rovers v Blackpool on 2023-04-13 00:00:00
+Dundee United - Kilmarnock 07.12.24 Rangers - Kilmarnock 04.12.24 Kilmarnock - Dundee 30.11.24 on 2024-12-07 00:00:00
+FC Arsenal U21 vs Nottingham Forest U21 on 2025-01-23 00:00:00
+FC Utrecht 3-1 Sparta Rotterdam on 2024-06-11 00:00:00
+K leagueXL v Tottenham 31.07.24 - Queens Park Rangers V Tottenham 20.07.24-Tottenham v Westham 18.07.23 on 2024-07-31 00:00:00
+Luxembourg - Northern Ireland 18.11.24 Northern Ireland - Belarus 15.11.24 Brentford - Sheffield Wednesday 29.10.24 on NaT
+Malmö FF v IFK Göteborg 28.10.24 - IFK Göteborg v AIK 21.10.24 - IFK Norrköping v IFK Göteborg 06.10.24 on 2024-10-28 00:00:00
+Montenegro U21 1:2 Finnland U21 on 2024-03-26 00:00:00
+Ross County - Hibernian 30.10.24 Hibernian - Hearts 27.10.24 Dundee United - Hibernian 19.10.24 on NaT
+Sabail 1-1 Neftci on NaT
+Stephen Henderson Goalkeeper Analysis on 2024-11-28 00:00:00
+nan on NaT
