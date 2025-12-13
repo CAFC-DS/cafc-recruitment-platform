@@ -132,6 +132,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
           {/* Average score badge */}
           {list.avg_performance_score !== null && (
             <Badge
+              bg=""
               style={{
                 backgroundColor: scoreColor,
                 color: textColor,

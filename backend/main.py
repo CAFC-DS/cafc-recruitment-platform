@@ -7441,10 +7441,15 @@ class PlayerListAddPlayer(BaseModel):
     player_id: Optional[int] = None  # For external players
     cafc_player_id: Optional[int] = None  # For internal players
     notes: Optional[str] = None
+    stage: Optional[str] = "Stage 1"  # Default to Stage 1
 
 
 class PlayerListReorder(BaseModel):
     item_orders: List[dict]  # List of {item_id: int, display_order: int}
+
+
+class PlayerStageUpdate(BaseModel):
+    stage: str  # New stage value (Stage 1-4)
 
 
 @app.post("/player-lists")
@@ -7501,6 +7506,18 @@ async def create_player_list(
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_sr_scouting_type ON scout_reports(SCOUTING_TYPE)")
         except Exception as e:
             logging.warning(f"Tables/indexes may already exist: {e}")
+
+        # Add STAGE column if it doesn't exist (migration)
+        try:
+            cursor.execute(
+                """
+                ALTER TABLE player_list_items
+                ADD COLUMN STAGE VARCHAR(100) DEFAULT 'Stage 1'
+                """
+            )
+            logging.info("Added STAGE column to player_list_items table")
+        except Exception as e:
+            logging.debug(f"STAGE column may already exist: {e}")
 
         # Insert new list
         cursor.execute(
@@ -7689,7 +7706,8 @@ async def get_player_list_detail(
                 p.POSITION,
                 p.SQUADNAME,
                 p.BIRTHDATE,
-                u.USERNAME
+                u.USERNAME,
+                pli.STAGE
             FROM player_list_items pli
             LEFT JOIN players p ON (
                 pli.PLAYER_ID = p.PLAYERID OR
@@ -7806,6 +7824,7 @@ async def get_player_list_detail(
                     "squad_name": row[11],
                     "age": age,
                     "added_by_username": row[13],
+                    "stage": row[14] or "Stage 1",
                     "report_count": stats['report_count'],
                     "avg_performance_score": stats['avg_score'],
                     "live_reports": stats['live_reports'],
@@ -8007,8 +8026,8 @@ async def add_player_to_list(
         cursor.execute(
             """
             INSERT INTO player_list_items
-            (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY, STAGE)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 list_id,
@@ -8017,6 +8036,7 @@ async def add_player_to_list(
                 max_order + 1,
                 player_data.notes,
                 current_user.id,
+                player_data.stage or "Stage 1",
             ),
         )
 
@@ -8165,6 +8185,81 @@ async def reorder_players_in_list(
             conn.rollback()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error reordering players: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}/players/{item_id}/stage")
+async def update_player_stage(
+    list_id: int,
+    item_id: int,
+    stage_data: PlayerStageUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update a player's stage in a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can update player stages"
+        )
+
+    # Validate stage value
+    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4"]
+    if stage_data.stage not in valid_stages:
+        raise HTTPException(
+            status_code=400, detail=f"Stage must be one of: {', '.join(valid_stages)}"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if item exists in the list
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (item_id, list_id),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Player not found in list")
+
+        # Update the stage
+        cursor.execute(
+            """
+            UPDATE player_list_items
+            SET STAGE = %s
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (stage_data.stage, item_id, list_id),
+        )
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache after updating stage
+        invalidate_cache("player_lists_all")
+
+        return {"message": "Player stage updated successfully", "stage": stage_data.stage}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating player stage: {e}")
     finally:
         if conn:
             conn.close()

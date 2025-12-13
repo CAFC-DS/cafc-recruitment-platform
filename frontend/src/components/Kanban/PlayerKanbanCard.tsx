@@ -28,6 +28,9 @@ export interface PlayerInList {
   squad_name: string | null;
   age: number | null;
   added_by_username: string;
+  stage: string;
+  list_name?: string;
+  list_id?: number;
   report_count: number;
   avg_performance_score: number | null;
   live_reports: number;
@@ -176,6 +179,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
           {/* Performance score badge */}
           {player.avg_performance_score !== null && (
             <Badge
+              bg=""
               style={{
                 backgroundColor: scoreColor,
                 color: textColor,

@@ -53,6 +53,9 @@ interface PlayerInList {
   squad_name: string | null;
   age: number | null;
   added_by_username: string;
+  stage: string;
+  list_name?: string;
+  list_id?: number;
   report_count: number;
   avg_performance_score: number | null;
   live_reports: number;
@@ -489,6 +492,7 @@ const PlayerListsPage: React.FC = () => {
                         </div>
                         {list.avg_performance_score != null && (
                           <Badge
+                            bg=""
                             style={{
                               backgroundColor: scoreColor,
                               color: textColor,
@@ -653,6 +657,7 @@ const PlayerListsPage: React.FC = () => {
                                 </small>
                               </div>
                               <Badge
+                                bg=""
                                 style={{
                                   backgroundColor: scoreColor,
                                   color: textColor,
@@ -819,6 +824,7 @@ const PlayerListsPage: React.FC = () => {
                           <td className="align-middle text-center">
                             {player.avg_performance_score !== null ? (
                               <Badge
+                                bg=""
                                 style={{
                                   backgroundColor: scoreColor,
                                   color: textColor,
