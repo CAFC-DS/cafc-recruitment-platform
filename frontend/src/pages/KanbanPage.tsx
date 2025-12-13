@@ -83,7 +83,7 @@ const KanbanPage: React.FC = () => {
 
   // Add Player Modal
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
-  const [currentListId, setCurrentListId] = useState<number | null>(null);
+  const [currentListId, setCurrentListId] = useState<number | string | null>(null);
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
   const [playerSearchResults, setPlayerSearchResults] = useState<
     PlayerSearchResult[]
@@ -411,7 +411,7 @@ const KanbanPage: React.FC = () => {
   /**
    * Remove player from list
    */
-  const handleRemovePlayer = async (itemId: number, listId: number) => {
+  const handleRemovePlayer = async (itemId: number, listId: number | string) => {
     if (!window.confirm("Remove this player from the list?")) {
       return;
     }
@@ -444,7 +444,7 @@ const KanbanPage: React.FC = () => {
     itemId: number,
     fromStage: string,
     toStage: string,
-    listId: number
+    listId: number | string
   ) => {
     try {
       // Update the player's stage via API
@@ -469,7 +469,7 @@ const KanbanPage: React.FC = () => {
    * Reorder player within the same list
    */
   const handleReorderPlayer = async (
-    listId: number,
+    listId: number | string,
     oldIndex: number,
     newIndex: number
   ) => {
@@ -507,7 +507,7 @@ const KanbanPage: React.FC = () => {
   /**
    * Open add player modal for specific list
    */
-  const openAddPlayerModal = (listId: number) => {
+  const openAddPlayerModal = (listId: number | string) => {
     setCurrentListId(listId);
     setPlayerSearchQuery("");
     setPlayerSearchResults([]);
@@ -605,7 +605,7 @@ const KanbanPage: React.FC = () => {
           // Extract list_id from the player
           const fromStageColumn = stageColumns.find(c => c.id === fromStageId);
           const player = fromStageColumn?.players.find(p => p.item_id === itemId);
-          if (player && player.list_id) {
+          if (player && player.list_id !== undefined) {
             const fromStage = typeof fromStageId === 'string' ? fromStageId : '';
             const toStage = typeof toStageId === 'string' ? toStageId : '';
             await handleStageChange(itemId, fromStage, toStage, player.list_id);
