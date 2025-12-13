@@ -71,6 +71,9 @@ const KanbanPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // List filter state - which lists are visible in Kanban
+  const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
+
   // Create/Edit List Modal
   const [showListModal, setShowListModal] = useState(false);
   const [editingList, setEditingList] = useState<PlayerList | null>(null);
@@ -134,6 +137,10 @@ const KanbanPage: React.FC = () => {
       );
 
       setListsWithPlayers(listsWithPlayersData);
+
+      // Initialize all lists as visible
+      const allListIds = new Set(lists.map(list => list.id));
+      setVisibleListIds(allListIds);
     } catch (err: any) {
       console.error("Error fetching lists:", err);
       setError(
@@ -143,6 +150,72 @@ const KanbanPage: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  /**
+   * Transform list-based data into stage-based columns
+   * Groups players by stage and enriches them with list information
+   */
+  const stageColumns = React.useMemo(() => {
+    const stages = {
+      "Stage 1": [] as PlayerInList[],
+      "Stage 2": [] as PlayerInList[],
+      "Stage 3": [] as PlayerInList[],
+      "Stage 4": [] as PlayerInList[],
+    };
+
+    // Collect all players from all lists, enriching with list info
+    listsWithPlayers.forEach((list) => {
+      // Skip lists that are not visible
+      if (!visibleListIds.has(list.id)) return;
+
+      list.players.forEach((player) => {
+        const stage = player.stage || "Stage 1";
+        if (stages[stage as keyof typeof stages]) {
+          // Enrich player with list information
+          stages[stage as keyof typeof stages].push({
+            ...player,
+            list_id: list.id,
+            list_name: list.list_name,
+          });
+        }
+      });
+    });
+
+    // Convert to array format for KanbanBoard
+    return Object.entries(stages).map(([stageName, players]) => ({
+      id: stageName,
+      list_name: stageName,
+      description: null,
+      user_id: 0,
+      created_at: "",
+      updated_at: "",
+      created_by_username: "",
+      created_by_firstname: null,
+      created_by_lastname: null,
+      player_count: players.length,
+      avg_performance_score:
+        players.length > 0
+          ? players.reduce((sum, p) => sum + (p.avg_performance_score || 0), 0) /
+            players.filter((p) => p.avg_performance_score).length
+          : null,
+      players,
+    })) as ListWithPlayers[];
+  }, [listsWithPlayers, visibleListIds]);
+
+  /**
+   * Toggle list visibility in filter
+   */
+  const toggleListVisibility = (listId: number) => {
+    setVisibleListIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(listId)) {
+        newSet.delete(listId);
+      } else {
+        newSet.add(listId);
+      }
+      return newSet;
+    });
+  };
 
   /**
    * Initial load
@@ -364,27 +437,19 @@ const KanbanPage: React.FC = () => {
   /**
    * Move player between lists (drag-and-drop)
    */
-  const handleMovePlayer = async (
-    playerId: number,
-    fromListId: number,
-    toListId: number
+  /**
+   * Handle moving player between stage columns (updates stage)
+   */
+  const handleStageChange = async (
+    itemId: number,
+    fromStage: string,
+    toStage: string,
+    listId: number
   ) => {
     try {
-      // Find the player details
-      const fromList = listsWithPlayers.find((l) => l.id === fromListId);
-      const player = fromList?.players.find((p) => p.item_id === playerId);
-
-      if (!player) {
-        throw new Error("Player not found");
-      }
-
-      // Remove from old list
-      await axiosInstance.delete(`/player-lists/${fromListId}/players/${playerId}`);
-
-      // Add to new list
-      await axiosInstance.post(`/player-lists/${toListId}/players`, {
-        player_id: player.player_id || null,
-        cafc_player_id: player.cafc_player_id || null,
+      // Update the player's stage via API
+      await axiosInstance.put(`/player-lists/${listId}/players/${itemId}/stage`, {
+        stage: toStage,
       });
 
       // Refresh lists to sync any server-side changes
@@ -506,15 +571,44 @@ const KanbanPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Kanban Board */}
+      {/* List Filter Controls */}
+      {listsWithPlayers.length > 0 && (
+        <div className="mb-3 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
+          <div className="d-flex align-items-center gap-3 flex-wrap">
+            <span className="fw-bold" style={{ fontSize: "0.9rem" }}>
+              Filter Lists:
+            </span>
+            {listsWithPlayers.map((list) => (
+              <Form.Check
+                key={list.id}
+                type="checkbox"
+                id={`list-filter-${list.id}`}
+                label={list.list_name}
+                checked={visibleListIds.has(list.id)}
+                onChange={() => toggleListVisibility(list.id)}
+                style={{ fontSize: "0.85rem" }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Kanban Board - Stage-based */}
       <KanbanBoard
-        lists={listsWithPlayers}
-        onListsChange={setListsWithPlayers}
-        onEditList={openEditModal}
-        onDeleteList={handleDeleteList}
+        lists={stageColumns}
+        onListsChange={() => {}} // Not used in stage-based view
+        onEditList={() => {}} // Stages are fixed, can't edit
+        onDeleteList={() => {}} // Stages are fixed, can't delete
         onAddPlayer={openAddPlayerModal}
         onRemovePlayer={handleRemovePlayer}
-        onMovePlayer={handleMovePlayer}
+        onMovePlayer={(itemId, fromStage, toStage) => {
+          // Extract list_id from the player
+          const fromStageColumn = stageColumns.find(c => c.id === fromStage);
+          const player = fromStageColumn?.players.find(p => p.item_id === itemId);
+          if (player && player.list_id) {
+            handleStageChange(itemId, fromStage, toStage, player.list_id);
+          }
+        }}
         onReorderPlayer={handleReorderPlayer}
         removingPlayerId={removingPlayerId}
       />

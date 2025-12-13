@@ -211,6 +211,25 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
           </div>
         </div>
 
+        {/* List name badge */}
+        {player.list_name && (
+          <div className="mb-2">
+            <Badge
+              bg=""
+              style={{
+                backgroundColor: "#3b82f6",
+                color: "#ffffff",
+                fontSize: "0.7rem",
+                padding: "3px 8px",
+                borderRadius: "10px",
+                fontWeight: "600",
+              }}
+            >
+              📋 {player.list_name}
+            </Badge>
+          </div>
+        )}
+
         {/* Remove button */}
         <div className="d-flex justify-content-end mt-2 pt-2 border-top">
           <button

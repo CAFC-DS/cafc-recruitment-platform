@@ -95,6 +95,17 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
     : "#6b7280";
   const textColor = getContrastTextColor(scoreColor);
 
+  // Determine if this is a stage column (id is string) or a list column (id is number)
+  const isStageColumn = typeof list.id === "string";
+
+  // Get stage color if this is a stage column
+  const stageColor = isStageColumn
+    ? list.id === "Stage 4" ? "#16a34a"
+      : list.id === "Stage 3" ? "#3b82f6"
+      : list.id === "Stage 2" ? "#f59e0b"
+      : "#6b7280"
+    : "#3b82f6";
+
   return (
     <div
       style={{
@@ -105,9 +116,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
         display: "flex",
         flexDirection: "column",
         height: "calc(100vh - 200px)",
-        border: isOver ? "2px solid #3b82f6" : "1px solid #e5e7eb",
+        border: isOver ? `2px solid ${stageColor}` : "1px solid #e5e7eb",
         transition: "all 0.2s ease",
-        boxShadow: isOver ? "0 2px 8px rgba(59, 130, 246, 0.15)" : "none",
+        boxShadow: isOver ? `0 2px 8px ${stageColor}33` : "none",
       }}
     >
       {/* Column Header */}
@@ -117,12 +128,18 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
           borderBottom: "1px solid #e5e7eb",
           backgroundColor: "white",
           borderRadius: "8px 8px 0 0",
+          ...(isStageColumn && {
+            borderTop: `3px solid ${stageColor}`,
+          }),
         }}
       >
         {/* List name and count */}
         <div className="d-flex justify-content-between align-items-start mb-2">
           <div className="flex-grow-1">
-            <h6 className="fw-bold mb-1" style={{ fontSize: "0.95rem" }}>
+            <h6 className="fw-bold mb-1" style={{
+              fontSize: "0.95rem",
+              ...(isStageColumn && { color: stageColor }),
+            }}>
               {list.list_name}
             </h6>
             <small className="text-muted">
@@ -164,14 +181,15 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
           </p>
         )}
 
-        {/* Actions: Edit and Delete */}
-        <div className="d-flex gap-1 justify-content-between align-items-center mt-2">
-          <div className="d-flex gap-1">
-            <span
-              role="button"
-              className="p-1 text-secondary"
-              onClick={() => onEditList(list)}
-              style={{
+        {/* Actions: Edit and Delete (only for list columns, not stages) */}
+        {!isStageColumn && (
+          <div className="d-flex gap-1 justify-content-between align-items-center mt-2">
+            <div className="d-flex gap-1">
+              <span
+                role="button"
+                className="p-1 text-secondary"
+                onClick={() => onEditList(list)}
+                style={{
                 fontSize: "0.85rem",
                 cursor: "pointer",
                 textDecoration: "none",
@@ -194,22 +212,22 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
               🗑️
             </span>
           </div>
-
-          {/* Add Player Button */}
-          <Button
-            variant="success"
-            size="sm"
-            onClick={() => onAddPlayer(list.id)}
-            style={{
-              fontSize: "0.75rem",
-              padding: "6px 12px",
-              borderRadius: "20px",
-              fontWeight: "600",
-            }}
-          >
-            + Add Player
-          </Button>
-        </div>
+            {/* Add Player Button */}
+            <Button
+              variant="success"
+              size="sm"
+              onClick={() => onAddPlayer(list.id)}
+              style={{
+                fontSize: "0.75rem",
+                padding: "6px 12px",
+                borderRadius: "20px",
+                fontWeight: "600",
+              }}
+            >
+              + Add Player
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Scrollable Cards Area */}
