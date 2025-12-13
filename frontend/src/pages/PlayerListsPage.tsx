@@ -114,6 +114,7 @@ const PlayerListsPage: React.FC = () => {
 
   // Add Player Modal
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [selectedStage, setSelectedStage] = useState<string>("Stage 1");
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
   const [playerSearchResults, setPlayerSearchResults] = useState<
     PlayerSearchResult[]
@@ -268,12 +269,14 @@ const PlayerListsPage: React.FC = () => {
       await axiosInstance.post(`/player-lists/${selectedList.id}/players`, {
         player_id: player.player_id,
         cafc_player_id: player.cafc_player_id,
+        stage: selectedStage,
       });
       await fetchListDetail(selectedList.id);
       await fetchLists(); // Refresh lists to update average score
       setShowAddPlayerModal(false);
       setPlayerSearchQuery("");
       setPlayerSearchResults([]);
+      setSelectedStage("Stage 1"); // Reset to default
     } catch (err: any) {
       console.error("Error adding player:", err);
       if (err.response?.status === 400) {
@@ -364,6 +367,11 @@ const PlayerListsPage: React.FC = () => {
         case 'age':
           compareA = a.age ?? -1;
           compareB = b.age ?? -1;
+          break;
+        case 'stage':
+          // Extract stage number for proper sorting (Stage 1-4)
+          compareA = parseInt(a.stage?.replace('Stage ', '') || '1');
+          compareB = parseInt(b.stage?.replace('Stage ', '') || '1');
           break;
         case 'score':
           compareA = a.avg_performance_score ?? -1;
@@ -682,6 +690,26 @@ const PlayerListsPage: React.FC = () => {
                               </small>
                             </div>
 
+                            <div className="mb-2">
+                              <Badge
+                                bg=""
+                                style={{
+                                  backgroundColor:
+                                    player.stage === "Stage 4" ? "#16a34a" :
+                                    player.stage === "Stage 3" ? "#3b82f6" :
+                                    player.stage === "Stage 2" ? "#f59e0b" :
+                                    "#6b7280",
+                                  color: "#ffffff",
+                                  fontWeight: "600",
+                                  fontSize: "0.75rem",
+                                  padding: "4px 10px",
+                                  borderRadius: "12px"
+                                }}
+                              >
+                                {player.stage || "Stage 1"}
+                              </Badge>
+                            </div>
+
                             <div className="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
                               <Button
                                 variant="outline-danger"
@@ -756,6 +784,12 @@ const PlayerListsPage: React.FC = () => {
                         Age {sortField === 'age' && (sortDirection === 'asc' ? '↑' : '↓')}
                       </th>
                       <th
+                        onClick={() => handleSort('stage')}
+                        style={{ width: "110px", cursor: "pointer", userSelect: "none" }}
+                      >
+                        Stage {sortField === 'stage' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
                         onClick={() => handleSort('score')}
                         style={{ width: "100px", cursor: "pointer", userSelect: "none" }}
                       >
@@ -821,6 +855,25 @@ const PlayerListsPage: React.FC = () => {
                           <td className="align-middle">{player.position || "-"}</td>
                           <td className="align-middle">{player.squad_name || "-"}</td>
                           <td className="align-middle text-center">{player.age !== null ? player.age : "-"}</td>
+                          <td className="align-middle text-center">
+                            <Badge
+                              bg=""
+                              style={{
+                                backgroundColor:
+                                  player.stage === "Stage 4" ? "#16a34a" : // Dark green
+                                  player.stage === "Stage 3" ? "#3b82f6" : // Blue
+                                  player.stage === "Stage 2" ? "#f59e0b" : // Amber
+                                  "#6b7280", // Gray for Stage 1
+                                color: "#ffffff",
+                                fontWeight: "600",
+                                fontSize: "0.75rem",
+                                padding: "4px 10px",
+                                borderRadius: "12px"
+                              }}
+                            >
+                              {player.stage || "Stage 1"}
+                            </Badge>
+                          </td>
                           <td className="align-middle text-center">
                             {player.avg_performance_score !== null ? (
                               <Badge
@@ -960,6 +1013,7 @@ const PlayerListsPage: React.FC = () => {
           setShowAddPlayerModal(false);
           setPlayerSearchQuery("");
           setPlayerSearchResults([]);
+          setSelectedStage("Stage 1");
         }}
         size="lg"
       >
@@ -975,6 +1029,29 @@ const PlayerListsPage: React.FC = () => {
               value={playerSearchQuery}
               onChange={(e) => setPlayerSearchQuery(e.target.value)}
             />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>
+              Stage <span className="text-danger">*</span>
+            </Form.Label>
+            <Form.Select
+              value={selectedStage}
+              onChange={(e) => setSelectedStage(e.target.value)}
+              style={{
+                borderRadius: "8px",
+                padding: "8px 12px",
+                fontSize: "0.95rem"
+              }}
+            >
+              <option value="Stage 1">Stage 1</option>
+              <option value="Stage 2">Stage 2</option>
+              <option value="Stage 3">Stage 3</option>
+              <option value="Stage 4">Stage 4</option>
+            </Form.Select>
+            <Form.Text className="text-muted">
+              Select the stage for this player (Stage 1 = Initial, Stage 4 = Advanced)
+            </Form.Text>
           </Form.Group>
 
           {searchingPlayers ? (
