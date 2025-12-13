@@ -1,7 +1,7 @@
 REPORTS THAT CAN BE IMPORTED
 ================================================================================
 
-Total: 3126 reports
+Total: 3130 reports
 
 ================================================================================
 
@@ -851,6 +851,7 @@ Row 850: Edgardo Farina - Bolivien vs Panama
 Row 851: Jordan Courtney-Perkins - Sydney FC 1-2 Macarthur FC
 Row 852: Marcus Dewhurst - Eastleigh 2-0 Aldershot
 Row 853: Joe Wollacott - Crawley Town 0-3 Barnsley
+Row 854: Damola Ajayi - FC Arsenal U21 vs Tottenham Hotspur U21
 Row 855: Henry Gray - Millwall U23 3:0 Ipswich Town U23
 Row 856: Dan Happe - Leyton Orient 1-2 Bolton
 Row 857: Arthur Read - Colchester 2-2 Reading
@@ -936,6 +937,7 @@ Row 940: Kamarai Simon-Swyer - West Ham United U21 5-1 Southampton U21
 Row 941: Jordan Courtney-Perkins - Qatar U23 0-0 Australia U23
 Row 942: Noah Botic - Melbourne Victory 3-4 Western United
 Row 943: Dion Charles - Leyton Orient 1-2 Bolton
+Row 944: Tyrese Hall - FC Arsenal U21 vs Tottenham Hotspur U21
 Row 945: Danny Imray - Morecambe 0-2 Bromley
 Row 946: Alex Stepien-Iwumene - Chelsea U21 2-1 Derby County U21
 Row 947: Sam Amo-Ameyaw - Southampton 4:0 Walsall
@@ -1628,6 +1630,7 @@ Row 1646: Charlie Goode - Stevenage 3-0 Barnsley
 Row 1647: Jimmy Dunne - Queens Park Rangers 1-1 Plymouth Argyle
 Row 1648: Iyad Mohamed - Grenoble 1-1 Pau
 Row 1650: Daisuke Yokota - Charleroi 1-0 Gent
+Row 1651: Lucas Bergström - Montenegro U21 1:2 Finnland U21
 Row 1652: Harvey Knibbs - Reading 3:1 Burton Albion
 Row 1653: Jake Young - Stevenage 3-0 Barnsley
 Row 1654: Paudie O'Connor - Bolton 3-0 Lincoln City
@@ -1698,6 +1701,7 @@ Row 1719: Tyrese Fornah - Salford City vs Notts County
 Row 1720: Andre Vidigal - Swansea City 3-0 Stoke City
 Row 1721: Liam Kelly - Milton Keynes Dons 1-0 Walsall
 Row 1722: Liam Donnelly - Hibernian FC 1-0 Kilmarnock
+Row 1723: Damola Ajayi - FC Arsenal U21 vs Tottenham Hotspur U21
 Row 1724: Simeon Petrov - Gornik Zabrze 2:0 Slask Wroclaw
 Row 1725: Callum Hendry - Milton Keynes Dons 1-0 Walsall
 Row 1726: Luis Vega - Vida 1-2 Motagua

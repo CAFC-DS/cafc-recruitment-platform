@@ -1,7 +1,7 @@
 REPORTS THAT CANNOT BE IMPORTED
 ================================================================================
 
-Total: 53 reports
+Total: 49 reports
 
 ================================================================================
 
@@ -9,11 +9,6 @@ Row 547: Kalidou Sidibe - nan
   Scout: Thomas White
   Errors:
     - Empty fixture
-
-Row 854: Damola Ajayi - Arsenal U21 2-5 Tottenham U21
-  Scout: Elliot Young
-  Errors:
-    - Fixture not found: Arsenal U21 2-5 Tottenham U21 on 2024-10-05 (369 fixtures checked)
 
 Row 891: Elkan Baggott - nan
   Scout: Josh Hill
@@ -34,11 +29,6 @@ Row 926: Luke Faxon - Stephen Henderson Goalkeeper Analysis
   Scout: Stephen Henderson
   Errors:
     - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
-
-Row 944: Tyrese Hall - Arsenal U21 2-5 Tottenham U21
-  Scout: Alfie Shaw
-  Errors:
-    - Fixture not found: Arsenal U21 2-5 Tottenham U21 on 2024-10-05 (369 fixtures checked)
 
 Row 962: James Shea - Stephen Henderson Goalkeeper Analysis
   Scout: Stephen Henderson
@@ -110,20 +100,10 @@ Row 1649: Radek Vitek - Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz
   Errors:
     - Fixture not found: Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz / Hartberg - Blau-Weiß Linz on 2024-11-03 (283 fixtures checked)
 
-Row 1651: Lucas Bergström - Montenegro U21 1:2 Finnland U21
-  Scout: Reece Jackson
-  Errors:
-    - Fixture not found: Montenegro U21 1:2 Finnland U21 on 2024-03-26 (6 fixtures checked)
-
 Row 1695: Alex Mitchell - nan
   Scout: Josh Hill
   Errors:
     - Empty fixture
-
-Row 1723: Damola Ajayi - Arsenal U21 2-5 Tottenham U21
-  Scout: Alfie Shaw
-  Errors:
-    - Fixture not found: Arsenal U21 2-5 Tottenham U21 on 2024-10-05 (369 fixtures checked)
 
 Row 1740: Robbe Decostere - SV Zulte Waregem vs Jong Genk
   Scout: Alfie Shaw
