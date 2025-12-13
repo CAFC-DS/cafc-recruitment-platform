@@ -7665,6 +7665,23 @@ async def get_player_list_detail(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
+        # Add STAGE column if it doesn't exist (migration)
+        try:
+            cursor.execute("DESCRIBE TABLE player_list_items")
+            columns = cursor.fetchall()
+            column_names = [col[0] for col in columns]
+            if "STAGE" not in column_names:
+                cursor.execute(
+                    """
+                    ALTER TABLE player_list_items
+                    ADD COLUMN STAGE VARCHAR(100) DEFAULT 'Stage 1'
+                    """
+                )
+                conn.commit()
+                logging.info("Added STAGE column to player_list_items table")
+        except Exception as e:
+            logging.debug(f"STAGE column may already exist: {e}")
+
         # Get list metadata
         cursor.execute(
             """

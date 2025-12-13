@@ -312,6 +312,23 @@ const PlayerListsPage: React.FC = () => {
     }
   };
 
+  // Update player stage
+  const handleStageChange = async (itemId: number, newStage: string) => {
+    if (!selectedList) return;
+
+    try {
+      await axiosInstance.put(
+        `/player-lists/${selectedList.id}/players/${itemId}/stage`,
+        { stage: newStage }
+      );
+      await fetchListDetail(selectedList.id);
+      await fetchLists(); // Refresh lists to update average score
+    } catch (err: any) {
+      console.error("Error updating stage:", err);
+      setError("Failed to update stage");
+    }
+  };
+
   // Open create modal
   const openCreateModal = () => {
     setEditingList(null);
@@ -691,8 +708,11 @@ const PlayerListsPage: React.FC = () => {
                             </div>
 
                             <div className="mb-2">
-                              <Badge
-                                bg=""
+                              <Form.Select
+                                size="sm"
+                                value={player.stage || "Stage 1"}
+                                onChange={(e) => handleStageChange(player.item_id, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
                                 style={{
                                   backgroundColor:
                                     player.stage === "Stage 4" ? "#16a34a" :
@@ -702,12 +722,19 @@ const PlayerListsPage: React.FC = () => {
                                   color: "#ffffff",
                                   fontWeight: "600",
                                   fontSize: "0.75rem",
-                                  padding: "4px 10px",
-                                  borderRadius: "12px"
+                                  border: "none",
+                                  cursor: "pointer",
+                                  textAlign: "center",
+                                  padding: "4px 8px",
+                                  borderRadius: "12px",
+                                  width: "110px"
                                 }}
                               >
-                                {player.stage || "Stage 1"}
-                              </Badge>
+                                <option value="Stage 1">Stage 1</option>
+                                <option value="Stage 2">Stage 2</option>
+                                <option value="Stage 3">Stage 3</option>
+                                <option value="Stage 4">Stage 4</option>
+                              </Form.Select>
                             </div>
 
                             <div className="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
@@ -856,8 +883,10 @@ const PlayerListsPage: React.FC = () => {
                           <td className="align-middle">{player.squad_name || "-"}</td>
                           <td className="align-middle text-center">{player.age !== null ? player.age : "-"}</td>
                           <td className="align-middle text-center">
-                            <Badge
-                              bg=""
+                            <Form.Select
+                              size="sm"
+                              value={player.stage || "Stage 1"}
+                              onChange={(e) => handleStageChange(player.item_id, e.target.value)}
                               style={{
                                 backgroundColor:
                                   player.stage === "Stage 4" ? "#16a34a" : // Dark green
@@ -867,12 +896,20 @@ const PlayerListsPage: React.FC = () => {
                                 color: "#ffffff",
                                 fontWeight: "600",
                                 fontSize: "0.75rem",
-                                padding: "4px 10px",
-                                borderRadius: "12px"
+                                border: "none",
+                                cursor: "pointer",
+                                textAlign: "center",
+                                padding: "4px 8px",
+                                borderRadius: "12px",
+                                width: "110px",
+                                margin: "0 auto"
                               }}
                             >
-                              {player.stage || "Stage 1"}
-                            </Badge>
+                              <option value="Stage 1">Stage 1</option>
+                              <option value="Stage 2">Stage 2</option>
+                              <option value="Stage 3">Stage 3</option>
+                              <option value="Stage 4">Stage 4</option>
+                            </Form.Select>
                           </td>
                           <td className="align-middle text-center">
                             {player.avg_performance_score !== null ? (
