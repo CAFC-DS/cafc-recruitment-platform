@@ -12,7 +12,7 @@ import {
  * PlayerList interface matching the backend API summary
  */
 export interface PlayerList {
-  id: number;
+  id: number | string; // number for real lists, string for stage columns
   list_name: string;
   description: string | null;
   user_id: number;
@@ -95,14 +95,14 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
     : "#6b7280";
   const textColor = getContrastTextColor(scoreColor);
 
-  // Determine if this is a stage column (id is string) or a list column (id is number)
-  const isStageColumn = typeof list.id === "string";
+  // Determine if this is a stage column by checking if list_name is a stage
+  const isStageColumn = list.list_name.startsWith("Stage ");
 
   // Get stage color if this is a stage column
   const stageColor = isStageColumn
-    ? list.id === "Stage 4" ? "#16a34a"
-      : list.id === "Stage 3" ? "#3b82f6"
-      : list.id === "Stage 2" ? "#f59e0b"
+    ? list.list_name === "Stage 4" ? "#16a34a"
+      : list.list_name === "Stage 3" ? "#3b82f6"
+      : list.list_name === "Stage 2" ? "#f59e0b"
       : "#6b7280"
     : "#3b82f6";
 

@@ -125,7 +125,7 @@ const PlayerListsPage: React.FC = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Table sorting state
-  type SortField = 'name' | 'position' | 'club' | 'age' | 'score' | 'reports' | 'live';
+  type SortField = 'name' | 'position' | 'club' | 'age' | 'stage' | 'score' | 'reports' | 'live';
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 

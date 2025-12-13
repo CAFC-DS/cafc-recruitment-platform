@@ -199,7 +199,7 @@ const KanbanPage: React.FC = () => {
             players.filter((p) => p.avg_performance_score).length
           : null,
       players,
-    })) as ListWithPlayers[];
+    }));
   }, [listsWithPlayers, visibleListIds]);
 
   /**
@@ -601,12 +601,14 @@ const KanbanPage: React.FC = () => {
         onDeleteList={() => {}} // Stages are fixed, can't delete
         onAddPlayer={openAddPlayerModal}
         onRemovePlayer={handleRemovePlayer}
-        onMovePlayer={(itemId, fromStage, toStage) => {
+        onMovePlayer={async (itemId, fromStageId, toStageId) => {
           // Extract list_id from the player
-          const fromStageColumn = stageColumns.find(c => c.id === fromStage);
+          const fromStageColumn = stageColumns.find(c => c.id === fromStageId);
           const player = fromStageColumn?.players.find(p => p.item_id === itemId);
           if (player && player.list_id) {
-            handleStageChange(itemId, fromStage, toStage, player.list_id);
+            const fromStage = typeof fromStageId === 'string' ? fromStageId : '';
+            const toStage = typeof toStageId === 'string' ? toStageId : '';
+            await handleStageChange(itemId, fromStage, toStage, player.list_id);
           }
         }}
         onReorderPlayer={handleReorderPlayer}
