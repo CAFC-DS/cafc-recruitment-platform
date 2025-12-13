@@ -35,8 +35,8 @@ export interface ListWithPlayers extends PlayerList {
 interface KanbanColumnProps {
   list: ListWithPlayers;
   onEditList: (list: PlayerList) => void;
-  onDeleteList: (listId: number) => void;
-  onAddPlayer: (listId: number) => void;
+  onDeleteList: (listId: number | string) => void;
+  onAddPlayer: (listId: number | string) => void;
   onRemovePlayer: (itemId: number) => void;
   removingPlayerId: number | null;
   isOver?: boolean;

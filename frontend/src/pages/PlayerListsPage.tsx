@@ -55,7 +55,7 @@ interface PlayerInList {
   added_by_username: string;
   stage: string;
   list_name?: string;
-  list_id?: number;
+  list_id?: number | string;
   report_count: number;
   avg_performance_score: number | null;
   live_reports: number;

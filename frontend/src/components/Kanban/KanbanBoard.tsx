@@ -19,16 +19,16 @@ interface KanbanBoardProps {
   lists: ListWithPlayers[];
   onListsChange: (lists: ListWithPlayers[]) => void;
   onEditList: (list: PlayerList) => void;
-  onDeleteList: (listId: number) => void;
-  onAddPlayer: (listId: number) => void;
-  onRemovePlayer: (itemId: number, listId: number) => Promise<void>;
+  onDeleteList: (listId: number | string) => void;
+  onAddPlayer: (listId: number | string) => void;
+  onRemovePlayer: (itemId: number, listId: number | string) => Promise<void>;
   onMovePlayer: (
     playerId: number,
-    fromListId: number,
-    toListId: number
+    fromListId: number | string,
+    toListId: number | string
   ) => Promise<void>;
   onReorderPlayer: (
-    listId: number,
+    listId: number | string,
     oldIndex: number,
     newIndex: number
   ) => Promise<void>;
@@ -72,7 +72,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
 }) => {
   // Track the active player being dragged for the DragOverlay
   const [activePlayer, setActivePlayer] = useState<PlayerInList | null>(null);
-  const [activeColumn, setActiveColumn] = useState<number | null>(null);
+  const [activeColumn, setActiveColumn] = useState<number | string | null>(null);
 
   // Setup sensors for drag-and-drop
   // PointerSensor: Mouse and touch dragging

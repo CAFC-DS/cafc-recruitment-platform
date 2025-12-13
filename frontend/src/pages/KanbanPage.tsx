@@ -72,7 +72,7 @@ const KanbanPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // List filter state - which lists are visible in Kanban
-  const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
+  const [visibleListIds, setVisibleListIds] = useState<Set<number | string>>(new Set());
 
   // Create/Edit List Modal
   const [showListModal, setShowListModal] = useState(false);
@@ -205,7 +205,7 @@ const KanbanPage: React.FC = () => {
   /**
    * Toggle list visibility in filter
    */
-  const toggleListVisibility = (listId: number) => {
+  const toggleListVisibility = (listId: number | string) => {
     setVisibleListIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(listId)) {
