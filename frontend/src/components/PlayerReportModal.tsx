@@ -407,17 +407,19 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     return { group: "PHYSICAL / PSYCHOLOGICAL", order: 1 }; // Default
   };
 
-  const sortedAttributes = Object.entries(report.individual_attribute_scores)
-    // Include all attributes, including those with 0 scores
-    .sort(([a], [b]) => {
-      const groupA = getAttributeGroup(a);
-      const groupB = getAttributeGroup(b);
-      // First sort by group order, then alphabetically within group
-      if (groupA.order !== groupB.order) {
-        return groupA.order - groupB.order;
-      }
-      return a.localeCompare(b);
-    });
+  const sortedAttributes = report.individual_attribute_scores
+    ? Object.entries(report.individual_attribute_scores)
+        // Include all attributes, including those with 0 scores
+        .sort(([a], [b]) => {
+          const groupA = getAttributeGroup(a);
+          const groupB = getAttributeGroup(b);
+          // First sort by group order, then alphabetically within group
+          if (groupA.order !== groupB.order) {
+            return groupA.order - groupB.order;
+          }
+          return a.localeCompare(b);
+        })
+    : [];
 
   const chartLabels = sortedAttributes.map(([label]) => label);
   const chartData = sortedAttributes.map(([, value]) => {
@@ -905,7 +907,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                 <Card className="h-100">
                   <Card.Header className="py-2">
                     <h6 className="mb-0" style={{ fontSize: "14px" }}>
-                      🏆 Performance Score
+                      {report.is_potential ? "⭐ Potential Score" : "🏆 Performance Score"}
                     </h6>
                   </Card.Header>
                   <Card.Body className="d-flex align-items-center justify-content-center py-2">
@@ -922,8 +924,9 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                             ),
                             color: "white",
                           }}
+                          title={report.is_potential ? "Potential Score" : undefined}
                         >
-                          {report.performance_score}
+                          {report.performance_score}{report.is_potential && "*"}
                         </span>
                       </div>
                     </div>

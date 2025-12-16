@@ -17,9 +17,9 @@ import {
 import { useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
-import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
 import AddPlayerModal from "../components/AddPlayerModal";
 import AddFixtureModal from "../components/AddFixtureModal";
+import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import {
@@ -28,14 +28,10 @@ import {
   getContrastTextColor,
   getGradeColor,
 } from "../utils/colorUtils";
-import {
-  normalizeText,
-  containsAccentInsensitive,
-} from "../utils/textNormalization";
 import { extractVSSScore } from "../utils/reportUtils";
+import { containsAccentInsensitive } from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
-import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface ScoutReport {
   report_id: number;
@@ -58,6 +54,8 @@ interface ScoutReport {
   flag_category?: string;
   is_archived?: boolean;
   summary?: string;
+  has_been_viewed?: boolean;
+  is_potential?: boolean;
 }
 
 const ScoutingPage: React.FC = () => {
@@ -65,13 +63,6 @@ const ScoutingPage: React.FC = () => {
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin, user } = useCurrentUser();
-
-  // Only Admin role or specific users can add fixtures and players
-  const allowedUsers = ["aclarke", "ccharlton"];
-  const canAddFixtureOrPlayer = isAdmin || (user && allowedUsers.includes(user.username));
-  const [playerSearch, setPlayerSearch] = useState("");
-  const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
@@ -84,19 +75,11 @@ const ScoutingPage: React.FC = () => {
   // New states from IntelPage
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
+  const [itemsPerPage] = useState(20);
   const [recencyFilter, setRecencyFilter] = useState<string>("7");
-  const itemsPerPage = 50; // Server-side pagination: 50 items per page
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [playerSearchError, setPlayerSearchError] = useState("");
-  const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
-
-  // Add debouncing and caching for player search
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchCacheRef = useRef<Record<string, any[]>>({});
-  const [showDropdown, setShowDropdown] = useState(false);
 
   // Advanced filters
   const [performanceScores, setPerformanceScores] = useState<number[]>([]);
@@ -109,7 +92,6 @@ const ScoutingPage: React.FC = () => {
   const [reportTypeFilter, setReportTypeFilter] = useState("");
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
-  const [purposeFilter, setPurposeFilter] = useState("");
 
   // Role-based permissions
   const [userRole, setUserRole] = useState("");
@@ -124,71 +106,17 @@ const ScoutingPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchScoutReports = useCallback(
-    async (recency: string, page: number = 1) => {
+    async (recency: string) => {
       setLoading(true);
       setErrorReports(null);
       try {
         const params: any = {
-          page: page,
-          limit: 50, // Server-side pagination: 50 reports per page
+          page: 1,
+          limit: 1000, // Load all reports for client-side filtering and pagination
         };
-
-        // Recency filter
         if (recency !== "all") {
           params.recency_days = parseInt(recency);
         }
-
-        // Scout name filter
-        if (scoutNameFilter) {
-          params.scout_name = scoutNameFilter;
-        }
-
-        // Player name filter
-        if (playerNameFilter) {
-          params.player_name = playerNameFilter;
-        }
-
-        // Performance scores filter
-        if (performanceScores.length > 0) {
-          params.performance_scores = performanceScores.join(",");
-        }
-
-        // Age range filter
-        if (minAge) {
-          params.min_age = parseInt(minAge);
-        }
-        if (maxAge) {
-          params.max_age = parseInt(maxAge);
-        }
-
-        // Report type filter
-        if (reportTypeFilter) {
-          params.report_type = reportTypeFilter;
-        }
-
-        // Scouting type filter
-        if (scoutingTypeFilter) {
-          params.scouting_type = scoutingTypeFilter;
-        }
-
-        // Position filter
-        if (positionFilter) {
-          params.position = positionFilter;
-        }
-
-        // Purpose filter
-        if (purposeFilter) {
-          params.purpose = purposeFilter;
-        }
-
-        // Date range filter
-        if (dateFromFilter) {
-          params.date_from = dateFromFilter;
-        }
-        if (dateToFilter) {
-          params.date_to = dateToFilter;
-        }
-
         const response = await axiosInstance.get("/scout_reports/all", {
           params,
         });
@@ -198,7 +126,7 @@ const ScoutingPage: React.FC = () => {
         // The backend already filters scout reports by USER_ID for scout users
 
         setScoutReports(reports);
-        setTotalReports(response.data.total_reports || reports.length); // Use backend total count
+        setTotalReports(reports.length); // Use actual loaded reports count
       } catch (error) {
         console.error("Error fetching scout reports:", error);
         setErrorReports("Failed to load scout reports. Please try again.");
@@ -208,21 +136,7 @@ const ScoutingPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [
-      userRole,
-      currentUsername,
-      scoutNameFilter,
-      playerNameFilter,
-      performanceScores,
-      minAge,
-      maxAge,
-      reportTypeFilter,
-      scoutingTypeFilter,
-      positionFilter,
-      purposeFilter,
-      dateFromFilter,
-      dateToFilter,
-    ],
+    [userRole, currentUsername],
   );
 
   // Fetch user role and username
@@ -277,7 +191,7 @@ const ScoutingPage: React.FC = () => {
       await axiosInstance.delete(`/scout_reports/${deleteReportId}`);
       setShowDeleteModal(false);
       setDeleteReportId(null);
-      fetchScoutReports(recencyFilter, currentPage);
+      fetchScoutReports(recencyFilter);
     } catch (error) {
       console.error("Error deleting report:", error);
     } finally {
@@ -292,155 +206,14 @@ const ScoutingPage: React.FC = () => {
     setEditReportData(null);
   };
 
-  // Initial fetch when component mounts
   useEffect(() => {
     if (token) {
-      fetchUserInfo();
+      fetchUserInfo().then(() => {
+        fetchScoutReports(recencyFilter);
+      });
     }
-  }, [token, fetchUserInfo]);
+  }, [token, recencyFilter, fetchScoutReports, fetchUserInfo]);
 
-  // Debounced effect for filters - wait 500ms after user stops typing
-  useEffect(() => {
-    if (!token) return;
-
-    const timeoutId = setTimeout(() => {
-      fetchScoutReports(recencyFilter, currentPage);
-    }, 500); // Wait 500ms after last filter change
-
-    return () => clearTimeout(timeoutId); // Cleanup previous timeout
-  }, [
-    token,
-    recencyFilter,
-    currentPage, // Add currentPage so pagination triggers refetch
-    scoutNameFilter,
-    playerNameFilter,
-    performanceScores,
-    minAge,
-    maxAge,
-    reportTypeFilter,
-    scoutingTypeFilter,
-    positionFilter,
-    purposeFilter,
-    dateFromFilter,
-    dateToFilter,
-  ]); // Don't include fetchScoutReports here to avoid circular dependency
-
-  const performPlayerSearch = useCallback(async (query: string) => {
-    const trimmedQuery = query.trim();
-    const normalizedQuery = normalizeText(trimmedQuery);
-
-    // Check cache first using normalized query
-    if (searchCacheRef.current[normalizedQuery]) {
-      setPlayers(searchCacheRef.current[normalizedQuery]);
-      setPlayerSearchError("");
-      setPlayerSearchLoading(false);
-      setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
-      return;
-    }
-
-    try {
-      setPlayerSearchLoading(true);
-      // Backend now handles comprehensive accent-insensitive search
-      const response = await axiosInstance.get(
-        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
-      );
-      let results = response.data || [];
-
-      // Backend already handles accent-insensitive search and sorting
-      // No need for additional client-side filtering
-
-      // Cache the results using normalized query
-      searchCacheRef.current[normalizedQuery] = results;
-
-      setPlayers(results);
-      setShowDropdown(results.length > 0);
-
-      if (results.length === 0) {
-        setPlayerSearchError("No players found.");
-      } else {
-        setPlayerSearchError("");
-      }
-    } catch (error) {
-      console.error("Error searching players:", error);
-      setPlayers([]);
-      setShowDropdown(false);
-      setPlayerSearchError("Error searching for players.");
-    } finally {
-      setPlayerSearchLoading(false);
-    }
-  }, []);
-
-  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setPlayerSearch(query);
-
-    // Clear previous timeouts
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    // Clear error and loading immediately when user starts typing
-    setPlayerSearchError("");
-    setPlayerSearchLoading(false);
-
-    if (query.length <= 2) {
-      setPlayers([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    // Show loading indicator only after user stops typing for 300ms
-    loadingTimeoutRef.current = setTimeout(() => {
-      setPlayerSearchLoading(true);
-    }, 300);
-
-    // Debounce the actual search with longer delay (600ms)
-    searchTimeoutRef.current = setTimeout(() => {
-      performPlayerSearch(query);
-    }, 600);
-  };
-
-  const handlePlayerSelect = (player: any) => {
-    setSelectedPlayer(player);
-    setPlayerSearch(`${player.player_name} (${player.squad_name})`);
-    setPlayers([]);
-    setShowDropdown(false);
-    setPlayerSearchError("");
-  };
-
-  // Close dropdown when clicking outside
-  const handleInputBlur = () => {
-    // Small delay to allow click on dropdown items
-    setTimeout(() => {
-      setShowDropdown(false);
-    }, 200);
-  };
-
-  const handleInputFocus = () => {
-    if (players.length > 0) {
-      setShowDropdown(true);
-    }
-  };
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleShowAssessmentModal = () => {
-    if (selectedPlayer) {
-      setShowAssessmentModal(true);
-    } else {
-      alert("Please select a player first.");
-    }
-  };
 
   const handleOpenReportModal = async (report_id: number) => {
     setLoadingReportId(report_id);
@@ -448,6 +221,20 @@ const ScoutingPage: React.FC = () => {
       const response = await axiosInstance.get(`/scout_reports/${report_id}`);
       setSelectedReport(response.data);
       setShowReportModal(true);
+
+      // Mark as viewed (fire and forget - don't block modal opening)
+      axiosInstance
+        .post(`/scout_reports/${report_id}/mark-viewed`)
+        .catch((err) =>
+          console.warn("Failed to mark report as viewed:", err)
+        );
+
+      // Update local state to remove blue dot immediately
+      setScoutReports((prev) =>
+        prev.map((r) =>
+          r.report_id === report_id ? { ...r, has_been_viewed: true } : r
+        )
+      );
     } catch (error) {
       console.error("Error fetching single scout report:", error);
     } finally {
@@ -581,12 +368,98 @@ const ScoutingPage: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
-  // All filtering AND pagination is now handled server-side
-  // Reports from backend are already filtered and paginated
-  const paginatedReports = scoutReports;
+  // Filter reports based on advanced filters
+  const getFilteredReports = () => {
+    let filtered = scoutReports;
 
-  // Calculate total pages from server response
-  const filteredTotalPages = Math.ceil(totalReports / itemsPerPage);
+    // Performance score filter - individual scores
+    if (performanceScores.length > 0) {
+      filtered = filtered.filter((report) =>
+        performanceScores.includes(report.performance_score),
+      );
+    }
+
+    // Age range filter
+    if (minAge || maxAge) {
+      filtered = filtered.filter((report) => {
+        if (!report.age) return false;
+        const min = minAge ? parseInt(minAge) : 0;
+        const max = maxAge ? parseInt(maxAge) : 100;
+        return report.age >= min && report.age <= max;
+      });
+    }
+
+    // Scout name filter
+    if (scoutNameFilter) {
+      filtered = filtered.filter((report) =>
+        report.scout_name.toLowerCase().includes(scoutNameFilter.toLowerCase()),
+      );
+    }
+
+    // Player name filter
+    if (playerNameFilter) {
+      filtered = filtered.filter((report) =>
+        containsAccentInsensitive(report.player_name, playerNameFilter),
+      );
+    }
+
+    // Report type filter
+    if (reportTypeFilter) {
+      filtered = filtered.filter((report) =>
+        report.report_type
+          .toLowerCase()
+          .includes(reportTypeFilter.toLowerCase()),
+      );
+    }
+
+    // Scouting type filter
+    if (scoutingTypeFilter) {
+      filtered = filtered.filter(
+        (report) =>
+          report.scouting_type.toLowerCase() ===
+          scoutingTypeFilter.toLowerCase(),
+      );
+    }
+
+    // Position filter
+    if (positionFilter) {
+      filtered = filtered.filter(
+        (report) =>
+          report.position_played &&
+          report.position_played
+            .toLowerCase()
+            .includes(positionFilter.toLowerCase()),
+      );
+    }
+
+    // Date range filter
+    if (dateFromFilter || dateToFilter) {
+      filtered = filtered.filter((report) => {
+        const reportDate = new Date(report.created_at);
+        const fromDate = dateFromFilter
+          ? new Date(dateFromFilter)
+          : new Date("1900-01-01");
+        const toDate = dateToFilter
+          ? new Date(dateToFilter)
+          : new Date("2100-12-31");
+        return reportDate >= fromDate && reportDate <= toDate;
+      });
+    }
+
+    return filtered;
+  };
+
+  const filteredReports = getFilteredReports();
+
+  // Client-side pagination for filtered results
+  const getPaginatedReports = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredReports.slice(startIndex, endIndex);
+  };
+
+  const paginatedReports = getPaginatedReports();
+  const filteredTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -603,7 +476,6 @@ const ScoutingPage: React.FC = () => {
     scoutingTypeFilter,
     positionFilter,
   ]);
-
 
   // Check if we should open the draft modal from URL parameter
   useEffect(() => {
@@ -640,105 +512,6 @@ const ScoutingPage: React.FC = () => {
 
   return (
     <Container className="mt-4">
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Player Search</Card.Title>
-          <div className="mb-3 p-3" style={{
-            backgroundColor: "#fff3cd",
-            border: "1px solid #ffc107",
-            borderRadius: "8px",
-            fontSize: "0.9rem"
-          }}>
-            <strong>⚠️ Note:</strong> Some players may show "NO_SQUAD" as their club. This occurs when:
-            <ul className="mb-0 mt-2" style={{ fontSize: "0.85rem" }}>
-              <li>The player is a free agent or retired</li>
-              <li>They're playing for a national team in international competitions (World Cup, Euros, etc.)</li>
-              <li>Their club squad wasn't included in the specific competition data</li>
-              <li>The data only tracks national teams for certain tournaments, not their club affiliations</li>
-            </ul>
-          </div>
-          <Form.Group as={Col} controlId="playerName">
-            <div className="position-relative">
-              <Form.Control
-                type="text"
-                placeholder="Enter player name"
-                value={playerSearch}
-                onChange={handlePlayerSearchChange}
-                onBlur={handleInputBlur}
-                onFocus={handleInputFocus}
-              />
-              {playerSearchLoading && (
-                <div
-                  className="position-absolute top-50 end-0 translate-middle-y me-3"
-                  style={{ zIndex: 10 }}
-                >
-                  <Spinner animation="border" size="sm" />
-                </div>
-              )}
-            </div>
-            {showDropdown && players.length > 0 && (
-              <ListGroup
-                className="mt-2"
-                style={{
-                  position: "absolute",
-                  zIndex: 1000,
-                  width: "calc(100% - 30px)",
-                  maxHeight: "200px",
-                  overflowY: "auto",
-                }}
-              >
-                {players.map((player, index) => (
-                  <ListGroup.Item
-                    key={
-                      player.universal_id ||
-                      `fallback-${index}-${player.player_name}`
-                    }
-                    action
-                    onClick={() => handlePlayerSelect(player)}
-                    className="d-flex justify-content-between align-items-center"
-                  >
-                    <span>{player.player_name}</span>
-                    <small className="text-muted">({player.squad_name})</small>
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            )}
-            {playerSearchError && (
-              <div className="mt-2">
-                <small className="text-danger d-block">
-                  ⚠️ {playerSearchError}
-                </small>
-              </div>
-            )}
-          </Form.Group>
-          <Button
-            className="mt-2"
-            variant="outline-secondary"
-            onClick={handleShowAssessmentModal}
-            disabled={!selectedPlayer}
-          >
-            Add Assessment
-          </Button>
-          <Button
-            className="mt-2 ms-2"
-            variant="outline-secondary"
-            onClick={() => setShowAddPlayerModal(true)}
-            disabled={!canAddFixtureOrPlayer}
-            title={!canAddFixtureOrPlayer ? "You don't have permission to add players" : ""}
-          >
-            Add Player
-          </Button>
-          <Button
-            className="mt-2 ms-2"
-            variant="outline-secondary"
-            onClick={() => setShowAddFixtureModal(true)}
-            disabled={!canAddFixtureOrPlayer}
-            title={!canAddFixtureOrPlayer ? "You don't have permission to add fixtures" : ""}
-          >
-            Add Fixture
-          </Button>
-        </Card.Body>
-      </Card>
 
       <AddPlayerModal
         show={showAddPlayerModal}
@@ -752,7 +525,7 @@ const ScoutingPage: React.FC = () => {
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
         selectedPlayer={selectedPlayer}
-        onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter, currentPage)}
+        onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter)}
         editMode={editMode}
         reportId={editReportId}
         existingReportData={editReportData}
@@ -874,11 +647,19 @@ const ScoutingPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {paginatedReports.length} of {totalReports} total reports
-            {filteredTotalPages > 1 && (
-              <span> (Page {currentPage} of {filteredTotalPages})</span>
+            Showing {Math.min(paginatedReports.length, itemsPerPage)} of{" "}
+            {filteredReports.length} filtered results
+            {filteredReports.length !== totalReports && (
+              <span> ({totalReports} total)</span>
             )}
           </small>
+          {filteredReports.filter((r) => !r.has_been_viewed).length > 0 && (
+            <div>
+              <small className="text-primary fw-semibold">
+                {filteredReports.filter((r) => !r.has_been_viewed).length} unread
+              </small>
+            </div>
+          )}
         </Col>
       </Row>
 
@@ -1019,26 +800,6 @@ const ScoutingPage: React.FC = () => {
               </Col>
             </Row>
 
-            {/* Row 2.5: Report Purpose */}
-            <Row className="mb-3">
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">
-                    Report Purpose
-                  </Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={purposeFilter}
-                    onChange={(e) => setPurposeFilter(e.target.value)}
-                  >
-                    <option value="">All Purposes</option>
-                    <option value="player report">Player Report</option>
-                    <option value="loan report">Loan Report</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
             {/* Row 3: Age Range, Date Range, Clear Filters & Report Count */}
             <Row className="mb-3">
               <Col md={4}>
@@ -1111,7 +872,6 @@ const ScoutingPage: React.FC = () => {
                       setReportTypeFilter("");
                       setScoutingTypeFilter("");
                       setPositionFilter("");
-                      setPurposeFilter("");
                     }}
                     className="w-100"
                   >
@@ -1125,385 +885,9 @@ const ScoutingPage: React.FC = () => {
       </Card>
 
       {loading ? (
-        <>
-          {viewMode === "table" ? (
-            <div className="table-responsive">
-              <Table
-                responsive
-                hover
-                striped
-                className="table-compact table-sm"
-                style={{ textAlign: "center" }}
-              >
-                <thead className="table-dark">
-                  <tr>
-                    <th>Report Date</th>
-                    <th>Player</th>
-                    <th>Age</th>
-                    <th>Position</th>
-                    <th>Fixture Date</th>
-                    <th>Fixture</th>
-                    <th>Scout</th>
-                    <th>Type</th>
-                    <th>Score</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...Array(10)].map((_, index) => (
-                    <tr key={index}>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "80px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "120px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "40px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "60px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "80px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "150px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "100px",
-                            height: "20px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "70px",
-                            height: "24px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "12px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          className="skeleton-box"
-                          style={{
-                            width: "50px",
-                            height: "28px",
-                            margin: "0 auto",
-                            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "shimmer 1.5s infinite",
-                            borderRadius: "14px",
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "5px",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {[1, 2, 3].map((btn) => (
-                            <div
-                              key={btn}
-                              className="skeleton-box"
-                              style={{
-                                width: "32px",
-                                height: "32px",
-                                background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                                backgroundSize: "200% 100%",
-                                animation: "shimmer 1.5s infinite",
-                                borderRadius: "50%",
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </div>
-          ) : (
-            <Row>
-              {[...Array(8)].map((_, index) => (
-                <Col sm={6} md={4} lg={3} key={index} className="mb-4">
-                  <Card
-                    className="h-100 shadow-sm"
-                    style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
-                  >
-                    <Card.Body className="p-3">
-                      {/* Top Row - 2 columns */}
-                      <Row className="mb-3 pb-2 border-bottom">
-                        {/* Left: Player Info */}
-                        <Col xs={6}>
-                          <div
-                            className="skeleton-box mb-2"
-                            style={{
-                              width: "80%",
-                              height: "18px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                          <div
-                            className="skeleton-box mb-1"
-                            style={{
-                              width: "60%",
-                              height: "14px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                          <div
-                            className="skeleton-box"
-                            style={{
-                              width: "40%",
-                              height: "14px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                        </Col>
-
-                        {/* Right: Scout Info */}
-                        <Col xs={6} className="text-end">
-                          <div
-                            className="skeleton-box mb-1 ms-auto"
-                            style={{
-                              width: "70%",
-                              height: "14px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                          <div
-                            className="skeleton-box ms-auto"
-                            style={{
-                              width: "80%",
-                              height: "14px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                        </Col>
-                      </Row>
-
-                      {/* Middle Row - 2 columns */}
-                      <Row className="mb-3 pb-2 border-bottom">
-                        {/* Left: Fixture Info */}
-                        <Col xs={6}>
-                          <div
-                            className="skeleton-box mb-1"
-                            style={{
-                              width: "90%",
-                              height: "12px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                          <div
-                            className="skeleton-box"
-                            style={{
-                              width: "80%",
-                              height: "12px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                        </Col>
-
-                        {/* Right: Score */}
-                        <Col xs={6} className="text-end">
-                          <div
-                            className="skeleton-box mb-1 ms-auto"
-                            style={{
-                              width: "40%",
-                              height: "12px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "4px",
-                            }}
-                          />
-                          <div
-                            className="skeleton-box ms-auto"
-                            style={{
-                              width: "35px",
-                              height: "24px",
-                              background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                              backgroundSize: "200% 100%",
-                              animation: "shimmer 1.5s infinite",
-                              borderRadius: "12px",
-                            }}
-                          />
-                        </Col>
-                      </Row>
-
-                      {/* Bottom Row - Tags and Actions */}
-                      <Row className="align-items-center">
-                        {/* Left: Tags */}
-                        <Col xs={6}>
-                          <div className="d-flex align-items-center gap-1">
-                            <div
-                              className="skeleton-box"
-                              style={{
-                                width: "24px",
-                                height: "24px",
-                                background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                                backgroundSize: "200% 100%",
-                                animation: "shimmer 1.5s infinite",
-                                borderRadius: "12px",
-                              }}
-                            />
-                            <div
-                              className="skeleton-box"
-                              style={{
-                                width: "24px",
-                                height: "24px",
-                                background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                                backgroundSize: "200% 100%",
-                                animation: "shimmer 1.5s infinite",
-                                borderRadius: "12px",
-                              }}
-                            />
-                          </div>
-                        </Col>
-
-                        {/* Right: Actions */}
-                        <Col xs={6} className="text-end">
-                          <div className="d-flex justify-content-end gap-1">
-                            {[1, 2, 3].map((btn) => (
-                              <div
-                                key={btn}
-                                className="skeleton-box"
-                                style={{
-                                  width: "32px",
-                                  height: "32px",
-                                  background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                                  backgroundSize: "200% 100%",
-                                  animation: "shimmer 1.5s infinite",
-                                  borderRadius: "50%",
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </Col>
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
-          )}
-          <style>{`
-            @keyframes shimmer {
-              0% {
-                background-position: -200% 0;
-              }
-              100% {
-                background-position: 200% 0;
-              }
-            }
-          `}</style>
-        </>
+        <div className="text-center">
+          <Spinner animation="border" />
+        </div>
       ) : errorReports ? (
         <Alert variant="danger">{errorReports}</Alert>
       ) : (
@@ -1519,6 +903,7 @@ const ScoutingPage: React.FC = () => {
               >
                 <thead className="table-dark">
                   <tr>
+                    <th style={{ width: "30px" }}></th>
                     <th>Report Date</th>
                     <th>Player</th>
                     <th>Age</th>
@@ -1534,6 +919,21 @@ const ScoutingPage: React.FC = () => {
                 <tbody>
                   {paginatedReports.map((report) => (
                     <tr key={report.report_id}>
+                      <td style={{ width: "30px", textAlign: "center", paddingRight: 0 }}>
+                        {!report.has_been_viewed && (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
+                              backgroundColor: "#0d6efd",
+                              boxShadow: "0 0 4px rgba(13, 110, 253, 0.4)",
+                            }}
+                            title="Unread"
+                          />
+                        )}
+                      </td>
                       <td>
                         {new Date(report.created_at).toLocaleDateString()}
                       </td>
@@ -1597,22 +997,26 @@ const ScoutingPage: React.FC = () => {
                         )}
                       </td>
                       <td>
-                        <span
-                          className={`badge ${
-                            report.performance_score === 9 ? 'performance-score-9' :
-                            report.performance_score === 10 ? 'performance-score-10' : ''
-                          }`}
-                          style={{
-                            backgroundColor: getPerformanceScoreColor(
-                              report.performance_score,
-                            ),
-                            color: "white !important",
-                            fontWeight: "bold",
-                            ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
-                          }}
-                        >
-                          {report.performance_score}
-                        </span>
+                        <div className="d-flex align-items-center justify-content-center gap-1">
+                          <span
+                            className={`badge ${
+                              report.performance_score === 9 ? 'performance-score-9' :
+                              report.performance_score === 10 ? 'performance-score-10' : ''
+                            }`}
+                            style={{
+                              backgroundColor: getPerformanceScoreColor(
+                                report.performance_score,
+                              ),
+                              color: "white !important",
+                              fontWeight: "bold",
+                              fontSize: "0.9rem",
+                              ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
+                            }}
+                            title={report.is_potential ? "Potential Score" : undefined}
+                          >
+                            {report.performance_score}{report.is_potential && "*"}
+                          </span>
+                        </div>
                       </td>
                       <td>
                         <div
@@ -1674,7 +1078,12 @@ const ScoutingPage: React.FC = () => {
                 >
                   <Card
                     className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
-                    style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                    style={{
+                      borderRadius: "8px",
+                      border: "1px solid #dee2e6",
+                      position: "relative",
+                      borderLeft: !report.has_been_viewed ? "4px solid #0d6efd" : "4px solid transparent",
+                    }}
                   >
                     <Card.Body className="p-3">
                       {/* Top Row - 2 columns */}
@@ -1812,8 +1221,9 @@ const ScoutingPage: React.FC = () => {
                                     fontSize: "0.9rem",
                                     ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                                   }}
+                                  title={report.is_potential ? "Potential Score" : undefined}
                                 >
-                                  {report.performance_score}
+                                  {report.performance_score}{report.is_potential && "*"}
                                 </span>
                               </>
                             ) : (

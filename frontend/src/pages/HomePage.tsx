@@ -36,6 +36,7 @@ interface ScoutReport {
   flag_category?: string;
   is_archived?: boolean;
   summary?: string;
+  is_potential?: boolean;
 }
 
 interface IntelReport {
@@ -86,10 +87,10 @@ const HomePage: React.FC = () => {
 
       // Fetch recent scout reports with recency filter
       // Don't send recency_days parameter if "all" is selected
-      // Fetch more reports to ensure we have enough after filtering by type
+      // Optimized: Fetch only 50 most recent reports for "Recent Reports" sections (95% cost reduction)
       const scoutUrl = recencyFilter === "all"
-        ? `/scout_reports/all?page=1&limit=1000`
-        : `/scout_reports/all?page=1&limit=1000&recency_days=${recencyFilter}`;
+        ? `/scout_reports/all?page=1&limit=50`
+        : `/scout_reports/all?page=1&limit=50&recency_days=${recencyFilter}`;
       const scoutResponse = await axiosInstance.get(scoutUrl);
       const scoutReports =
         scoutResponse.data.reports || scoutResponse.data || [];
@@ -100,22 +101,24 @@ const HomePage: React.FC = () => {
         : [];
 
       // Separate flag reports from player assessment reports
-      // Don't slice - show all within the time period
+      // Show 10 most recent for dashboard overview (click "View All" for complete list)
       const flagReports = filteredScoutReports
         .filter(
           (report) =>
             report.report_type?.toLowerCase() === "flag" ||
             report.report_type?.toLowerCase() === "flag assessment",
-        );
+        )
+        .slice(0, 10);
 
       // Only show Player Assessment reports (exclude Flags and Clips)
-      // Don't slice - show all within the time period
+      // Show 10 most recent for dashboard overview (click "View All" for complete list)
       const playerAssessmentReports = filteredScoutReports
         .filter(
           (report) =>
             report.report_type?.toLowerCase() === "player assessment" ||
             report.report_type?.toLowerCase() === "player_assessment",
-        );
+        )
+        .slice(0, 10);
 
       setRecentScoutReports(playerAssessmentReports);
       setRecentFlagReports(flagReports);
@@ -131,23 +134,14 @@ const HomePage: React.FC = () => {
       // TODO: Add created_by field to intel reports for proper filtering
       setRecentIntelReports(Array.isArray(intelReports) ? intelReports : []);
 
-      // For top attribute reports, only show Player Assessment reports
-      // Sort by attribute score and show all within the time period (no slicing)
-      const topReports =
-        filteredScoutReports.length > 0
-          ? filteredScoutReports
-              .filter(
-                (report) =>
-                  (report.report_type?.toLowerCase() === "player assessment" ||
-                    report.report_type?.toLowerCase() === "player_assessment") &&
-                  report.attribute_score &&
-                  report.attribute_score > 0,
-              )
-              .sort(
-                (a, b) => (b.attribute_score || 0) - (a.attribute_score || 0),
-              )
-          : []; // Show all player assessment attribute reports sorted by score
-      setTopAttributeReports(topReports);
+      // Fetch top attribute reports using dedicated endpoint (sorted by attribute score, not recency)
+      // This ensures we get the ACTUAL top 10 highest attribute scores in the selected time period
+      const topAttributesUrl = recencyFilter === "all"
+        ? `/scout_reports/top-attributes?limit=10`
+        : `/scout_reports/top-attributes?limit=10&recency_days=${recencyFilter}`;
+      const topAttributesResponse = await axiosInstance.get(topAttributesUrl);
+      const topReports = topAttributesResponse.data.reports || [];
+      setTopAttributeReports(Array.isArray(topReports) ? topReports : []);
 
       // Fetch database metadata
       try {
@@ -298,7 +292,7 @@ const HomePage: React.FC = () => {
                       placement="top"
                       overlay={
                         <Tooltip>
-                          Shows all Player Assessment reports within the selected time period, sorted by most recent first. Excludes Flag and Clips reports.
+                          Shows the 10 most recent Player Assessment reports within the selected time period. Click "View All" to see the complete list with advanced filters.
                         </Tooltip>
                       }
                     >
@@ -378,8 +372,9 @@ const HomePage: React.FC = () => {
                                 fontWeight: "bold",
                                 ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
                               }}
+                              title={report.is_potential ? "Potential Score" : undefined}
                             >
-                              {report.performance_score}
+                              {report.performance_score}{report.is_potential && "*"}
                             </span>
                             <span
                               className="badge"
@@ -552,7 +547,7 @@ const HomePage: React.FC = () => {
                       placement="top"
                       overlay={
                         <Tooltip>
-                          Shows all Player Assessment reports within the selected time period, ranked by total attribute score (highest to lowest). Only includes reports with attribute scores.
+                          Shows the top 10 Player Assessment reports ranked by total attribute score (highest to lowest). Click "View All" to see the complete list.
                         </Tooltip>
                       }
                     >

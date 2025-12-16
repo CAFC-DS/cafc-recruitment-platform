@@ -1,0 +1,149 @@
+INFO:     Started server process [16857]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+/Users/hashim.umarji/Desktop/2025-26/Recruitment/Coding/NewRecruitmentPlatform/backend/main.py:428: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  expire = datetime.utcnow() + expires_delta
+=== CAFC Recruitment Platform Debug ===
+Version: BCRYPT_FIX_v2 - 2025-09-26
+Environment: development
+Raw CORS_ORIGINS env var: NOT SET - using defaults
+Parsed CORS Origins: ['http://localhost:3000', 'http://localhost:3001', 'https://cafc-recruitment-platform.vercel.app']
+========================================
+Development CORS enabled with localhost origins
+DEBUG: Received password string: testpassword
+DEBUG: Password length (chars): 12
+DEBUG: Password length (bytes): 12
+INFO:     127.0.0.1:52111 - "POST /token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52120 - "OPTIONS /scout_reports/all?page=1&limit=1000&recency_days=7 HTTP/1.1" 200 OK
+🔍 START FILTERING - User: testuser, Role: admin
+🔍 USER_ID column exists: True
+🔍 Applying filter for role: admin
+INFO:     127.0.0.1:52120 - "GET /scout_reports/all?page=1&limit=1000&recency_days=7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52120 - "OPTIONS /intel_reports/all?page=1&limit=5 HTTP/1.1" 200 OK
+Executing final query: 
+            
+            SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
+                   pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
+                   pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
+                   pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
+            FROM player_information pi
+            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
+        
+            ORDER BY pi.CREATED_AT DESC
+            LIMIT %s OFFSET %s
+        
+With params: [5, 0]
+INFO:     127.0.0.1:52150 - "GET /intel_reports/all?page=1&limit=5 HTTP/1.1" 200 OK
+🔍 START FILTERING - User: testuser, Role: admin
+🔍 USER_ID column exists: True
+🔍 Applying filter for role: admin
+INFO:     127.0.0.1:52111 - "GET /scout_reports/all?page=1&limit=1000&recency_days=7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52150 - "OPTIONS /database/metadata HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52120 - "GET /database/metadata HTTP/1.1" 200 OK
+Executing final query: 
+            
+            SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
+                   pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
+                   pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
+                   pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
+            FROM player_information pi
+            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
+        
+            ORDER BY pi.CREATED_AT DESC
+            LIMIT %s OFFSET %s
+        
+With params: [5, 0]
+INFO:     127.0.0.1:52111 - "GET /intel_reports/all?page=1&limit=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /database/metadata HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "OPTIONS /scout_reports/71607 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52120 - "GET /scout_reports/71607 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52120 - "OPTIONS /players/external_112090/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52111 - "GET /players/external_112090/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52259 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52260 - "OPTIONS /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52262 - "OPTIONS /player-lists HTTP/1.1" 200 OK
+/Users/hashim.umarji/Desktop/2025-26/Recruitment/Coding/NewRecruitmentPlatform/backend/main.py:343: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  _cache_expiry[cache_key] = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+INFO:     127.0.0.1:52259 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52262 - "GET /users/me HTTP/1.1" 200 OK
+/Users/hashim.umarji/Desktop/2025-26/Recruitment/Coding/NewRecruitmentPlatform/backend/main.py:335: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  return datetime.utcnow() < _cache_expiry[cache_key]
+INFO:     127.0.0.1:52259 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52259 - "OPTIONS /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52262 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52314 - "OPTIONS /players/1101/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52316 - "OPTIONS /players/1101/attributes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52318 - "OPTIONS /players/1101/scout-reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "OPTIONS /players/1101/position-counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52322 - "OPTIONS /players/1101/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52323 - "OPTIONS /players/1101/attributes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52314 - "OPTIONS /players/1101/scout-reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52316 - "OPTIONS /players/1101/position-counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52318 - "GET /players/1101/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "GET /players/1101/attributes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52322 - "GET /players/1101/scout-reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52323 - "GET /players/1101/position-counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52318 - "GET /players/1101/profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52316 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52314 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52320 - "GET /players/1101/attributes HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52322 - "GET /players/1101/scout-reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52323 - "GET /players/1101/position-counts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52316 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52314 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52316 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52316 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52314 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52314 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52502 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52503 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52502 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52503 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52503 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52721 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52763 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52763 - "OPTIONS /player-lists/401/players/302/stage HTTP/1.1" 200 OK
+/Users/hashim.umarji/Desktop/2025-26/Recruitment/Coding/NewRecruitmentPlatform/backend/main.py:8263: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+  (datetime.utcnow(), list_id),
+INFO:     127.0.0.1:52763 - "PUT /player-lists/401/players/302/stage HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52763 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52763 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52848 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "PUT /player-lists/401/players/302/stage HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "OPTIONS /player-lists/401/players/303/stage HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "PUT /player-lists/401/players/303/stage HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "OPTIONS /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "OPTIONS /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "OPTIONS /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52929 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52921 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53038 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53039 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53038 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53039 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53039 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53083 - "OPTIONS /auth/refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53083 - "POST /auth/refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53083 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53083 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53115 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53115 - "GET /users/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53124 - "GET /player-lists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53124 - "GET /player-lists/401 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16857]

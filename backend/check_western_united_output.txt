@@ -1,0 +1,49 @@
+====================================================================================================
+FINDING WESTERN UNITED FC vs SYDNEY FC DUPLICATES
+====================================================================================================
+
+Found 6 Western United FC vs Sydney FC matches:
+
+  [EXTERNAL] Sydney FC vs Western United FC
+    Date: 2023-12-23 06:30:00, CAFC_ID: None, External ID: 153694
+    Scout Reports: 0
+
+  [EXTERNAL] Western United FC vs Sydney FC
+    Date: 2024-02-03 06:00:00, CAFC_ID: None, External ID: 153729
+    Scout Reports: 0
+
+  [EXTERNAL] Sydney FC vs Western United FC
+    Date: 2024-12-14 06:00:00, CAFC_ID: None, External ID: 173118
+    Scout Reports: 0
+
+  [EXTERNAL] Western United FC vs Sydney FC
+    Date: 2025-04-27 07:00:00, CAFC_ID: None, External ID: 173237
+    Scout Reports: 0
+
+  [INTERNAL] Western United FC vs Sydney FC
+    Date: 2025-07-29 00:00:00, CAFC_ID: 1801, External ID: None
+    Scout Reports: 0
+
+  [INTERNAL] Western United FC vs Sydney FC
+    Date: 2025-07-29 00:00:00, CAFC_ID: 2101, External ID: None
+    Scout Reports: 11
+
+====================================================================================================
+CHECKING ALL MATCHES ON FIXTURE DATE: 2023-12-23 06:30:00
+====================================================================================================
+
+Found 1 matches on 2023-12-23 06:30:00:
+
+[EXTERNAL] Sydney FC vs Western United FC
+  Match ID: 153694, CAFC_ID: None, External ID: 153694
+  Scout Reports: 0
+
+====================================================================================================
+CHECKING FOR DUPLICATE MATCHES (INTERNAL vs EXTERNAL)
+====================================================================================================
+
+✓ No duplicates found on this fixture date
+
+====================================================================================================
+ANALYSIS COMPLETE
+====================================================================================================

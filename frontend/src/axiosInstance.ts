@@ -7,7 +7,7 @@ const getApiUrl = () => {
     // Force production URL if env var is not set
     return process.env.REACT_APP_API_URL || 'https://cafc-recruitment-platform-production.up.railway.app';
   }
-  
+
   // In development, use localhost
   return process.env.REACT_APP_API_URL || 'http://localhost:8000';
 };

@@ -1,0 +1,86 @@
+====================================================================================================
+CHECKING ALL INTERNAL MATCHES FOR EXTERNAL COUNTERPARTS
+====================================================================================================
+
+Found 25 internal matches to check
+
+Comparing against 84069 external matches
+
+====================================================================================================
+
+Checking: Czechia U19 vs Italien U19 (2024-03-23)
+
+Checking: Cliftonville FC vs Dungannon (2025-05-03)
+
+Checking: Aberdeen FC vs Celtic Glasgow (2025-05-24)
+
+Checking: Celtic Glasgow vs Newcastle United (2025-07-17)
+
+Checking: Ilves Tampere vs AZ Alkmaar (2025-07-24)
+
+Checking: Western United FC vs Sydney FC (2025-07-29)
+
+Checking: Hibernian FC vs FK Partizan Belgrad (2025-08-14)
+
+Checking: Celtic Glasgow vs Falkirk FC (2025-08-15)
+
+Checking: St. Mirren FC vs Heart of Midlothian FC (2025-08-16)
+
+Checking: Glasgow Rangers vs Alloa Athletic FC (2025-08-16)
+
+Checking: Livingston FC vs Hibernian FC (2025-08-17)
+
+Checking: Liverpool U17 vs West Brom U17 (2025-08-19)
+
+Checking: CF Montréal vs Austin FC (2025-08-24)
+  ✓ EXACT MATCH FOUND (same day):
+    External: CF Montréal vs Austin FC (2025-08-23)
+    Internal ID 2701: 5 reports
+    External ID 200200: 0 reports
+
+Checking: Eversley & California vs Camberley Town (2025-08-25)
+
+Checking: Czechia U21 vs Scotland U21 (2025-09-05)
+
+Checking: Sanfrecce Hiroshima vs Shonan Bellmare (2025-09-07)
+
+Checking: Burgess Hill Town vs Carshalton Athletic (2025-09-23)
+
+Checking: Leeds United U21 vs Sporting Lissabon B (2025-09-25)
+
+Checking: Metropolitan Police vs Egham Town (2025-09-27)
+
+Checking: Peterborough United vs Aston Villa U21 (2025-09-30)
+
+Checking: Gillingham U17 vs Cambridge United U17 (2025-09-30)
+
+Checking: Hertford Town vs Aveley FC (2025-10-13)
+
+Checking: FC Barnsley vs Manchester United U21 (2025-10-21)
+
+Checking: Maidstone United vs Eastbourne Borough (2025-10-21)
+
+Checking: FC Stevenage vs Crystal Palace U21 (2025-10-21)
+
+====================================================================================================
+SUMMARY OF FINDINGS
+====================================================================================================
+
+✓ EXACT MATCHES (same day): 1
+================================================================================
+
+CF Montréal vs Austin FC
+  Internal (CAFC_ID 2701): 2025-08-24 - 5 reports
+  External (ID 200200): 2025-08-23 - 0 reports
+  → ACTION: Migrate 5 reports to external match, delete internal
+
+✓ No near matches found
+
+
+Internal matches WITHOUT external counterparts: 24
+================================================================================
+These are likely youth/reserve team friendlies or matches not in the external database
+
+====================================================================================================
+ANALYSIS COMPLETE
+====================================================================================================

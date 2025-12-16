@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Modal, Form, Button, Row, Col, Alert, Spinner } from "react-bootstrap";
+import React, { useState, useEffect, useRef } from "react";
+import { Modal, Form, Button, Row, Col, Alert, Spinner, ListGroup, Card } from "react-bootstrap";
 import axiosInstance from "../axiosInstance";
 import { Player } from "../types/Player";
 
@@ -32,6 +32,15 @@ const IntelModal: React.FC<IntelModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Player search state variables
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [searchedPlayers, setSearchedPlayers] = useState<Player[]>([]);
+  const [searchedPlayer, setSearchedPlayer] = useState<Player | null>(null);
+  const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
+  const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchCacheRef = useRef<Record<string, Player[]>>({});
 
   const dealTypeOptions = [
     { value: "free", label: "Free Transfer" },
@@ -75,6 +84,104 @@ const IntelModal: React.FC<IntelModalProps> = ({
     }));
   };
 
+  // Player search functions
+  const performPlayerSearch = async (query: string) => {
+    const trimmedQuery = query.trim();
+
+    // Check cache first
+    if (searchCacheRef.current[trimmedQuery]) {
+      setSearchedPlayers(searchCacheRef.current[trimmedQuery]);
+      setPlayerSearchLoading(false);
+      setShowPlayerDropdown(searchCacheRef.current[trimmedQuery].length > 0);
+      return;
+    }
+
+    try {
+      setPlayerSearchLoading(true);
+      const response = await axiosInstance.get(
+        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
+      );
+      let results = response.data || [];
+
+      // Cache the results
+      searchCacheRef.current[trimmedQuery] = results;
+
+      setSearchedPlayers(results);
+      setShowPlayerDropdown(results.length > 0);
+    } catch (error) {
+      console.error("Error searching players:", error);
+      setSearchedPlayers([]);
+      setShowPlayerDropdown(false);
+    } finally {
+      setPlayerSearchLoading(false);
+    }
+  };
+
+  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setPlayerSearch(query);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (query.length <= 2) {
+      setSearchedPlayers([]);
+      setShowPlayerDropdown(false);
+      setPlayerSearchLoading(false);
+      return;
+    }
+
+    // Set loading immediately for better UX
+    setPlayerSearchLoading(true);
+
+    // Debounce the actual search
+    searchTimeoutRef.current = setTimeout(() => {
+      performPlayerSearch(query);
+    }, 300); // 300ms delay
+  };
+
+  const handlePlayerSelect = (player: Player) => {
+    setSearchedPlayer(player);
+    const playerName =
+      player.player_name ||
+      player.name ||
+      player.playername ||
+      "Unknown Player";
+    const team =
+      player.team ||
+      player.club ||
+      player.current_team ||
+      player.squad_name ||
+      "Unknown Team";
+    setPlayerSearch(`${playerName} (${team})`);
+    setSearchedPlayers([]);
+    setShowPlayerDropdown(false);
+  };
+
+  const handleInputBlur = () => {
+    // Small delay to allow click on dropdown items
+    setTimeout(() => {
+      setShowPlayerDropdown(false);
+    }, 200);
+  };
+
+  const handleInputFocus = () => {
+    if (searchedPlayers.length > 0) {
+      setShowPlayerDropdown(true);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -108,11 +215,12 @@ const IntelModal: React.FC<IntelModalProps> = ({
     }
 
     try {
+      const currentPlayer = selectedPlayer || searchedPlayer;
       const payload = {
         player_id:
-          selectedPlayer?.universal_id ||
-          selectedPlayer?.player_id ||
-          selectedPlayer?.cafc_player_id,
+          currentPlayer?.universal_id ||
+          currentPlayer?.player_id ||
+          currentPlayer?.cafc_player_id,
         contact_name: formData.contactName,
         contact_organisation: formData.contactOrganisation,
         date_of_information: formData.dateOfInformation,
@@ -154,6 +262,10 @@ const IntelModal: React.FC<IntelModalProps> = ({
       actionRequired: "monitor",
     });
     setError("");
+    setPlayerSearch("");
+    setSearchedPlayers([]);
+    setSearchedPlayer(null);
+    setShowPlayerDropdown(false);
   };
 
   return (
@@ -166,10 +278,69 @@ const IntelModal: React.FC<IntelModalProps> = ({
         <Modal.Title>🕵️ Player Intel Report</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {selectedPlayer && (
-          <Alert variant="info" className="mb-3">
-            <strong>Player:</strong> {selectedPlayer.player_name} (
-            {selectedPlayer.team})
+        {/* Player Search Section - Only show when no player is selected */}
+        {!selectedPlayer && (
+          <Card className="mb-4" style={{ backgroundColor: "#f8f9fa", border: "2px solid #dee2e6" }}>
+            <Card.Body>
+              <Card.Title style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
+                Select Player
+              </Card.Title>
+              <Form.Group controlId="playerSearch">
+                <div className="position-relative">
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter player name (minimum 3 characters)"
+                    value={playerSearch}
+                    onChange={handlePlayerSearchChange}
+                    onBlur={handleInputBlur}
+                    onFocus={handleInputFocus}
+                    autoComplete="off"
+                  />
+                  {playerSearchLoading && (
+                    <div
+                      className="position-absolute top-50 end-0 translate-middle-y me-3"
+                      style={{ zIndex: 10 }}
+                    >
+                      <Spinner animation="border" size="sm" />
+                    </div>
+                  )}
+                </div>
+                {showPlayerDropdown && searchedPlayers.length > 0 && (
+                  <ListGroup
+                    className="mt-2"
+                    style={{
+                      position: "absolute",
+                      zIndex: 1000,
+                      width: "calc(100% - 30px)",
+                      maxHeight: "200px",
+                      overflowY: "auto",
+                    }}
+                  >
+                    {searchedPlayers.map((player, index) => (
+                      <ListGroup.Item
+                        key={
+                          player.universal_id ||
+                          `fallback-${index}-${player.player_name}`
+                        }
+                        action
+                        onClick={() => handlePlayerSelect(player)}
+                        className="d-flex justify-content-between align-items-center"
+                      >
+                        <span>{player.player_name}</span>
+                        <small className="text-muted">({player.team})</small>
+                      </ListGroup.Item>
+                    ))}
+                  </ListGroup>
+                )}
+              </Form.Group>
+            </Card.Body>
+          </Card>
+        )}
+
+        {/* Show selected player confirmation */}
+        {searchedPlayer && (
+          <Alert variant="success" className="mb-3">
+            <strong>Selected Player:</strong> {searchedPlayer.player_name} ({searchedPlayer.team})
           </Alert>
         )}
 
@@ -179,7 +350,9 @@ const IntelModal: React.FC<IntelModalProps> = ({
           </Alert>
         )}
 
-        <Form onSubmit={handleSubmit}>
+        {/* Form Section - Greyed out when no player is selected */}
+        <div style={{ opacity: (selectedPlayer || searchedPlayer) ? 1 : 0.5, pointerEvents: (selectedPlayer || searchedPlayer) ? 'auto' : 'none' }}>
+          <Form onSubmit={handleSubmit}>
           <Row className="mb-3">
             <Col md={6}>
               <Form.Group controlId="contactName">
@@ -363,8 +536,14 @@ const IntelModal: React.FC<IntelModalProps> = ({
               )}
             </Button>
           </div>
-        </Form>
+          </Form>
+        </div>
       </Modal.Body>
+      <style>{`
+        .modal-header-dark .btn-close {
+          filter: invert(1) grayscale(100%) brightness(200%);
+        }
+      `}</style>
     </Modal>
   );
 };

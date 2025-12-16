@@ -1,0 +1,3137 @@
+REPORTS THAT CAN BE IMPORTED
+================================================================================
+
+Total: 3130 reports
+
+================================================================================
+
+Row 1: Marco Rente - FC Groningen 0-0 Almere City
+Row 2: Brynjolfur Andersen Willumsson - FC Groningen 0-0 Almere City
+Row 3: Junior Kadile - FC Groningen 0-0 Almere City
+Row 4: Jochem Ritmeester van de Kamp - FC Groningen 0-0 Almere City
+Row 5: David Sousa - RWD Molenbeek 0-1 Lommel SK
+Row 6: Noah Dodeigne - RWD Molenbeek 0-1 Lommel SK
+Row 7: Shuto Abe - RWD Molenbeek 0-1 Lommel SK
+Row 8: Mohamed Salah - RWD Molenbeek 0-1 Lommel SK
+Row 9: Leon Lalic - RWD Molenbeek 0-1 Lommel SK
+Row 10: Lucas Herrington - Brisbane Roar FC 1-1 Adelaide United
+Row 11: Sam Klein - Brisbane Roar FC 1-1 Adelaide United
+Row 12: Yaya Dukuly - Brisbane Roar FC 1-1 Adelaide United
+Row 13: Killian Phillips - St. Mirren 1-0 Aberdeen
+Row 14: Mats Knoester - St. Mirren 1-0 Aberdeen
+Row 15: Ante Palaversa - St. Mirren 1-0 Aberdeen
+Row 16: Topi Keskinen - St. Mirren 1-0 Aberdeen
+Row 17: Shinnosuke Fukuda - Machida Zelvia 1-2 Kyoto Sanga FC
+Row 18: George Wickens - Stockport County 3-2 Lincoln City
+Row 19: Jayden Fevrier - Stockport County 3-2 Lincoln City
+Row 20: Brad Hills - Stockport County 3-2 Lincoln City
+Row 21: Matthew Sheridan - Wellington Phoenix 1-0 Brisbane Roar
+Row 22: Lukas Kelly-Heald - Wellington Phoenix 1-0 Brisbane Roar
+Row 23: Sam Klein - Wellington Phoenix 1-0 Brisbane Roar
+Row 24: Lucas Herrington - Wellington Phoenix 1-0 Brisbane Roar
+Row 25: Jack MacKenzie - Aberdeen 1-0 Kilmarnock
+Row 26: Alexander Jensen - Aberdeen 1-0 Kilmarnock
+Row 27: Kevin Nisbet - Aberdeen 1-0 Kilmarnock
+Row 28: Bobby Wales - Aberdeen 1-0 Kilmarnock
+Row 29: Bali Mumba - Plymouth Argyle 1-2 Leeds United
+Row 30: Ryan Hardie - Plymouth Argyle 1-2 Leeds United
+Row 31: Caleb Roberts - Plymouth Argyle 1-2 Leeds United
+Row 32: Sabil Hansen - Randers FC 2-1 FC Midtjylland
+Row 33: Laurits Pedersen - Randers FC 2-1 FC Midtjylland
+Row 34: Florian Danho - Randers FC 2-1 FC Midtjylland
+Row 35: Lasse Sorensen - Huddersfield Town 1-3 Northampton Town
+Row 36: Jordan Lawrence-Gabriel - Blackpool 1-1 Lincoln City
+Row 37: CJ Hamilton - Blackpool 1-1 Lincoln City
+Row 38: Sean Roughan - Blackpool 1-1 Lincoln City
+Row 39: Jovon Makama - Blackpool 1-1 Lincoln City
+Row 40: Jacen Russel-Rowe - CF Montreal 1-1 Columbus Crew
+Row 41: Josh Honohan - Shamrock Rovers 2-2 Shelbourne
+Row 42: Patrick Beach - Melbourne City FC 1-0 Melbourne Victory
+Row 43: Shinnosuke Fukuda - Yamagata 0-1 Kyoto Sanga FC
+Row 44: Gi-hyuk Lee - Ulsan Hyundai 1:2 Gangwon
+Row 45: Min-ha Shin - Ulsan Hyundai 1:2 Gangwon
+Row 46: Ji-ho Lee - Ulsan Hyundai 1:2 Gangwon
+Row 47: Won-sang Um - Ulsan Hyundai 1:2 Gangwon
+Row 48: Gabi Kanichowsky - Hapoel Haifa 1:3 Maccabi Tel Aviv
+Row 49: Osher Davida - Hapoel Haifa 1:3 Maccabi Tel Aviv
+Row 50: Roy Revivo - Hapoel Haifa 1:3 Maccabi Tel Aviv
+Row 51: Thiemoko Diarra - Hapoel Haifa 1:3 Maccabi Tel Aviv
+Row 52: Jack Maher - Nashville 3-0 Columbus Crew
+Row 53: Patrick Yazbek - Nashville 3-0 Columbus Crew
+Row 54: Max Arfsten - Nashville 3-0 Columbus Crew
+Row 55: Jacen Russel-Rowe - Nashville 3-0 Columbus Crew
+Row 56: Oscar Fraulo - Utrecht 0-1 NEC Nijmegen
+Row 57: Noah Ohio - Utrecht 0-1 NEC Nijmegen
+Row 58: Siebe Horemans - Utrecht 0-1 NEC Nijmegen
+Row 59: Souffian El Karouni - Utrecht 0-1 NEC Nijmegen
+Row 60: Kim Ju-Sung - FC Seoul 0-1 Jeonbuk
+Row 61: Doo-yoon Hwang - FC Seoul 0-1 Jeonbuk
+Row 62: Lucas Silva - FC Seoul 0-1 Jeonbuk
+Row 63: Jin-woo Jeon - FC Seoul 0-1 Jeonbuk
+Row 64: Theo Bair - AJ Auxerre 0-1 USL Dunkerque
+Row 65: Enzo Bardeli - AJ Auxerre 0-1 USL Dunkerque
+Row 66: Ewen Jaouen - AJ Auxerre 0-1 USL Dunkerque
+Row 67: Anto Sekongo - AJ Auxerre 0-1 USL Dunkerque
+Row 68: Max Arfsten - CF Montreal 1-1 Columbus Crew
+Row 69: AZ Jackson - CF Montreal 1-1 Columbus Crew
+Row 70: Jacen Russel-Rowe - CF Montreal 1-1 Columbus Crew
+Row 71: Jalen Neal - CF Montreal 1-1 Columbus Crew
+Row 72: Dane Scarlett - Oxford United 1-0 Hull City
+Row 73: Charlie Hughes - Oxford United 1-0 Hull City
+Row 74: Ben Nelson - Oxford United 1-0 Hull City
+Row 75: Owen Elding - Sligo Rovers 2-0 Derry City
+Row 76: Jad Hakiki - Sligo Rovers 2-0 Derry City
+Row 77: Hayden Cann - Sligo Rovers 2-0 Derry City
+Row 78: Shola Shoretire - PAOK 1-0 APO Levadiakos
+Row 79: Joan Sastre - PAOK 1-0 APO Levadiakos
+Row 80: Zini - PAOK 1-0 APO Levadiakos
+Row 81: Luke Chambers - Wigan Athletic 3-0 Peterborough United
+Row 82: Dale Taylor - Wigan Athletic 3-0 Peterborough United
+Row 83: Michael Olakigbe - Wigan Athletic 3-0 Peterborough United
+Row 84: James Dornelly - Wigan Athletic 3-0 Peterborough United
+Row 85: Joe Gelhardt - Hull City 2-1 Oxford United
+Row 86: Juho Talvitie - Finland U21 0-2 Ukraine U21
+Row 87: Eduard Kozik - Finland U21 0-2 Ukraine U21
+Row 88: Maksym Bragaru - Finland U21 0-2 Ukraine U21
+Row 89: Vladyslav Veleten - Finland U21 0-2 Ukraine U21
+Row 90: Michael Opoku - Lyngby BK 0:0 Randers
+Row 91: Sabil Hansen - Lyngby BK 0:0 Randers
+Row 92: Nikolas Dyhr - Lyngby BK 0:0 Randers
+Row 93: Mohamed Toure - Lyngby BK 0:0 Randers
+Row 94: Justin de Haas - FC Arouca 1:2 FC Famalicao
+Row 95: Rodrigo Pinheiro - FC Arouca 1:2 FC Famalicao
+Row 96: Tom van de Looi - FC Arouca 1:2 FC Famalicao
+Row 97: Simon Elisor - FC Arouca 1:2 FC Famalicao
+Row 99: Owen Goodman - AFC Wimbledon 0-0 Chesterfield
+Row 100: Corey Addai - Peterborough United 1-1 Stockport County
+Row 101: Killian Cahill - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 102: Charlie Casper - Queens Park Rangers U21 2-0 Burnley U21
+Row 104: Reggie Rose - Southampton U21 0-2 Brentford U21
+Row 106: Alexander Borto - Southampton U21 5-2 Fulham U21
+Row 108: Filippo Mane - Vfl Osnabruck 1-0 Borussia Dortmund II
+Row 109: Patrick Beach - Melbourne City 0-0 Adelaide United
+Row 110: Max Vartuli - Melbourne City 0-0 Adelaide United
+Row 111: Owen Dodgson - Burton Albion 4-2 Rotherham
+Row 112: Simion Michez - FK Jablonec 3-2 Slavia Prague
+Row 113: Matej Polidar - FK Jablonec 3-2 Slavia Prague
+Row 114: Luke Mbete - Huddersfield Town 1-3 Northampton Town
+Row 115: Sean McLoughlin - Hull City 2-0 Plymouth Argyle
+Row 116: Alpha Sissoko - EA Guingamp 3-0 Gronoble Foot
+Row 117: Severin Ottiger - Yverdon Sport 2-2 Luzern
+Row 118: James Dornelly - Wigan Athletic 3-0 Peterborough United
+Row 119: Eduard Kozik - Finland U21 0-2 Ukraine U21
+Row 120: Josef Kvida - Aris 2-1 Apollon
+Row 121: Hakeem Odoffin - Burton Albion 4-2 Rotherham
+Row 122: Elijah Campbell - Ross County 1-4 Celtic
+Row 123: Bjarne Pudel - Lyngby BK 3-1 Aalborg BK
+Row 124: Hayden Cann - Sligo Rovers 2-0 Derry City
+Row 125: Nikola Katic - Hull City 2-0 Plymouth Argyle
+Row 126: Kai Trewin - Melbourne City 0-0 Adelaide United
+Row 127: Panagiotis Kikianis - Melbourne City 0-0 Adelaide United
+Row 128: Ju-sung Kim - FC Seoul 0-1 Jeonbuk
+Row 129: Ben Nelson - Oxford United 1-0 Hull City
+Row 130: Ethan Alagich - Melbourne City 0-0 Adelaide United
+Row 131: Mateusz Łęgowski - Yverdon Sport 2-2 Luzern
+Row 132: Alex Matos - Hull City 2-1 Oxford United
+Row 133: Charlie Webster - Burton Albion 4-2 Rotherham
+Row 134: Cameron Humphreys - Burton Albion 4-2 Rotherham
+Row 135: Mads Bomholt - Lyngby BK 3-1 Aalborg BK
+Row 136: Kalidou Sidibe - EA Guingamp 3-0 Gronoble Foot
+Row 137: Timothy Ouma - FK Jablonec 3-2 Slavia Prague
+Row 138: Moussa Baradji - Yverdon Sport 2-2 Luzern
+Row 139: Junior Olaitan - EA Guingamp 3-0 Gronoble Foot
+Row 140: Alexis Alegue - FK Jablonec 3-2 Slavia Prague
+Row 141: Rob Apter - Blackpool 1-1 Lincoln City
+Row 142: Michael Opoku - Lyngby BK 3-1 Aalborg BK
+Row 143: Amadou Sagna - EA Guingamp 3-0 Gronoble Foot
+Row 144: Jaden Montnor - Aris 2-1 Apollon
+Row 145: Hyun-jun Yang - Ross County 1-4 Celtic
+Row 146: Marco Tilio - Melbourne City 0-0 Adelaide United
+Row 147: Lauge Sandgrav - Lyngby BK 3-1 Aalborg BK
+Row 148: Maksym Bragaru - Huddersfield Town 1-3 Northampton Town
+Row 149: Rumarn Burrell - Burton Albion 4-2 Rotherham
+Row 150: Ronan Hale - Ross county 1-4 Celtic
+Row 151: Luka Jovanovic - Melbourne City 0-0 Adelaide United
+Row 152: Archie Goodwin - Melbourne City 0-0 Adelaide United
+Row 153: Max Caputo - Melbourne City 0-0 Adelaide United
+Row 154: Mathias Jorgensen - Lyngby BK 3-1 Aalborg BK
+Row 155: Marley Aké - Yverdon Sport 2-2 Luzern
+Row 156: Jacen Russell-Rowe - CF Montreal 1-1 Columbus Crew
+Row 157: Jed Steer - Peterborough United 1-1 Stockport County
+Row 158: Teddy Sharman-Lowe - Doncaster Rovers 3-0 Colchester United
+Row 159: Louie Moulden - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 160: Dimitar Mitov - Heart of Midlothian FC 1-2 Aberdeen
+Row 161: Harley Mills - Peterborough United 1-1 Stockport County
+Row 162: Ziyad Larkeche - Heart of Midlothian FC vs Dundee FC
+Row 163: Caleb Kporha - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 164: Olly Pimlott - Queens Park Rangers U21 2-0 Burnley U21
+Row 165: Derrick Abu - Southampton U21 0-2 Brentford U21
+Row 166: Vonnte Williams - Southampton U21 0-2 Brentford U21
+Row 167: Andre Garcia - Reading 2-4 Barnsley
+Row 168: Dexter Lembikisa - Reading 2-4 Barnsley
+Row 169: Barry Cotter - Reading 2-4 Barnsley
+Row 170: Derrick Abu - Southampton U21 5-2 Fulham U21
+Row 171: Ryan Alebiosu - St. Mirren FC 2-2 Hibernian FC
+Row 172: Hayate Matsuda - Arminia Bielefeld 2-2 Hannover 96 II
+Row 173: James Dornelly - Peterborough United 1-1 Stockport County
+Row 174: Adam Forrester - Heart of Midlothian FC 1-2 Aberdeen
+Row 175: Hamzat Balogun - Queens Park Rangers U21 2-0 Burnley U21
+Row 176: Lewis Payne - Southampton U21 0-2 Brentford U21
+Row 177: Caelan Avenell - Southampton U21 0-2 Brentford U21
+Row 178: Oliver Gofford - Southampton U21 5-2 Fulham U21
+Row 179: Jonathan Esenga - Southampton U21 5-2 Fulham U21
+Row 180: Will Ferry - Dundee United 2-1 Aberdeen
+Row 181: Alexander Jensen - Dundee United 2-1 Aberdeen
+Row 182: Brodi Hughes - Bromley 2-3 Chelsea U21
+Row 183: Ethan Galbraith - Charlton Athletic 1-0 Leyton Orient
+Row 184: Ethan Pye - Peterborough United 1-1 Stockport County
+Row 185: Brad Hills - Peterborough United 1-1 Stockport County
+Row 186: Mats Knoester - Heart of Midlothian FC 1-2 Aberdeen
+Row 187: Owen Bailey - Doncaster Rovers 3-0 Colchester United
+Row 188: Luke Browne - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 189: Freddie Simmonds - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 190: Logan Pye - Queens Park Rangers U21 2-0 Burnley U21
+Row 191: Nico Lawrence - Southampton U21 0-2 Brentford U21
+Row 192: Joshua Stephenson - Southampton U21 0-2 Brentford U21
+Row 193: Benjamin Fredrick - Southampton U21 0-2 Brentford U21
+Row 194: Jayden Moore - Southampton U21 0-2 Brentford U21
+Row 195: Amadou Salif Mbengue - Reading 2-4 Barnsley
+Row 196: Jayden Moore - Southampton U21 5-2 Fulham U21
+Row 197: Sam Amissah - Southampton U21 5-2 Fulham U21
+Row 198: Ange N’Guessan - NK Olimpija 3-0 NK Bravo
+Row 199: Richard Taylor - St. Mirren FC 2-2 Hibernian FC
+Row 200: Lewis Miller - St. Mirren FC 2-2 Hibernian FC
+Row 201: Samuel Cleall-Harding - Dundee United 2-1 Aberdeen
+Row 202: Mats Knoester - Dundee United 2-1 Aberdeen
+Row 203: Kornél Szucs - Plymouth Argyle 2-3 Derby County
+Row 204: Ishe Samuels-Smith - Bromley 2-3 Chelsea U21
+Row 205: Elkan Baggott - Blackpool 0-0 Peterborough
+Row 206: Tommy St. Jago - Willem II 3-2 FC Dordrecht
+Row 207: Sem Valk - Willem II 3-2 FC Dordrecht
+Row 208: Odeluga Offiah - Peterborough United 5-1 Blackpool
+Row 209: Collins Sichenje - Vojvodina 0-3 Crvena zvezda
+Row 210: Emmanuel Fernandez - Peterborough United 1-1 Stockport County
+Row 211: Alfie Dorrington - Heart of Midlothian FC 1-2 Aberdeen
+Row 212: Frankie Kent - Heart of Midlothian FC vs Dundee FC
+Row 213: Charlie Penman - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 214: Murray Campbell - Queens Park Rangers U21 2-0 Burnley U21
+Row 215: Joachim Kayi Sanda - Southampton U21 0-2 Brentford U21
+Row 216: Benjamin Arthur - Southampton U21 0-2 Brentford U21
+Row 217: Tyler Bindon - Reading 2-4 Barnsley
+Row 218: Joachim Kayi Sanda - Southampton U21 5-2 Fulham U21
+Row 219: George Nevett - Peterborough United 5-1 Blackpool
+Row 220: Oscar Wallin - Peterborough United 5-1 Blackpool
+Row 221: Nemanja Micevic - FK Teplice 1-0 Slavia Prague
+Row 222: Jan Knapik - FK Teplice 1-0 Slavia Prague
+Row 223: Seid Korac - Vojvodina 0-3 Crvena zvezda
+Row 224: Cammy Devlin - Heart of Midlothian FC 1-2 Aberdeen
+Row 225: Jamie McDonnell - Doncaster Rovers 3-0 Colchester United
+Row 226: Cammy Devlin - Heart of Midlothian FC vs Dundee FC
+Row 227: Nectarios Triantis - St. Mirren FC 2-2 Hibernian FC
+Row 228: Alex Matos - Bromley 2-3 Chelsea U21
+Row 229: Jordan Brown - Charlton Athletic 1-0 Leyton Orient
+Row 230: Charlie Crew - Doncaster Rovers 3-0 Colchester United
+Row 231: George Broadbent - Doncaster Rovers 3-0 Colchester United
+Row 232: Joe Knight - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 233: Samy Chouchane - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 234: Joe Bauress - Queens Park Rangers U21 2-0 Burnley U21
+Row 235: Troy Savage - Queens Park Rangers U21 2-0 Burnley U21
+Row 236: Cameron Bragg - Southampton U21 0-2 Brentford U21
+Row 237: Ethan Brierley - Southampton U21 0-2 Brentford U21
+Row 238: Luca Connell - Reading 2-4 Barnsley
+Row 239: Cameron Bragg - Southampton U21 5-2 Fulham U21
+Row 240: Matt Dibley-Dias - Southampton U21 5-2 Fulham U21
+Row 241: Leighton Clarkson - Dundee United 2-1 Aberdeen
+Row 242: Hector Kyprianou - Peterborough United 1-1 Stockport County
+Row 243: Josh Mulligan - Heart of Midlothian FC vs Dundee FC
+Row 244: Joseph Gibbard - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 245: Romeo Akachukwu - Southampton U21 0-2 Brentford U21
+Row 246: Charlie Savage - Reading 2-4 Barnsley
+Row 247: Romeo Akachukwu - Southampton U21 5-2 Fulham U21
+Row 248: Josh King - Southampton U21 5-2 Fulham U21
+Row 249: Killian Phillips - St. Mirren FC 2-2 Hibernian FC
+Row 250: Ante Palaversa - Dundee United 2-1 Aberdeen
+Row 251: Kiano Dyer - Bromley 2-3 Chelsea U21
+Row 252: Sonny Carey - Blackpool 0-0 Peterborough
+Row 253: Malik Mothersille - Peterborough United 1-1 Stockport County
+Row 254: Hindolo Mustapha - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 255: Tommy McDermott - Queens Park Rangers U21 2-0 Burnley U21
+Row 256: Moses Sesay - Southampton U21 0-2 Brentford U21
+Row 257: Harvey Knibbs - Reading 2-4 Barnsley
+Row 258: Jay Robinson - Southampton U21 5-2 Fulham U21
+Row 259: Callum Wright - Plymouth Argyle 2-3 Derby County
+Row 260: Marcus Harness - Plymouth Argyle 2-3 Derby County
+Row 261: Shumaira Mheuka - Bromley 2-3 Chelsea U21
+Row 262: Eli Adams - Newcastle United Jets vs Auckland FC
+Row 263: Jamie Donley - Charlton Athletic 1-0 Leyton Orient
+Row 264: Malik Mothersille - Blackpool 0-0 Peterborough
+Row 265: Kwame Poku - Peterborough United 1-1 Stockport County
+Row 266: Jayden Fevrier - Peterborough United 1-1 Stockport County
+Row 267: Jack Diamond - Peterborough United 1-1 Stockport County
+Row 268: Shayden Morris - Heart of Midlothian FC 1-2 Aberdeen
+Row 269: Owura Edwards - Doncaster Rovers 3-0 Colchester United
+Row 270: Kyreece Lisbie - Doncaster Rovers 3-0 Colchester United
+Row 271: Ethan Ennis - Doncaster Rovers 3-0 Colchester United
+Row 272: Seb Palmer-Houlden - Heart of Midlothian FC vs Dundee FC
+Row 273: Franco Umeh - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 274: Julien Vetro - Queens Park Rangers U21 2-0 Burnley U21
+Row 275: Tom Tweedy - Queens Park Rangers U21 2-0 Burnley U21
+Row 276: Imani Lanquedoc - Southampton U21 5-2 Fulham U21
+Row 277: Martial Godo - Southampton U21 5-2 Fulham U21
+Row 278: Glenn Middleton - Dundee United 2-1 Aberdeen
+Row 279: Dan Agyei - Charlton Athletic 1-0 Leyton Orient
+Row 280: Jaden Slory - Willem II 3-2 FC Dordrecht
+Row 281: Rob Apter - Peterborough United 5-1 Blackpool
+Row 282: Malik Mothersille - Peterborough United 5-1 Blackpool
+Row 283: Luke Molyneux - Doncaster Rovers 3-0 Colchester United
+Row 284: Harry Howell - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 285: Max Dickov - Southampton U21 0-2 Brentford U21
+Row 286: Kelvin Ehibhatiomhan - Reading 2-4 Barnsley
+Row 287: Stephen Humphrys - Reading 2-4 Barnsley
+Row 288: Lemar Gordon - Southampton U21 5-2 Fulham U21
+Row 289: Ollie O'Neill - Charlton Athletic 1-0 Leyton Orient
+Row 290: Ricky-Jade Jones - Peterborough United 1-1 Stockport County
+Row 291: Isaac Olaofe - Peterborough United 1-1 Stockport County
+Row 292: Elton Kabangu - Heart of Midlothian FC 1-2 Aberdeen
+Row 293: Kevin Nisbet - Heart of Midlothian FC 1-2 Aberdeen
+Row 294: Elton Kabangu - Heart of Midlothian FC 0-1 Dundee FC
+Row 295: Kian McMahon-Brown - Queens Park Rangers U21 2-0 Burnley U21
+Row 296: Will Merry - Southampton U21 0-2 Brentford U21
+Row 297: Jayden Wareham - Reading 2-4 Barnsley
+Row 298: Dom Ballard - Southampton U21 5-2 Fulham U21
+Row 299: Callum Osmand - Southampton U21 5-2 Fulham U21
+Row 300: Kevin Nisbet - Dundee United 2-1 Aberdeen
+Row 301: Ryan Hardie - Plymouth Argyle 2-3 Derby County
+Row 302: Donnell McNeilly - Bromley 2-3 Chelsea U21
+Row 303: Charlie Kelman - Charlton Athletic 1-0 Leyton Orient
+Row 304: Dom Ballard - Peterborough United 5-1 Blackpool
+Row 305: Ricky-Jade Jones - Peterborough United 5-1 Blackpool
+Row 306: Lawrence Shankland - Heart of Midlothian FC 1-2 Aberdeen
+Row 307: Robert Street - Doncaster Rovers 3-0 Colchester United
+Row 308: Samson Tovide - Doncaster Rovers 3-0 Colchester United
+Row 309: Ademola Ola-Adebomi - Crystal Palace U21 3-1 Brighton & Hove Albion U21
+Row 310: Princewill Ehibhatiomhan - Southampton U21 0-2 Brentford U21
+Row 311: Iwan Morgan - Southampton U21 0-2 Brentford U21
+Row 312: Mykola Kukharevych - St. Mirren FC 2-2 Hibernian FC
+Row 313: Sam Dalby - Dundee United 2-1 Aberdeen
+Row 314: Pape Habib Guèye - Dundee United 2-1 Aberdeen
+Row 315: Mustapha Bundu - Plymouth Argyle 2-3 Derby County
+Row 316: Cherif Ndiaye - Vojvodina 0-3 Crvena zvezda
+Row 317: Jae-won Hwang - Daegu 0-4 Jeonbuk
+Row 318: Hyeon-jun Kim - Daegu 0-4 Jeonbuk
+Row 319: Jin-Woo Jeon - Daegu 0-4 Jeonbuk
+Row 320: Min-Kyu Song - Daegu 0-4 Jeonbuk
+Row 321: Finn Porath - Wolfsburg 2-2 Holstein Kiel
+Row 322: Magnus Knudsen - Wolfsburg 2-2 Holstein Kiel
+Row 323: Andu Kelati - Wolfsburg 2-2 Holstein Kiel
+Row 324: Phil Harres - Wolfsburg 2-2 Holstein Kiel
+Row 325: Jordi Paulina - Borussia Dortmund II 0-1 Rot-Weiss Essen
+Row 326: Cole Campbell - Borussia Dortmund II 0-1 Rot-Weiss Essen
+Row 327: Jose Enrique Rios Alonso - Borussia Dortmund II 0-1 Rot-Weiss Essen
+Row 328: Julian Eitschberger - Borussia Dortmund II 0-1 Rot-Weiss Essen
+Row 329: Souffian El Karouani - FC Utrecht 2-0 SC Heerenveen
+Row 330: Siebe Horemans - FC Utrecht 2-0 SC Heerenveen
+Row 331: Oscar Fraulo - FC Utrecht 2-0 SC Heerenveen
+Row 332: Nikolai Hopland - FC Utrecht 2-0 SC Heerenveen
+Row 333: Leo Walta - Sirius 0-3 IF Brommapojkarna
+Row 334: Johan Hove - AIK Solna 0-0 Malmo FF
+Row 335: Otto Rosengren - AIK Solna 0-0 Malmo FF
+Row 336: Wilmer Odefalk - Malmo FF 1-2 IF Brommapojkarna
+Row 337: Mamadou Sangare - SK Rapid Wien 1-1 Shamrock Rovers
+Row 338: Nicky Beloko - Young Boys 2-1 Luzern
+Row 339: Mads Bomholt - Silkeborg 4-0 Aalborg BK
+Row 340: Niv Yehoshua - Maccabi Tel Aviv 3-2 Maccabi Petah Tikva
+Row 341: Harvey White - Lincoln City 0-0 Stevenage
+Row 342: Jae-Won Hwang - Daegu FC 1 - 2 Daejeon Hana Citizen
+Row 343: Yentl Van Genechten - Patro 1-0 Eupen
+Row 344: Alfie Dorrington - Aberdeen 5-1 Celtic
+Row 345: Ethan Alagich - Brisbane Roar FC 1-1 Adelaide United
+Row 346: Niklas Niehoff - Vfl Osnabruck 1-0 Borussia Dortmund II
+Row 347: Regan Charles-Cook - Patro 1-0 Eupen
+Row 348: Bendeguz Bolla - SK Rapid Wien 1-1 Shamrock Rovers
+Row 349: Joshua Rawlins - Melbourne City FC 1-0 Melbourne Victory
+Row 351: Jae-Won Hwang - Daegu 0-4 Jeonbuk
+Row 352: Hlynur Freyr Karlsson - Malmo FF 1-2 IF Brommapojkarna
+Row 353: Nathaniel Clyne - Crystal Palace 4-0 Norwich City
+Row 354: Kaare Barslund - Malmo FF 1-2 IF Brommapojkarna
+Row 355: Liel Abada - Columbus Crew 4-2 Charlotte FC
+Row 356: Adrian Segecic - Melbourne City 5-1 Sydney FC
+Row 357: Moutaz Neffati - Elfsborg 2-0 IFK Norrkoping
+Row 358: Udoka Godwin-Malife - Lincoln City 0-1 Burton Albion
+Row 359: Ben Osborn - Oxford United 1-1 Derby County
+Row 360: Lars Kehl - Vfl Osnabruck 1-0 Borussia Dortmund II
+Row 361: Marton Dardai - Hertha 1:1 Darmstadt
+Row 362: Linus Gechter - Hertha 1:1 Darmstadt
+Row 363: Marten Winkler - Hertha 1:1 Darmstadt
+Row 364: Fabian Nurnberger - Hertha 1:1 Darmstadt
+Row 365: AZ Jackson - Columbus Crew 4-2 Charlotte FC
+Row 366: Livan Burcu - Hannover 96 0-0 Magdeburg
+Row 367: Giannis Niarchos - FC Kosice 0-1 Slovan Bratislava
+Row 368: Will Ferry - Ross County 0-1 Dundee United
+Row 369: Max Arfsten - Columbus Crew 4-2 Charlotte FC
+Row 370: Josh Honohan - SK Rapid Wien 1-1 Shamrock Rovers
+Row 371: Baran Mogultay - Vfl Osnabruck 1-0 Borussia Dortmund II
+Row 372: Junior Sambia - Juventus 1-1 Empoli
+Row 373: Jack Diamond - Stockport County 0-0 Wigan Athletic
+Row 374: Faissal Al Mazyani - RKC Waalwijk 1-2 Fortuna Sittard
+Row 375: Jordan Courtney-Perkins - Melbourne City 5-1 Sydney FC
+Row 376: Jean Hugonet - Hannover 96 0-0 Magdeburg
+Row 377: Marios Pourzitidis - FK Teplice 2-2 Dukla Praha
+Row 378: Syb van Ottele - RKC Waalwijk 1-2 Fortuna Sittard
+Row 379: Hyeon-jun Kim - Daegu 0-4 Jeonbuk
+Row 380: Edouard Michut - RKC Waalwijk 1-2 Fortuna Sittard
+Row 381: Love Arrhov - Malmo FF 1-2 IF Brommapojkarna
+Row 382: Shayden Morris - Aberdeen 1-5 Celtic
+Row 383: Marco Tilio - Melbourne City 5-1 Sydney FC
+Row 384: Jochem Ritmeester van de Kamp - FC Groningen 0-0 Almere City
+Row 385: Elliot Stroud - Mjallby AIF vs BK Hacken
+Row 386: Bali Mumba - Preston North End 1-2 Plymouth Argyle
+Row 387: Finn Porath - Wolfsburg 2-2 Holstein Kiel
+Row 388: Yahya Kalley - Elfsborg 2-0 IFK Norrkoping
+Row 389: Justin Che - Patro 1-0 Eupen
+Row 390: Roy Revivo - Maccabi Tel Aviv 3-2 Maccabi Petah Tikva
+Row 391: Richard Taylor - St. Mirren 0-1 Dundee United
+Row 392: Kai Trewin - Melbourne City FC 1-0 Melbourne Victory
+Row 393: Silas Andersen - Mjallby AIF vs BK Hacken
+Row 394: Djibril Lamego - RAAL La Louviere vs RSC Charleroi
+Row 395: Mohamed Guindo - RAAL La Louviere vs RSC Charleroi
+Row 396: Cheick Keita - RAAL La Louviere vs RSC Charleroi
+Row 397: Etienne Camara - RAAL La Louviere vs RSC Charleroi
+Row 398: Parfait Guiagon - RAAL La Louviere vs RSC Charleroi
+Row 399: Moustapha Mbow - Angers 1-0 Paris
+Row 400: Lohann Doucet - Angers 1-0 Paris
+Row 401: Lillian Raolisoa - Angers 1-0 Paris
+Row 402: Ousmane Camara - Angers 1-0 Paris
+Row 403: Robert-Jan Vanwesemael - VV St. Truiden vs KVC Westerlo
+Row 404: Rein Van Helden - VV St. Truiden vs KVC Westerlo
+Row 405: Josimar Alcocer - VV St. Truiden vs KVC Westerlo
+Row 406: Teddy Sharman-Lowe - Bolton Wanderers 1-1 Lincoln City
+Row 407: Eoin Toal - Bolton Wanderers 1-1 Lincoln City
+Row 408: Amario Cozier-Duberry - Bolton Wanderers 1-1 Lincoln City
+Row 409: George Wickens - Bolton Wanderers 1-1 Lincoln City
+Row 410: Nathan Trott - Cardiff City 4-0 Plymouth Argyle
+Row 411: Joel Bagan - Cardiff City 4-0 Plymouth Argyle
+Row 412: Chris Willock - Cardiff City 4-0 Plymouth Argyle
+Row 413: Bali Mumba - Cardiff City 4-0 Plymouth Argyle
+Row 414: Gabi Kanichowsky - Maccabi Tel Aviv 3-2 Maccabi Petah Tikva
+Row 415: Joakim Persson - Sirius 0-3 IF Brommapojkarna
+Row 416: Monju Momuluh - Hannover 96 0-0 Magdeburg
+Row 417: Joakim Persson - Hammarby IF 3-2 IK Sirius
+Row 418: Osher Davida - Maccabi Tel Aviv 3-2 Maccabi Petah Tikva
+Row 419: Onel Hernández - Crystal Palace 4-0 Norwich City
+Row 420: Montader Madjed - Hammarby IF 3-2 IK Sirius
+Row 421: Lauge Sandgrav - Silkeborg 2-1 Lyngby BK
+Row 422: Topi Keskinen - Finland U21 2-2 Netherlands U21
+Row 423: Louie Barry - Stockport County 0-0 Wigan Athletic
+Row 424: Luke Chambers - Stockport County 0-0 Wigan Athletic
+Row 425: Souffian El Karouani - FC Utrecht 2-0 SC Heerenveen
+Row 426: Ange N’Guessan - FC Koper 1-0 NK Bravo
+Row 427: Mattis Adolfsson - IFK Norrkoping 4-3 Osters IF
+Row 428: Kai Trewin - Melbourne City 5-1 Sydney FC
+Row 429: Jan Gorenc - Patro 1-0 Eupen
+Row 430: Pontus Rodin - Silkeborg 2-1 Lyngby BK
+Row 432: Kamil Manseri - FC Koper 1-0 NK Bravo
+Row 433: Julian Eitschberger - Borussia Dortmund II 0-1 Rot-Weiss Essen
+Row 434: Abdoulaye Faye - Mjallby AIF vs BK Hacken
+Row 435: Kyle Shaw - Sydney 3-3 Western Sydney
+Row 436: Zach De Jesus - Sydney 3-3 Western Sydney
+Row 437: Corey Hollman - Sydney 3-3 Western Sydney
+Row 438: Anthony Pantazopoulos - Sydney 3-3 Western Sydney
+Row 439: Arlind Kurt - Turkey U21 1-0 Albania U21
+Row 440: Gabriel Ramaj - Turkey U21 1-0 Albania U21
+Row 441: Furkan Demir - Turkey U21 1-0 Albania U21
+Row 442: Hamza Gureler - Turkey U21 1-0 Albania U21
+Row 443: Burak Ince - Turkey U21 1-0 Albania U21
+Row 444: Kerr Smith - AFC Barrow 3-0 Aston Villa U21
+Row 445: Triston Rowe - AFC Barrow 3-0 Aston Villa U21
+Row 446: Todd Alcock - AFC Barrow 3-0 Aston Villa U21
+Row 447: Kane Taylor - AFC Barrow 3-0 Aston Villa U21
+Row 448: Loic Williams - FC Granada 2-1 CD Castellón
+Row 449: Manu Lama - FC Granada 2-1 CD Castellón
+Row 450: Ruben Sanchez - FC Granada 2-1 CD Castellón
+Row 451: Albert Lottin - FC Granada 2-1 CD Castellón
+Row 452: Sean Roughan - Lincoln City 0-1 Burton Albion
+Row 453: Mats Knoester - St. Mirren 1-0 Aberdeen
+Row 454: Jose Enrique Rios Alonso - Borussia Dortmund II 0-1 Rot-Weiss Essen
+Row 455: Yannik Luhrs - Vfl Osnabruck 1-0 Borussia Dortmund II
+Row 456: Pontus Rodin - Silkeborg 4-0 Aalborg BK
+Row 457: Luka Hyrylainen - Finland U21 2-2 Netherlands U21
+Row 458: Jean Pierre Longonda - FC Koper 1-0 NK Bravo
+Row 459: Ethan Erhahon - Lincoln City 0-0 Stevenage
+Row 460: Youssoupha Sanyang - IFK Norrkoping 4-3 Osters IF
+Row 461: Enver Kulasin - Siroki Brijeg 0-1 Borac Banja Luka
+Row 462: Hyun-jun Yang - Aberdeen 5-1 Celtic
+Row 463: Younes Bakiz - Silkeborg 2-1 Lyngby BK
+Row 464: Younes Bakiz - Silkeborg 4-0 Aalborg BK
+Row 465: Henry Heroki Mochizuki - Machida Zelvia 1-2 Kyoto Sanga FC
+Row 466: Nikolai Hopland - FC Utrecht 2-0 SC Heerenveen
+Row 467: Ben Nelson - Oxford United 1-1 Derby County
+Row 468: Ryan Teague - Melbourne City FC 1-0 Melbourne Victory
+Row 469: Liam Henderson - Juventus 1-1 Empoli
+Row 470: Magnus Knudsen - Wolfsburg 2-2 Holstein Kiel
+Row 471: Siebe Horemans - FC Utrecht 2-0 SC Heerenveen
+Row 472: Josh Knight - Hannover 96 0-0 Magdeburg
+Row 473: Marco Rente - FC Groningen 0-0 Almere City
+Row 474: Markus Karlsson - Hammarby IF 3-2 IK Sirius
+Row 475: Shuto Abe - RWD Molenbeek 0-1 Lommel SK
+Row 476: Noel Tornqvist - Mjallby AIF vs BK Hacken
+Row 477: David Sousa - RWD Molenbeek 0-1 Lommel SK
+Row 478: Richonell Margaret - RKC Waalwijk 1-2 Fortuna Sittard
+Row 479: Max Caputo - Melbourne City 5-1 Sydney FC
+Row 480: Johnny Kenny - Aberdeen 1-5 Celtic
+Row 481: Kevin Nisbet - Aberdeen 5-1 Celtic
+Row 482: Jacen Russell-Rowe - Columbus Crew 4-2 Charlotte FC
+Row 483: Johnny Kenny - SK Rapid Wien 1-1 Shamrock Rovers
+Row 484: Max Caputo - Melbourne City FC 1-0 Melbourne Victory
+Row 485: Ryan Hardie - Preston North End 1-2 Plymouth Argyle
+Row 486: Jordi Paulina - Vfl Osnabruck 1-0 Borussia Dortmund II
+Row 487: Robbie Ure - Hammarby IF 3-2 IK Sirius
+Row 488: Michael Opoku - Silkeborg 2-1 Lyngby BK
+Row 489: Mathias Jorgensen - Silkeborg 4-0 Aalborg BK
+Row 490: Ismael Konate - Juventus 1-1 Empoli
+Row 491: Lorenzo Colombo - Juventus 1-1 Empoli
+Row 492: Dane Scarlett - Oxford United 1-1 Derby County
+Row 493: Jerry Yates - Oxford United 1-1 Derby County
+Row 494: Naatan Skyttä - Finland U21 2-2 Netherlands U21
+Row 495: Noah Ohio - Finland U21 2-2 Netherlands U21
+Row 496: Bailey Cadamarteri - Lincoln City 0-0 Stevenage
+Row 497: Dale Taylor - Stockport County 0-0 Wigan Athletic
+Row 498: Robbie Ure - IFK Varnamo 1-2 Sirius
+Row 499: Robbie Ure - Sirius 0-3 IF Brommapojkarna
+Row 500: Ezekiel Alladoh - Malmo FF 1-2 IF Brommapojkarna
+Row 501: Jovon Makama - Lincoln City 0-1 Burton Albion
+Row 502: Patrick Agyemang - Columbus Crew 4-2 Charlotte FC
+Row 503: Dion Beljo - SK Rapid Wien 1-1 Shamrock Rovers
+Row 504: Mustapha Bundu - Preston North End 1-2 Plymouth Argyle
+Row 505: Jovon Makama - Lincoln City 0-0 Stevenage
+Row 506: Celton Biai - Willem II 3-2 FC Dordrecht
+Row 507: Kayne Van Oevelen - Ajax Amsterdam II vs FC Volendam
+Row 508: Joan Sastre - PAOK 1-0 APO Levadiakos
+Row 509: Kayne Van Oevelen - Utrecht II 2-3 Volendam
+Row 510: Gavin Bazunu - Chelsea U21 0-2 Southampton U21
+Row 511: Nathan Trott - Cardiff City 4-0 Plymouth Argyle
+Row 512: Teddy Sharman-Lowe - Crewe Alexandra 1-1 Doncaster Rovers
+Row 513: Tommy Simkin - Carlisle 1-1 Walsall
+Row 514: Josh Keeley - Burton Albion 2-1 Leyton Orient
+Row 515: Teddy Sharman-Lowe - Bolton Wanderers 1-1 Lincoln City
+Row 516: George Wickens - Bolton Wanderers 1-1 Lincoln City
+Row 517: Thomas Kaminski - Luton Town 2-1 Sheffield Wednesday
+Row 518: Elijah Campbell - Ross County 0-1 Aberdeen
+Row 519: Pierre Weber - Hallescher 2-3 St. Pauli
+Row 520: Zak Sturge - Chelsea U21 0-2 Southampton U21
+Row 521: Julian Eitschberger - Rot-Weiss Essen 3-1 VfL Osnabrück
+Row 522: Niklas Niehoff - Rot-Weiss Essen 3-1 VfL Osnabrück
+Row 523: Max Arfsten - Nashville 3-0 Columbus Crewe
+Row 524: Lilian Raolisoa - Angers 1-0 Paris FC
+Row 525: Evan Caffrey - Drogheda United 2-1 Shelbourne
+Row 526: Henry Lawrence - Standard Luttich vs RSC Charleroi
+Row 527: Rajmund Toth - ETO FC Gyor 2-1 MTK Budapest
+Row 528: Keelan Adams - Falkirk 2-0 Airdrieonians
+Row 529: Yannick Leliendal - Ajax Amsterdam II vs FC Volendam
+Row 530: Alexander Jensen - Ross County 0-1 Aberdeen
+Row 531: Lee Tae-Seok - Ulsan HD 1-1 Pohang Steelers
+Row 532: Kasey Bos - Western Sydney Wanderers 1-2 Melbourne Victory
+Row 533: Fin Stevens - Hallescher 2-3 St. Pauli
+Row 534: Jordan Courtney-Perkins - Adelaide United 2-3 Sydney
+Row 535: Samuel Kopasek - MSK Zilina 2-1 Slovan Bratislava
+Row 536: Siebe Hormans - Utrecht 0-1 NEC Nijmegen
+Row 537: Souffian El Karouani - Utrecht 0-1 NEC Nijmegen
+Row 538: Oliver Braude - Utrecht 2-0 Heerenveen
+Row 539: Harrison Ashby - Queens Park Rangers 3-1 Watford
+Row 540: Harry Tyrer - Blackpool 1-2 Barnsley
+Row 541: Josh Keeley - Leyton Orient 2-0 Reading
+Row 542: Joshua Inserra - Melbourne Victory 5-3 Adelaide United
+Row 543: Odeluga Offiah - Blackpool 1-2 Barnsley
+Row 544: Ross Graham - Ross County 0-1 Dundee united
+Row 545: Ryley Towler - West Bromwich Albion 5-1 Portsmouth
+Row 546: Charlie Savage - Leyton Orient 2-0 Reading
+Row 548: Malik Mothersille - AFC Wrexham vs Peterborough United
+Row 549: Jamie Donley - Leyton Orient 2-0 Reading
+Row 550: Christian Saydee - West Bromwich Albion 5-1 Portsmouth
+Row 551: Amadou Sagna - Guingamp 1-2 Lorient
+Row 552: Jonny Yull - Melbourne Victory 5-3 Adelaide United
+Row 553: Rob Apter - Blackpool 1-2 Barnsley
+Row 554: Archie Goodwin - Melbourne Victory 5-3 Adelaide United
+Row 555: Jed Wallace - West Bromwich Albion 5-1 Portsmouth
+Row 556: Stephen Humphrys - Blackpool 1-2 Barnsley
+Row 557: Caleb Kporha - Crystal Palace U21 6-0 Chelsea U21
+Row 558: Nathan Asiimwe - Walsall 2-1 Chesterfield
+Row 559: Ishe Samuels-Smith - Crystal Palace U21 6-0 Chelsea U21
+Row 560: Lewis Macari - Notts County 0-1 AFC Wimbledon
+Row 561: Josh Stevenson - Queens Park Rangers U21 3-1 Brentford U21
+Row 562: Benjamin Arthur - Queens Park Rangers U21 3-1 Brentford U21
+Row 563: Alfie Tuck - Queens Park Rangers U21 3-1 Brentford U21
+Row 564: George Abbott - Notts County 0-1 AFC Wimbledon
+Row 565: Kieran Morgan - Queens Park Rangers U21 3-1 Brentford U21
+Row 566: Kiano Dyer - Crystal Palace U21 6-0 Chelsea U21
+Row 567: Hindolo Mustapha - Crystal Palace U21 6-0 Chelsea U21
+Row 568: Franco Umeh - Crystal Palace U21 6-0 Chelsea U21
+Row 569: Iwan Morgan - Queens Park Rangers U21 3-1 Brentford U21
+Row 570: Donnell McNeilly - Crystal Palace U21 6-0 Chelsea U21
+Row 571: Alassana Jatta - Notts County 0-1 AFC Wimbledon
+Row 572: Kieren Flavell - Wigan Athletic 1-1 Barnsley
+Row 573: Luke Campbell - Burnley U21 2-0 Chelsea U21
+Row 574: Teddy Sharman-Lowe - Salford 1-1 Doncaster
+Row 575: Phoenix Patterson - Fleetwood 0-0 AFC Barrow
+Row 576: Callum Marshall - Huddersfield Town 1-3 Northampton Town
+Row 577: Max Caputo - Melbourne City 0-0 Adelaide United
+Row 578: Mathias Jorgensen - Lyngby BK 3-1 Aalborg BK
+Row 579: Max Vartuli - Adelaide United 3-2 Wellington Phoenix
+Row 580: Roman Dixon - Newcastle United U21 vs FC Everton U21
+Row 581: George Bello - LASK 2-1 WSG Tirol
+Row 582: Andy Rinomhota - Stoke City 3-3 (P) Cardiff City
+Row 583: Jae-Won Hwang - Seoul 3-2 Daegu
+Row 584: Krisztián Keresztes - Nyiregyhaza Spartacus 1-0 Fehervar FC
+Row 585: Terry Yegbe - IF Elfsborg 4-3 IF Brommapojkarna IF
+Row 586: Christian Marques - FC Basel 1893 vs Yverdon Sport FC
+Row 587: Josh Knight - Hertha BSC 1-1 Hannover 96
+Row 588: David Jaunegg - LASK 2-1 WSG Tirol
+Row 589: Jaden Dixon - Southampton 3-2 Stoke City
+Row 590: Jay McGrath - Doncaster Rovers 2-1 Milton Keynes Dons
+Row 591: Nico Lawrence - Doncaster Rovers 2-1 Milton Keynes Dons
+Row 592: Panagiotis Kikianis - Adelaide United 3-2 Wellington Phoenix
+Row 593: Michael Rose - Stoke City 3-3 (P) Cardiff City
+Row 594: Joel Bagan - Stoke City 3-3 (P) Cardiff City
+Row 595: Ju-sung Kim - Seoul 3-2 Daegu
+Row 596: Abdullah Iqbal - Mjallby AIF 1-0 IF Brommapojkarna
+Row 597: Mateusz Łęgowski - FC Basel 1893 5-0 Yverdon Sport FC
+Row 598: Ervin Omic - SK Rapid Wien 0-1 Wolfsberger AC
+Row 599: Haine Eames - Auckland FC 2-2 Central Coast Mariners
+Row 600: Charlie Crew - Doncaster Rovers 2-1 Milton Keynes Dons
+Row 601: Abemly "Metinho" Silu - FC Basel 1893 vs Yverdon Sport FC
+Row 602: Do-Yoon Hwang - Seoul 3-2 Daegu
+Row 603: Liam Henderson - FC Turin 1-2 FC Empoli
+Row 604: Freddie Potts - Queens Park Rangers 1-2 Portsmouth
+Row 605: Moussa Baradji - FC Basel 1893 vs Yverdon Sport FC
+Row 606: Matthaus Taferner - LASK 2-1 WSG Tirol
+Row 607: Lukas Kelly-Heald - Adelaide United 3-2 Wellington Phoenix
+Row 608: Daan Heymans - Charleroi 1-0 Westerlo
+Row 609: Alfie Devine - Charleroi 1-0 Westerlo
+Row 610: Mateo Lisica - NK Istra 1961 1-1 Slaven Belupo
+Row 611: Allahyar Sayyadmanesh - Charleroi 1-0 Westerlo
+Row 612: Marley Aké - FC Basel 1893 vs Yverdon Sport FC
+Row 613: Xavier Amaechi - Hertha BSC 1-1 1.FC Magdeburg
+Row 614: Quincy Butler - LASK 2-1 WSG Tirol
+Row 615: Yaya Dukuly - Adelaide United 3-2 Wellington Phoenix
+Row 616: Lucas Silva - Seoul 3-2 Daegu
+Row 617: Andrija Radulovic - SK Rapid Wien 0-1 Wolfsberger AC
+Row 618: Victor Lind - Mjallby AIF 1-0 IF Brommapojkarna
+Row 619: Paul Smyth - Queens Park Rangers 1-2 Portsmouth
+Row 620: Juho Talvitie - Heerenveen 1-1 Heracles
+Row 621: Will Alves - Cardiff City 1-1 Bristol City
+Row 622: Kenji Cabrera - Melgar 1-0 Sporting Cristal
+Row 623: Tawanda Chirewa - Shrewsbury Town 0-1 Huddersfield Town
+Row 624: Adedire Mebude - Charleroi 1-0 Westerlo
+Row 625: Bork Bang-Kittilsen - Mjallby AIF 4-1 Degerfors IF
+Row 626: Elias Pihlström - Mjallby AIF 4-1 Degerfors IF
+Row 627: Livan Burcu - Hertha BSC 1-1 1.FC Magdeburg
+Row 628: Krystof Danek - LASK 2-1 WSG Tirol
+Row 629: Adrian Kapralik - Slovakia U21 3-3 Netherlands U21
+Row 630: Nino Marcelli - Slovakia U21 3-3 Netherlands U21
+Row 631: Lewis Koumas - Stoke City 3-3 (P) Cardiff City
+Row 632: Abdoulie Manneh - Mjallby AIF 1-0 IF Brommapojkarna
+Row 633: Yann Karamoh - FC Turin 1-2 FC Empoli
+Row 634: Ismael Konate - FC Turin 1-2 FC Empoli
+Row 635: Tarik Gozusirin - VfL Osnabruck 0-1 Wehen Wiesbaden
+Row 636: Andre Vidigal - Southampton 3-2 Stoke City
+Row 637: Ryan Hardie - Plymouth Argyle 2-3 Derby County
+Row 638: Garang Kuol - Newcastle United U21 vs FC Everton U21
+Row 639: Ziyad Salifu - Mjallby AIF 4-1 Degerfors IF
+Row 640: Noah Ohio - Slovakia U21 3-3 Netherlands U21
+Row 641: Archie Goodwin - Adelaide United 3-2 Wellington Phoenix
+Row 642: Erik Kojzek - SK Rapid Wien 0-1 Wolfsberger AC
+Row 643: Lars Kehl - VfL Osnabruck 0-1 Wehen Wiesbaden
+Row 644: Mark O'Mahony - Queens Park Rangers 1-2 Portsmouth
+Row 645: Dion Beljo - SK Rapid Wien 0-1 Wolfsberger AC
+Row 646: Ishé Samuels-Smith - Burnley U21 2-0 Chelsea U21
+Row 647: Isaac Mabaya - Manchester City U21 1-1 Liverpool U21
+Row 648: Odeluga Offiah - FC Blackpool 0-2 Birmingham City
+Row 649: Ethan Galbraith - Stockport County 1-1 Orient
+Row 650: Marcus Coco - Montpellier 1-3 Nantes
+Row 651: Connor Taylor - Bolton 1-0 Bristol Rovers
+Row 652: Max Alleyne - Manchester City U21 1-1 Liverpool U21
+Row 653: Brad Hills - Stockport County 1-1 Orient
+Row 654: Ümit Akdağ - Romania U21 1-2 Slovakia U21
+Row 655: Connor Taylor - Blackpool 4-1 Bristol Rovers
+Row 656: Markus Karlsson - Hammarby 1-0 Degerfors
+Row 657: Karlo Lusavec - Horsens 2-1 Esbjerg
+Row 658: Patrick Kelly - Salford 1-1 Doncaster
+Row 659: James McConnell - Manchester City U21 1-1 Liverpool U21
+Row 660: Joris Chotard - Montpellier 1-3 Nantes
+Row 661: Lee Evans - FC Blackpool 0-2 Birmingham City
+Row 662: Jamie Donley - Stockport County 1-1 Orient
+Row 663: Naatan Skyttä - USL Dunkerque 3-1 EA Guingamp
+Row 664: Enzo Bardeli - USL Dunkerque 3-1 EA Guingamp
+Row 665: Kalidou Sidibe - USL Dunkerque 3-1 EA Guingamp
+Row 666: Tomas Rigo - Romania U21 1-2 Slovakia U21
+Row 667: Davis Keillor-Dunn - Wigan Athletic 1-1 Barnsley
+Row 668: Donnell McNeilly - Burnley U21 2-0 Chelsea U21
+Row 669: Mark Helm - Fleetwood 0-0 AFC Barrow
+Row 670: Rareș Ilie - Romania U21 1-2 Slovakia U21
+Row 671: Triston Rowe - AFC Barrow 3-0 Aston Villa U21
+Row 672: Ruben Sanchez - FC Granada 2-1 CD Casetellon
+Row 673: Zach De Jesus - Sydney 3-3 Western Sydney
+Row 674: Furkan Demir - Turkey U21 1-0 Albania U21
+Row 675: Joel Bagan - Cardiff City 4-0 Plymouth Argyle
+Row 676: Rein Van Helden - VV St. Truiden vs KVC Westerlo
+Row 677: Tuur Rommens - VV St. Truiden vs KVC Westerlo
+Row 678: Jayden Moore - Southampton U21 3-0 Blackburn Rovers U21
+Row 679: Nico Lawrence - Southampton U21 5-3 Leicester City U21
+Row 680: Jordan Courtney-Perkins - Western United 1-0 Sydney
+Row 681: Artemijus Tutyskinas - Olimpija 2-0 Celje
+Row 682: Reece Burke - Luton Town 2-1 Sheffield Wednesday
+Row 683: Abdullah Iqbal - Mjallby AIF 2-1 IK Sirius
+Row 684: Arlind Kurt - Turkey U21 1-0 Albania U21
+Row 685: Ibe hautekiet - Standard Luttich vs RSC Charleroi
+Row 686: Alfie Dorrington - Ross County 0-1 Aberdeen
+Row 687: Ciaron Brown - Oxford United 1-3 Sheffield Wednesday
+Row 688: Moritz Flotho - VfL Osnabruck 0-1 Wehen Wiesbaden
+Row 689: Dylan Leonard - Western United 1-0 Sydney
+Row 690: Xavier Mbuyamba - Utrecht II 2-3 Volendam
+Row 691: Kang Min-Woo - Ulsan HD 1-1 Pohang Steelers
+Row 692: Brad Hills - Stockport County 2-1 Huddersfield Town
+Row 693: Brodie Spencer - Stockport County 2-1 Huddersfield Town
+Row 694: Anthony Pantazopoulos - Western Sydney Wanderers 1-2 Melbourne Victory
+Row 695: Richard King - Jamaica 3-2 Trinidad and Tobago
+Row 696: Panagiotis Kikianis - Adelaide United 2-3 Sydney
+Row 697: Bjarne Pudel - Aalborg BK 2-2 Lyngby BK
+Row 698: Lucas Lissens - Aalborg BK 2-2 Lyngby BK
+Row 699: Myeong-Kwan Seo - Jeonbuk Hyundai Motors 3-1 Ulsan Hyundai
+Row 700: Jack Maher - Nashville 3-0 Columbus Crewe
+Row 701: Josh Knight - Shalke 04 1-2 Hannover 96
+Row 702: Pavle Vagic - IFK Norrkoping 0-2 Hammarby IF
+Row 703: Kerr Smith - AFC Barrow 3-0 Aston Villa U21
+Row 704: Loic Williams - FC Granada 2-1 CD Casetellon
+Row 705: Manu Lama - FC Granada 2-1 CD Casetellon
+Row 706: Kyle Shaw - Sydney 3-3 Western Sydney
+Row 707: Anthony Pantazopoulos - Sydney 3-3 Western Sydney
+Row 708: Gabriel Ramaj - Turkey U21 1-0 Albania U21
+Row 709: Hamza Gureler - Turkey U21 1-0 Albania U21
+Row 710: Eoin Toal - Bolton Wanderers 1-1 Lincoln City
+Row 711: Moustapha Mbow - Angers 1-0 Paris FC
+Row 712: Ousmane Camara - Angers 1-0 Paris FC
+Row 713: Ethan Alagich - Adelaide United 2-3 Sydney
+Row 714: Jocelyn Janneh - SC Bastia 2-0 USL Dunkerque
+Row 715: Ugo Raghouber - SC Bastia 2-0 USL Dunkerque
+Row 716: Jocelyn Janneh - Stade Lavallois 2-2 SC Bastia
+Row 717: Espen Van Ee - Utrecht 2-0 Heerenveen
+Row 718: Etienne Camara - Standard Luttich vs RSC Charleroi
+Row 719: Mihaly Kata - ETO FC Gyor 2-1 MTK Budapest
+Row 720: Juho Talvitie - Heerenveen 1-1 Heracles
+Row 721: Fábio Jaló - Wigan Athletic 1-1 Barnsley
+Row 722: Andreas Lausen - Horsens 2-1 Esbjerg
+Row 723: Abel Walatee - Melbourne Victory 3-4 Western United
+Row 724: Rob Apter - Blackpool 0-2 Birmingham City
+Row 725: Rob Apter - Blackpool 4-1 Bristol Rovers
+Row 726: Jayden Fevrier - Stockport County 1-1 Orient
+Row 727: Gessime Yassine - USL Dunkerque 3-1 EA Guingamp
+Row 728: Hugo Picard - USL Dunkerque 3-1 EA Guingamp
+Row 729: Adrian Kapralik - Romania U21 1-2 Slovakia U21
+Row 730: Tanguy Coulibaly - Montpellier 1-3 Nantes
+Row 731: Montader Madjed - Hammarby 1-0 Degerfors
+Row 732: Isaac Olaofe - Stockport County 1-1 Orient
+Row 733: Charlie Kelman - Stockport County 1-1 Orient
+Row 734: Elias Pihlström - Hammarby 1-0 Degerfors
+Row 735: Divin Mubama - Manchester City U21 1-1 Liverpool U21
+Row 736: Niall Ennis - Blackpool 0-2 Birmingham City
+Row 737: Omar Faraj - Hammarby 1-0 Degerfors
+Row 738: Jacques Siwe - USL Dunkerque 3-1 EA Guingamp
+Row 739: Abemly "Metinho" Silu - Winterthur 0-2 Basel
+Row 740: Ryan Teague - Western Sydney Wanderers 1-2 Melbourne Victory
+Row 741: Svit Selsar - Olimpija 2-0 Celje
+Row 742: Samuel Gidi - MSK Zilina 2-1 Slovan Bratislava
+Row 743: Patrick Yazbeck - Nashville 3-0 Columbus Crewe
+Row 744: Enzo Leopold - Shalke 04 1-2 Hannover 96
+Row 745: zidane Iqbal - Utrecht 2-0 Heerenveen
+Row 746: Tom Ince - Queens Park Rangers 3-1 Watford
+Row 747: Todd Alcock - AFC Barrow 3-0 Aston Villa U21
+Row 748: Corey Hollman - Sydney 3-3 Western Sydney
+Row 749: Lohann Doucet - Angers 1-0 Paris FC
+Row 750: Jamie Jellis - Carlisle 1-1 Walsall
+Row 751: Connor Metcalf - Hallescher FC vs FC St. Pauli
+Row 752: Enzo Bardeli - SC Bastia 2-0 USL Dunkerque
+Row 753: Alfie Devine - Westerlo 2-2 Gent
+Row 754: Markus Karlsson - IFK Norrkoping 0-2 Hammarby IF
+Row 755: Kamari Doyle - Rotherham 0-4 Crawley Town
+Row 756: Lars Kehl - Rot-Weiss Essen 3-1 VfL Osnabrück
+Row 757: Omri Gandelman - Westerlo 2-2 Gent
+Row 758: Marko Tolic - MSK Zilina 2-1 Slovan Bratislava
+Row 759: Oscar Fraulo - Utrecht 0-1 NEC Nijmegen
+Row 760: Mallik Sellouki - Stade Lavallois 2-2 SC Bastia
+Row 761: Levi Smans - Utrecht 2-0 Heerenveen
+Row 762: Shayden Morris - Ross County 0-1 Aberdeen
+Row 763: Riku Danzaki - Western United 1-0 Sydney
+Row 764: Adrian Segecic - Western United 1-0 Sydney
+Row 765: Jayden Fevrier - Stockport County 2-1 Huddersfield Town
+Row 766: Nishan Velupillay - Western Sydney Wanderers 1-2 Melbourne Victory
+Row 767: Daniel Arzani - Western Sydney Wanderers 1-2 Melbourne Victory
+Row 768: Ato Ampah - Chelsea U21 0-2 Southampton U21
+Row 769: Lauge Sandgrav - Aalborg BK 2-2 Lyngby BK
+Row 770: Chang-Woo Lee - Ulsan HD 1-1 Pohang Steelers
+Row 771: Won-Sang Um - Jeonbuk Hyundai Motors 3-1 Ulsan Hyundai
+Row 772: Lewis Koumas - Stoke City 1-0 Sunderland
+Row 773: Adil Aouchiche - Stoke City 1-0 Sunderland
+Row 774: Lamine Cisse - SC Bastia 2-0 USL Dunkerque
+Row 775: Allahyar Sayyadmanesh - Westerlo 2-2 Gent
+Row 776: Adrian Kapralik - MSK Zilina 2-1 Slovan Bratislava
+Row 777: Jessic Ngangkam - Shalke 04 1-2 Hannover 96
+Row 778: Mamadou Camara - Stade Lavallois 2-2 SC Bastia
+Row 779: Paul Smyth - Queens Park Rangers 3-1 Watford
+Row 780: Kwadwo Baah - Queens Park Rangers 3-1 Watford
+Row 781: Joakim Persson - Mjallby AIF 2-1 IK Sirius
+Row 782: Montader Madjed - IFK Norrkoping 0-2 Hammarby IF
+Row 783: Ísak Andri Sigurgeirsson - IFK Norrkoping 0-2 Hammarby IF
+Row 784: Burak Ince - Turkey U21 1-0 Albania U21
+Row 785: Amario Cozier-Duberry - Bolton Wanderers 1-1 Lincoln City
+Row 786: Chris Willock - Cardiff City 4-0 Plymouth Argyle
+Row 787: Bali Mumba - Cardiff City 4-0 Plymouth Argyle
+Row 788: Robert-Jan Vanwesemael - VV St. Truiden vs KVC Westerlo
+Row 789: Josimar Alcocer - VV St. Truiden vs KVC Westerlo
+Row 790: Mipo Odubeko - Drogheda United 2-1 Shelbourne
+Row 791: Parfait Guiagon - Standard Luttich vs RSC Charleroi
+Row 792: Yoon Jae-Seok - Ulsan HD 1-1 Pohang Steelers
+Row 793: Jay Robinson - Chelsea U21 0-2 Southampton U21
+Row 794: Shamaira Mheuka - Chelsea U21 0-2 Southampton U21
+Row 795: Mads Bomholt - Aalborg BK 2-2 Lyngby BK
+Row 796: Jin-Woo Jeon - Jeonbuk Hyundai Motors 3-1 Ulsan Hyundai
+Row 797: Kane Taylor - AFC Barrow 3-0 Aston Villa U21
+Row 798: Rumarn Burrell - Burton Albion 2-1 Leyton Orient
+Row 799: Kevin Nisbet - Ross County 0-1 Aberdeen
+Row 800: Dane Scarlett - Oxford United 1-3 Sheffield Wednesday
+Row 801: Esteban Crucci - Venezuela U20 1-0 Uruguay
+Row 802: Isaac Olaofe - Stockport County 2-1 Huddersfield Town
+Row 803: Rumarn Burrell - Jamaica 3-2 Trinidad and Tobago
+Row 804: Raul Florucz - Olimpija 2-0 Celje
+Row 805: Armandas Kucys - Olimpija 2-0 Celje
+Row 806: Archie Goodwin - Adelaide United 2-3 Sydney
+Row 807: Mathias Jorgensen - Aalborg BK 2-2 Lyngby BK
+Row 808: Max Dean - Westerlo 2-2 Gent
+Row 809: Noah Ohio - Utrecht 0-1 NEC Nijmegen
+Row 810: Lamine Cisse - Stade Lavallois 2-2 SC Bastia
+Row 811: Robbie Ure - Mjallby AIF 2-1 IK Sirius
+Row 812: Abdoulie Manneh - Mjallby AIF 2-1 IK Sirius
+Row 813: Albert Lottin - FC Granada 2-1 CD Casetellon
+Row 814: Warren Davis - Drogheda United 2-1 Shelbourne
+Row 815: Noah Botic - Western United 1-0 Sydney
+Row 816: Onel Hernández - Sheffield United 2-0 Norwich
+Row 817: Jacen Russell-Rowe - Nashville 3-0 Columbus Crew
+Row 818: Dare Kareem - Drogheda United 2-1 Shelbourne
+Row 819: Oli Coker - Southend United 1-1 York City
+Row 820: Patrick Kelly - Doncaster Rovers 2-1 Milton Keynes Dons
+Row 821: Tyler Bindon - Colchester 2-2 Reading
+Row 822: Svetoslav Vutsov - Slavia Sofia v Hebar 1918
+Row 823: Baylee Dipepa - Chelsea U21 0:2 Southampton U21
+Row 824: Axel Henriksson - GAIS Göteborg 2-1 IFK Göteborg
+Row 825: Anthony Mandrea - SM Caen 0-1 Troyes
+Row 826: Cian Ashford - Cardiff City 1:4 Middlesbrough
+Row 827: Corey Addai - Crawley Town 0-2 Doncaster Rovers
+Row 828: Idris Odutayo - Bromley vs Chesterfield
+Row 829: Malcolm Ebiowei - Oxford United 1-2 Swansea City
+Row 830: Milan Van Ewijk - Stevenage 1-3 Coventry
+Row 831: Paul Nardi - Queens Park Rangers 1-3 West Bromwich Albion
+Row 832: Nick Freeman - Stevenage 1-3 Coventry
+Row 833: Nigel Lonwijk - Huddersfield Town vs Exeter City
+Row 834: Hidde Ter Avest - Utrecht 1-2 Go Ahead Eagles
+Row 835: Sam Amo-Ameyaw - Cardiff City 3-5 Southampton
+Row 836: Laurence Maguire - Milton Keynes Dons 2-1 Accrington Stanley
+Row 837: Trevan Sanusi - Leeds United U21 vs Newcastle United U21
+Row 838: Adam Davies - Burnley 2-0 Sheffield United
+Row 839: Harvey Knibbs - Colchester 2-2 Reading
+Row 840: Kristian Pedersen - Swansea City 0-1 Watford
+Row 841: Lucas Herrington - Sydney 3-4 Brisbane Roar
+Row 842: Jack Earing - Milton Keynes Dons 1-0 Walsall
+Row 843: Zach Awe - Accrington Stanley 1-0 AFC Barrow
+Row 844: Alen Mustafic - Slovan Bratislava 3-1 Skalica
+Row 845: Odeluga Offiah - Bolton Wanderers 2:1 Blackpool
+Row 846: Oliver Sail - Perth Glory 0-0 Wellington Phoenix
+Row 847: Simun Mikolcic - NK Lokomotiva 0-1 Osijek
+Row 848: Jordan Brown - Leyton Orient 1-2 Bolton
+Row 849: Josh Honohan - Shamrock Rovers 1-0 St. Patrick’s Athletic
+Row 850: Edgardo Farina - Bolivien vs Panama
+Row 851: Jordan Courtney-Perkins - Sydney FC 1-2 Macarthur FC
+Row 852: Marcus Dewhurst - Eastleigh 2-0 Aldershot
+Row 853: Joe Wollacott - Crawley Town 0-3 Barnsley
+Row 854: Damola Ajayi - FC Arsenal U21 vs Tottenham Hotspur U21
+Row 855: Henry Gray - Millwall U23 3:0 Ipswich Town U23
+Row 856: Dan Happe - Leyton Orient 1-2 Bolton
+Row 857: Arthur Read - Colchester 2-2 Reading
+Row 858: Adrian Segecic - Sydney FC 3-4 Western United
+Row 859: Lewis Neilson - Kilmarnock 0-3 St Johnstone
+Row 860: Alex Gilbert - Middlesbrough 0:1 Blackburn Rovers
+Row 861: Gustavo Marins - FCV Farul Constanta 1-1 FC Dinamo 1948
+Row 862: Viktor Granath - Halmstads BK 2-1 Hammarby IF
+Row 863: Derrick Abu - West Ham United U21 5-1 Southampton U21
+Row 864: Michael Adu-Poku - Wycombe Wanderers 3-2 Watford
+Row 865: Kellan Fisher - Norwich City 1:1 Bristol Rovers
+Row 866: Charlie Patino - Swansea City 2-0 Morecambe
+Row 867: Jay McGrath - Doncaster Rovers vs Salford City
+Row 868: Petar Pusic - NK Lokomotiva 0-1 Osijek
+Row 869: Michael Frey - Queens Park Rangers 1-1 Plymouth Argyle
+Row 870: Charlie Patino - Bournemouth 5-0 Swansea
+Row 871: Corey O'Keefe - Stevenage 3-0 Barnsley
+Row 872: Marko Ristic - Domzale 0-0 Olimpija
+Row 873: Beni Sousa - West Ham United U21 vs Benfica Lissabon U21
+Row 874: Kwame Poku - Gillingham 1-2 Peterborough
+Row 875: Tony Yogane - Ipswich Town U23 1:2 Brentford FC U23
+Row 876: Ryan Leak - Motherwell 0-0 Ross County
+Row 877: Jake Beesley - Derby County 1-0 Blackpool
+Row 878: Callum Tripp - Milton Keynes Dons 1-0 Walsall
+Row 879: Josh Griffiths - Bristol Rovers 1-0 Northampton Town
+Row 880: Harvey Vale - Bristol Rovers 2:1 Portsmouth
+Row 881: Brendan Sarpong-Wiredu - Grimsby Town 2-1 Fleetwood Town
+Row 882: Yuto Iwasaki - Avispa Fukuoka 1:0 Urawa Reds
+Row 883: Lucas Andersen - Queens Park Rangers 1-3 West Bromwich Albion
+Row 884: Alex Gilbey - Milton Keynes Dons 1-0 Walsall
+Row 885: Lucas Buades - Bastia 0:2 Rodez
+Row 886: Kian Spence - Walsall 1-0 AFC Barrow
+Row 887: Josh Keeley - Leyton Orient v Burton Albion
+Row 888: Malik Mothersille - Blackpool 0-0 Peterborough
+Row 889: Kaide Gordon - Poland U20 1-1 England U20
+Row 890: Zak Swanson - Watford v Portsmouth
+Row 892: Habeeb Ogunneye - West Bromwich Albion U21 0-3 Manchester United U21
+Row 894: Jay Matete - Leyton Orient 1-2 Bolton
+Row 895: Andre Vidigal - Rotherham United 0-1 Stoke City
+Row 896: Jack Stevens - Cambridge United v Charlton Athletic
+Row 897: Eli Adams - Newcastle Jets 3-1 Brisbane Roar
+Row 898: Charlie Patino - Cardiff City 2-0 Swansea City
+Row 899: Paul Digby - Cambridge United 0-1 Crawley Town
+Row 900: James Clarridge - Wycombe Wanderers 3-2 Watford
+Row 901: Kanayo Megwa - Airdrieonians 2-2 Partick Thistle
+Row 902: Korey Smith - Cambridge United 0-1 Crawley Town
+Row 903: John McAtee - Leyton Orient 1-2 Bolton
+Row 904: Callum Marshall - Wycombe Wanderers v Huddersfield Town
+Row 905: Josh Eccles - Stevenage 1-3 Coventry
+Row 906: Finn Surman - Rogaska 1:2 Celje
+Row 907: Joe Wollacott - Charlton Athletic v Crawley Town
+Row 908: Richonell Margaret - RKC Waalwijk 5-0 NAC Breda
+Row 909: Noah Botic - Western United 1-3 Melbourne Victory
+Row 910: Joe Gauci - Melbourne Victory 1-1 Adelaide United
+Row 911: Rob Apter - Peterborough United 5-1 Blackpool
+Row 912: Chris Willock - Millwall 2-2 Cardiff City
+Row 913: Carl Piergianni - Stevenage 3-0 Barnsley
+Row 914: David Zec - Celje 2:1 Maribor
+Row 915: Noel Törnqvist - Mjällby AIF 2-1 Västeras SK
+Row 916: Christoph Klarer - Leyton Orient 1-2 Birmingham City
+Row 918: Sam Hornby - Milton Keynes Dons 1-0 Walsall
+Row 919: Patrick Kelly - Doncaster 1-2 Grimsby
+Row 920: Kane Smith - Stevenage 1-3 Coventry
+Row 921: Marcus McGuane - Blackpool 1-1 Oxford United
+Row 922: Zech Medley - RFC Seraing 1-1 KV Oostende
+Row 923: Abel Walatee - Macarthur 2-2 Western United
+Row 924: Mandela Egbo - Colchester 2-2 Reading
+Row 925: Daniel Barton - Cambridge United 0-1 Crawley Town
+Row 927: Adil Aouchiche - Sunderland 0:2 Sheffield Wednesday
+Row 928: Josh Ajala - West Ham United U21 vs Stoke City U21
+Row 929: Marian Pisoja - Kosice 0-1 Banska Bystrica
+Row 930: Joel Ideho - ADO Den Haag 2-0 MVV Maastricht
+Row 931: Lewis Orford - West Ham United U21 5-1 Southampton U21
+Row 932: Adam Zadrazil - Viktoria Plzen 1-0 Hradec Kralove
+Row 933: Aaron Donnelly - Swindon vs Colchester United
+Row 934: Kasey Palmer - Stoke City 1-3 Hull City
+Row 935: Abdoullah Ba - Sunderland U21 2-3 Manchester City U21
+Row 936: Johnly Yfeko - Exeter City 1-0 Rotherham
+Row 937: John Patrick Finn - Getafe 0:0 Real Sociedad
+Row 938: Harrison Dudziak - FC Arsenal U21 vs Nottingham Forest U21
+Row 939: Tommy Leigh - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 940: Kamarai Simon-Swyer - West Ham United U21 5-1 Southampton U21
+Row 941: Jordan Courtney-Perkins - Qatar U23 0-0 Australia U23
+Row 942: Noah Botic - Melbourne Victory 3-4 Western United
+Row 943: Dion Charles - Leyton Orient 1-2 Bolton
+Row 944: Tyrese Hall - FC Arsenal U21 vs Tottenham Hotspur U21
+Row 945: Danny Imray - Morecambe 0-2 Bromley
+Row 946: Alex Stepien-Iwumene - Chelsea U21 2-1 Derby County U21
+Row 947: Sam Amo-Ameyaw - Southampton 4:0 Walsall
+Row 948: Ricky-Jade Jones - Gillingham 1-2 Peterborough
+Row 949: Daniel Adu-Adjei - Milton Keynes Dons 3:0 Carlisle United
+Row 950: Robert Orri Thorkelsson - Sogndal 2:0 Kongsvinger
+Row 951: Josh Honohan - Sligo Rovers vs Shamrock Rovers
+Row 952: Danny Imray - Colchester United 1-1 Bromley
+Row 953: Caleb Taylor - Wycombe Wanderers vs Reading
+Row 954: Ryan Trevitt - Colchester United 0-1 Brentford
+Row 955: Caleb Taylor - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 956: Jonathan Williams - Gillingham 1-2 Peterborough
+Row 957: Romain Esse - Millwall v Oxford
+Row 958: Oscar Thorn - Colchester v Wimbledon
+Row 959: Tommy Setford - FC Arsenal U21 vs Nottingham Forest U21
+Row 960: Dario Maresic - Istra 1961 0-1 Rijeka
+Row 961: Josh Edwards - Airdrieonians 2-1 Dunfermline Athletic
+Row 963: Louie Moulden - Southampton U21 0-2 Crystal Palace U21
+Row 964: Sam Silvera - Portsmouth 0-0 Luton Town
+Row 965: Macklin Freke - Western Sydney Wanderers 2-2 Brisbane Roar
+Row 966: Ryan Trevitt - Exeter City 0-0 Shrewsbury Town
+Row 967: Joakim Persson - Sirius 3-1 Kalmar FF
+Row 968: Alex Paulsen - Newcastle Jets 1-1 Wellington Phoenix
+Row 970: Ousmane Diakate - Queens Park Rangers 1-3 West Bromwich Albion
+Row 971: Kaheim Dixon - Arnett Gardens 2-1 Harbour View
+Row 972: Aston Oxborough - Motherwell 0-0 Ross County
+Row 973: Saxon Earley - Watford 0-0 Plymouth Argyle
+Row 974: Jay McGrath - Doncaster Rovers 2-1 Milton Keynes Dons
+Row 975: Gerson Sousa - West Ham United U21 vs Benfica Lissabon U21
+Row 976: Joel Ndala - Blackburn Rovers U21 3-2 Nottingham Forest U21
+Row 977: James Delianov - Adelaide United 1-2 MacArthur
+Row 978: Phoenix Patterson - Salford City 0-2 Fleetwood Town
+Row 979: Momodou Nije - KFUM 0-1 Tromsø
+Row 980: Svetoslav Vutsov - Slavia Sofia 0-1 Ludogorets
+Row 981: Filip Bilbija - Hamburger SV vs SC Paderborn 07
+Row 982: Robbie McKenzie - Swansea City 3-1 Gillingham
+Row 983: Josh Keeley - Leyton Orient v Charlton Athletic
+Row 984: Samson Tovide - Colchester United 1-1 Bromley
+Row 985: Dean James - Heracles 4-2 Go Ahead Eagles
+Row 986: Frederik Christensen - IF Brommapojkarna 3-3 Elfsborg
+Row 987: Odeluga Offiah - Wrexham 2:1 Blackpool
+Row 988: Hilmir Rafn Mikaelsson - Odds 1:1 Kristiansund
+Row 989: Nathan Thompson - Stevenage 1-3 Coventry
+Row 990: Mylian Jimenez - Aalborg BK 2-1 Lyngby BK
+Row 991: Adil Aouchiche - Cardiff City 0-2 Sunderland
+Row 992: Mahmudu Bajo - Zilina 1:1 DAC
+Row 993: Noel Törnqvist - Halmstads BK 1-3 Mjallby AIF
+Row 994: Jay Robinson - FC Southampton U21 vs Swansea City U23
+Row 995: Baylee Dipepa - Southampton U21 2-4 Brighton & Hove Albion U21
+Row 996: Kian Spence - Salford 3-0 AFC Barrow
+Row 997: Paul Nardi - Queens Park Rangers 1-1 Millwall
+Row 998: Brendan Sarpong-Wiredu - Fleetwood 2-2 Notts County
+Row 999: Joel Colwill - Peterborough United vs Exeter City
+Row 1000: Charlie Kelman - Cambridge United vs Leyton Orient
+Row 1001: Callum Marshall - Wigan Athletic 2-1 Huddersfield Town
+Row 1002: Kaide Gordon - Liverpool U21 0-2 Arsenal U21
+Row 1003: Odeluga Offiah - Birmingham City 0-0 Blackpool
+Row 1004: Calvin Brackelmann - Hamburger SV vs SC Paderborn 07
+Row 1005: Alex Gilbert - Middlesbrough 0:5 Stoke City
+Row 1007: Matt Young - Milton Keynes Dons vs Salford City
+Row 1008: Ibrahim Cissoko - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1009: Lewis Gibson - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1010: Harrison Minturn - Swindon Town 3:1 Fleetwood Town
+Row 1011: Caleb Taylor - Wycombe Wanderers v Mansfield
+Row 1012: Nicky Cadden - Blackpool 3-2 Barnsley
+Row 1013: Barnabás Kovács - Kecskeméti TE 2-1 ETO FC Györi
+Row 1014: Harvey Vale - West Ham United 3-2 Chelsea
+Row 1015: Josh Mulligan - Dundee 3:3 Celtic
+Row 1016: Finn Surman - Newcastle Jets 1-1 Wellington Phoenix
+Row 1017: Cameron Humphreys - Wycombe Wanderers vs Reading
+Row 1018: Jesse Van De Harr - De Graafschap 2-1 Excelsior
+Row 1019: Giovanni Haag - Bastia 0:2 Rodez
+Row 1020: Harry Cornick - Stoke City 4:0 Bristol City
+Row 1021: Mark Pabai - Domzale 1-0 Koper
+Row 1022: Joel Cotterill - Swindon Town 3:1 Fleetwood Town
+Row 1023: Sonny Perkins - Leyton Orient 1-2 Bolton
+Row 1024: Artur Gajdos - Spain U21 0:2 Slovakia U21
+Row 1025: Junior Olaitan - Benin 1:0 Rwanda
+Row 1026: Allan Campbell - Plymouth Argyle 0:2 Millwall
+Row 1027: Ethon Archer - Doncaster Rovers 2:2 Cheltenham Town
+Row 1028: Ethan Coleman - Gillingham 1-2 Peterborough
+Row 1029: Bradley Danger - Caen 1-0 Rodez
+Row 1030: Tudor Mendel-Idowu - Ipswich Town U21 3:2 Swansea City U21
+Row 1031: Kenzo Goudmijn - Ajax 2-2 Excelsior
+Row 1032: Jadel Katongo - Gillingham 1-2 Peterborough
+Row 1033: Keegan Jelacic - Brisbane Roar 0-1 Newcastle Jets
+Row 1034: Billy Blacker - Sheffield United 0:1 Cardiff City
+Row 1035: Josh Mulligan - Dundee 1-2 Dundee United
+Row 1036: Jayden Moore - FC Woking vs FC Southampton U21
+Row 1037: Princewill Ehibhatiomhan - West Ham United U21 5-1 Southampton U21
+Row 1038: Kion Etete - Cardiff City 0:0 Blackburn Rovers
+Row 1039: Jordan Cortney-Perkins - Sydney 3-3 Western Sydney
+Row 1040: Kelvin Ehibhatiomhan - Reading 3:1 Burton Albion
+Row 1041: James Ndjeungoue - Zemplin Michalovce 1-1 Zilina
+Row 1042: Nathan Trott - Vejle Boldklub 1-0 Lyngby BK
+Row 1043: Donnell McNeilly - Chelsea U21 0:2 Southampton U21
+Row 1044: Nik Tzanev - Northampton Town v Charlton Athletic
+Row 1045: Daniel Phillips - Stevenage 3-0 Barnsley
+Row 1046: Noah Ganaus - Hannover 96 vs SSV Jahn Regensburg
+Row 1047: Luke Harris - Port Vale 2-4 Exeter City
+Row 1048: Jacob Widell Zetterström - Malmö FF vs Djurgarden IF
+Row 1049: Jamie McDonnell - Colchester United 1:1 Doncaster Rovers
+Row 1050: Danny Imray - Harrogate 0-2 Bromley
+Row 1051: Jimmy Dunne - Queens Park Rangers 1-1 Millwall
+Row 1052: Kota Tawaratsumida - Yokohama F. Marinos 1:3 Tokyo
+Row 1053: Malcolm Ebiowei - Crystal Palace U21 v RB Leipzig U21
+Row 1054: Charlie Patino - Preston North End 2-1 Swansea
+Row 1055: Ben Wilson - Stevenage 1-3 Coventry
+Row 1056: Isaac Olaofe - Wigan Athletic 0-2 Stockport County
+Row 1058: Taylor Gardner-Hickman - Leyton Orient 1-2 Birmingham City
+Row 1059: Harry Whitwell - Wolverhampton Wanderers U21 vs West Bromwich Albion U21
+Row 1060: Jeon Byung-Kwan (Jeonbuk Motors) - Ulsan Hyundai 1-0 Jeonbuk Motors
+Row 1061: Luke Molyneux - Doncaster 1-2 Grimsby
+Row 1062: Sam Klein - Melbourne City FC 1-0 Brisbane Roar
+Row 1063: Koki Saito - Queens Park Rangers 1-1 Millwall
+Row 1064: Julian Eyestone - Brentford FC U23 v FC Chelsea U21
+Row 1065: Ryan Teague - Melbourne Victory 1-0 Wellington Phoenix
+Row 1066: Will Aimson - Exeter City 1:0 Stevenage
+Row 1067: Kealey Adamson - Macarthur 1-0 Melbourne City
+Row 1068: Fin Stevens - Oxford 1-0 Peterborough
+Row 1069: Joe Low - Blackpool 2:2 Wycombe Wanderers
+Row 1070: Barry Cotter - Crawley Town 0-3 Barnsley
+Row 1071: Laurence Maguire - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1072: Hugo Felix - West Ham United U21 vs Benfica Lissabon U21
+Row 1073: Josh Stokes - Cambridge United 0:1 Stevenage
+Row 1074: Eli Adams - Newcastle Jets 1-2 Central Coast Mariners
+Row 1075: John Buckley - Oxford United vs Blackburn Rovers
+Row 1076: Alfie Harrison - FC Southampton U21 vs Newcastle United U21
+Row 1077: Sven Sonnenberg - Utrecht 1-0 Heracles
+Row 1078: Noel Törnqvist - Mjallby AIF v GAIS Goteborg
+Row 1079: Trivante Stewart (Radnicki Nis) - Radnicki Nis 1-0 Backa Topola
+Row 1080: Abel Walatee - Western United 1-0 Brisbane Roar
+Row 1081: Harry Cornick - Ipswich Town 3-2 Bristol City
+Row 1082: Mihály Kata - Debrecen 1:2 MTK Budapest
+Row 1083: Karl Hein - Estland vs Österreich
+Row 1084: Josh Keeley - Leyton Orient vs Stevenage
+Row 1085: John Patrick Finn - CDA Navalcarnero vs Getafe B
+Row 1086: Harvey Araujo - Milton Keynes Dons vs Chesterfield
+Row 1087: Kylian Kouassi - Doncaster Rovers vs Salford City
+Row 1088: Emmanuel Fernandez - Peterborough vs Northampton Town
+Row 1089: Kenneth Paal - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1091: Dylan Leonard - Macarthur 2-2 Western United
+Row 1092: Malcom Bokele - FC Girondins Bordeaux vs AS Saint-Etienne
+Row 1093: Jose Melro - West Ham United U21 vs Benfica Lissabon U21
+Row 1094: Sol Sidibe - Southampton 3-2 Stoke City
+Row 1095: Liam Bossin - Lommel SK 0-1 KV Oostende
+Row 1096: Daniel Fila - FK Teplice 2-1 Zlin
+Row 1097: Mbaye Ndiaye - Stal Mielec 1-0 Motor Lublin
+Row 1098: Josh Bowler - Cardiff City 0:0 Blackburn Rovers
+Row 1099: Lee Ho-Jae - Incheon United 1-3 Pohang Steelers
+Row 1100: George Hall - Milton Keynes Dons 1-0 Walsall
+Row 1101: Callum Hendry - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1102: Paulos Abraham - GAIS Göteborg 2-1 IFK Göteborg
+Row 1103: Sam Sherring - Milton Keynes Dons 1:1 FC Portsmouth
+Row 1104: Jesse Derry - Crystal Palace U21 v RB Leipzig U21
+Row 1105: Adam Davies - Wrexham 3-3 Sheffield United
+Row 1106: Alby Kelly-Heald - Melbourne Victory 1-0 Wellington Phoenix
+Row 1107: Simon Gefvert - Hammarby 2-1 Vasteras SK
+Row 1108: Ryan Hardie - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1109: Sam Amo-Ameyaw - Southampton U21 5-0 Fulham U21
+Row 1110: Taïryk Arconte - Caen 1-0 Rodez
+Row 1111: Bork Bang-Kittilsen - Odds 1-0 Tromsø
+Row 1112: Jayden Moore - West Ham United U21 5-1 Southampton U21
+Row 1113: George Wickens - Charlton Athletic v Lincoln City
+Row 1114: Charlie Patino - Levante 2-1 Deportivo La Coruña
+Row 1115: Rhys Walters - Colchester vs Port Vale
+Row 1116: William Jenkins Davies - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1117: Fin Stevens - Wales U21 vs Tschechien U21
+Row 1118: Louis Munteanu - Romania U21 3-1 Switzerland U21
+Row 1119: Noah Ganaus - Jahn Regensburg 2-2 Wehen Wiesbaden
+Row 1120: Yoann Barbet - Bordeaux 1-0 Grenoble
+Row 1121: Jacob Chapman - Huddersfield Town v Charlton Athletic
+Row 1122: Rushian Hepburn-Murphy - Crawley Town 0-3 Barnsley
+Row 1123: Rio Patterson-Powell - Blackburn Rovers U21 3-2 Middlesbrough U21
+Row 1124: Harry Amass - Manchester United U21 1-3 FC Nordsjaelland U21
+Row 1125: Lewis Miller - Celtic 3:0 Hibernian FC
+Row 1126: Jaheim Headley - Bolton 3-1 Huddersfield Town
+Row 1127: Harvey White - Stevenage 1-3 Coventry
+Row 1128: Chris Donnell - Manchester United U21 0-1 Fulham U21
+Row 1129: Sonny Carey - Derby County 1:0 Blackpool
+Row 1130: Damerai Singh-Hurditt - Milton Keynes Dons 2:2 Arsenal U21
+Row 1131: Dara Costelloe - Fleetwood 1-1 Accrington
+Row 1132: Martin Rymarenko - MFK Dukla Banska Bystrica 2-2 MFK Skalica
+Row 1133: Elkan Baggott - Wigan Athletic 2-0 Bristol Rovers
+Row 1134: Lukas Kelly-Heald - Melbourne Victory 1-0 Wellington Phoenix
+Row 1135: Tyreece Simpson - Stevenage 3-0 Barnsley
+Row 1136: Medin Memeti - China PR U20 1-2 Australia U20
+Row 1137: Max Thompson - Chesterfield FC vs Port Vale
+Row 1138: Filip Helander - Vejle 3-2 Odense
+Row 1139: Viv Solomon-Otabor - Cangzhou Mighty Lions 0-1 Shanghai Port
+Row 1140: Freddie Potts - Watford v Portsmouth
+Row 1141: Josh Mulligan - St. Mirren 1-2 Dundee FC
+Row 1142: Oliver Jones - MacArthur 1-1 Central Coast Mariners
+Row 1143: Ivan Minchev - Slavia Sofia 2-1 Lokomotiv Plovdiv
+Row 1144: Japhet Tanganga - Queens Park Rangers 1-1 Millwall
+Row 1145: Bleon Kurtulus - Sweden U18 1-0 Denmark U18
+Row 1146: Aribim Pepple - Chesterfield vs Port Vale
+Row 1147: Josh Stephenson - Brentford U23 vs Charlton Athletic U23
+Row 1148: Karl Hein - Estland 0-3 Belgium
+Row 1149: Ryan Andrews - Wycombe Wanderers 3-2 Watford
+Row 1150: Oscar Thorn - Colchester United vs Gillingham
+Row 1151: Cameron Peupion - Arsenal U21 1-1 Brighton & Hove Albion U21
+Row 1152: Junior Olaitan - Libya 0-0 Benin
+Row 1153: Damola Ajayi - Exeter City 2-0 Tottenham Hotspur U21
+Row 1154: Tom McGill - Milton Keynes Dons 1-0 Walsall
+Row 1155: Joseph Hungbo - Cambridge United 0-1 Rotherham
+Row 1156: Noel Törnqvist - Malmo FF vs Mjallby AIF
+Row 1157: Jack Payne - Colchester 2-2 Reading
+Row 1158: Khoa Ngo - Perth Glory 1-3 Western United
+Row 1159: Alfie Devine - Plymouth Argyle 0-1 Bristol City
+Row 1160: Yannick Leliendal - Volendam 4-1 Cambuur
+Row 1161: Luther Wildin - Stevenage 3-0 Barnsley
+Row 1162: Fin Stevens - Exeter City 1-2 Oxford United
+Row 1163: Kwadwo Baah - Wycombe Wanderers 3-2 Watford
+Row 1164: Ezra Myers - West Ham United U21 5-1 Southampton U21
+Row 1165: Robbie McCrorie - Heart of Midlothian FC 1-2 Kilmarnock
+Row 1166: Aaron Donnelly - Dundee FC 2-3 Motherwell
+Row 1167: Caleb Roberts - Brentford v Plymouth Argyle
+Row 1168: Nathan Butler-Oyedeji - Milton Keynes Dons 2:2 Arsenal U21
+Row 1169: Kornelius Hansen - Almere City 0-1 AZ
+Row 1170: Danny Imray - Bromley 1:1 Milton Keynes Dons
+Row 1171: Martin Rymarenko - Kosice 0-1 Banska Bystrica
+Row 1173: Nathan Baxter - Bolton Wanderers 1-2 FC Barnsley
+Row 1174: Liam Bennett - Birmingham City vs Cambridge United
+Row 1175: Noah Botic - Western United 0:2 Auckland FC
+Row 1176: Abdelrahman Boudah - Hammarby 2-1 Vasteras SK
+Row 1177: John McAtee - Bolton 3-0 Lincoln City
+Row 1178: Taneli Hämäläinen - FC Volendam 1-2 ADO Den Haag
+Row 1179: Finn Surman - Wellington Phoenix 3-2 Adelaide United
+Row 1180: Fin Stevens - Oxford United 0-1 Lincoln City
+Row 1181: Dilan Ortiz - FK Radnički 1923 Kragujevac 4-3 FK Čukarički
+Row 1183: Tudor Mendel-Idowu - Millwall U23 3:0 Ipswich Town U23
+Row 1184: Armando Dobra - Milton Keynes Dons v Chesterfield
+Row 1185: Jaiden Kucharski - Sydney 3-0 Melbourne Victory
+Row 1186: Beryly Lubala - Wycombe Wanderers 3-2 Watford
+Row 1187: Nicholas Mickelson - Odense Boldklub vs AC Horsens
+Row 1188: Lewis Brunt - Mansfield Town 0-1 Crewe Alexandra
+Row 1189: Joe Low - Wycombe Wanderers v Mansfield
+Row 1190: Sonny Perkins - Leyton Orient vs Newport County
+Row 1191: Luis Fernandez - Eastleigh 2-0 Aldershot
+Row 1192: Corey Addai - Peteborough United 2-1 Crawley Town
+Row 1193: Clayton Taylor - Newcastle United Jets vs Sydney FC
+Row 1194: Hussein Ali - Heracles 0:2 Heerenveen
+Row 1195: Jamie Cumming - Oxford United 2:0 Norwich City
+Row 1196: Josh Mcdonald - Fulham U21 2-1 Leeds United U21
+Row 1197: Joe Low - Wycombe Wanderers 2-1 Cambridge United
+Row 1198: Matt Ingram - Hull City 1-1 Coventry City
+Row 1200: Matt Young - Harrogate v Salford
+Row 1201: Zech Medley - KV Oostende vs  Standard Luttich 16 FC
+Row 1202: Johannes Nunez - KFUM 2-0 Lillestrøm
+Row 1203: Rob Apter - Blackpool 1-2 Leyton Orient
+Row 1204: Lawrence Wong - Macarthur 1-0 Melbourne City
+Row 1205: Jayden Sweeney - Leyton Orient 1-2 Bolton
+Row 1206: Ishe Samuels-Smith - Chelsea U21 2-1 Derby County U21
+Row 1207: Kane Thompson-Sommers - Milton Keynes Dons 1-0 Walsall
+Row 1208: Dan N'Lundulu - Cambridge United v Shrewsbury Town
+Row 1209: Fred Onyedinma - Luton Town 1:1 Everton
+Row 1210: Henry Gray - Ipswich Town U23 1:2 FC Brentford U23
+Row 1211: Cathal Heffernan - Leeds United U21 vs Newcastle United U21
+Row 1212: Kasey Palmer - Hull City 1-1 Watford
+Row 1213: Justin Devenny - Southampton U21 0 - 2 Crystal Palace U21
+Row 1214: Chris Conn-Clarke - Gillingham 1-2 Peterborough
+Row 1215: Johannes Nunez - Brann 2-0 KFUM
+Row 1216: Oliver Scarles - West Ham United U21 vs Benfica Lissabon U21
+Row 1217: Pál Helmich - Kecskeméti TE 2-1 ETO FC Györi
+Row 1218: Joe Gauci - Melbourne Victory vs Adelaide United
+Row 1219: Matt Young - Cheltenham Town 2-1 Salford City
+Row 1220: Rahim Ibrahim - AS Trencin 2:0 Dukla Banska Bystrica
+Row 1221: Joel Ideho - Cambuur 2:1 ADO Den Haag
+Row 1222: Daniel Fila - Czech Republic U21 4:1 Iceland U21
+Row 1223: Lorenzo Rajot - Caen 1-0 Rodez
+Row 1224: Jovon Makama - Crawley Town v Lincoln City
+Row 1225: Leo Castledine - Shrewsbury Town 0:2 Exeter City
+Row 1226: Gaga Slonina - Stevenage 3-0 Barnsley
+Row 1227: Raees Bangura-Williams - Watford FC U23 1-3 Millwall FC U23
+Row 1228: John Patrick Finn - CDA Navalcarnero vs Getafe B
+Row 1229: Nicolas Madsen - Queens Park Rangers 1-1 Millwall
+Row 1230: Kalidou Sidibé - Guingamp 1:2 Angers SCO
+Row 1231: Issouf Sissokho - Bordeaux 1-0 Grenoble
+Row 1232: Kaheim Dixon - Cavalier 3-1 Arnett Gardens
+Row 1233: Nicolas Milanovic - Western Sydney Wanderers 2-2 Brisbane Roar
+Row 1234: Charlie Kelman - Leyton Orient 1-2 Birmingham City
+Row 1235: Joseph Anang - Wycombe Wanderers 2-1 West Ham United U21
+Row 1236: Ryan Porteous - Wycombe Wanderers 3-2 Watford
+Row 1237: Kaide Gordon - Preston North End 2-2 Norwich City
+Row 1238: Emmanuel Osho - Colchester 2-2 Reading
+Row 1239: Daniel Bassi - Hamarkameratene 4:4 FK Bodo/Glimt
+Row 1240: Jewison Bennette - Sunderland U21 3-2 Middlesbrough U21
+Row 1241: Ryan Teague - Western United 1-3 Melbourne Victory
+Row 1242: Kristian Pedersen - Swansea City 3-1 Gillingham
+Row 1243: Paul Koller - SCR Altach vs SK Sturm Graz
+Row 1244: Emeka Adiele - West Ham United U21 5-1 Southampton U21
+Row 1245: Alby Kelly-Heald - Wellington Phoenix 1-1 Brisbane Roar
+Row 1246: Keegan Jelacic - Melbourne City 1-0 Brisbane Roar
+Row 1247: Danny Imray - Bromley 1-1 Carlisle
+Row 1248: Aaron Donnelly - Colchester v Wimbledon
+Row 1249: Ryan Trevitt - Stevenage 1-1 Exeter City
+Row 1250: Alex Gilbert - Bradford City 0:2 Middlesbrough
+Row 1251: Benony Breki Andresson - Fylkir 0-1 KR
+Row 1252: Nathan Baxter - Leyton Orient 1-2 Bolton
+Row 1253: Jonathan Lewis - Austin FC 3-2 Colorado Rapids
+Row 1254: Joe Wildsmith - Northampton Town 1-0 Derby County
+Row 1255: Harry Cornick - Bristol City 1-0 Swansea City
+Row 1256: Joel Ideho - Helmond Sport 2-1 ADO Den Haag
+Row 1257: Noel Törnqvist - IF Brommapojkarna 0:0 Mjällby AIF
+Row 1258: Callum Osmand - Manchester United U21 0-1 Fulham U21
+Row 1259: Ruben Roosken - Vitesse Arnheim 2:0 Heracles
+Row 1260: Corey Addai - Crawley Town 1-1 Stockport County
+Row 1261: Nico Lawrence - Milton Keynes Dons vs Chesterfield FC
+Row 1262: Charlie Kelman - Leyton Orient 1-2 Bolton
+Row 1263: Jewison Bennette - Saudi Arabia 1-3 Costa Rica
+Row 1264: Sonny Carey - Reading 3-2 Blackpool
+Row 1265: Phoenix Patterson - Grimsby Town 2-1 Fleetwood Town
+Row 1266: Luca Ashby-Hammond - Gillingham 1-2 Peterborough
+Row 1267: Ade Adeyemo - Cambridge United 0-1 Crawley Town
+Row 1268: George Abbott - Fleetwood 2-2 Notts County
+Row 1269: Max Ehmer - Gillingham 1-2 Peterborough
+Row 1270: Christian Saydee - Portsmouth 2-2 Derby County
+Row 1271: Frans Deli - Macarthur 1-0 Melbourne City
+Row 1272: Ethan Galbraith - Leyton Orient 1-2 Bolton
+Row 1273: Sævar Atli Magnússon - FC Kopenhagen 2-1 Lyngby BK
+Row 1274: Josh Bowler - Preston 0-0 Blackburn Rovers
+Row 1275: Jamie Donley - Leyton Orient 1-2 Birmingham City
+Row 1277: Nicolas Binder - Austria Klagenfurt 2:2 Hartberg
+Row 1278: Luke Vickery - Melbourne Victory 3-4 Western United
+Row 1279: Adam Phillips - Stevenage 3-0 Barnsley
+Row 1280: Martin Rymarenko - AS Trencin 2:0 Dukla Banska Bystrica
+Row 1281: Zachary Sapsford - Sydney 3-3 West Sydney
+Row 1282: Murat Satin - SCR Altach 1-2 Grazer AK 1902
+Row 1283: Preston Fearon - West Ham United U21 vs Stoke City U21
+Row 1284: Coli Saco - Ancona 0-0 Lucchese
+Row 1285: Dilan Markanday - Milton Keynes Dons v Chesterfield
+Row 1286: Max Thompson - Chesterfield vs Tranmere Rovers
+Row 1287: Sam Long - Charlton Athletic v Bromley
+Row 1288: Stjepan Radeljic - Istra 1961 0-1 Rijeka
+Row 1289: Ciaron Brown - Millwall v Oxford
+Row 1290: Jacob Karlstrom - IFK Göteborg 1-1 Halmstads BK
+Row 1291: Nicolas Milanovic - Qatar U23 0-0 Australia U23
+Row 1292: Divin Mubama - West Ham United U21 0-2 Chelsea
+Row 1293: Kelly N'Mai - Salford 1-1 Crewe
+Row 1294: Alex Bonetig - Western Sydney Wanderers 4:1 Newcastle Jets
+Row 1295: Mahamadou Diarra - SK Sturm Graz 4-2 WSG Tirol
+Row 1296: Terence Vancooten - Northampton Town 0:0 Burton Albion
+Row 1297: Abdoullah Ba - Sunderland 3-1 Plymouth Argyle
+Row 1298: Yannick Leliendal - FC Volendam 1-2 ADO Den Haag
+Row 1299: Jacob Bedeau - Salford City vs Notts County
+Row 1300: Matthew Sutton - Sydney FC 3-4 Western United
+Row 1301: Cameron Humphreys - Wycombe Wanderers 2-1 Cambridge United
+Row 1302: Alex Gilbert - Leeds United 0:3 Middlesbrough
+Row 1303: Joe Edwards - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1304: Julian Baas - Ajax 2-2 Excelsior
+Row 1305: Mihály Kata - MTK Budapest 3:0 Ujpest
+Row 1306: Lewis Warrington - Leyton Orient vs Newport County
+Row 1307: Louis Appere - Stevenage 1-3 Coventry
+Row 1308: Liam Gordon - Motherwell 1-2 St. Johnstone
+Row 1309: Sam Silvera - Blackpool 0-0 Rotherham
+Row 1310: Luciano Vera - Kecskeméti TE 2-1 ETO FC Györi
+Row 1311: Adam Mayor - Bradford City 2-2 Morecambe
+Row 1313: Timotej Jambor - Spain U21 0:2 Slovakia U21
+Row 1314: Pawel Chrupalla - Kristiansund 3-1 Sarpsborg 08
+Row 1315: Jake Clarke-Salter - Queens Park Rangers 1-1 Millwall
+Row 1316: John Patrick Finn - Rayo Majadahonda vs Getafe B
+Row 1317: Femi Seriki - Rotherham 2-1 Millwall
+Row 1318: Dilan Markanday - Cambridge United vs Leyton Orient
+Row 1319: Arthur Okonkwo - Charlton Athletic v Wrexham
+Row 1320: Samuel Brolin - IFK Göteborg 1-1 Kalmar FF
+Row 1321: Brandon Cover - Port Vale 1-1 Crewe Alexandra
+Row 1322: Adam Davies - Sheffield United 3-1 Wrexham
+Row 1323: Axel Henriksson - Mjallby AIF 1:1 GAIS Goteborg
+Row 1324: Matt Ingram - Luton Town 0-0 Hull City
+Row 1325: Jamie Donley - Leyton Orient 2-0 Reading
+Row 1326: Adam Kadlec - FK Teplice 1-2 Bohemians 1905
+Row 1327: Joe Gauci - Melbourne Victory 2-0 Adelaide United
+Row 1328: Fiacre Kelleher - Colchester 2-2 Reading
+Row 1329: Armandas Kucys - Nk Celje vs Slovan Bratislava
+Row 1330: Abraham Odoh - Gillingham 1-2 Peterborough
+Row 1331: Mikey Moore - Southampton U21 2-1 Tottenham Hotspur U21
+Row 1332: Luca Stephenson - Kilmarnock 1:0 Dundee United
+Row 1333: Jake Hollman - Macarthur 2-2 Western United
+Row 1334: Sam Cosgrove - Stevenage 3-0 Barnsley
+Row 1335: Luca Barrington - Grimsby Town 0:1 Colchester United
+Row 1336: Frederick Issaka - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1337: Travis Patterson - Aston Villa U21 vs Bradford City
+Row 1338: Ethan Erhahon - Bolton 3-0 Lincoln City
+Row 1339: Viljami Sinisalo - Exeter City 1:0 Stevenage
+Row 1340: Ibrahim Bakare - Milton Keynes Dons 3-2 Cheltenham Town
+Row 1341: Devan Tanton - Port Vale 1-0 Chesterfield
+Row 1342: Jed Drew - Melbourne Victory 2:1 Macarthur
+Row 1343: Ronan Hale - Ross County 1-1 Dundee United
+Row 1344: Max Thompson - Grimsby v Chesterfield
+Row 1345: Abraham Kanu - Colchester 2-2 Reading
+Row 1346: Oliver Middleton - Auckland United 3-3 Napier City Rovers
+Row 1347: George Saville - Queens Park Rangers 1-1 Millwall
+Row 1348: Junior Tchamadeu - Southampton 3-2 Stoke City
+Row 1349: Mateus Brunetti - Ruzomberok 1:1 DAC
+Row 1350: Mikkel Rakneberg - Kristiansund 0-0 Stromsgodset
+Row 1351: Michael Frey - Queens Park Rangers 1-1 Millwall
+Row 1352: Arthur De Lima - Wellington Phoenix 0:0 Central Coast Mariners
+Row 1353: Yacine Bourhane - Esbjerg fB 0-2 Aalborg BK
+Row 1354: Luke Offord - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1355: Noel Törnqvist - Malmo FF 2:0 Mjallby AIF
+Row 1356: Antonio Tikvic - SCR Altach 1-2 Grazer AK 1902
+Row 1357: Armani Little - Gillingham 1-2 Peterborough
+Row 1358: Ron-Thorben Hoffmann - Karlsruher SC 0:2 Eintracht Braunschweig
+Row 1359: Leo Duru - Blackburn Rovers U21 1-0 Liverpool U21
+Row 1360: Brad Collins - Stevenage 1-3 Coventry
+Row 1361: Jubril Okedina - Wycombe Wanderers 2-1 Cambridge United
+Row 1362: Zac Williams - AFC Wimbledon 3:0 Crewe Alexandra
+Row 1363: Cian Ashford - Rotherham 5-2 Cardiff City
+Row 1364: Josh Bowler - Preston North End vs FC Fulham
+Row 1365: Siemen Voet - Fortuna Sittard 0:1 Feyenoord
+Row 1366: Fin Stevens - Wales U21 2-1 Lithuania U21
+Row 1367: Calvin Ramsay - Wigan Athletic 1-2 Mansfield Town
+Row 1368: Ryan Stirk - Milton Keynes Dons 1-0 Walsall
+Row 1370: Charlie Goode - Wigan Athletic 1:1 Burton Albion
+Row 1371: Jack Nolan - Gillingham 1-2 Peterborough
+Row 1372: Igor Orlikowski - Piast Gliwice 1-0 Zaglebie Lubin
+Row 1373: Maldini Kacurri - FC Arsenal U21 vs Nottingham Forest U21
+Row 1374: Ruben Iranzo - Tottenham Hotspur U21 vs FC Valencia U21
+Row 1375: Pedro Aleman - Tottenham Hotspur U21 vs FC Valencia U21
+Row 1376: Victor Larsson - Varnamo 1:2 IFK Norrkoping
+Row 1377: Romain Esse - Queens Park Rangers 1-1 Millwall
+Row 1378: Matthew Craig - Crawley Town 0-3 Barnsley
+Row 1379: Patrik Kovács - MTK Budapest 1:3 Ferencvaros
+Row 1380: Siemen Voet - Podbrezova 1:3 Slovan Bratislava
+Row 1381: Callum Marshall - Huddersfield Town vs Exeter City
+Row 1382: Daisuke Yokota - Gent 2-2 Westerlo
+Row 1383: Odeluga Offiah - Blackpool 2-2 Huddersfield Town
+Row 1384: Bradley Hills - Stockport County 2-1 Barnsley
+Row 1385: Joe O'Brien Whitmarsh - FC Southampton U21 vs Newcastle United U21
+Row 1386: Murphy Cooper - Charlton Athletic v Stevenage
+Row 1387: Joe Wollacott - Crawley Town v Charlton Athletic
+Row 1388: Fin Stevens - Charlton Athletic 1-2 Oxford United
+Row 1389: Eli Adams - Newcastle United Jets vs Sydney FC
+Row 1390: Dani Ángel - Wolverhampton Wanderers U21 vs West Bromwich Albion U21
+Row 1391: Nemanja Micevic - FK Teplice 1:1 Dukla Praha
+Row 1392: Callum Wright - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1393: Kian Spence - AFC Barrow 3-0 Grimsby
+Row 1394: Calvin Ramsay - Middlesbrough 4-0 Preston North End
+Row 1395: Kaide Gordon - Sunderland U21 2-1 Liverpool U21
+Row 1396: Raphael Borges Rodrigues - Macarthur FC 2-0 Melbourne City FC
+Row 1397: Alby Kelly-Heald - Napier City v Wellington Phoenix Reserves
+Row 1398: Iyad Mohamed - Pau 1-0 Caen
+Row 1399: Nemanja Micevic - Slovan Liberec 1-2 FK Teplice
+Row 1400: Mark Natta - Newcastle Jets 0-1 Melbourne City
+Row 1401: Jamie McDonnell - Colchester v Wimbledon
+Row 1402: Aiden Marsh - Crawley Town 0-3 Barnsley
+Row 1403: Aaron Donnelly - Colchester v Accrington
+Row 1404: Jai Semenyo - Eastleigh 2-0 Aldershot
+Row 1405: Danny Ormerod - AFC Fylde vs Wigan Athletic
+Row 1406: Nectarios Triantis - Livingston 1-1 Hibernian FC
+Row 1407: Jack Grimmer - Wycombe Wanderers 3-2 Watford
+Row 1408: Harry Williams - Milton Keynes Dons 1-0 Walsall
+Row 1409: Ethan Hamilton - Crawley Town v Lincoln City
+Row 1410: Callum Wright - Sunderland 2-2 Plymouth Argyle
+Row 1411: Herman Magnusson - IFK Norrkoping 2:1 Vasteras
+Row 1412: Edo Kayembe - Wycombe Wanderers 3-2 Watford
+Row 1413: Jake Beesley - Carlise United 0-1 Blackpool
+Row 1414: Zachary Obiero - Leyton Orient vs Newport County
+Row 1415: Charlie Savage - Colchester 2-2 Reading
+Row 1416: Adama Sidibeh - Kilmarnock 0-3 St Johnstone
+Row 1417: Patryk Klimala - Gornik Zabrze 2:0 Slask Wroclaw
+Row 1418: Noel Törnqvist - AIK Solna vs Mjällby AIF
+Row 1419: Jayden Clarke - Gillingham 1-2 Peterborough
+Row 1420: Kaelan Casey - West Ham United U21 5-1 Southampton U21
+Row 1421: Noel Törnqvist - IFK Göteborg 1:0 Mjällby
+Row 1422: Michael Craig - Leyton Orient 2-0 Reading
+Row 1423: Eduino Vaz - Eastleigh 1-1 Sutton United
+Row 1424: Calvin Brackelmann - Paderborn 2-1 Hannover 96
+Row 1425: Marko Soldo - Osijek 1:2 Sibenik
+Row 1426: Sam Sherring - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1427: Daisuke Yokota - Anderlecht 1:0 Gent
+Row 1428: William Fish - Hibernian FC 2 - 1 Dundee FC
+Row 1429: Corey O'Keefe - Crawley Town 0-3 Barnsley
+Row 1430: Nicholas Mickelson - Odense Boldklub vs Esbjerg fB
+Row 1431: Levente Katona - Kecskeméti TE 2-1 ETO FC Györi
+Row 1432: Tawanda Chirewa - Crystal Palace U21 0-1 Wolverhampton Wanderers U21
+Row 1433: Korey Smith - Wycombe Wanderers 2-1 Cambridge United
+Row 1434: Adrian Akande - Colchester 2-2 Reading
+Row 1435: Jake Hollman - Macarthur 1-0 Melbourne City
+Row 1436: Zan Medved - Fc Kosice 1-2 Zilina
+Row 1437: Etienne Amenyido - Fortuna Dusseldorf 1-0 St Pauli
+Row 1438: Joseph Hungbo - Rotherham United 3:1 Newcastle United U21
+Row 1439: Lorenzo Maasland - FC Volendam 1-2 ADO Den Haag
+Row 1440: Will Alves - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 1441: Aaron Donnelly - Colchester United vs Gillingham
+Row 1442: Matt Ingram - Hull City vs AFC Sunderland
+Row 1443: Malachi Boateng - Heart of Midlothian FC 1 - 2 Kilmarnock
+Row 1444: Harvey White - Leyton Orient 0-1 Stevenage
+Row 1445: Nicolas Madsen - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1446: Jan Knapik - FK Teplice 0-1 Hradec Kralove
+Row 1447: Sam Silvera - Rotherham United 1-0 Middlesbrough
+Row 1448: Jamie Donley - Leyton Orient v Burton Albion
+Row 1449: Zan Celar - Queens Park Rangers 1-3 West Bromwich Albion
+Row 1450: George Byers - Reading 3-2 Blackpool
+Row 1451: Denis Kolinger - Brondby IF 1-1 Vejle Boldklub
+Row 1452: Daniel Phillips - Stevenage 0-1 Lincoln City
+Row 1453: Habeeb Ogunneye - Manchester United U21 1-3 FC Nordsjaelland U21
+Row 1454: Connor Barrett - AFC Wimbledon 0:1 Walsall
+Row 1455: Alpha Sissoko - Guingamp 0-1 Pau
+Row 1456: Jamie Jellis - AFC Wimbledon 0:1 Walsall
+Row 1457: Kristian Pedersen - Swansea City 3-0 Sheffield Wednesday
+Row 1458: Svetoslav Vutsov - Slavia Sofia 2-1 Lokomotiv Plovdiv
+Row 1459: Owen Dale - Oxford United 1-2 Swansea City
+Row 1460: Charles Herrmann - Blackburn Rovers U21 3-1 Borussia Mönchengladbach U21
+Row 1461: Zac Williams - Milton Keynes Dons vs Crewe
+Row 1462: Will Ferry - Kilmarnock 1:0 Dundee United
+Row 1463: Sam Long - Charlton Athletic vs Bromley
+Row 1464: John Patrick Finn - Getafe B 2:0 Tenerife B
+Row 1465: Kilian Nikiema - ADO Den Haag - TOP Oss
+Row 1466: Emmanuel Longelo - Wycombe Wanderers 2-1 Cambridge United
+Row 1467: John Patrick Finn - Getafe B 1:0 CD Coria
+Row 1468: Jonathan Lewis - Colorado Rapids 2-1 Portland Timbers
+Row 1469: Patryk Klimala - Slask Wroclaw 0-0 Puszcza Niepolomice
+Row 1470: Connor O'Brien - Accrington Stanley 1-0 AFC Barrow
+Row 1471: Mateusz Zyro - Widzew Lodz 1:0 Piast Gliwice
+Row 1472: Hayden Coulson - Blackpool 3-2 Barnsley
+Row 1473: Fin Stevens - Carlisle United 1-3 Oxford United
+Row 1474: Lucas Herrington - Brisbane Roar 0-1 Perth Glory
+Row 1475: Elkan Baggott - Cheltenham Town 1-3 Bristol Rovers
+Row 1476: Dan Agyei - Leyton Orient v Burton Albion
+Row 1477: Ibrahim Cissoko - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1478: Luka Lynch - Blackpool 1-1 Aston Villa U21
+Row 1479: Zach Hemming - Leyton Orient 1-2 Bolton
+Row 1480: Tony Yogane - Brentford FC U23 vs AIK Solna
+Row 1481: Lino Sousa - Wycombe Wanderers vs Bristol Rovers
+Row 1482: Patryk Dziczek - Piast Gliwice 1-0 Zaglebie Lubin
+Row 1483: Kamarai Simon-Swyer - Cheltenham Town 3:1 West Ham United U21
+Row 1484: Baptiste Roux - Guingamp 2-2 Saint-Etienne
+Row 1485: Connor O'Riordan - Cambridge United 0-1 Crawley Town
+Row 1486: Bobby Thomas - Stevenage 1-3 Coventry
+Row 1487: Taylor Moore - Bristol Rovers 1-0 Northampton Town
+Row 1488: Lewis Miller - Hibernian FC 1-2 Motherwell
+Row 1489: Nemanja Micevic - FK Teplice 1:0 Sigma Olomouc
+Row 1490: Cameron Humphreys - Wycombe Wanderers v Huddersfield Town
+Row 1491: Ciaran Gilligan - Burton Albion Vs Stevenage
+Row 1492: Tom James - Leyton Orient 1-2 Bolton
+Row 1493: Joseph Hungbo - Exeter City 1:0 Rotherham United
+Row 1494: Samy Chouchane - Northampton Town 0:0 Burton Albion
+Row 1495: Joe O'Brien Whitmarsh - Southampton U21 5-0 Fulham U21
+Row 1496: Sam Tickle - Charlton Athletic v Wigan Athletic
+Row 1497: Hidde Ter Avest - Utrecht 1-0 Vitesse Arnheim
+Row 1498: Tudor Mendel-Idowu - Cardiff City U21 2-2 Ipswich Town U21
+Row 1499: Finlay Herrick - West Ham United U21 5-1 Southampton U21
+Row 1500: Dan Happe - Leyton Orient 1-2 Birmingham City
+Row 1501: Nathaniel Ogbeta - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1502: Johnson Osong - Chelsea U21 2-1 Derby County U21
+Row 1503: Nicholas Bilokapic - Gillingham 1-2 Peterborough
+Row 1504: Andrei Florea - Germany U19 2-3 Romania U19
+Row 1505: Jayden Sweeney - Leyton Orient 1-2 Birmingham City
+Row 1506: Ishe Samuels-Smith - Chelsea U21 vs Arsenal U21
+Row 1507: Abdoullah Ba - Southampton 4-2 Sunderland
+Row 1508: Dan Happe - Leyton Orient vs Arsenal U21
+Row 1509: Kristian Sekularac - Shrewsbury Town 1:2 Fulham U21
+Row 1510: Alassana Jatta - Salford City vs Notts County
+Row 1511: Joe Whitworth - Huddersfield Town vs Exeter City
+Row 1512: Luizao - West Ham United U21 vs Benfica Lissabon U21
+Row 1513: Preston Fearon - West Ham United U21 vs Benfica Lissabon U21
+Row 1514: Moutaz Neffati - IFK Norrkoping 2:1 Vasteras
+Row 1515: Kaheim Dixon - Waterhouse 1-5 Arnett Gardens
+Row 1516: Noel Törnqvist - IK Sirius 1:1 Mjallby
+Row 1517: Amin Nabizada - Wycombe Wanderers 3-2 Watford
+Row 1518: Connor Randall - Ross County 2-0 Dundee
+Row 1519: Christián Bačinský - FK Dukla Prague 1-1 AC Sparta Prag
+Row 1520: Oscar Thorn - Colchester v Accrington
+Row 1521: George Earthy - Bristol City 1-2 Sheffield United
+Row 1522: Alex Bannon - Reading 3:1 Burton Albion
+Row 1523: Cameron Humphreys - Wycombe Wanderers vs Bristol Rovers
+Row 1524: Márk Kosznovszky - MTK Budapest 1:3 Ferencvaros
+Row 1525: Bobby Wales - Kilmarnock 1:0 Dundee United
+Row 1526: Liam Bossin - KV Oostende 1-2 Beerschot V.A.
+Row 1527: Alex Hartridge - Wycombe Wanderers 3-2 Watford
+Row 1528: Mason Terry - West Ham United U21 vs Benfica Lissabon U21
+Row 1530: Micheal Ameyaw - Piast Gliwice 1-0 Zaglebie Lubin
+Row 1531: Joe Gauci - Australia 1-2 Ecuador
+Row 1532: Kaili Shimbo (Renofa Yamaguchi) - Renofa Yamaguchi 0-0 Yokohama FC
+Row 1533: Noel Törnqvist - Mjällby 2-1 Malmö FF
+Row 1534: Mihály Kata - MTK Budapest 0:2 Fehérvár FC
+Row 1535: Dan Agyei - Leyton Orient 1-2 Birmingham City
+Row 1536: Eli King - Burton Albion Vs Stevenage
+Row 1537: Mario Cuic - Slaven 0-1 NK Istra
+Row 1538: Ethon Archer - Cheltenham Town 2-1 Salford City
+Row 1539: Luke Harris - Wigan Athletic 0-3 Birmingham City
+Row 1540: Dennis Adeniran - Aberdeen FC 3:1 St. Mirren FC
+Row 1541: Calum Kavanagh - Aston Villa U21 vs Bradford City
+Row 1542: John Patrick Finn - Gimnastica 1-1 Getafe B
+Row 1543: Andreas Bruus - Troyes 3-1 Ajaccio
+Row 1544: Alex Gilbert - Middlesbrough 3-1 Watford
+Row 1545: Nathan Lowe - Walsall 3-2 Huddersfield Town
+Row 1546: Dylan Peraic-Cullen - Macarthur FC 1-1 Central Coast Mariners
+Row 1547: Joe Low - Wycombe Wanderers 2-1 Cambridge United
+Row 1548: Karl Hein - Estland vs Aserbaidschan
+Row 1549: Alby Kelly-Heald - Macarthur 1-2 Wellington Phoenix
+Row 1550: Dilan Markanday - Chesterfield vs Tranmere Rovers
+Row 1551: Sam Amo-Ameyaw - Southampton U21 0 - 2 Crystal Palace U21
+Row 1552: Ahmed Diomande (Ittifaq Marrakech) - Paraguay Olynpia 1-0 Mali Olympia
+Row 1553: Owura Edwards - Colchester 2-2 Reading
+Row 1554: Tom Glover - Portsmouth v Middlesbrough
+Row 1555: Joe Ward - Portsmouth 2-2 Derby County
+Row 1556: Charlie Patino - Blackpool 4-2 Preston North End
+Row 1557: Fred Onyedinma - Rotherham United 1-1 Leeds United
+Row 1558: Dom Quina - Portimonense 0-0 Vizela
+Row 1559: Connor Barrett - Milton Keynes Dons 1-0 Walsall
+Row 1560: Ryan Trevitt - Brentford FC U23 vs AIK Solna
+Row 1561: Danny Armstrong - Heart of Midlothian FC 1-2 Kilmarnock
+Row 1562: Viv Solomon-Otabor - Zhejiang FC 2-2 Cangzhou Mighty Lions
+Row 1563: Ilay Feingold - Israel Olympia vs Japan Olympia
+Row 1564: Leo Ramirez-Espain - Wycombe Wanderers 3-2 Watford
+Row 1565: Conor Hazard - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1566: Gaoussou Diakité - Amstetten 1-1 Liefering
+Row 1567: Noel Törnqvist - Mjällby AIF vs BK Häcken
+Row 1568: Simion Michez - Beerschot V.A. 0-0 Oud-Heverlee Leuven
+Row 1569: Tom Ince - Wycombe Wanderers 3-2 Watford
+Row 1570: Collin Andeng Ndi - Southend United 1-1 York City
+Row 1571: Brook Myers - West Ham United U21 5-1 Southampton U21
+Row 1572: Tommy Simkin - Colchester vs Walsall
+Row 1573: Luis Brown - West Ham United U21 vs Benfica Lissabon U21
+Row 1574: Maksym Khlan - Lechia Gdańsk 1-0 Slask Wroclaw
+Row 1575: Ryan Trevitt - Derby County 2-0 Exeter City
+Row 1576: Harvey Vale - Chelsea U21 vs Arsenal U21
+Row 1577: Lucas Herrington - Melbourne City FC 1-0 Brisbane Roar
+Row 1578: Yacine Bourhane - Esbjerg 3-2 Hobro
+Row 1579: Phoenix Patterson - Fleetwood Town 1-1 Accrington Stanley
+Row 1580: Ivan Smolcic - Istra 1961 0-1 Rijeka
+Row 1581: Josh Mulligan - Ross County 3-1 Dundee
+Row 1582: Owen Dale - Leeds United 4-0 Oxford United
+Row 1583: Svetoslav Vutsov - Slavia Sofia 0:1 Levski Sofia
+Row 1584: Brandon Cover - Bromley 0-0 Port Vale
+Row 1585: Owen Dale - Shrewsbury Town 1-1 Oxford United
+Row 1586: Charlie Savage - Leyton Orient 2-0 Reading
+Row 1587: Amine El Ouazzani - Guingamp 2-2 Saint-Etienne
+Row 1588: Julio Pleguezuelo - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1589: Aaron Loupolo-Bi - Aldershot 2:1 Fulham U21
+Row 1590: Habeeb Ogunneye - Rosenborg 1-0 Manchester United
+Row 1591: Mihály Kata - MTK Budapest 3-0 Nyiregyhaza Spartacus
+Row 1592: Nardin Mulahusejnovic - NK Bravo vs HSK Zrinjski Mostar
+Row 1593: Jonny Stuttle - Aldershot 8-0 Chertsey Town
+Row 1594: Will Norris - Wycombe Wanderers v Charlton Athletic
+Row 1595: Abdoulie Manneh - IK Sirius 1:1 Mjallby
+Row 1596: Eli King - Stevenage 0-1 Lincoln City
+Row 1597: Tom Dele-Bashiru - Wycombe Wanderers 3-2 Watford
+Row 1598: Joseph Hungbo - Rotherham 1-3 Cheltenham
+Row 1599: Jay McGrath - Doncaster Rovers 2:2 Cheltenham Town
+Row 1600: Victor Palsson - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1601: Alby Kelly-Heald - Wellington Phoenix 0:0 Central Coast Mariners
+Row 1602: Charlie Patino - Swansea 1-1 Coventry
+Row 1603: Mikkel Rakneberg - Odds 1:1 Kristiansund
+Row 1604: Calvin Ramsay - Wigan Athletic (P) 0:0 Nottingham Forest U21
+Row 1605: Lawrence Vigouroux - Oxford United 1-2 Swansea City
+Row 1606: Ronan Darcy - Cambridge United 0-1 Crawley Town
+Row 1607: Devan Tanton - Doncaster Rovers 0:3 Chesterfield
+Row 1608: Nelson Khumbeni - Colchester v Accrington
+Row 1609: James Gibbons - Cambridge United 0-1 Crawley Town
+Row 1610: Bali Mumba - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1611: Donnell McNeilly - West Ham United U21 3-2 Chelsea U21
+Row 1612: Zak Bradshaw - Chesterfield vs Tranmere Rovers
+Row 1613: Mason Terry - Enfield Town v Hornchurch
+Row 1614: Derensili Sanches Fernandes - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 1615: Jamie Lawrence - SK Sturm Graz 4-2 WSG Tirol
+Row 1616: Nectarios Triantis - Hibernian FC 1-2 Celtic
+Row 1617: Moussa Sissoko - Wycombe Wanderers 3-2 Watford
+Row 1618: Kieran Sadlier - Wycombe Wanderers 3-2 Watford
+Row 1619: Thomas Waddingham - Western Sydney Wanderers 2-2 Brisbane Roar
+Row 1620: Max Thompson - Bradford v Chesterfield
+Row 1621: Ethan Laird - Leyton Orient 1-2 Birmingham City
+Row 1622: Kealey Adamson - Macarthur FC 2-0 Melbourne City FC
+Row 1623: Tom McIntyre - Queens Park Rangers 1-2 Portsmouth
+Row 1624: Alby Kelly-Heald - Wellington v Sydney
+Row 1625: Raimonds Krollis - Lettland vs Litauen
+Row 1626: Luizao - West Ham United U21 5-1 Southampton U21
+Row 1627: Albert Labik - FK Teplice 2-1 Zlin
+Row 1628: Jed Steer - Charlton Athletic v Peterborough
+Row 1629: Josh Sheehan - Leyton Orient 1-2 Bolton
+Row 1630: Alex Palmer - Queens Park Rangers 1-3 West Bromwich Albion
+Row 1632: Viktor Andersson - Varnamo 1:2 IFK Norrkoping
+Row 1633: Yahya Kalley - Varnamo 1:2 IFK Norrkoping
+Row 1634: Lucas Andersen - Queens Park Rangers 1-1 Millwall
+Row 1635: Divin Mubama - Backa Topola 0-1 West Ham United
+Row 1636: Yoann Barbet - FC Girondins Bordeaux vs AS Saint-Etienne
+Row 1637: Lee Ho-Jae - Daegu 3-3 Pohang Steelers
+Row 1638: Joe Low - Wycombe Wanderers 3-2 Watford
+Row 1639: Wesley Hoedt - Wycombe Wanderers 3-2 Watford
+Row 1640: Krisztofer Horvath - Újpest FC vs Diósgyőri VTK
+Row 1641: Mathias Tonnessen - Sarpsborg 08 0:2 KFUM
+Row 1642: Abel Walatee - Sydney 3-4 Western United
+Row 1643: Junior Olaitan - Senegal 1-0 Benin
+Row 1644: Jayden Wareham - Colchester 2-2 Reading
+Row 1645: Kelvin Ehibhatiomhan - Reading 2:0 Wrexham
+Row 1646: Charlie Goode - Stevenage 3-0 Barnsley
+Row 1647: Jimmy Dunne - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1648: Iyad Mohamed - Grenoble 1-1 Pau
+Row 1650: Daisuke Yokota - Charleroi 1-0 Gent
+Row 1651: Lucas Bergström - Montenegro U21 1:2 Finnland U21
+Row 1652: Harvey Knibbs - Reading 3:1 Burton Albion
+Row 1653: Jake Young - Stevenage 3-0 Barnsley
+Row 1654: Paudie O'Connor - Bolton 3-0 Lincoln City
+Row 1655: Owen Dale - Oxford United 2-1 Cheltenham Town
+Row 1656: Nemanja Micevic - FK Teplice 2-0 Slovan Liberec
+Row 1657: Samson Tovide - Colchester 2-2 Reading
+Row 1658: Max Brandt - 1. FC Nürnberg 2-0 SSV Ulm 1846
+Row 1659: Ahmetcan Kaplan - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 1660: Dom Quina - SC Braga vs FC Vizela
+Row 1661: Harry Tyrer - Blackpool v Charlton Athletic
+Row 1662: Eric Kitolano - Lillestrøm 0-1 Haugesund
+Row 1663: Kaide Gordon - Liverpool U21 2-0 Manchester City U21
+Row 1664: Harvey Araujo - Milton Keynes Dons v Chesterfield
+Row 1665: Rajmund Tóth - Hungary U20 2-0 Iceland U20
+Row 1666: Will Ferry - Heart of Midlothian FC 0:1 Dundee United
+Row 1667: Ari Sigurpalsson - Vikingur Reykjavik 3-1 Cercle Brugge
+Row 1668: Jonathan Lewis - Dallas 2-3 Colorado Rapids
+Row 1669: Phoenix Patterson - Bromley 1-0 Fleetwood Town
+Row 1670: Bailey Peacock-Farrell - Leyton Orient 1-2 Birmingham City
+Row 1671: Max Anderson - Cambridge United 0-1 Crawley Town
+Row 1672: Killian Phillips - St. Mirren FC vs Aberdeen FC
+Row 1673: Luis Vega - Marathón 1-1 CD Motagua Tegucigalpa
+Row 1674: Kion Etete - Cardiff 2-0 Rotherham
+Row 1675: Shayne Lavery - Cambridge United 0-1 Crawley Town
+Row 1676: Nemanja Micevic - FK Teplice 1-2 Bohemians 1905
+Row 1677: Joel Colwill - Rotherham 1-3 Cheltenham
+Row 1678: Elliot Watt - Northampton Town 0:0 Burton Albion
+Row 1679: Jean Ruiz - Grenoble 1-1 Pau
+Row 1680: Denzel Hall - Heerenveen 1-0 PSV
+Row 1681: Kaleel Green - Colchester United U21 2-3 Sheffield United U21
+Row 1682: Emil Hansson - Leyton Orient 1-2 Birmingham City
+Row 1683: Tom McIntyre - Hull City vs Portsmouth 1-1
+Row 1684: Asbjorn Bondergaard - Roskilde 0:2 Fredericia
+Row 1685: George Abbott - Salford City vs Notts County
+Row 1686: Jakub Lapes - Slovacko 2-1 Karvina
+Row 1687: Jamie McDonnell - Colchester vs Walsall
+Row 1688: Rob Apter - Northampton Town 0-2 Blackpool
+Row 1689: Emil Odegaard - Brann 2-0 KFUM
+Row 1690: Joel McGregor - Swindon Town 3:1 Fleetwood Town
+Row 1691: Slobodan Rubezic - Aberdeen 3:1 St. Mirren FC
+Row 1692: Tom Hopper - Colchester 2-2 Reading
+Row 1693: Naeem Mohammed - IFK Varnamo 1-3 Halmstads BK
+Row 1694: Kamil Conteh - Bristol Rovers 1-0 Northampton Town
+Row 1696: Riley Moloney - Chelsea U21 2-1 Derby County U21
+Row 1697: Joe Hugill - Reading 2:0 Wigan Athletic
+Row 1698: Malik Mothersille - Gillingham 1-2 Peterborough
+Row 1699: Robert Frosti Thorkelsson - KA Akureyri 1-1 Stjarnan
+Row 1700: John Buckley - Blackburn Rovers 3-0 Portsmouth
+Row 1701: Noah Botic - Auckland FC 0-4 Western United
+Row 1702: Jamie Allen - Stevenage 1-3 Coventry
+Row 1703: Apostolos Stamatelopoulos - Brisbane Roar 0:2 Newcastle Jets
+Row 1704: Vinícius Nogueira - IFK Varnamo 1-3 Halmstads BK
+Row 1705: Mihály Kata - MTK Budapest 1:3 Ferencvaros
+Row 1706: Ben Sheaf - Stevenage 1-3 Coventry
+Row 1707: Airidas Golambeckis - West Ham United U21 vs Benfica Lissabon U21
+Row 1708: Tristan Crama - Wigan Athletic 0-0 Exeter City
+Row 1709: Nando Pijnaker - Wellington Phoenix 0:2 Auckland FC
+Row 1710: Ted Collins - Colchester United U21 2-3 Sheffield United U21
+Row 1711: Ian Poveda - Sheffield Wednesday 1-0 Plymouth Argyle
+Row 1712: Sam Silvera - Bahrain 0-2 Australia
+Row 1713: Aleksandre Kalandadze - Torpedo 2:0 Dinamo Tbilisi
+Row 1714: Kelvin Ehibhatiomhan - Colchester 2-2 Reading
+Row 1715: Oliver Kamdem - Slavia Sofia 2-1 Lokomotiv Plovdiv
+Row 1716: Matt Ingram - Sheffield Wednesday 3-1 Hull City
+Row 1717: James Gibbons - Wycombe Wanderers 2-1 Cambridge United
+Row 1718: Zachary Obiero - Leyton Orient 1-2 Bolton
+Row 1719: Tyrese Fornah - Salford City vs Notts County
+Row 1720: Andre Vidigal - Swansea City 3-0 Stoke City
+Row 1721: Liam Kelly - Milton Keynes Dons 1-0 Walsall
+Row 1722: Liam Donnelly - Hibernian FC 1-0 Kilmarnock
+Row 1723: Damola Ajayi - FC Arsenal U21 vs Tottenham Hotspur U21
+Row 1724: Simeon Petrov - Gornik Zabrze 2:0 Slask Wroclaw
+Row 1725: Callum Hendry - Milton Keynes Dons 1-0 Walsall
+Row 1726: Luis Vega - Vida 1-2 Motagua
+Row 1727: Luis Vega - Olimpia 3-3 Motagua
+Row 1728: Sean Moore - West Ham United U21 5-1 Southampton U21
+Row 1729: Kaide Gordon - England U20 4:0 Germany U20
+Row 1730: Josh Cogley - Leyton Orient 1-2 Bolton
+Row 1731: Abel Walatee - Western United 3-0 Adelaide United
+Row 1732: Luther Wildin - Stevenage 1-3 Coventry
+Row 1733: Ricardo Santos - Leyton Orient 1-2 Bolton
+Row 1734: Hristo Ivanov - Lokomotiv Plovdiv 1-0 CSKA Sofia
+Row 1735: Teddy Sharman-Lowe - Doncaster 1-2 Grimsby
+Row 1736: Svetoslav Vutsov - Spartak Varna v Slavia Sofia
+Row 1737: William Fish - St. Mirren FC 2-2 Hibernian FC
+Row 1738: Nemanja Micevic - Sparta Praha 1:1 FK Teplice
+Row 1739: Travis Patterson - Blackpool 1-1 Aston Villa U21
+Row 1741: Sam Field - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1742: Samson Tovide - Grimsby Town 0:1 Colchester United
+Row 1743: Noah Ganaus - Wehen Wiesbaden 1-2 Jahn Regensburg
+Row 1744: Leo Borges - Pogon Szczecin 1-0 Stal Mielec
+Row 1745: Sory Diarra - Lillestrøm 0-1 Haugesund
+Row 1746: Luke Faxon - Colchester United U21 2-3 Sheffield United U21
+Row 1747: Fred Onyedinma - Luton Town 1:5 Brentford
+Row 1748: Adam Zadrazil - FC Banik Ostrau 1-0 FC Hradec Kralove
+Row 1749: Asmir Begovic - Plymouth Argyle 1-1 Queens Park Rangers
+Row 1750: Alassana Jatta - AFC Wimbledon 2:0 Notts County
+Row 1751: Habeeb Ogunneye - Barnsley 2-3 Manchester United U21
+Row 1752: Oliver Kamdem - Lokomotiv Plovdiv 1-0 CSKA Sofia
+Row 1753: Chris Donnell - Southampton U21 5-0 Fulham U21
+Row 1755: Joe O'Brien Whitmarsh - Southampton U21 2-1 Tottenham Hotspur U21
+Row 1756: James Brophy - Wycombe Wanderers 2-1 Cambridge United
+Row 1757: Edgardo Farina - Uruguay vs Panama
+Row 1758: Liam Kelly - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1759: Adam Forshaw - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1760: Luca Connell - Crawley Town 0-3 Barnsley
+Row 1761: Sonny Carey - Carlisle United 0-1 Blackpool
+Row 1763: Noah Botic - Perth Glory 1-3 Western United
+Row 1764: Luke Southwood - Bolton v Charlton Athletic
+Row 1765: Kaide Gordon - Blackburn Rovers U21 1-0 Liverpool U21
+Row 1766: Jaden Slory - Dordrecht 4-0 VVV-Venlo
+Row 1767: Rushian Hepburn-Murphy - Crawley Town vs Huddersfield Town
+Row 1768: James Berry - Chesterfield 1-0 AFC Barrow
+Row 1770: Jonny Stuttle - Aldershot 2:1 Fulham U21
+Row 1771: Jack Iredale - Leyton Orient 1-2 Bolton
+Row 1772: Ryan Leonard - Queens Park Rangers 1-1 Millwall
+Row 1773: Mihály Kata - MTK Budapest 1:2 Ferencvaros
+Row 1774: Charlie Patino - Swansea 3-0 Sheffield Wednesday
+Row 1775: Eoin Toal - Leyton Orient 1-2 Bolton
+Row 1776: Murphy Mahoney - Stevenage 0-1 Lincoln City
+Row 1777: Ben Old - Adelaide United 2-2 Wellington Phoenix
+Row 1778: Donay O'Brien-Brady - Peterborough vs Crystal Palace U21’s
+Row 1779: Favour Fawunmi - West Ham United U21 vs Benfica Lissabon U21
+Row 1780: Shurandy Sambo - Wolverhampton Wanderers 2-0 Burnley
+Row 1781: Artúr Horváth - MTK Budapest 1:3 Ferencvaros
+Row 1782: Tristan Crama - Shrewsbury Town 0:2 Exeter City
+Row 1783: Besard Sabovic - Djurgården IF vs NK Maribor
+Row 1784: Lamine Diaby-Fadiga - Radomiak Radom 2:3 Jagiellonia Bialystok
+Row 1785: Johannes Nunez - KFUM 0-1 Tromsø
+Row 1786: Jamie Jellis - Milton Keynes Dons 1-0 Walsall
+Row 1787: Áron Csongvai - Omonia Nicosia 1-0 Fehervar FC
+Row 1788: Junior Olaitan - Grenoble 0-1 Dunkerque
+Row 1789: Nick Freeman - Stevenage 3-0 Barnsley
+Row 1790: Matt Young - Salford 3-0 AFC Barrow
+Row 1791: Alex Woodyard - Colchester 2-2 Reading
+Row 1792: Cameron Bragg - Chelsea U21 0:2 Southampton U21
+Row 1793: Alex Gilbert - Leeds United 3-0 Middlesbrough
+Row 1794: Noah Botic - Western United 1-0 Brisbane Roar
+Row 1795: Ephron Mason-Clarke - Stevenage 1-3 Coventry
+Row 1796: Amadou Salif Mbengue - Colchester 2-2 Reading
+Row 1797: Harvey White - Burton Albion Vs Stevenage
+Row 1798: Noel Törnqvist - Mjallby AIF vs IFK Varnamo
+Row 1799: Josh Scowen - Wycombe Wanderers 3-2 Watford
+Row 1800: Sadik Fofana - SCR Altach 1-2 Grazer AK 1902
+Row 1801: Paxten Aaronson - Utrecht 1-0 Vitesse Arnheim
+Row 1802: Ed Turns - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 1803: Vukasin Krstic - Backa Topola 1:3 Vojvodina
+Row 1804: Kelly N'Mai - Salford City vs Cheltenham Town (FA Cup)
+Row 1805: Sam Curtis - Peterborough United 5-1 Blackpool
+Row 1806: Jonathan Afolabi - Kortrijk 3-2 RWD Molenbeek
+Row 1807: Jacob Karlstrom - IFK Göteborg 1-1 Kalmar FF
+Row 1808: Cameron Bragg - Crawley Town 0-3 Barnsley
+Row 1809: Jae Won Hwang - Pohang Steelers 0-0 Daegu Fc
+Row 1810: Jamal Blackman - Charlton Athletic v Shrewsbury
+Row 1811: Sam Chambers - Fulham U21 2-1 Leeds United U21
+Row 1812: Stephen Wearne - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1813: Jake Clarke-Salter - Queens Park Rangers 1-3 West Bromwich Albion
+Row 1814: Ryan Doherty - Stevenage 1-3 Coventry
+Row 1815: Steve Cook - Queens Park Rangers 1-1 Millwall
+Row 1816: Brendan Galloway - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1817: Greg Leigh - Millwall v Oxford
+Row 1818: Devan Tanton - Chesterfield 1-0 AFC Barrow
+Row 1819: Ciaron Brown - Oxford United vs Blackburn Rovers
+Row 1820: Mihajlo Petkovic - Vojvodina 1-2 Napredak Krusevac
+Row 1821: Hakeem Sandah - Colchester United U21 2-3 Sheffield United U21
+Row 1822: Jonathan Afolabi - Anderlecht 0:1 Kortrijk
+Row 1823: Odeluga Offiah - Bristol Rovers 0-2 Blackpool
+Row 1824: Armando Dobra - Chesterfield Vs Tranmere Rovers
+Row 1825: Rares Ilie - Romania U21 3-1 Switzerland U21
+Row 1826: Lewis Neilson - St Johnstone 1:2 Motherwell
+Row 1827: Nathan Trott - Vejle Boldklub 0-0 Aarhus GF
+Row 1828: Ethan Galbraith - Leyton Orient 1:1 Derby County
+Row 1829: Brad Hills - Stockport County 2-0 Cambridge United
+Row 1830: Michael Stickland - Reading 2:0 Wrexham
+Row 1831: Leo Duru - Fulham U21 1-2 Blackburn Rovers U21
+Row 1832: Dominik Csontos - Kecskeméti TE 2-1 ETO FC Györi
+Row 1833: Will Alves - Notts County 1-0 Leicester City U21
+Row 1834: Toby Mullarkey - Crawley Town 0-3 Barnsley
+Row 1835: Aaron Morley - Wycombe Wanderers 2-1 Cambridge United
+Row 1836: Nassef Chourak - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 1837: Jake Richards - Exeter City 1-2 Birmingham City
+Row 1838: Zach Hemming - St. Mirren FC 2-2 Hibernian FC
+Row 1839: Daniel Fila - FK Teplice 2-1 Zlin
+Row 1840: Francisco Domingues - West Ham United U21 vs Benfica Lissabon U21
+Row 1841: Malcolm Ebiowei - Coventry 1-0 Oxford
+Row 1842: Emilio Lawrence - Lincoln City 5-0 Manchester City U21
+Row 1843: Sil Swinkels - Aston Villa U21 vs Bradford City
+Row 1844: Danny Imray - Walsall v Bromley
+Row 1845: Tyrique George - Chelsea U21 vs Arsenal U21
+Row 1846: Saxon Earley - Plymouth Argyle 2:0 Leyton Orient
+Row 1847: Femi Seriki - Gillingham 0-4 Sheffield United
+Row 1848: Noah Botic - Western United 3-0 Adelaide United
+Row 1849: Lorent Tolaj - Chesterfield vs Port Vale
+Row 1850: Ilyas Ansah - Paderborn 2-1 Hannover 96
+Row 1851: Louis Thompson - Stevenage 3-0 Barnsley
+Row 1852: Malcolm Ebiowei - Stevenage 5-2 Crystal Palace U21
+Row 1853: Tamás Nikitscher - Hungary 0:0 Bosnia-Herzegovina
+Row 1854: Josh Edwards - Ayr United 3-3 Dunfermline Athletic
+Row 1855: Josh Flint - Cambridge United 0-1 Crawley Town
+Row 1856: Finn Surman - Mura 1-2 Rogaska
+Row 1857: George Lapslie - Gillingham 1-2 Peterborough
+Row 1858: Brandon Charles - FC Woking vs FC Southampton U21
+Row 1859: Fred Onyedinma - West Ham United United 3:1 Luton Town
+Row 1860: Callum Osmand - Aldershot 2:1 Fulham U21
+Row 1861: Jordan Brown - Leyton Orient 1-2 Birmingham City
+Row 1862: Garath McCleary - Wycombe Wanderers 2-1 Cambridge United
+Row 1863: Hidde Ter Avest - Millwall v Oxford
+Row 1864: Jacob Lungi Sörensen - Watford 0-1 Norwich City
+Row 1865: Stephen Humphrys - Stevenage 3-0 Barnsley
+Row 1866: Stepan Sebrle - FK Dukla Prague 1-1 AC Sparta Prag
+Row 1867: Josh Mulligan - Dundee v Rangers
+Row 1868: George Wickens - Stevenage 0-1 Lincoln City
+Row 1869: Terence Kongolo - Sturm Graz 1:1 Rapid Wien
+Row 1870: Kiano Dyer - Brentford FC U23 v FC Chelsea U21
+Row 1871: Hristo Ivanov - Beroe 0-2 Lokomotiv Plovdiv
+Row 1872: Bradley Ihionvien - Gillingham 1-2 Peterborough
+Row 1873: Jadel Katongo - Northampton Town vs Peterborough
+Row 1874: Kasey Palmer - Stevenage 1-3 Coventry
+Row 1875: Ibane Bowat - Austria Klagenfurt 2:2 Hartberg
+Row 1876: James Berry - Chesterfield 1-1 Cheltenham Town
+Row 1877: Matt Macey - Colchester 2-2 Reading
+Row 1878: Matthew Dennis - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1879: Mark Spanring - NK Bravo vs HSK Zrinjski Mostar
+Row 1880: Jacob Brazete - Melbourne City FC 1-0 Brisbane Roar
+Row 1881: Jack Moylan - Birmingham City vs Lincoln City
+Row 1882: Josh Feeney - Wigan Athletic vs Shrewsbury Town
+Row 1883: Jasper Pattenden - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 1884: Mathis Suray - Heracles 4-2 Go Ahead Eagles
+Row 1885: Jordan Roberts - Stevenage 1-3 Coventry
+Row 1886: Charlie Patino - Swansea City 0-1 Millwall
+Row 1887: Isaak Davies - Kortrijk 4:2 Lommel SK
+Row 1888: Mihály Kata - Fehervar FC 1-0 MTK Budapest
+Row 1889: Fin Back - Wycombe Wanderers vs Bristol Rovers
+Row 1890: Radek Vitek - Accrington Stanley 1-2 Morecambe
+Row 1891: Kealey Adamson - Western United 0-0 Macarthur
+Row 1892: Tom McIntyre - Portsmouth 1-2 Sheffield Wednesday
+Row 1893: Ben Old - Sydney 3-1 Wellington Phoenix
+Row 1894: Yannick Leliendal - Volendam 3-1 MVV
+Row 1895: Cameron Humphreys - Wycombe Wanderers 2-1 Cambridge United
+Row 1896: Joshua Eijgenraam - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 1897: Besfort Zeneli - IF Brommapojkarna 3-3 Elfsborg
+Row 1898: Lewis Freestone - Stevenage 1-3 Coventry
+Row 1899: Malik Mothersille - Peterborough United 1-1 Wycombe Wanderers
+Row 1900: Joel Tabiner - Milton Keynes Dons vs Crewe
+Row 1901: Joy Mukena - Cambridge United 0-1 Crawley Town
+Row 1902: John Buckley - Middlesbrough 0:1 Blackburn Rovers
+Row 1903: Oliver Scarles - West Ham United U21 5-1 Southampton U21
+Row 1904: Adam Mayor - Watford FC U23 1-3 Millwall FC U23
+Row 1905: Luke Harris - Exeter City 1-2 Birmingham City
+Row 1906: Caleb Taylor - Wycombe Wanderers 2-1 Cambridge United
+Row 1907: Matthew Smith - Wigan Athletic vs Shrewsbury Town
+Row 1908: Armandas Kucys - Litauen vs Zypern
+Row 1909: Sam Silvera - Middlesbrough 0:2 Plymouth Argyle
+Row 1910: Espen Garnas - KFUM 2-0 Lillestrøm
+Row 1911: Joe Tomlinson - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1912: Jamille Matt - Milton Keynes Dons 1-0 Walsall
+Row 1913: Miguel Freckleton - Gillingham vs Swindon
+Row 1914: Richard Kone - Wycombe Wanderers 2-1 Cambridge United
+Row 1915: Mark Grosse - SV Stripfing 0-1 SV Ried
+Row 1916: Ahmet Muhamedbegovic - Maribor 1-0 Olimpija
+Row 1917: Raimonds Krollis - Vyskov 2-1 Varnsdorf
+Row 1918: Leo Walta - Sirius 3-1 Kalmar FF
+Row 1919: Cameron Humphreys - Wycombe Wanderers v Barnsley
+Row 1920: Noel Buck - New England Revolution 3-2 Vancouver Whitecaps
+Row 1921: Fin Stevens - Iceland U21 1-2 Wales U21
+Row 1922: Chukwubuikem Ikwuemes - Lazio 4-1 Salernitana
+Row 1923: Fabio Jalo Soares - Stevenage 3-0 Barnsley
+Row 1924: Jackson Smith - Charlton Athletic v Barnsley
+Row 1925: Lewis Miller - Dundee United 3-2 Hibernian FC
+Row 1926: Marcus McGuane - Oxford United 1-1 Reading
+Row 1928: Morgan Whittaker - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1929: Harvey Vale - Fulham U21 0:6 Chelsea U21
+Row 1930: Melker Widell - Aalborg BK 2-1 Silkeborg IF
+Row 1931: Daniel Fila - FK Teplice 2-0 Slovan Liberec
+Row 1932: Tom Glover - Middlesbrough v Cardiff
+Row 1933: Benony Breki Andresson - KA 0:4 KR
+Row 1934: Tom Carroll - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1935: Divin Mubama - Colchester United 0-4 West Ham United U21
+Row 1936: Jimmy Dunne - Queens Park Rangers 1-3 West Bromwich Albion
+Row 1937: Nick Powell - Wrexham 2-1 Stockport County
+Row 1938: Antonio Tikvic - Wycombe Wanderers 3-2 Watford
+Row 1939: Toyosi Olusanya - St Mirren 0-1 Dundee United
+Row 1940: Aune Selland Heggebo - Odds 0-3 Brann
+Row 1941: Ronan Darcy - Crawley Town 0-3 Barnsley
+Row 1942: Kristian Pedersen - Cardiff City 2:0 Swansea City
+Row 1943: Sam Chambers - Leeds United 0-2 Millwal
+Row 1944: Kilian Nikiema - FC Volendam 1-2 ADO Den Haag
+Row 1945: Dominik Oroz - Utrecht 1-0 Vitesse Arnheim
+Row 1946: Dan Kemp - Stevenage 3-0 Barnsley
+Row 1947: David Watson - Kilmarnock 1:0 Dundee United
+Row 1948: Jamie McDonnell - Swindon vs Colchester United
+Row 1949: Radek Vitek - Rosenborg 1-0 Manchester United
+Row 1950: Kasey Palmer - Oxford United 1-0 Hull City
+Row 1951: Ethan Galbraith - Cambridge United vs Leyton Orient
+Row 1952: Jayden Moore - FC Southampton U21 2-1 Wolverhampton Wanderers U21
+Row 1953: Yacine Bourhane - Hillerod Fodbold 1-2 Esbjerg fB
+Row 1954: Lewis Miller - Hibernian FC 2-1 Dundee
+Row 1955: Corey Hollman - Sydney 3-3 Western Sydney
+Row 1956: Shamal George - Livingston 1-1 Hibernian FC
+Row 1957: Viv Solomon-Otabor - Qingdao Hainiu 1-0 Cangzhou Mighty Lions
+Row 1958: Jack Moylan - Crawley Town v Lincoln City
+Row 1959: Tony Yogane - Charlton Athletic U21 1-6 Brentford U21
+Row 1960: Zach Mitchell - Dundee FC 1:1 St. Johnstone FC
+Row 1961: Alex Mowatt - Queens Park Rangers 1-3 West Bromwich Albion
+Row 1962: Joel Colwill - Doncaster Rovers 2:2 Cheltenham Town
+Row 1963: Lawrence Thomas - Western Sydney Wanderers 2-2 Brisbane Roar
+Row 1964: Scott Malone - Cambridge United 0-1 Crawley Town
+Row 1965: Joao Veloso - West Ham United U21 vs Benfica Lissabon U21
+Row 1966: Odeluga Offiah - Blackpool 2:1 Exeter City
+Row 1967: Joseph Hungbo - Barnsley 2:0 Rotherham
+Row 1968: Koki Saito - Queens Park Rangers 1-1 Plymouth Argyle
+Row 1969: Raphael Borges Rodrigues - Adelaide United 2-1 Macaurthur
+Row 1970: Steve Cook - Queens Park Rangers 1-3 West Bromwich Albion
+Row 1972: Christian Saydee - Burnley 2-1 Portsmouth
+Row 1973: Albert Wood - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 1974: Dylan Durivaux - Bastia 1-0 Red Star
+Row 1975: Matt Young - Salford City Vs Notts County
+Row 1976: Kieran Morgan - Queens Park Rangers v Preston
+Row 1977: Matt Godden - Bristol City 1-0 Coventry City
+Row 1978: Imam Jagne - IK Sirius 1:1 Mjallby
+Row 1979: Noah Botic - Perth Glory 1-3 Western United
+Row 1980: Sonny Perkins - Leyton Orient v Burton Albion
+Row 1981: Danny Andrew - Cambridge United 0-1 Crawley Town
+Row 1982: Fred Onyedinma - Arsenal 2-0 Luton Town
+Row 1983: Nuno Felix - West Ham United U21 vs Benfica Lissabon U21
+Row 1984: Alexander Mojzis - Ruzomberok 1:0 Podbrezova
+Row 1985: Asmir Begovic - Queens Park Rangers 2-1 Birmingham City
+Row 1986: Rayane Bounida - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 1987: Emilio Lawrence - Sunderland U21 2-3 Manchester City U21
+Row 1988: Bobby Pointon - Aston Villa U21 vs Bradford City
+Row 1989: Damola Ajayi - Swindon Town 2-1 Tottenham Hotspur U21
+Row 1990: Elliott List - Stevenage 3-0 Barnsley
+Row 1991: Romelle Donovan - Reading 3:1 Burton Albion
+Row 1992: Louie Sibley - Northampton Town 1-0 Derby County
+Row 1993: Ciaron Brown - Oxford United 2-0 Norwich City
+Row 1994: Tyron Akpata - West Ham United U21 vs Benfica Lissabon U21
+Row 1995: Liam Gillion - Wellington Phoenix 0:2 Auckland FC
+Row 1996: Therence Koudou - Annecy 2-0 Pau
+Row 1997: Josh Benson - Stevenage 3-0 Barnsley
+Row 1998: Robbie McCrorie - Hibernian FC 1-3 Rangers
+Row 1999: Kamarai Simon-Swyer - Newcastle U21 0-1 West Ham United U21
+Row 2000: Romeo Akachukwu - Southampton U21 3-1 Anderlecht U21
+Row 2001: Ellis Simms - Stevenage 1-3 Coventry
+Row 2002: Corey Addai - Charlton Athletic v Stockport County
+Row 2003: Torbjorn Heggem - Queens Park Rangers 1-3 Plymouth Argyle
+Row 2004: Cian Ashford - Cardiff City 3:5 Southampton
+Row 2005: Lewis Neilson - Partick Thistle FC vs Inverness Caldeonian Thistle FC
+Row 2006: Benjamin Pauwels - Volendam 4-1 Cambuur
+Row 2007: Matteo Waem - FC Volendam 1-2 ADO Den Haag
+Row 2008: Kaide Gordon - England U20 3:0 Czech Republic
+Row 2009: JJ McKiernan - Bradford City 2-2 Morecambe
+Row 2010: Nemanja Micevic - Jablonec v FK Teplice
+Row 2011: Josh Mulligan - Dundee FC 1:1 St. Johnstone FC
+Row 2012: Josh Mulligan - Dundee 4:1 Motherwell
+Row 2013: Odeluga Offiah - Northampton Town 0-2 Blackpool
+Row 2014: Noel Törnqvist - Kalmar FF 0-3 Mjällby AIF
+Row 2015: Oliver O'Neill - Leyton Orient 1-2 Birmingham City
+Row 2016: Danny Imray - Solihull vs Bromley
+Row 2017: Jonathan Afolabi - Bohemian FC 1-1 Shelbourne
+Row 2018: Owen Dale - Wigan Athletic 2-1 Huddersfield Town
+Row 2019: Zach Awe - Milton Keynes Dons 2-1 Accrington Stanley
+Row 2020: Jacob Karlstrom - Malmo FF vs IFK Goteborg
+Row 2021: Seid Korac - FK Vojvodina Novi Sad vs FK TSC Backa Topola
+Row 2022: Mamadou Doumbia - Watford U21 2-3 Charlton Athletic U21
+Row 2023: Adam Randell - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2024: Abel Walatee - Sydney FC 3-4 Western United
+Row 2025: Antonio Tikvic - Watford U21 2-3 Charlton Athletic U21
+Row 2026: Kota Takai - Japan Olympia vs Mali Olympia
+Row 2027: Dino Salihovic - IFK Norrkoping 1-2 Mjallby
+Row 2028: Owen Goodman - Port Vale v AFC Wimbledon
+Row 2029: Tony Yogane - Bristol City U23 vs Brentford FC U23
+Row 2030: Karamoko Dembélé - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2031: Abdoullah Ba - Preston v Sunderland
+Row 2032: Josh Mulligan - St. Johnstone 1-3 Dundee
+Row 2033: Baptiste Mouazan - Concarneau 2:4 Angers SCO
+Row 2034: Luke Harris - Leyton Orient 1-2 Birmingham City
+Row 2035: Beryly Lubala - Wycombe Wanderers 2-1 Cambridge United
+Row 2036: Laurs Skjellerup - Malmo FF 2:1 IFK Goteborg
+Row 2037: Jay Williams - Sutton United 2:2 Crawley Town
+Row 2038: Alexander Jensen - IF Brommapojkarna 3-3 Elfsborg
+Row 2039: Joe O'Brien Whitmarsh - Accrington 5-0 Newport County
+Row 2040: Tudor Mendel-Idowu - Charlton Athletic U21 2-2 Ipswich Town U21
+Row 2041: Joe Whitworth - Exeter City v Charlton Athletic
+Row 2042: Jamie McDonnell - Colchester v Accrington
+Row 2043: Joshua Thomas - Charlton Athletic vs Bromley
+Row 2044: Waniss Taibi - Rodez 1:1 Amiens
+Row 2045: Jan Knapik - FK Teplice 2-1 Zlin
+Row 2046: Metod Jurhar - Koper 0-0 Mura
+Row 2047: Kornel Szucs - Debreceni VSC 1-0 Kecskemeti TE
+Row 2048: Jay Robinson - FC Woking vs FC Southampton U21
+Row 2049: Valentin Henry - SM Caen 0-1 Troyes
+Row 2050: Paudie O'Connor - Birmingham City vs Lincoln City
+Row 2051: Casper De Norre - Queens Park Rangers 1-1 Millwall
+Row 2052: Anton Matkovic - NK Lokomotiva 0-1 Osijek
+Row 2053: Luka Reischl - Liefering 2:0 Grazer AK
+Row 2054: Lee Nicholls - Charlton Athletic v Huddersfield Town
+Row 2055: Matt Godden - Coventry 3-1 Leicester
+Row 2056: Kofi Balmer - Hibernian FC 1-2 Motherwell
+Row 2057: Alby Kelly-Heald - Wellington Phoenix 0-0 Sydney FC
+Row 2058: Kyle Bartley - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2059: Jakob Kiilerich - IFK Norrkoping 1-2 Mjallby
+Row 2060: Tom McIntyre - Portsmouth 0-0 Sheffield United
+Row 2061: Matyas Kovacs - Fehervar FC 1-0 MTK Budapest
+Row 2062: Bailey Peacock-Farrell - FC Nordsjaelland vs Aarhus GF
+Row 2063: Raul Jimenez - Tottenham Hotspur U21 vs FC Valencia U21
+Row 2064: Tyrique George - West Ham United U21 3-2 Chelsea U21
+Row 2065: Kian Spence - AFC Barrow 1-1 Notts County
+Row 2066: Ishe Samuels-Smith - West Ham United 3-2 Chelsea
+Row 2067: Nick Verschuren - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 2068: Sam Silvera - Middlesbrough 3-4 Leeds United
+Row 2069: Elkan Baggott - Leyton Orient 0-1 Bristol Rovers
+Row 2071: Jensen Weir - Wigan Athletic 0-2 Stockport County
+Row 2072: Daniel Barton - Birmingham City vs Cambridge United
+Row 2073: Andreas Lausen - Esbjerg fB 0-2 Aalborg BK
+Row 2074: Junior Olaitan - ESTAC Troyes vs AS Saint-Etienne
+Row 2075: Karel Pojenzy - SK Slavia Prag vs FC Banik Ostrau
+Row 2076: Daniel van Vianen - Dordrecht 4-0 VVV-Venlo
+Row 2077: Joshua Stokes - Cambridge United 1-1 Wycombe Wanderers
+Row 2078: Marc Roberts - Stevenage 3-0 Barnsley
+Row 2079: Bradley Ibrahim - Crawley Town vs Huddersfield Town
+Row 2080: Noah Botic - Perth Glory 2-3 Western United
+Row 2081: Josh Bowler - Coventry 1-2 Cardiff city
+Row 2082: Lukas Kelly-Heald - Wellington Pheonix 1-1 Brisbane Roar
+Row 2083: Fode Doucoure - Red Star vs Troyes
+Row 2084: Raimonds Krollis - Lettland vs Wales
+Row 2085: Richard Kone - Wycombe Wanderers 2-1 Cambridge United
+Row 2086: Charlie Webster - Wycombe Wanderers vs Burton Albion
+Row 2087: Lewis Freestone - Stevenage 3-0 Barnsley
+Row 2088: Camil Mmaee - Volendam 3-1 MVV
+Row 2089: Nemanja Micevic - FK Teplice 2-1 Slovan Liberec
+Row 2090: Joel Colwill - Salford City vs Cheltenham Town (FA Cup)
+Row 2091: Noah Botic - Sydney FC 3-4 Western United
+Row 2092: Martial Godo - Wigan Athletic 0-0 Port Vale
+Row 2093: Martial Godo - Charlton Athletic 2-2 Wigan Athletic
+Row 2094: Mark Pabai - Olimpija 3-2 Koper
+Row 2095: Zeno Ibsen Rossi - Wycombe Wanderers 2-1 Cambridge United
+Row 2096: Harry Webster - Gillingham 1-2 Peterborough
+Row 2097: Evan Weir - Milton Keynes Dons 1-0 Walsall
+Row 2098: Ethan Erhahon - Crawley Town v Lincoln City
+Row 2099: Evan Khouri - Doncaster 1-2 Grimsby
+Row 2100: Divin Mubama - Manchester City U21 5-0 Chelsea U21
+Row 2101: Sam Silvera - Portsmouth 0-1 Millwall
+Row 2102: Lewis Miller - Ross County 0-0 Hibernian FC
+Row 2103: Ulrik Fredriksen - Brann 1-1 Haugesund
+Row 2104: Dan Sweeney - Stevenage 1-3 Coventry
+Row 2105: Luke McGowan - Dundee FC 2-3 Motherwell
+Row 2106: Thijmen Goppel - Wehen Wiesbaden 1-2 Jahn Regensburg
+Row 2107: Kamarai Simon-Swyer - Newport County 1-0 West Ham United United U21
+Row 2108: Kenneth Paal - Queens Park Rangers 1-1 Millwall
+Row 2109: Aaron Morley - Wycombe Wanderers v Mansfield
+Row 2110: Georgie Gent - Dundee FC 2-3 Motherwell
+Row 2111: Alex Bonetig - Western Sydney Wanderers 2-2 Brisbane Roar
+Row 2112: Kelvin Ehibhatiomhan - Reading 2:0 Wigan Athletic
+Row 2113: Calvin Ramsay - Wigan Athletic 3-0 Peterborough
+Row 2114: Ole Didrik Blomberg - Odds 0-3 Brann
+Row 2115: Joe Wollacott - Cambridge United 0-1 Crawley Town
+Row 2116: Matthew Pennington - Blackpool 0-3 Stockport County
+Row 2117: James Berry - Port Vale 1-0 Chesterfield
+Row 2118: Paul Koller - SCR Altach 1-2 Grazer AK 1902
+Row 2119: Noel Törnqvist - Djurgårdens IF 1:1 Mjällby AIF
+Row 2120: Teddy Bishop - Colchester 2-2 Reading
+Row 2121: James Carragher - Wigan Athletic 0-2 Stockport County
+Row 2122: Phoenix Patterson - Milton Keynes Dons vs Fleetwood
+Row 2123: Donovan Pines - Stevenage 3-0 Barnsley
+Row 2124: Moutaz Neffati - Varnamo 1:2 IFK Norrkoping
+Row 2125: Tobias Storm - Vejle Boldklub 1-0 Lyngby BK
+Row 2126: Ellis Iandolo - Colchester 2-2 Reading
+Row 2127: Kamarl Grant - Bromley vs Chesterfield
+Row 2128: Joe Low - Wycombe Wanderers v Huddersfield Town
+Row 2129: Josh Keeley - Leyton Orient 0-1 Stevenage
+Row 2130: Kaide Gordon - Sheffield Wednesday 2:0 Norwich City
+Row 2131: Che Nunnely - Heracles 0:2 SC Heerenveen
+Row 2132: Svetoslav Vutsov - Cherno More v Slavia Sofia
+Row 2133: Rhys Bozinovski - Sydney FC 3-4 Western United
+Row 2134: Jesurun Uchegbulam - Eastleigh 2-0 Aldershot
+Row 2135: Roman Dixon - Accrington Stanley 2:1 Everton U21
+Row 2136: Aaron Essel - Kilmarnok 0-3 St. Johnstone
+Row 2137: Nejc Gradisar - Omonia Nicosia 1-0 Fehervar FC
+Row 2138: Sam Klein - Newcastle Jets 3-1 Brisbane Roar
+Row 2139: Kian Spence - Bromley 1-1 AFC Barrow
+Row 2140: Jonathan Bond - Wycombe Wanderers 3-2 Watford
+Row 2141: Dan Kemp - Stevenage 1-3 Coventry
+Row 2142: Dylan Leonard - Western United 3-0 Adelaide United
+Row 2143: Josh Bowler - Cardiff City 1-4 Middlesbrough
+Row 2144: Conor Hazard - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2145: Seung-bin Kim - Bohemians Prag 1905 vs 1. FC Slovacko
+Row 2146: Joel Colwill - Cambridge United 0-1 Exeter City
+Row 2147: Jordan Roberts - Stevenage 3-0 Barnsley
+Row 2148: Alex Cochrane - Leyton Orient 1-2 Birmingham City
+Row 2149: Corey Addai - Crawley Town 1-1 AFC Barrow
+Row 2150: Karamoko Dembélé - Queens Park Rangers 1-1 Millwall
+Row 2151: Cameron Bragg - Cambridge United 0-1 Crawley Town
+Row 2152: Jimmy Sinclair - Blackburn Rovers U21 3-2 Nottingham Forest U21
+Row 2153: Jed Drew - Newcastle United Jets 1-3 Macarthur FC
+Row 2154: Leo Castledine - Leyton Orient 1:0 Shrewsbury Town
+Row 2155: Odeluga Offiah - Shrewsbury 1-2 Blackpool
+Row 2156: Joe O'Brien Whitmarsh - FC Southampton U21 vs RasenBallsport Leipzig U21
+Row 2157: Ryan Leak - Ross County 2-0 Dundee
+Row 2158: Moutaz Neffati - IFK Norrkoping 1-2 Mjallby
+Row 2159: Jonathan Afolabi - Mechelen 3-0 Kortrijk
+Row 2160: Radek Vitek - Accrington Stanley 0-1 Crawley Town
+Row 2161: Macaulay Langstaff - Queens Park Rangers 1-1 Millwall
+Row 2162: Joel Cotterill - Wales U21 vs Tschechien U21
+Row 2163: Towa Yamane (Yokohama FC) - Renofa Yamaguchi 0-0 Yokohama FC
+Row 2164: Will Ferry - Dundee United 3-2 Hibernian FC
+Row 2165: Owen Goodman - Newcastle United v AFC Wimbledon
+Row 2166: Matej Trusa - Skalica 1-3 DAC
+Row 2167: Tristan Crama - Huddersfield Town vs Exeter City
+Row 2168: Medin Memeti - Melbourne City FC 1-0 Brisbane Roar
+Row 2169: Rayan Kolli - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2170: Harvey Vale - Exeter City 0:1 Bristol Rovers
+Row 2171: Harry Forster - Crawley Town vs Huddersfield Town
+Row 2172: Peter Kioso - Millwall v Oxford
+Row 2173: Tommi O'Reilly - Cambridge United v Shrewsbury
+Row 2174: Yhoan Andzouana - DAC 3-3 Trencin
+Row 2176: Adam Mayor - Milton Keynes Dons 1 - 2 Morecambe
+Row 2177: Corey Addai - Stockport County v Charlton Athletic
+Row 2178: Joel Pereira - Leyton Orient 2-0 Reading
+Row 2179: Paul Komposch - Austria Klagenfurt 2:2 Hartberg
+Row 2180: George Evans - Watford FC U23 1-3 Millwall FC U23
+Row 2181: Raphael Borges Rodrigues - Western United 4:2 Macarthur
+Row 2182: Will Alves - Northampton Town 3-0 Leicester City U21
+Row 2183: Joel Randall - Gillingham 1-2 Peterborough
+Row 2184: Jordi Osei-Tutu - Leyton Orient 1-2 Bolton
+Row 2185: Archie Collins - Gillingham 1-2 Peterborough
+Row 2186: Jamie McDonnell - Colchester United vs Gillingham
+Row 2187: Clinton Mola - Bristol Rovers 1-0 Northampton Town
+Row 2188: Mikael Mandron - St. Mirren FC vs Aberdeen FC
+Row 2189: Martin Zlomislic - Istra 1961 0-1 Rijeka
+Row 2190: Freddie Hockey - Chelmsford 1-1 Chippenham
+Row 2191: Lucas Bergström - IF Brommapojkarna 2:2 AIK
+Row 2192: Andreas Bruus - ESTAC Troyes vs OGC Nizza
+Row 2193: Kieran Sadlier - Wycombe Wanderers 2-1 Cambridge United
+Row 2194: Frankie Terry - Colchester 2-2 Reading
+Row 2195: Clayton Taylor - Newcastle Jets 1-1 Wellington Phoenix
+Row 2196: Josh Flint - Crawley Town 0-3 Barnsley
+Row 2197: Clayton Taylor - Newcastle Jets 1-2 Central Coast Mariners
+Row 2198: Christy Pym - Charlton Athletic v Mansfield
+Row 2199: Jed Drew - Western Sydney Wanderers 2-3 Macarthur
+Row 2200: Jed Drew - Macarthur FC 1-1 Central Coast Mariners
+Row 2201: Carl Piergianni - Stevenage 1-3 Coventry
+Row 2202: Christian Saydee - Portsmouth 1-1 Oxford United
+Row 2203: Mads Borchers - Vaasan Palloseura 1-1 Ilves Tampere
+Row 2204: George Thomason - Leyton Orient 1-2 Bolton
+Row 2205: Moris Valinčić - Istra 1961 0-1 Rijeka
+Row 2206: Matt Godden - Coventry 1-0 Plymouth Argyle
+Row 2207: Jo Jin-Ho - Radnicki Nis 1-0 Backa Topola
+Row 2208: Junior Olaitan - Grenoble 0:0 Annecy
+Row 2209: Elison Makolli - Hammarby IF 2:2 Malmo FF
+Row 2210: Ryan Trevitt - Exeter City 1-1 Lincoln City
+Row 2211: Xavier Simons - Wycombe Wanderers vs Bristol Rovers
+Row 2213: Panutche Camara - Crawley Town 0-3 Barnsley
+Row 2214: Thierno Balde - Rodez 2-1 Troyes
+Row 2215: Lukas Jensen - Queens Park Rangers 1-1 Millwall
+Row 2216: Nathan Paul-Lavaly - Bromley 1-2 AFC Wimbledon
+Row 2217: Harvey Araujo - Chesterfield vs Tranmere Rovers
+Row 2218: Leo Lopes - Wolverhampton Wanderers U21 vs West Bromwich Albion U21
+Row 2219: Joel Pereira - Charlton Athletic v Reading
+Row 2220: Calvin Ramsay - Wigan Athletic 1-1 (P) Barnsley
+Row 2221: Callum Tripp - Milton Keynes Dons 2:2 Arsenal U21
+Row 2222: Danny Imray - Bromley 2:1 Gillingham
+Row 2223: Asmir Begovic - Queens Park Rangers 2-2 West Bromwich Albion
+Row 2224: Juan Larios - West Ham United U21 5-1 Southampton U21
+Row 2225: Fred Onyedinma - Rotherham United 2:0 Coventry City
+Row 2226: Joy Mukena - Crawley Town 0-3 Barnsley
+Row 2227: Thierry Rohart-Brown - West Ham United U21 5-1 Southampton U21
+Row 2228: Mahmudu Bajo - DAC 3-3 Trencin
+Row 2229: Clayton Taylor - Western Sydney Wanderers 4:1 Newcastle Jets
+Row 2230: Luka Reischl - Amstetten 1-1 Liefering
+Row 2231: Derrick Abu - Southampton U21 5-0 Fulham U21
+Row 2232: Joe Snowdon - Fulham U21 2-1 Leeds United U21
+Row 2233: Ahmed Abdullahi - West Ham United U21 1:0 Sunderland U21
+Row 2234: Leo Sauer - RKC Waalwijk 5-0 NAC Breda
+Row 2235: Will Swan - Crawley Town 0-3 Barnsley
+Row 2236: Dan Rigge - West Ham United U21 5-1 Southampton U21
+Row 2237: Fallou Fall - Sarpsborg 08 0:1 Fredrikstad
+Row 2238: Callum Osmand - Southampton U21 5-0 Fulham U21
+Row 2239: Kelvin Abrefa - Colchester 2-2 Reading
+Row 2240: Ewan Henderson - KV Oostende vs Standard Luttich 16 FC
+Row 2241: Panutche Camara - Cambridge United 0-1 Crawley Town
+Row 2242: Ryan Trevitt - Exeter City 2-3 Middlesbrough
+Row 2243: Sun-Woo Ham - China U19 vs Sudkorea U19
+Row 2244: Alfie Devine - Plymouth Argyle 2-2 Coventry City
+Row 2245: Dani Ángel - FC Southampton U21 2-1 Wolverhampton Wanderers U21
+Row 2247: Yahya Kalley - IFK Norrkoping 4-2 Orebro
+Row 2248: Matthew Craig - Stevenage 3-0 Barnsley
+Row 2249: Kenneth Paal - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2250: Franco Ravizzoli - Charlton Athletic v Wycombe Wanderers
+Row 2251: Zan Medved - FC Kosice 2-0 Zemplin Michalovce
+Row 2252: Kaheim Dixon - Arnett Gardens 1-1 Portmore United
+Row 2253: Ante Palaversa - Troyes 2-3 Rodez
+Row 2254: Medin Memeti - Melbourne City 1-0 Brisbane Roar
+Row 2255: Kaheim Dixon - Jamaica 0:0 Honduras
+Row 2256: Ben House - Stevenage 0-1 Lincoln City
+Row 2257: Vicente Reyes - Cambridge United 0-1 Crawley Town
+Row 2258: Daniel Gadegaard - Hillerod Fodbold 1-2 Esbjerg fB
+Row 2259: Jake Beesley - Reading 3-2 Blackpool
+Row 2260: Andres Caro - Tottenham Hotspur U21 vs FC Valencia U21
+Row 2261: Adrian Segecic - Sydney FC 3-4 Brisbane Roar
+Row 2262: Harry Howell - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 2263: Josh Earl - Stevenage 3-0 Barnsley
+Row 2264: Josh Stokes - Cambridge United vs Leyton Orient
+Row 2265: Nuha Jutta - Crystal Palace U21 v RB Leipzig U21
+Row 2266: Fode Doucoure - Martigues 0-1 Red Star
+Row 2267: Nemanja Micevic - SK Slavia Prag 2-1 FK Teplice
+Row 2269: Jay Dasilva - Stevenage 1-3 Coventry
+Row 2270: Jaheim Headley - Walsall 3-2 Huddersfield Town
+Row 2271: George Wickens - Lincoln City v Charlton Athletic
+Row 2272: Johannes Nunez - KFUM 3-3 Sandefjord
+Row 2273: Bilal Ould-Chikh - Volendam 3-1 MVV
+Row 2274: Divin Mubama - West Ham United 1-1 Bristol City- FA Cup
+Row 2275: daijiro Florencio Chirino - FC Cadiz 0-0 CD Castellon
+Row 2276: Donay O'Brien-Brady - Gillingham 1-2 Peterborough
+Row 2277: Noah Ganaus - Unterhaching 1-2 Jahn Regensburg
+Row 2278: Oliver Sail - Perth Glory 1-1 Sydney
+Row 2279: Mbaye Ndiaye - Legia Warszawa 5-2 Motor Lublin
+Row 2280: Fin Back - Nottingham Forest U21 2:3 Manchester City U21
+Row 2281: Kwon Hyeok-kyu - St. Mirren FC vs Aberdeen FC
+Row 2282: Darnell Furlong - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2283: Josh Edwards - Dunfermline Athletic 0:0 Queens Park
+Row 2284: Odeluga Offiah - Blackpool 1-2 Leyton Orient
+Row 2285: Owen Dale - Bolton Wanderers 0-2 Oxford United
+Row 2287: Tyreeq Bakinson - Wycombe Wanderers 3-2 Watford
+Row 2288: Connor Taylor - Norwich City 1:1 Bristol Rovers
+Row 2289: Leandro Santos - West Ham United U21 vs Benfica Lissabon U21
+Row 2290: Patrik Kovacs - Fehervar FC 1-1 Zalaegerszegi TE
+Row 2291: Michael Frey - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2292: Mihály Kata - MTK Budapest 2:2 Kecskeméti TE
+Row 2293: Brandon Cover - Port Vale 0-0 Cheltenham Town
+Row 2294: Blondy Nna Noukeu - Liverpool U21 3-1 Stoke City U21
+Row 2295: Brahima Diarra - Paraguay Olynpia 1-0 Mali Olympia
+Row 2296: Tommy Leigh - Milton Keynes Dons 1-0 Walsall
+Row 2297: Ryan Trevitt - Carlisle 0-2 Exeter City
+Row 2298: Sam Gale - Gillingham vs Swindon
+Row 2299: Gaga Slonina - Anderlecht 1-0 Eupen
+Row 2300: Charlie Patino - Rotherham United 1-2 Swansea City
+Row 2301: Calvin Ramsay - Chesterfield 3-2 Wigan Athletic
+Row 2302: Fredrik Carson Pedersen - KFUM 3-3 Sandefjord
+Row 2303: Dominic Ballard - Cambridge United 1-1 Wycombe Wanderers
+Row 2304: Odeluga Offiah - Blackpool 0-0 Rotherham
+Row 2305: Rob Apter - Blackpool 0-3 Stockport County
+Row 2306: Max Watters - Crawley Town 0-3 Barnsley
+Row 2307: Eli King - Stevenage 3-0 Barnsley
+Row 2308: Dan N'Lundulu - Wycombe Wanderers 2-1 Cambridge United
+Row 2309: Daniel Fila - FK Teplice 1-1 Slovacko
+Row 2310: Momodou Nije - KFUM 2-0 Lillestrøm
+Row 2311: Nicolas lemaitre - SM Caen 0-1 Troyes
+Row 2312: Noah Ohio - Hull City 0:2 Stoke City
+Row 2313: Coniah Boyce-Clarke - Colchester 2-2 Reading
+Row 2314: Zachary Obiero - Leyton Orient 1-2 Birmingham City
+Row 2315: Josh Griffiths - Charlton Athletic v Bristol Rovers
+Row 2316: Faissal Al Mazyani - RKC Waalwijk 5-0 NAC Breda
+Row 2317: Zak Gilsenan - Blackburn Rovers U21 1-0 Liverpool U21
+Row 2318: Lewis Orford - Newcastle U21 0-1 West Ham United U21
+Row 2319: Pablo Lopez - Tottenham Hotspur U21 vs FC Valencia U21
+Row 2320: Paul Okon - West Ham United U21 vs Benfica Lissabon U21
+Row 2321: Azeem Abdulai - Swansea City 0-1 Wycombe Wanderers
+Row 2322: Maldini Kacurri - Milton Keynes Dons 2:2 Arsenal U21
+Row 2323: Vimal Yoganthan - Crawley Town 0-3 Barnsley
+Row 2324: Elliott Nevitt - Gillingham 1-2 Peterborough
+Row 2325: Connal Trueman - Crawley Town vs Huddersfield Town
+Row 2326: Joseph Hungbo - Bradford City 0-1 Rotherham United
+Row 2327: Fin Stevens - Hallescher FC 2-3 St. Pauli
+Row 2328: Lucas Buades - Rodez 2-1 Troyes
+Row 2329: Henrik Castegren - Halmstads BK 3-1 IK Sirius
+Row 2330: Harvey Vale - Bristol Rovers 1:1 Cheltenham Town
+Row 2331: Malcolm Ebiowei - AFC Wimbledon 2-0 Crystal Palace U21
+Row 2332: Joe White - Milton Keynes Dons vs Salford City
+Row 2333: Ryan Trevitt - Exeter City 0-1 Port Vale
+Row 2334: Cameron Humphreys - Exeter City 1-0 Rotherham
+Row 2335: Jeremy Kelly - Cambridge United 0-1 Crawley Town
+Row 2336: Will Armitage - West Ham United U21 5-1 Southampton U21
+Row 2337: Juho Talvitie - Heracles 4-2 Go Ahead Eagles
+Row 2338: Kaheim Dixon - Tivoli Gardens 3-1 Arnett Gardens
+Row 2339: Peter Pokorny - Radomiak Radom vs Slask Wroclaw
+Row 2340: Callum Osmand - Fulham U21 2-1 Leeds United U21
+Row 2341: Michael Obafemi - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2342: Cameron Congreve - Bromley 1-2 AFC Wimbledon
+Row 2343: James Dornelly - Peterborough vs Shrewsbury
+Row 2344: Odeluga Offiah - Blackpool 1-2 Barnsley
+Row 2345: Evan Khouri - AFC Barrow 3-0 Grimsby
+Row 2346: Dajaune Brown - Leyton Orient 1:1 Derby County
+Row 2347: Keshi Anderson - Leyton Orient 1-2 Birmingham City
+Row 2348: Tony Yogane - Brentford U23 vs Charlton Athletic U23
+Row 2349: Rhys Bozinovski - Western United FC 3-1 Newcastle Jets
+Row 2350: Joe White - Milton Keynes Dons v AFC Wimbledon
+Row 2351: Owen Devonport - Milton Keynes Dons vs Fleetwood
+Row 2352: Ben Elliott - Colchester 2-2 Reading
+Row 2353: Harry Cornick - Bristol City 0-1 Coventry City
+Row 2354: Ronan Hale - Ross County 2-0 Dundee
+Row 2355: Haydon Roberts - Bristol City 1-0 Derby County
+Row 2356: Matthias Nartey - Volendam 4-1 Cambuur
+Row 2357: Therence Koudou - Guingamp 0-1 Pau
+Row 2358: Tom Fellows - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2359: Zan Celar - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2360: Adam Forshaw - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2361: Terence Kongolo - Rapid Wien 0-0 LASK
+Row 2362: Luis Vega - Ecuador 2:1 Honduras
+Row 2363: Malik Mothersille - Peterborough United vs Exeter City
+Row 2364: Max Crocombe - Burton Albion v Charlton Athletic
+Row 2365: Joe Bryan - Queens Park Rangers 1-1 Millwall
+Row 2366: Elliott List - Stevenage 1-3 Coventry
+Row 2367: Sam Amo-Ameyaw - Cardiff City 3-5 Southampton
+Row 2368: Ryan One - Sheffield United 0:1 Cardiff City
+Row 2369: Klaidi Lolos - Sutton United 2:2 Crawley Town
+Row 2370: Alex Paulsen - Central Coast Mariners 2-1 Wellington Phoenix
+Row 2371: Jed Drew - Macarthur 1-0 Melbourne City
+Row 2372: Baylee Dipepa - Southampton U21 3-1 Anderlecht U21
+Row 2373: Matt Ingram - Leicester City 0-1 Hull City
+Row 2374: Kayne van Oevelen - Volendam 4-1 Cambuur
+Row 2375: Aliou Badji - Red Star 1-2 Lorient
+Row 2376: Tony Springett - Norwich U21 1-3 Middlesbrough U21
+Row 2377: Jamal Amofa - FC Volendam 1-2 Go Ahead Eagles
+Row 2378: Archie Davies - Milton Keynes Dons 3:0 Carlisle United
+Row 2379: Aston Oxborough - Hibernian FC 1-2 Motherwell
+Row 2380: Caleb Taylor - Wycombe Wanderers vs Bristol Rovers
+Row 2381: Daisuke Yokota - KV Kortrijk vs KAA Gent
+Row 2382: Eli King - Wales U21 vs Tschechien U21
+Row 2383: Ademola Ola-Adebomi - Crystal Palace U21 v RB Leipzig U21
+Row 2384: Apostolos Stamatelopoulos - Australia vs Palästina
+Row 2386: Brandon Cover - Bradford 2-1 Port Vale
+Row 2387: Diogo Spencer - West Ham United U21 vs Benfica Lissabon U21
+Row 2388: Jamie Donley - Leyton Orient 1:1 Derby County
+Row 2389: Jay McGrath - Accrington 1-2 Doncaster
+Row 2390: Manadi Camara - Colchester 2-2 Reading
+Row 2391: Tom Glover - Middlesbrough 0-2 Plymouth Argyle
+Row 2392: Zan Medved - Kosice 0-1 Banska Bystrica
+Row 2393: Junior Hoilett - Dundee United 3-2 Hibernian FC
+Row 2394: Gísli Thórdarson - Vikingur Reykjavik 3-1 Cercle Brugge
+Row 2395: Muhamed Tijani - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2396: Kion Etete - Sheffield United 0:1 Cardiff City
+Row 2397: William Fish - Hibernian FC 1-2 Celtic
+Row 2398: Yannick Leliendal - VVV-Venlo 1-3 Volendam
+Row 2399: Steve Cook - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2400: Jordan Houghton - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2401: John Patrick Finn - Illescas 1-0 Getafe B
+Row 2402: Braydon Johnson - Tonbridge Angels 0:2 Eastbourne Borough
+Row 2403: Jacob Karlstrom - IFK Goteborg v AIK Solna
+Row 2404: Andre Vidigal - Blackburn Rovers 3-1 Stoke City
+Row 2405: Jonas Thomas Kersken - Erzgebirge Aue 1:0 Arminia Bielefeld
+Row 2406: Tom Glover - Portsmouth v Middlesbrough
+Row 2407: Lars Jendal - Sogndal 2:0 Kongsvinger
+Row 2408: Joel Latibeaudiere - Stevenage 1-3 Coventry
+Row 2409: Jonny Yull - Adelaide United 2-2 Auckland FC
+Row 2410: Sam Sherring - Northampton Town 1-0 Derby County
+Row 2411: Hólmbert Aron Fridjónsson - Holstein Kiel 0-2 Nürnberg
+Row 2412: Lucas Bergström - Estland U21 1-0 Finnland U21
+Row 2413: Jacob Karlstrom - Malmo FF 2:1 IFK Goteborg
+Row 2414: Azeem Abdulai - Sheffield Wednesday 0-0 Swansea City
+Row 2415: Arpad Tordai - FK Zalgiris Vilnius vs Pafos FC
+Row 2416: Sil Swinkels - Blackpool 1-1 Aston Villa U21
+Row 2417: Brian Maher - Derry City 0-1 Shelbourne
+Row 2418: Simun Mikolcic - Osijek 1:2 Sibenik
+Row 2419: Chukwubuikem Ikwuemes - AC Florenz vs US Salernitana 1919
+Row 2420: Dan Rigge - West Ham United U21 vs Benfica Lissabon U21
+Row 2421: George Byers - Derby County 1:0 Blackpool
+Row 2422: Paul Smyth - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2423: Jewison Bennette - Sunderland U21 2-4 Tottenham Hotspur U21
+Row 2424: Paul Nardi - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2425: Jay Williams - Cambridge United 0-1 Crawley Town
+Row 2426: Plamen Andreev - Lokomotiv Plovdiv 1-2 Levski Sofia
+Row 2427: Lewis Wing - Colchester 2-2 Reading
+Row 2428: Marian Huja - Sepsi OSK Sf. Gheorghe vs Petrolul Ploiesti
+Row 2429: Adrian Segecic - Wellington Phoenix 0-0 Sydney FC
+Row 2430: Matthew Cox - Bristol Rovers 2:1 Portsmouth
+Row 2431: Danylo Ignatenko - Bordeaux 1-0 Grenoble
+Row 2432: Oliver O'Neill - Leyton Orient 1-2 Bolton
+Row 2433: Jano Ter Horst - PreuBen Munster 1-2 Schalke 04
+Row 2434: Georgie Gent - Barnsley 2:0 Rotherham
+Row 2435: Charlie Patino - Blackburn Rovers 0-1 Swansea
+Row 2436: Gaga Slonina - Crawley Town 0-3 Barnsley
+Row 2437: James Berry - Chesterfield 3-2 Grimsby Town
+Row 2439: David Kamara - Peterborough vs Northampton Town
+Row 2440: Danylo Ignatenko - FC Girondins Bordeaux vs AS Saint-Etienne
+Row 2441: Adam Randell - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2442: Tom Glover - Hull City v Middlesbrough
+Row 2443: Jacob Farrell - Newcastle Jets 1:3 Central Coast Mariners
+Row 2444: MJ Williams - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2445: Leo Duru - Blackburn Rovers U21 2:2 West Bromwich Albion U21
+Row 2446: Kasper Jorgensen - Aalborg BK 2-1 Silkeborg IF
+Row 2447: Rocco Zikovic - SV Kapfenberg 1-3 FC Liefering
+Row 2448: Kota Tawaratsumida - Tokyo 1-1 Sagan Tosu
+Row 2449: Josh Mulligan - Dundee 3-3 Celtic
+Row 2450: Josh Earl - Crawley Town 0-3 Barnsley
+Row 2451: Jewison Bennette - Aston Villa U21 2-3 Sunderland U21
+Row 2452: Jan Knapik - FK Teplice 2-0 Slovan Liberec
+Row 2453: Derrick Abu - FC Southampton U21 vs RasenBallsport Leipzig U21
+Row 2454: Cameron Humphreys - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 2455: Andre Vidigal - Southampton 3-2 Stoke City
+Row 2456: Ciaron Brown - Stoke City 0-0 Oxford United
+Row 2457: Tatsuhiro Sakamoto - Stevenage 1-3 Coventry
+Row 2458: Harvey Araujo - Chesterfield vs Horsham
+Row 2459: Maxime Soulas - SonderjyskE vs Vejle Boldklub
+Row 2460: Nick Powell - Colchester 1:2 Stockport County
+Row 2461: Kluiverth Aguilar - Jong Genk vs Lommel SK
+Row 2462: Jeremy Kelly - Crawley Town 0-3 Barnsley
+Row 2463: Noah Naujoks - FC Dordrecht 2-2 Excelsior
+Row 2464: Oscar Thorn - Colchester United 3-0 Arsenal U21
+Row 2465: Samson Tovide - Colchester vs Port Vale
+Row 2466: Jakob Breum - FC Volendam 1-2 Go Ahead Eagles
+Row 2467: James Berry - Chesterfield 1-1 Colchester United
+Row 2468: Josh Briggs - West Ham United U21 vs Benfica Lissabon U21
+Row 2469: Adam Carlén - Malmo FF 2:1 IFK Goteborg
+Row 2470: Nico Maier - Wil 2:3 Thun
+Row 2471: Harley Mills - Peterborough vs Northampton Town
+Row 2472: Jay McGrath - AFC Wimbledon vs Doncaster Rovers
+Row 2473: Charlie Tasker - Wycombe Wanderers 5-3 Brighton & Hove Albion U21
+Row 2474: Sam Silvera - Leicester City 1-2 Middlesbrough
+Row 2475: Finn Surman - Mura 2-2 Rogaska
+Row 2476: Nathan Walker - Wellington Phoenix 0:0 Central Coast Mariners
+Row 2477: Odeluga Offiah - Blackpool 3-0 Burton Albion
+Row 2478: Malik Mothersille - Peterborough vs Shrewsbury
+Row 2479: Alex Giles - Gillingham 1-2 Peterborough
+Row 2480: Calvin Ramsay - Preston North End 0-2 Queens Park Rangers
+Row 2481: Ethan Galbraith - Leyton Orient 1-2 Birmingham City
+Row 2482: Nemanja Micevic - FK Teplice v České Budějovice
+Row 2483: James Morris - Wycombe Wanderers 3-2 Watford
+Row 2484: Hidde Ter Avest - Oxford United 2-6 Middlesbrough
+Row 2485: Gun-Hee Kim - Kashiwa Reysol 2-1 Hokkaido Consadole Sapporo
+Row 2486: Godfrey Bitok Stephen - MTK Budapest 1-1 Diosgyor
+Row 2487: Ben Thompson - Stevenage 1-3 Coventry
+Row 2488: Archie Goodwin - Western United 3-0 Adelaide United
+Row 2489: Marko Johansson - Halmstads BK 1-1 Mjallby AIF
+Row 2490: Gaga Slonina - Kortrijk 1-0 Eupen
+Row 2491: Joe Gauci - Adelaide United 0-2 Brisbane Roar
+Row 2492: Fabio Tavares - Bristol City 0-1 Coventry City
+Row 2493: Pedro Souza - West Ham United U21 vs Benfica Lissabon U21
+Row 2494: Sam Klein - Wellington Phoenix 1-1 Brisbane Roar
+Row 2495: James Berry - Chesterfield vs Horsham
+Row 2496: Fabio Tavares - Stevenage 1-3 Coventry
+Row 2497: Victor Adeboyejo - Leyton Orient 1-2 Bolton Wanderers
+Row 2499: Kluiverth Aguilar - Lommel SK 0-1 Kortrijk
+Row 2500: Julian Baas - Karlsruher SC 0:2 Eintracht Braunschweig
+Row 2502: Josh Bowler - Cardiff City 2-1 Ipswich Town
+Row 2503: Karl Hein - Finnland vs Estland
+Row 2504: Joe Gauci - Stockport County 2-1 Barnsley
+Row 2505: Liam Kitching - Stevenage 1-3 Coventry
+Row 2506: Alex Gilbert - Brentford FC U23 vs AIK Solna
+Row 2507: Florian Wiegele - SCR Altach 1-2 Grazer AK 1902
+Row 2508: Owen Dale - Oxford United 1-3 Sheffield Wednesday
+Row 2509: Jake Bidwell - Stevenage 1-3 Coventry
+Row 2510: Thomas Waddingham - Australia U23 1:1 Egypt U23
+Row 2511: Laurence Maguire - Milton Keynes Dons 1-0 Walsall
+Row 2512: Marcus McGuane - oxford united 4-2 wigan athletic
+Row 2513: Louie Marsh - Sheffield United 0:1 Cardiff City
+Row 2514: Brahim Traore - SM Caen 0-1 Troyes
+Row 2515: Lee Ho-Jae - Pohang Steelers 1-2 Gimcheon Sangmu
+Row 2516: Lewis Gordon - Chesterfield vs Tranmere Rovers
+Row 2517: Sonny Carey - Blackpool 3-2 Barnsley
+Row 2518: Max Clark - Gillingham 1-2 Peterborough
+Row 2519: Joshua Thomas - Wales U21 vs Tschechien U21
+Row 2520: Danny Andrew - Wycombe Wanderers 2-1 Cambridge United
+Row 2521: Samuli Miettinen - Kuopian Palloseura 2-0 FC Haka
+Row 2522: Lucas Bergström - IF Brommapojkarna 2-2 AIK
+Row 2523: Hidde Ter Avest - AZ Alkmaar 3-3 Utrecht
+Row 2524: Sam Silvera - Ipswich 1-1 Middlesbrough
+Row 2525: Alex Gilbert - Middlesbrough 0-5 Stoke City
+Row 2526: Adam Phillips - Crawley Town 0-3 Barnsley
+Row 2528: Will Merry - West Ham United U21 5-1 Southampton U21
+Row 2529: Justin Obikwu - Doncaster 1-2 Grimsby
+Row 2530: Imari Samuels - Arsenal U21 1-1 Brighton & Hove Albion U21
+Row 2531: Chukwubuikem Ikwuemes - Salernitana 2-1 Lazio
+Row 2532: Josh Mulligan - Dundee 1-1 Rangers
+Row 2533: Tom McGill - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2534: Nicolas Milanovic - Melbourne City 0-2 Western Sydney Wanderers
+Row 2535: Jacob Farrell - Central Coast Mariners 2-1 Wellington Phoenix
+Row 2536: Mohamed Ihattaren - RKC Waalwijk vs NAC Breda
+Row 2537: Noel Törnqvist - IFK Norrkoping 1-2 Mjallby
+Row 2538: Alby Kelly-Heald - Wellington v Wellington Olympic
+Row 2539: Lewis Miller - Kilmarnock 1-1 Hibernian
+Row 2540: Jordan Houghton - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2541: Jay Williams - Crawley Town 0-3 Barnsley
+Row 2542: Sebastian Kosa - DAC 1-0 Spartak Trnava
+Row 2543: Zech Medley - Lommel SK 0-1 KV Oostende
+Row 2544: Taylor Perry - Peterborough vs Shrewsbury
+Row 2545: Reigan Heskey - Manchester City U21 5-0 Norwich U21
+Row 2546: Jed Steer - Peterborough v Charlton Athletic
+Row 2547: Angel Waruih - Eastleigh 2-2 Oldham
+Row 2548: Nicolas Milanovic - Western Sydney Wanderers 3-4 Adelaide United
+Row 2549: Rushian Hepburn-Murphy - Cambridge United 0-1 Crawley Town
+Row 2550: Sonny Finch - Milton Keynes Dons 2:2 Arsenal U21
+Row 2551: Ryan White - Western United 3-0 Adelaide United
+Row 2552: Richard Taylor - Glasgow Rangers vs St. Mirren FC
+Row 2553: Cameron Humphreys - Blackpool 2-2 Wycombe Wanderers
+Row 2554: John McAtee - Bolton Wanderers 1-1 Barnsley
+Row 2555: Patrick Beach - Melbourne City FC 1-0 Brisbane Roar
+Row 2556: Jack Bonham - Southampton 3-2 Stoke City
+Row 2557: Jewison Bennette - Costa Rica U23 2-2 Colombia U23
+Row 2559: Tawanda Chirewa - Sunderland 2:0 Derby County
+Row 2560: Bradley Ihionvien - Colchester 2-2 Reading
+Row 2561: Levy Nene - Manchester United U21 1-3 FC Nordsjaelland U21
+Row 2562: Ryan Trevitt - Cambridge United 0-1 Exeter City
+Row 2563: Ethon Archer - Milton Keynes Dons 3-2 Cheltenham Town
+Row 2564: Gaga Slonina - Barnsley v Charlton Athletic
+Row 2565: Ben Old - Wellington Phoenix 3-2 Adelaide United
+Row 2566: Owen Goodman - Milton Keynes Dons 0:2 AFC Wimbledon
+Row 2567: Gabriel Ortelli - Watford FC U23 1-3 Millwall FC U23
+Row 2568: Sonny Carey - Blackpool 0-3 Stockport County
+Row 2569: Aaron Nemane - Milton Keynes Dons 1-0 Walsall
+Row 2570: Abdoulie Manneh - Kalmar FF 0-3 Mjällby AIF
+Row 2571: Anas Ouahim - Sydney FC 3-4 Western United
+Row 2572: Charlie Patino - Swansea 2-1 Norwich
+Row 2573: Connor O'Riordan - AFC Wimbledon 3:0 Crewe Alexandra
+Row 2574: Toni Fruk - Istra 1961 0-1 Rijeka
+Row 2575: Viljami Sinisalo - Port Vale 2-4 Exeter City
+Row 2576: Jewison Bennette - Everton U21 4-3 Sunderland U21
+Row 2578: Simeon Petrov - LKS Lodz vs Slask Wroclaw
+Row 2579: Lewis Miller - St. Mirren FC 3:0 Hibernian FC
+Row 2580: Ricardo Santos - Bolton Wanderers 1-2 FC Barnsley
+Row 2581: Giannis Niarchos - Fc Kosice 3-2 Michalovce
+Row 2582: Barry Cotter - Stevenage 3-0 Barnsley
+Row 2583: Dino Salihovic - Varnamo 1:2 IFK Norrkoping
+Row 2584: Siemen Voet - Slovan Bratislava 2-1 DAC
+Row 2585: Duncan Watmore - Queens Park Rangers 1-1 Millwall
+Row 2586: Siemen Voet - Slovan Bratislava 3-1 Skalica
+Row 2587: Nemanja Micevic - FK Teplice 5:2 České Budějovice
+Row 2588: Callum Wright - Coventry 1-0 Plymouth Argyle
+Row 2589: Thiago Parente - West Ham United U21 vs Benfica Lissabon U21
+Row 2590: Kiano Dyer - Chelsea U21 2-1 Derby County U21
+Row 2591: Jack Rudoni - Stevenage 1-3 Coventry
+Row 2592: Harry Forster - Crawley Town 0-3 Barnsley
+Row 2593: Scott Arfield - Leyton Orient 1-2 Bolton
+Row 2594: Jaden Slory - Helmond Sport 0-1 Dordrecht
+Row 2595: Ridwan Sanusi - Podbrezova 1:3 Slovan Bratislava
+Row 2596: Charlie Lakin - Milton Keynes Dons 1-0 Walsall
+Row 2597: Harlee Dean - Colchester 2-2 Reading
+Row 2598: Rayan Kolli - Queens Park Rangers v Preston
+Row 2599: Gaoussou Diakité - SV Kapfenberg 1-3 FC Liefering
+Row 2600: Zeno Ibsen Rossi - Cambridge United 0-1 Crawley Town
+Row 2601: Alex Gilbey - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2602: Mihály Kata - ETO FC Gyor vs MTK Budapest
+Row 2603: Etienne Beugre - Djurgården IF vs NK Maribor
+Row 2604: Lewis Gibson - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2605: John McAtee - Bolton Wanderers 1-2 FC Barnsley
+Row 2606: Noel Törnqvist - Mjallby AIF 1:1 GAIS Goteborg
+Row 2607: Ryan Alebiosu - Glasgow Rangers vs St. Mirren FC
+Row 2608: John-Kymani Gordon - Colchester 2-2 Reading
+Row 2609: Danny Imray - Bromley 0-0 Port Vale
+Row 2610: Hidde Ter Avest - Oxford United 1-0 Hull City
+Row 2611: Connor O'Brien - Accrington Stanley 0-3 Notts County
+Row 2612: Ethan Galbraith - Leyton Orient 0-1 Stevenage
+Row 2613: Edouard Michut - Frankreich U20 vs Südkorea U20
+Row 2614: Romeo Akachukwu - Southampton U21 2-1 Tottenham Hotspur U21
+Row 2615: Juho Kilo - FC Volendam 1-2 ADO Den Haag
+Row 2616: Lewis Miller - Hibernian FC 3:3 Aberdeen
+Row 2617: Jonathan Lewis - Sporting KC 4-1 Colorado Rapids
+Row 2618: Danny Imray - Bromley vs Chesterfield
+Row 2619: Nemanja Micevic - Pardubice 0-1 FK Teplice
+Row 2620: George Byers - Carlisle United 0-1 Blackpool
+Row 2621: Arda Kurtulan (Adana Demirspor) - Albania U21 0-0 Finland U21
+Row 2622: Sven Sonnenberg - Heracles 0-2 Heerenveen
+Row 2623: Kalidou Sidibé - Saint-Etienne 1-3 Guingamp
+Row 2624: Callum Talbot - Newcastle Jets 0-1 Melbourne City
+Row 2626: Jed Drew - Melbourne Victory 2:1 Macarthur
+Row 2627: Sean Tarima - West Ham United U21 vs Benfica Lissabon U21
+Row 2628: Luis Binks - Stevenage 1-3 Coventry
+Row 2629: James Dornelly - Gillingham 1-2 Peterborough
+Row 2630: Johannes Nunez - Sarpsborg 08 0:2 KFUM
+Row 2631: Richard Taylor - St. Mirren FC 0-1 Dundee United
+Row 2632: Jaxon Brown - Swindon Town 3:1 Fleetwood Town
+Row 2633: Derrick Abu - Southampton U21 3-1 Anderlecht U21
+Row 2634: Jack Sparkes - Gillingham 1-2 Peterborough
+Row 2635: Callum Marshall - Cambridge United vs Huddersfield Town
+Row 2636: Max Watters - Stevenage 3-0 Barnsley
+Row 2637: Szabolics Schon - Leyton Orient 1-2 Bolton
+Row 2638: Harry Cornick - Bristol City U21 5-0 Bournemouth U21
+Row 2639: Josh Mulligan - Rangers 1-0 Dundee FC
+Row 2640: Lee Burge - Charlton Athletic v Northampton Town
+Row 2641: Harrison Ashby - Ipswich 3:2 Swansea
+Row 2642: Calvin Ramsay - Blackpool 0-0 Bolton
+Row 2643: Ayumu Yokoyama - Leyton Orient 1-2 Birmingham City
+Row 2644: Asmir Begovic - Leicester City 1-2 Queens Park Rangers
+Row 2645: Karl Hein - Swindon 2-2 Arsenal U21
+Row 2646: Tibo Persyn - Dordrecht 3-3 Eindhoven
+Row 2647: Owen Bailey - Doncaster 1-2 Grimsby
+Row 2648: Bali Mumba - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2649: Malcolm Ebiowei - Cercle Brugge 4:0 RWD Molenbeek
+Row 2650: Sammy Braybrooke - West Ham United U21 1-3 Leicester City U21
+Row 2651: Kayne van Oevelen - FC Volendam 1-2 ADO Den Haag
+Row 2652: Josh Austerfield - Salford City vs Cheltenham Town (FA Cup)
+Row 2653: Luka Reischl - SV Kapfenberg 1-3 FC Liefering
+Row 2654: Daniel Harvie - Wycombe Wanderers 3-2 Watford
+Row 2655: Zech Medley - Paris fc 2-1 Guingamp
+Row 2656: Owen Dale - Oxford United 1-0 Peterborough United
+Row 2657: Noah Botic - Western United FC 3-1 Newcastle Jets
+Row 2658: Owen Goodman - AFC Barrow 1-3 Wimbledon
+Row 2659: Luke Butterfield - Watford vs Everton U21
+Row 2660: Alexander Jensen - IF Brommapojkarna 0-2 Hammarby IF
+Row 2661: Sam De Grand - Jong Genk vs Lommel SK
+Row 2662: Jack Roles - Cambridge United 0-1 Crawley Town
+Row 2663: Sævar Atli Magnússon - Vejle 2-0 Lyngby BK
+Row 2664: Joe Tomlinson - Milton Keynes Dons 2-1 Accrington Stanley
+Row 2665: Josh McNamara - West Ham United U21 5-1 Southampton U21
+Row 2666: Jack Currie - Leyton Orient vs Arsenal U21
+Row 2667: Harvey White - Stevenage 3-0 Barnsley
+Row 2668: Omar Beckles - Leyton Orient 1-2 Bolton
+Row 2669: Jake Cooper - Queens Park Rangers 1-1 Millwall
+Row 2670: Nemanja Micevic - Sigma Olomouc 2:1 FK Teplice
+Row 2671: Darko Gyabi - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2672: Brandon Cooper - Leyton Orient 1-2 Birmingham City
+Row 2673: Alfie Devine - Swansea City 0-1 Plymouth Argyle
+Row 2674: Bryan Lasme - SpVgg Greuther Furth 2-0 FC Schalke 04
+Row 2675: Odeluga Offiah - Blackpool 1-1 Lincoln City
+Row 2676: Braydon Johnson - Eastbourne Borough 1-0 Bath City
+Row 2677: Habeeb Ogunneye - Doncaster Rovers 3-3 Manchester United U21
+Row 2678: Imam Jagne - IFK Norrkoping 1-2 Mjallby
+Row 2679: Alex Gilbert - Cardiff City 0-2 Middlesbrough
+Row 2680: Sam Field - Queens Park Rangers 1-1 Millwall
+Row 2681: Josh Bowler - Watford 0-1 Cardiff City
+Row 2682: Teddy Sharman-Lowe - Accrington 1-2 Doncaster
+Row 2683: Casper Widell - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 2684: Joel Pereira - Reading 1:3 Stockport County
+Row 2685: Eman Markovic - KFUM 3-3 Sandefjord
+Row 2686: Issac Holland - Brentford FC U23 v FC Chelsea U21
+Row 2687: Danny Imray - Bromley 1:2 Tranmere Rovers
+Row 2688: Apostolos Stamatelopoulos - Perth Glory 2-2 Newcastle Jets
+Row 2689: Milton Oni - Colchester 2-2 Reading
+Row 2690: Brendan Galloway - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2691: Owen Moxon - Portsmouth 0-0 Norwich City
+Row 2692: Jack Grimmer - Wycombe Wanderers 2-1 Cambridge United
+Row 2693: George Honeyman - Queens Park Rangers 1-1 Millwall
+Row 2694: Brandon Cover - Port Vale v Cheltenham
+Row 2695: Klaidi Lolos - Leyton Orient 1-2 Bolton
+Row 2696: Matt Young - Salford City vs Cheltenham Town
+Row 2697: Jay McGrath - Colchester United 1:1 Doncaster Rovers
+Row 2698: Daniel Nkrumah - Blackburn Rovers U21 3-2 Middlesbrough U21
+Row 2699: Nemanja Micevic - FK Teplice 2-1 Zlin
+Row 2700: Tyrese Hall - Swindon Town 2-1 Tottenham Hotspur U21
+Row 2701: Mihály Kata - MTK Budapest 1-1 Diosgyor
+Row 2702: Sam Field - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2703: Hector Kyprianou - Peterbough United vs Exeter City
+Row 2704: Mehmed Cosic - FK Partizan Belgrad 2-2 FK Radnicki 1923 Kragujevac
+Row 2705: Connor O'Riordan - Mansfield Town 0-1 Crewe Alexandra
+Row 2706: Seid Korac - Cukaricki 3:1 Vojvodina
+Row 2707: Brian De Keersmaecker - Heracles 4-2 Go Ahead Eagles
+Row 2708: Kein Sato - Israel Olympia vs Japan Olympia
+Row 2709: Jovan Ivanisevic - Slaven 0-1 NK Istra
+Row 2710: Oliver Sail - Perth Glory 2-2 Newcastle Jets
+Row 2711: Tom McIntyre - Plymouth Argyle 1-0 Portsmouth
+Row 2712: Jacky Donkor - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 2713: Jayden Meghoma - West Ham United U21 5-1 Southampton U21
+Row 2714: Tommy Leigh - Milton Keynes Dons 1:1 FC Portsmouth
+Row 2715: Daniel Agyei - Leyton Orient 0-0 Burton Albion
+Row 2716: Joseph Gbode - Gillingham 1-2 Peterborough
+Row 2717: Hindolo Mustapha - Peterborough United vs Crystal Palace U21
+Row 2718: Fraser Hornby - Darmstadt 98 3:0 Karlsruher
+Row 2719: Leo Black - Tottenham Hotspur U21 vs FC Valencia U21
+Row 2720: Jack Colback - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2721: Callum Tripp - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2722: Tom McGill - Milton Keynes Dons 2-1 Accrington Stanley
+Row 2724: Charlie Patino - Swansea City 1-3 Leicester City
+Row 2725: James Brophy - Cambridge United 0-1 Crawley Town
+Row 2726: Taylor Allen - Milton Keynes Dons 1-0 Walsall
+Row 2727: Reece Cole - Exeter City 1:0 Stevenage
+Row 2728: Max Thompson - Chesterfield v Milton Keynes Dons
+Row 2729: Justin Hubner - FC Southampton U21 2-1 Wolverhampton Wanderers U21
+Row 2730: Donovan Pines - Crawley Town 0-3 Barnsley
+Row 2731: Karlan Grant - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2732: Paul Digby - Wycombe Wanderers 2-1 Cambridge United
+Row 2733: Krisztofer Horvath - Debreceni VSC 1-0 Kecskemeti TE
+Row 2734: Ben Old - Newcastle Jets 1-1 Wellington Phoenix
+Row 2735: Luca Itter - Greuther Fürth 1-2 Fortuna Düsseldorf
+Row 2736: Matt Godden - Hull City 1-1 Coventry City
+Row 2737: Fin Stevens - Eintracht Braunschweig 1-1 St Pauli
+Row 2738: Kaide Gordon - Liverpool U21 3-2 Crystal Palace U21
+Row 2739: Tudor Mendel-Idowu - Ipswich Town U21 1-2 Bournemouth U21
+Row 2740: Jonas Thomas Kersken - Ingolstadt 1-1 Arminia Bielefeld
+Row 2741: Joel Grodowski - PreuBen Munster 1-2 Schalke 04
+Row 2742: Romeo Akachukwu - Chelsea U21 0:2 Southampton U21
+Row 2743: Jayson Molumby - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2744: Joe Whitworth - Charlton Athletic v Exeter City
+Row 2745: Jakob Breum - Heracles 4-2 Go Ahead Eagles
+Row 2746: Bailey Peacock-Farrell - Vejle Boldklub 0-0 Aarhus GF
+Row 2747: Rafael Bandeira - Kryvbas Kryvyi Rig 0-1 FK Oleksandriya
+Row 2749: Thomas Waddingham - Macarthur 4-4 Brisbane Roar
+Row 2750: Rob Hunt - Colchester 2-2 Reading
+Row 2751: Jules Gaudin - Paris 2-1 Guingamp
+Row 2752: Mustapha Bundu - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2753: Hidde Ter Avest - Oxford United 1:1 Bristol City
+Row 2754: Nico Lawrence - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2755: Oscar Thorn - Colchester United 1:1 Doncaster Rovers
+Row 2756: Matthew Pollock - Wycombe Wanderers 3-2 Watford
+Row 2757: Luke Offord - Milton Keynes Dons 1-0 Walsall
+Row 2758: Akil Watts - St. Louis CITY SC 3-1 Sporting Kansas City
+Row 2759: Adrian Mazilu - Germany U19 2-3 Romania U19
+Row 2760: Adam Davies - Sheffield United 1:0 Bristol City
+Row 2761: Keegan Jelacic - Sydney FC 3-4 Brisbane Roar
+Row 2762: Josh Maja - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2763: Filip Beckman - Mjällby AIF vs GAIS Goteborg
+Row 2764: Zach Awe - Colchester v Accrington
+Row 2765: Kai Andrews - Stevenage 1-3 Coventry
+Row 2766: Joao Rego - West Ham United U21 vs Benfica Lissabon U21
+Row 2767: Sonny Carey - Blackpool 0-0 Rotherham
+Row 2768: Giorgi Chakvetadze - Wycombe Wanderers 3-2 Watford
+Row 2769: John Ruddy - Birmingham City 1-0 Norwich City
+Row 2770: Tom Iorpenda - Bolton 3-1 Huddersfield Town
+Row 2771: Victor Larsson - Malmö FF 1-1 Värnamo
+Row 2772: Benjamin Verbič - Lamia 0-5 Panathinaikos
+Row 2773: Jacob Karlstrom - Molde 2-2 Rosenborg
+Row 2774: Lenny Lacroix - West Ham United U21 vs Benfica Lissabon U21
+Row 2775: Ethan Erhahon - Newcastle Jets 1-1 Wellington Phoenix
+Row 2776: Christian Saydee - Portsmouth 1-3 Sunderland
+Row 2777: Mads Sondergaard - Silkeborg IF 2-0 Viborg FF
+Row 2778: Gísli Thórdarson - Hungary U20 2-0 Iceland U20
+Row 2779: Yousef Salech - IF Brommapojkarna 1-1 Sirius
+Row 2780: Cameron Humphreys - Wycombe Wanderers v Mansfield
+Row 2781: Olaf Kobacki - Hull City 2-1 Sheffield Wednesday
+Row 2782: Josh Scowen - Wycombe Wanderers 2-1 Cambridge United
+Row 2783: Donnell McNeilly - Chelsea U21 2-1 Derby County U21
+Row 2784: Collin Andeng Ndi - Southend v Charlton Athletic
+Row 2785: Andre Garcia - Colchester 2-2 Reading
+Row 2786: Ciaron Brown - Oxford United 1-0 Hull City
+Row 2787: Jamie McDonnell - Fleetwood Town vs Colchester United
+Row 2788: Lewis Miller - Hibernian FC 1-0 Kilmarnock
+Row 2789: Connor O'Brien - Milton Keynes Dons 2-1 Accrington Stanley
+Row 2790: Joe Gauci - Western United 1:3 Adelaide United
+Row 2791: Abdoullah Ba - Cardiff City 0-2 Sunderland
+Row 2792: Nathan Bishop - Wycombe Wanderers 3-2 Watford
+Row 2793: Ciaron Brown - Oxford United 1:1 Bristol City
+Row 2794: Samson Tovide - Colchester United 4:0 Swindon Town
+Row 2795: Rajmund Tóth - Kecskeméti TE 2-1 ETO FC Györi
+Row 2796: Joe O'Brien Whitmarsh - Woking 4-4 Southampton U21
+Row 2797: Luca Connell - Stevenage 3-0 Barnsley
+Row 2798: Georgie Gent - Motherwell 1-2 St. Johnstone
+Row 2799: Pijus Širvys - Litauen vs Zypern
+Row 2800: Connor Lemonheigh-Evans - Milton Keynes Dons 1-0 Walsall
+Row 2801: Sam Klein - Perth Glory vs Brisbane Roar
+Row 2803: Matt Young - Milton Keynes Dons v Salford
+Row 2804: Aaron Collins - Leyton Orient 1-2 Bolton
+Row 2805: Kalidou Sidibé - Paris 2-1 Guingamp
+Row 2806: Kyran Lofthouse - Crawley Town 0-3 Barnsley
+Row 2807: Owen Goodman - AFC Wimbledon 4:0 Carlisle United
+Row 2808: Jonny Stuttle - Ipswich Town U21 1-2 Bournemouth U21
+Row 2809: Jack Tucker - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2810: Lewis Neilson - Airdrieonians 2-2 Partick Thistle
+Row 2812: Devan Tanton - Chesterfield v AFC Barrow
+Row 2813: Lewis Orford - West Ham United U21 vs Benfica Lissabon U21
+Row 2814: Danny Imray - Bromley v Swindon
+Row 2815: Samson Tovide - Fleetwood Town vs Colchester United
+Row 2816: Trent Ostler - Perth Glory 1-3 Western United FC
+Row 2817: Matt Young - Salford City 2:0 Harrogate Town
+Row 2818: Kamarl Grant - Morecambe 0-2 Bromley
+Row 2819: Daniel Harvie - Wycombe Wanderers 2-1 Cambridge United
+Row 2820: Tommy Simkin - Walsall v Charlton Athletic
+Row 2821: Phoenix Patterson - Fleetwood 2-2 Notts County
+Row 2822: Yacine Bourhane - Esbjerg fB 0-2 Aalborg BK
+Row 2823: Abel Walatee - Western United 0-0 Macarthur
+Row 2824: Justin Obikwu - Stevenage 1-3 Coventry
+Row 2825: Martial Godo - Fulham U21 0:6 Chelsea U21
+Row 2826: Gabin Blancquart - Vitesse Arnheim 1-4 VVV-Venlo
+Row 2827: Jack Burroughs - Stevenage 1-3 Coventry
+Row 2828: Luca Stephenson - Dundee United 3-2 Hibernian FC
+Row 2829: Alfie Lloyd - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2830: Ross Graham - Heart of Midlothian FC 0:1 Dundee United
+Row 2831: Elkan Baggott - Blackpool 0-3 Stockport County
+Row 2832: Joao Fonseca - West Ham United U21 vs Benfica Lissabon U21
+Row 2833: Joseph Olowu - Doncaster 1-2 Grimsby
+Row 2834: Luis Vega - Jamaica 0:0 Honduras
+Row 2835: Josh Stokes - Cambridge United 2-0 Stockport County
+Row 2836: Ciaron Brown - Oxford United 1-0 Hull City
+Row 2837: Tyler Bindon - Reading 3:1 Burton Albion
+Row 2838: Thijmen Goppel - Jahn Regensburg 2-2 Wehen Wiesbaden
+Row 2839: Elvis Bwomono - St. Mirren FC 1-2 Dundee FC
+Row 2840: Tommi O'Reilly - Wigan Athletic vs Shrewsbury Town
+Row 2841: Fabian Wohlmuth - SV Stripfing 0-1 SV Ried
+Row 2842: Josh Mulligan - Dundee 0-3 Ross County
+Row 2843: Josh Mulligan - Dundee United 2-4 Dundee FC
+Row 2844: James Dornelly - Peterborough vs Cambridge United
+Row 2845: Rajmund Tóth - ETO FC Gyor vs Paksi FC
+Row 2846: Eli Adams - Newcastle jets 2-2 Perth Glory
+Row 2847: Armando Quitirna - Cambridge United 0-1 Crawley Town
+Row 2848: Adam Davies - Birmingham City 1-2 Sheffield United
+Row 2849: Ryley Towler - Watford v Portsmouth
+Row 2850: Abdoulie Manneh - Mjällby AIF vs GAIS Goteborg
+Row 2851: Habeeb Ogunneye - Huddersfield Town 4-1 Manchester United U21
+Row 2852: Davis Keillor-Dunn - Stevenage 3-0 Barnsley
+Row 2853: Edouard Michut - Italien U21 vs Frankreich U20
+Row 2854: Arthur Zagre - Ajax Amsterdam II vs Excelsior Rotterdam
+Row 2855: Sean Clare - Leyton Orient 1-2 Bolton
+Row 2856: Matt Young - Salford v Fleetwood
+Row 2857: Ethan Alagich - Adelaide United 2-2 Auckland FC
+Row 2858: Charlie Savage - Reading 2:0 Wigan Athletic
+Row 2859: Joe Knight - Arsenal U21 1-1 Brighton & Hove Albion U21
+Row 2860: Ben Reeves - West Ham United U21 5-1 Southampton U21
+Row 2861: Apostolos Stamatelopoulos - Newcastle United Jets 3 v 1 Sydney FC
+Row 2862: Dale Taylor - Wigan Athletic 2-1 Northampton Town
+Row 2864: Momodou Nije - Sarpsborg 08 0:2 KFUM
+Row 2865: Emeka Adiele - West Ham United U21 vs Benfica Lissabon U21
+Row 2866: Aune Heggebo - St. Mirren FC 1:1 Brann
+Row 2867: Adam Mayor - Morecambe 1-1 Mansfield Town
+Row 2868: Kaelan Casey - West Ham United U21 vs Benfica Lissabon U21
+Row 2869: Finn Surman - Central Coast Mariners 2-1 Wellington Phoenix
+Row 2870: Joe White - Milton Keynes Dons vs Chesterfield
+Row 2871: George Abbott - Wycombe Wanderers 3-2 Watford
+Row 2872: Vicente Reyes - Wycombe Wanderers vs Cambridge United
+Row 2873: Devin Haen - Vitesse Arnheim 1-4 VVV-Venlo
+Row 2874: Jonny Yull - China PR U20 1-2 Australia U20
+Row 2875: Kamarl Grant - Bromley 1-1 Carlisle
+Row 2876: Rajmund Tóth - MTK Budapest 2-2 ETO FC Györ
+Row 2877: Ahmed Sidibe - NK Nafta 1903 1-2 FC Koper
+Row 2878: Semi Ajayi - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2879: John Patrick Finn - Getafe B 4:1 Conquense
+Row 2880: Josh Edwards - Dunfermline Athletic FC 1-1 Inverness Caledonian Thistle FC
+Row 2881: Ryan Howley - Stevenage 1-3 Coventry
+Row 2882: Edouard Michut - Frankreich U20 vs Elfenbeinküste U20
+Row 2883: Lewis Brunt - Northampton Town vs Wrexham
+Row 2884: Tristan Crama - Bristol Rovers 2:1 Portsmouth
+Row 2885: Charlie Savage - Reading 2:0 Wrexham FC
+Row 2887: Paik Seung-Ho - Leyton Orient 1-2 Birmingham City
+Row 2888: Matus Kmet - AS Trencin 2:0 Dukla Banska Bystrica
+Row 2889: Teddy Sharman-Lowe - AFC Wimbledon vs Doncaster Rovers
+Row 2890: Josh Mulligan - Dundee 4-1 Hibernian FC
+Row 2891: Ben Old - Wellington Phoenix 2-0 Western Sydney Wanderers
+Row 2892: Samuel Brolin - Kalmar FF 0-3 Mjällby AIF
+Row 2893: Toby Mullarkey - Cambridge United 0-1 Crawley Town
+Row 2894: Ryan Trevitt - Brentford 3-1 Leyton Orient
+Row 2895: Alexandar Popovic - Sydney FC 1-2 Macarthur FC
+Row 2896: Kian Spence - AFC Barrow 2:0 Fleetwood Town
+Row 2897: Connor Randall - Ross County 1-1 Dundee United
+Row 2898: Sean Clare - Leyton Orient 1-2 Birmingham City
+Row 2899: Isaac Olaofe - Reading 1:3 Stockport County
+Row 2900: Metod Jurhar - Koper 0-0 Mura
+Row 2901: Abel Walatee - Western United 0:2 Auckland FC
+Row 2902: Moris Valinčić - Istra 1961 3:2 Lokomotiva Zagreb
+Row 2904: Charlie Patino - Norwich City 0-1 Blackpool
+Row 2905: Denzel Hall - Almere City 3-0 Heerenveen
+Row 2906: Bradley Dack - Gillingham 1-2 Peterborough
+Row 2907: Caleb Taylor - Wycombe Wanderers 2-1 Cambridge United
+Row 2908: Ken Aboh - Stevenage 0-1 Lincoln City
+Row 2909: Joe Tomlinson - Milton Keynes Dons 1-0 Walsall
+Row 2910: Kamarai Simon-Swyer - West Ham United U21 1:0 Sunderland U21
+Row 2911: Aidan Dausch - Stevenage 1-3 Coventry
+Row 2912: Callum Wright - Brentford v Plymouth Argyle
+Row 2913: Isaac Olaofe - Cambridge United 2-0 Stockport County
+Row 2914: Roman Dixon - Watford vs Everton U21
+Row 2915: Daniel Phillips - Stevenage 1-3 Coventry
+Row 2916: Gora Diouf - Sion 2:0 Winterthur
+Row 2917: Sullay Kaikai - Wycombe Wanderers 2-1 Cambridge United
+Row 2918: Owen Dale - Oxford 1-0 Peterborough
+Row 2919: Alfie May - Leyton Orient 1-2 Birmingham City
+Row 2920: Siemen Voet - Atletico Madrid 3-1 Slovan Bratislava
+Row 2921: Ryan Allsop - Birmingham City v Charlton Athletic
+Row 2922: Isak Johannesson - Greuther Fürth 1-2 Fortuna Düsseldorf
+Row 2923: Luis Guilherme - West Ham United U21 vs Benfica Lissabon U21
+Row 2924: Ryan Hardie - Milton Keynes Dons 0-1 Plymouth Argyle
+Row 2925: Morgan Whittaker - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2926: Xavier Mbuyamba - FC Volendam 1-2 ADO Den Haag
+Row 2927: Garang Kuol - Australia U23 1:1 Egypt U23
+Row 2929: Josh Keeley - Blackpool 1-2 Leyton Orient
+Row 2930: Mikkel Rakneberg - Kristiansund 0-0 Odds
+Row 2931: Ben Elliott - Reading 2:0 Wigan Athletic
+Row 2932: Abel Walatee - Western United FC 3-1 Newcastle Jets
+Row 2933: Owen Dale - Coventry City 1-0 Oxford United
+Row 2934: Maksims Tonisevs - FK Liepãja 0-0 Valmiera FK
+Row 2935: Mihály Kata - MTK Budapest 2-2 ETO FC Györ
+Row 2936: Maksims Tonisevs - Valmiera FC 0-1 FK Liepaja
+Row 2937: Áron Csongvai - Fehervar FC 1-0 MTK Budapest
+Row 2938: Oisin Smyth - St. Mirren FC 1-2 Dundee FC
+Row 2939: Patrick Beach - Newcastle Jets 0-1 Melbourne City
+Row 2940: Ben Old - Central Coast Mariners 2-1 Wellington Phoenix
+Row 2941: Jonathan Afolabi - KV Kortrijk 0-1 Royal Antwerpen FC
+Row 2942: Zach Awe - Accrington 3-2 Grimsby
+Row 2943: Chris Forino-Joseph - Wycombe Wanderers 1-0 Charlton Athletic
+Row 2944: Jakob Dunsby - Sandefjord Fotball 2-1 KFUM-Kameratene Oslo
+Row 2945: Emmanuel Fernandez - Gillingham 1-2 Peterborough
+Row 2946: Danilo Orsi - Sutton United 2:2 Crawley Town
+Row 2947: Josh Bowler - Cardiff City 0-2 Sunderland
+Row 2948: Stephen Wearne - Milton Keynes Dons 1-0 Walsall
+Row 2949: Jack Robinson - West Ham United U21 5-1 Southampton U21
+Row 2950: Joseph Hungbo - Nürnberg 2:2 Hannover 96
+Row 2951: Ryan Alebiosu - KV Kortrijk vs KAA Gent
+Row 2952: Kiban Rai - Leyton Orient vs Newport County
+Row 2953: Cian Hayes - Gillingham 1-2 Peterborough
+Row 2954: Ryan One - Colchester United U21 2-3 Sheffield United U21
+Row 2955: Siemen Voet - Slovan Bratislava 2-3 AC Mailand
+Row 2956: Zach Hemming - Leyton Orient 1-2 Birmingham City
+Row 2957: Corey Addai - Tranmere 1-3 Crawley Town
+Row 2958: Jonathan Afolabi - Bohemian Football Club vs St. Patrick's Athletic
+Row 2959: Asmir Begovic - Queens Park Rangers 1-0 Preston North End
+Row 2960: Ilmari Niskanen - Exeter City 1-0 Rotherham
+Row 2961: Alex Gilbert - Cardiff City 1:4 Middlesbrough
+Row 2962: George Earthy - Norwich City 0-2 Bristol City
+Row 2963: Reyes Cleary - Milton Keynes Dons 1-0 Walsall
+Row 2964: John Swift - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2965: Jannik Schuster - Liefering 2:0 Grazer AK
+Row 2966: Charlie Webster - Burton Albion Vs Stevenage
+Row 2967: Rafael Luis - West Ham United U21 vs Benfica Lissabon U21
+Row 2968: Aodhan Doherty - Blackburn Rovers U21 3-1 Borussia Mönchengladbach U21
+Row 2969: Dominic Ballard - FC Southampton U21 vs Newcastle United U21
+Row 2970: Marcus McGuane - Portsmouth 2:1 Oxford United
+Row 2971: Joel Ideho - ADO Den Haag 1-0 TOP Oss
+Row 2972: Connor O'Brien - Fleetwood 1-1 Accrington
+Row 2973: Josh Ajala - West Ham United U21 5-1 Southampton U21
+Row 2974: Josh Griffiths - West Bromwich Albion vs Wolverhampton Wanderers
+Row 2975: Brad Dolaghan - West Ham United United U21 vs Benfica Lissabon B
+Row 2976: Josh Andrews - Gillingham 1-2 Peterborough
+Row 2977: Ilmari Niskanen - Wigan Athletic 0-0 Exeter City
+Row 2978: Paul Smyth - Queens Park Rangers 1-3 West Bromwich Albion
+Row 2979: Garang Kuol - FC Southampton U21 vs Newcastle United U21
+Row 2980: Dylan Leonard - Sydney FC 3-4 Western United
+Row 2981: Mihály Kata - Puskás Akademia FC 1:0 MTK Budapest
+Row 2982: Lucas Lund - Silkeborg IF 2-0 Viborg FF
+Row 2983: Luke Harris - Birmingham City vs Lincoln City
+Row 2984: Jamal Baptiste - Peterborough U21 2-1 Sheffield United U21
+Row 2985: Kamarai Simon-Swyer - West Ham United United U21 vs Stoke City U21
+Row 2986: Nicolas Milanovic - Western United 1-1 Western Sydney Wanderers
+Row 2987: Mael de Gevigney - Stevenage 3-0 Barnsley
+Row 2988: Luke Leahy - Wycombe Wanderers 3-2 Watford
+Row 2989: Nathan Trott - Vejle 2-0 Hvidovre
+Row 2990: Salah Oulad M'Hand - Milton Keynes Dons 2:2 Arsenal U21
+Row 2991: Mael de Gevigney - Crawley Town 0-3 Barnsley
+Row 2992: Joe O'Brien Whitmarsh - West Ham United U21 5-1 Southampton U21
+Row 2993: Sullay Kaikai - Cambridge United 0-1 Crawley Town
+Row 2994: Jake Clarke-Salter - Queens Park Rangers 1-1 Plymouth Argyle
+Row 2995: Harvey Vale - Bristol Rovers 2:1 Carlisle United
+Row 2996: Keegan Jelacic - Sydney 3-4 Brisbane Roar
+Row 2997: Melker Widell - Aalborg BK 2-1 Lyngby BK
+Row 2998: Jamie Reid - Stevenage 3-0 Barnsley
+Row 2999: Josh Feeney - Shrewsbury Town 0:2 Exeter City
+Row 3000: Jaden Dixon - Southampton 3-2 Stoke City
+Row 3001: Richard Taylor - St. Mirren FC 1:1 Brann
+Row 3002: Marc Leonard - Leyton Orient 1-2 Birmingham City
+Row 3003: Max Anderson - Crawley Town 0-3 Barnsley
+Row 3004: Johan Meyer - Esbjerg fB 0-2 Aalborg BK
+Row 3005: Franco Ravizzoli - Wycombe Wanderers 2-1 Cambridge United
+Row 3006: Josh Bowler - Cardiff City 1-0 Huddersfield Town
+Row 3007: Willum Thor Willumsson - Leyton Orient 1-2 Birmigham
+Row 3008: Hidde Ter Avest - Sheffield United v Oxford
+Row 3009: Noah Botic - Macarthur 2-2 Western United
+Row 3010: Owen Dale - Oxford United 1-1 Derby County
+Row 3011: Harvey Vale - Fleetwood Town 0-0 Bristol Rovers
+Row 3012: Regan Charles-Cook - Francs Borains 3-2 Eupen
+Row 3013: David Okagbue - Milton Keynes Dons 1-0 Walsall
+Row 3014: Lewis Miller - Hibernian FC 1-1 Dundee
+Row 3015: Devan Tanton - Chesterfield vs Horsham
+Row 3016: Corey Addai - Crawley Town 2-0 Grimsby
+Row 3017: Ryan Battrum - West Ham United U21 5-1 Southampton U21
+Row 3018: Nadir Benbouali - ETO FC Gyor vs Paksi FC
+Row 3019: Murphy Cooper - Stevenage 3-0 Barnsley
+Row 3020: Hristo Ivanov - Locomotives Plovdiv 1-2 Levski Sofia
+Row 3021: Frederick Issaka - Queens Park Rangers 1-1 Plymouth Argyle
+Row 3022: Zeno Ibsen Rossi - Wycombe Wanderers 2-1 Cambridge United
+Row 3023: Rhys Walters - Fleetwood 1-1 Port Vale
+Row 3024: Ade Adeyemo - Crawley Town 0-3 Barnsley
+Row 3025: Apostolos Stamatelopoulos - Newcastle United Jets 2-2 Macarthur FC
+Row 3026: Boris van Shuppen - Dordrecht 3-3 Eindhoven
+Row 3027: Leo Walta - IF Brommapojkarna 1-1 Sirius
+Row 3028: Romeo Akachukwu - West Ham United U21 5-1 Southampton U21
+Row 3030: Dan Agyei - Leyton Orient 1-2 Bolton
+Row 3031: Hyun-Jun Yang - Celtic 4-0 Newcastle
+Row 3032: Johnny Kenny - Celtic 4-0 Newcastle
+Row 3033: Luke McGowan - Celtic 4-0 Newcastle
+Row 3034: Guille Rosas - Sporting Gijon 2-3 Burgos
+Row 3035: Diego Sanchez - Sporting Gijon 2-3 Burgos
+Row 3036: David Gonzalez - Sporting Gijón 2-3 Burgos
+Row 3037: Ivan Morante - Sporting Gijon 2-3 Burgos
+Row 3038: Fer Nino - Sporting Gijon 2-3 Burgos
+Row 3039: Ryan Trevitt - Wigan Athletic 1:1 Stockport County
+Row 3040: Jayden Fevrier - Wigan Athletic 1:1 Stockport County
+Row 3041: Jack Diamond - Wigan Athletic 1:1 Stockport County
+Row 3042: Brad Hills - Wigan Athletic 1:1 Stockport County
+Row 3043: Robin van Cruijsen - Volendam 2:1 PEC Zwolle
+Row 3044: Anselmo Garcia MacNulty - Volendam 2:1 PEC Zwolle
+Row 3045: Shola Shoretire - Volendam 2:1 PEC Zwolle
+Row 3046: Kaj de Rooij - Volendam 2:1 PEC Zwolle
+Row 3047: Teddy Sharman-Lowe - Cheltenham Town 0:2 Doncaster Rovers
+Row 3048: Martin Dala - Ujpest FC vs Fehervar FC
+Row 3049: Thomas Kaminski - Plymouth Argyle 3:1 Luton Town
+Row 3050: Lilian Raolisoa - Angers SCO 2:0 Montpellier HSC
+Row 3051: Fabian Greilinger - Wehen Wiesbaden 1:3 Rot-Weiss Essen
+Row 3052: Julian Eitschberger - Wehen Wiesbaden 1:3 Rot-Weiss Essen
+Row 3053: Finn Porath - Heidenheim 3:1 Holstein Kiel
+Row 3054: Ben Brannan - Hibernian FC 2:2 Kilmarnock
+Row 3055: Shuto Nakako - Kashima Antlers 1:1 Sanfrecce Hiroshima
+Row 3056: Sota Nakamura - Kashima Antlers 1:1 Sanfrecce Hiroshima
+Row 3057: Will Ferry - Dundee United 2:2 (P) Rapid Wien
+Row 3058: Will Ferry - Dundee United 1:0 Aberdeen
+Row 3059: Jack MacKenzie - Dundee United 1:0 Aberdeen
+Row 3060: Shaquille Pinas - Hammarby IF 2-0 Djurgårdens IF
+Row 3061: Ishe Samuels-Smith - Chelsea U21 1:2 West Bromwich Albion U21
+Row 3062: Kasey Bos - Melbourne Victory 1:1 Newcastle Jets
+Row 3063: Eivind Helland - Brann 0:0 Rosenborg
+Row 3064: Owen Beck - Blackburn Rovers 0:1 Hull City
+Row 3065: Cody Drameh - Blackburn Rovers 0:1 Hull City
+Row 3066: Oliver Braude - FC Groningen 1:0 SC Heerenveen
+Row 3067: Roy Revivo - Hapoel Haifa 1:3 Maccabi Tel-Aviv
+Row 3068: Souffian El Karouani - Utrecht 1:0 NAC Breda
+Row 3069: Siebe Horemans - Utrecht 1:0 NAC Breda
+Row 3070: Alfons Sampsted - Northampton Town 1:1 Birmingham City
+Row 3071: Josh Key - Swansea City 3:0 Stoke City
+Row 3072: Enda Stevens - Swansea City 3:0 Stoke City
+Row 3073: Alec Georgen - Dunkerque 1:0 Guingamp
+Row 3074: Alpha Sissoko - Dunkerque 1:0 Guingamp
+Row 3075: Hampus Skoglund - Hammarby IF 4:0 BK Hacken
+Row 3076: Bendeguz Bolla - Dundee United 2:2 (P) Rapid Wien
+Row 3077: Samuel Gidi - Zilina 0:2 Spartak Trnava
+Row 3078: Aleks Petkov - Slask Wroclaw 0:0 Rakow Czestochowa
+Row 3079: Tom Holmes - Bristol City 1:0 Luton Town
+Row 3080: Joe Johnson - Bristol City 1:0 Luton Town
+Row 3081: Reece Burke - Plymouth Argyle 3:1 Luton Town
+Row 3082: Ethan Schilte-Brown - Hibernian FC 2:2 Kilmarnock
+Row 3083: Adam Sevinsky - FC Slovan Liberec vs AC Sparta Prag
+Row 3084: Raphael Lipinski - Rodez AF vs Stade Laval
+Row 3085: Axel Bamba - Ajaccio 2:1 Lorient
+Row 3086: Krisztián Keresztes - Dundee United 2:2 (P) Rapid Wien
+Row 3087: Siemen Voet - FC Kosice 2:3 Slovan Bratislava
+Row 3088: Lucas Herrington - Brisbane Roar 0:2 Auckland FC
+Row 3089: Abdoulaye Ndiaye - Brest 2:2 Auxerre
+Row 3090: Juhani Pikkarainen - Degerfors 1:1 Sirius
+Row 3091: Gora Diouf - FC Lausanne-Sport vs FC Sion
+Row 3092: Sean McLoughlin - Blackburn Rovers 0:1 Hull City
+Row 3093: Nathan Paull - Central Coast Mariners 1:2 Brisbane Roar
+Row 3094: Lucas Herrington - Central Coast Mariners 1:2 Brisbane Roar
+Row 3095: Marco Rente - FC Groningen 1:0 SC Heerenveen
+Row 3096: Ross Graham - Dundee United 2:4 Dundee
+Row 3097: Aaron Donnelly - Dundee United 2:4 Dundee
+Row 3098: Lewis Mayo - Hibernian FC 2:2 Kilmarnock
+Row 3099: Sam Klein - Brisbane Roar 0:2 Auckland FC
+Row 3100: Gustav Berggren - Slask Wroclaw 0:0 Rakow Czestochowa
+Row 3101: Ryan Teague - Melbourne Victory 1:1 Newcastle Jets
+Row 3102: Abemly "Metinho" Silu - Basel 2:1 Grasshopper
+Row 3103: Sam Klein - Central Coast Mariners 1:2 Brisbane Roar
+Row 3104: Marcus Linday - FC Groningen 1:0 SC Heerenveen
+Row 3105: Ben Osborn - Queens Park Rangers 4:0 Derby County
+Row 3106: Jan Schoppner - Heidenheim 3:1 Holstein Kiel
+Row 3107: Jordan Mendes - Rodez AF vs Stade Laval
+Row 3108: Yu Funabashi - Kashima Antlers 1:1 Sanfrecce Hiroshima
+Row 3109: Romeo Amane - Dundee United 2:2 (P) Rapid Wien
+Row 3110: Leo Greiml - Utrecht 1:0 NAC Breda
+Row 3111: Ben Davies - Northampton Town 1:1 Birmingham City
+Row 3112: Ange N’Guessan - FC Slovan Liberec vs AC Sparta Prag
+Row 3113: Tae-hyeon Kim - Kashima Antlers 1:1 Sanfrecce Hiroshima
+Row 3114: Ivan Mesik - Heracles 1:2 AZ Alkmaar
+Row 3115: Sem Scheperman - Heracles 1:2 AZ Alkmaar
+Row 3116: Ugo Raghouber - Dunkerque 1:0 Guingamp
+Row 3117: Yannick Agnero - IK Sirius 1:1 Halmstads BK
+Row 3118: Theo Bair - Brest 2:2 Auxerre
+Row 3119: Theo Bair - Reims 0:2 Auxerre
+Row 3120: Moritz Flotho - Wehen Wiesbaden 1:3 Rot-Weiss Essen
+Row 3121: Jusef Erabi - Hammarby IF 2-0 Djurgårdens IF
+Row 3122: Devante Cole - Chelsea U21 1:2 West Bromwich Albion U21
+Row 3123: Samson Tovide - Colchester United 0:0 AFC Barrow
+Row 3124: Florian Danho - FC Randers vs FC Kopenhagen
+Row 3125: Sam Bell - Bristol City 1:0 Luton Town
+Row 3126: Nikolas Muci - Basel 2:1 Grasshopper
+Row 3127: Robbie Ure - Degerfors 1:1 Sirius
+Row 3128: Farid El Melali - Angers SCO 2:0 Montpellier HSC
+Row 3129: Tanguy Coulibaly - Angers SCO 2:0 Montpellier HSC
+Row 3130: Brynjolfur Andersen Willumsson - FC Groningen 1:0 SC Heerenveen
+Row 3131: Jerry Yates - Queens Park Rangers 4:0 Derby County
+Row 3132: Kieron Bowie - Hibernian FC 2:2 Kilmarnock
+Row 3133: Raimonds Krollis - FC Slovan Liberec vs AC Sparta Prag
+Row 3134: Mamadou Camara - Rodez AF vs Stade Laval
+Row 3135: Ben Hamed Toure - Ajaccio 2:1 Lorient
+Row 3136: John Paul Dembe - Hammarby IF 4:0 BK Hacken
+Row 3137: Balint Szabo - Ujpest FC vs Fehervar FC
+Row 3138: Balint Geiger - Ujpest FC vs Fehervar FC
+Row 3139: Pelly Ruddock Mpanzu - Bristol City 1:0 Luton Town
+Row 3140: Felix Horn Myhre - Brann 0:0 Rosenborg
+Row 3141: Antoine Bernede - FC Lausanne-Sport vs FC Sion
+Row 3142: Yassin Belkhdim - Angers SCO 2:0 Montpellier HSC
+Row 3143: Haine Eames - Central Coast Mariners 1:2 Brisbane Roar
+Row 3144: Tarik Gozusirin - Wehen Wiesbaden 1:3 Rot-Weiss Essen
+Row 3145: Gabi Kanichowsky - Hapoel Haifa 1:3 Maccabi Tel-Aviv
+Row 3146: Vicko Sevelj - Dundee United 2:4 Dundee
+Row 3147: Magnus Knudsen - Heidenheim 3:1 Holstein Kiel
+Row 3148: Armin Gigovic - Heidenheim 3:1 Holstein Kiel
+Row 3149: Naatan Skyttä - Dunkerque 1:0 Guingamp
+Row 3150: Rahim Ibrahim - FC Kosice 2:3 Slovan Bratislava
+Row 3151: Clayton Taylor - Melbourne Victory 1:1 Newcastle Jets
+Row 3152: Eli Adams - Melbourne Victory 1:1 Newcastle Jets
+Row 3153: Alvyn Sanches - FC Lausanne-Sport vs FC Sion
+Row 3154: Oscar Fraulo - Utrecht 1:0 NAC Breda
+Row 3155: Oliver Cooper - Swansea City 3:0 Stoke City
+Row 3156: Lukas Masek - FC Slovan Liberec vs AC Sparta Prag
+Row 3157: Mallik Sellouki - Rodez AF vs Stade Laval
+Row 3158: Jacob Brazete - Brisbane Roar 0:2 Auckland FC
+Row 3159: Oscar Thorn - Colchester United 0:0 AFC Barrow
+Row 3160: Emil Konradsen Ceide - Brann 0:0 Rosenborg
+Row 3161: Ibrahim Salah - Brest 2:2 Auxerre
+Row 3162: Lassine Sinayoko - Brest 2:2 Auxerre
+Row 3163: Noel Milleskog - Degerfors 1:1 Sirius
+Row 3164: Teddy Okou - FC Lausanne-Sport vs FC Sion
+Row 3165: Amario Cozier-Duberry - Blackburn Rovers 0:1 Hull City
+Row 3166: Mason Burstow - Blackburn Rovers 0:1 Hull City
+Row 3167: Jacob Brazete - Central Coast Mariners 1:2 Brisbane Roar
+Row 3168: Koki Saito - Queens Park Rangers 4:0 Derby County
+Row 3169: Min-Hyeok Yang - Queens Park Rangers 4:0 Derby County
+Row 3170: Osher Davida - Hapoel Haifa 1:3 Maccabi Tel-Aviv
+Row 3171: Oluwaseun Adewumi - Dundee United 2:4 Dundee
+Row 3172: Keshi Anderson - Northampton Town 1:1 Birmingham City
+Row 3173: Andre Vidigal - Swansea City 3:0 Stoke City
+Row 3174: Parfait Guiagon - RAAL La Louviere vs RSC Charleroi
+Row 3175: Joel Mvuka - Ajaccio 2:1 Lorient
+Row 3176: Yvandro Borges Sanches - Heracles 1:2 AZ Alkmaar
+Row 3177: Bryan Limbombe - Heracles 1:2 AZ Alkmaar
+Row 3178: Paulos Abraham - Hammarby IF 4:0 BK Hacken
+Row 3179: Severin Nioule - Hammarby IF 4:0 BK Hacken
+Row 3180: Ivan Dolcek - Dundee United 2:2 (P) Rapid Wien
+Row 3181: Abdelrahman Boudah - Hammarby IF 2-0 Djurgårdens IF
+Row 3182: Harvey Vale - Chelsea U21 1:2 West Bromwich Albion U21
+Row 3183: Sylvester Jasper - Slask Wroclaw 0:0 Rakow Czestochowa
+Row 3184: Kieran Dowell - Northampton Town 1:1 Birmingham City
+Row 3185: Julien Ponceau - Ajaccio 2:1 Lorient

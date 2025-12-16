@@ -1,0 +1,162 @@
+====================================================================================================
+ANALYZING INTERNAL MATCH TEAM NAMES
+====================================================================================================
+
+Found 54 unique team names in internal matches
+
+Found 2661 unique squads in external matches
+
+
+====================================================================================================
+EXACT MATCHES (24)
+====================================================================================================
+
+'AZ Alkmaar' → Squad ID: 390
+  Type: CLUB, Country: Netherlands
+
+'Aston Villa U21' → Squad ID: 1461
+  Type: CLUB, Country: England
+
+'Birmingham City U18' → Squad ID: 3321
+  Type: CLUB, Country: England
+
+'Celtic Glasgow' → Squad ID: 255
+  Type: CLUB, Country: Scotland
+
+'Crystal Palace U21' → Squad ID: 3253
+  Type: CLUB, Country: England
+
+'Eastbourne Borough' → Squad ID: 875
+  Type: CLUB, Country: England
+
+'FC Stevenage' → Squad ID: 940
+  Type: CLUB, Country: England
+
+'FK Partizan Belgrad' → Squad ID: 1056
+  Type: CLUB, Country: Serbia
+
+'Falkirk FC' → Squad ID: 9270
+  Type: CLUB, Country: Scotland
+
+'Glasgow Rangers' → Squad ID: 822
+  Type: CLUB, Country: Scotland
+
+'Heart of Midlothian FC' → Squad ID: 827
+  Type: CLUB, Country: Scotland
+
+'Hibernian FC' → Squad ID: 1437
+  Type: CLUB, Country: Scotland
+
+'Ilves Tampere' → Squad ID: 2953
+  Type: CLUB, Country: Finland
+
+'Kashiwa Reysol' → Squad ID: 2095
+  Type: CLUB, Country: Japan
+
+'Kawasaki Frontale' → Squad ID: 2055
+  Type: CLUB, Country: Japan
+
+'Leeds United U21' → Squad ID: 3252
+  Type: CLUB, Country: England
+
+'Livingston FC' → Squad ID: 2819
+  Type: CLUB, Country: Scotland
+
+'Maidstone United' → Squad ID: 869
+  Type: CLUB, Country: England
+
+'Notts County' → Squad ID: 896
+  Type: CLUB, Country: England
+
+'Peterborough United' → Squad ID: 965
+  Type: CLUB, Country: England
+
+'Sanfrecce Hiroshima' → Squad ID: 2054
+  Type: CLUB, Country: Japan
+
+'Shonan Bellmare' → Squad ID: 2078
+  Type: CLUB, Country: Japan
+
+'St. Mirren FC' → Squad ID: 2818
+  Type: CLUB, Country: Scotland
+
+'Sydney FC' → Squad ID: 2037
+  Type: CLUB, Country: Australia
+
+====================================================================================================
+FUZZY MATCHES (Score >= 85) (7)
+====================================================================================================
+
+'CF Montreal' → 'CF Montréal' (Score: 90.9090909090909)
+  Squad ID: 1845, Type: CLUB, Country: United States
+
+'Cambridge United U17' → 'Cambridge United' (Score: 88.88888888888889)
+  Squad ID: 926, Type: CLUB, Country: England
+
+'Carshalton Athletic' → 'Charlton Athletic' (Score: 88.88888888888889)
+  Squad ID: 959, Type: CLUB, Country: England
+
+'Cliftonville' → 'Cliftonville FC' (Score: 88.88888888888889)
+  Squad ID: 1402, Type: CLUB, Country: Northern Ireland
+
+'Manchester United U21 ' → 'Manchester United U21' (Score: 97.67441860465115)
+  Squad ID: 1451, Type: CLUB, Country: England
+
+'Reading U18' → 'FC Reading U18' (Score: 88.0)
+  Squad ID: 3299, Type: CLUB, Country: England
+
+'Western United' → 'Western United FC' (Score: 90.32258064516128)
+  Squad ID: 6376, Type: CLUB, Country: Australia
+
+====================================================================================================
+NO GOOD MATCHES (23)
+====================================================================================================
+  - Aberdeen
+  - Alloa Athletic FC
+  - Austin
+  - Aveley
+  - Barnsley
+  - Burgess Hill Town
+  - Camberley Town
+  - Celtic
+  - Czechia U19
+  - Czechia U21
+  - Dungannon
+  - Egham Town
+  - Eversley & California
+  - Gillingham U17
+  - Hertford Town
+  - Italy U19
+  - Liverpool U17
+  - Metropolitan Police
+  - Newcastle
+  - Scotland U21
+  - Sporting CP B
+  - Sydney
+  - West Brom U17
+
+
+====================================================================================================
+CHECKING FOR POTENTIAL DUPLICATE MATCHES
+====================================================================================================
+
+No exact duplicate matches found (same date, same teams, different sources)
+
+====================================================================================================
+CHECKING FOR NEAR-DUPLICATE MATCHES (within 7 days)
+====================================================================================================
+
+Found 2 potential near-duplicate matches:
+
+
+Near-duplicate 1 (Date difference: 1 days):
+  [INTERNAL] Birmingham City U18 vs Reading U18 on 2025-10-18 00:00:00 (ID: 2801)
+  [EXTERNAL] Birmingham City U18 vs FC Reading U18 on 2025-10-18 11:00:00 (ID: 227117)
+
+Near-duplicate 2 (Date difference: 0 days):
+  [INTERNAL] Kawasaki Frontale vs Kashiwa Reysol on 2025-09-29 00:00:00 (ID: 3901)
+  [EXTERNAL] Kawasaki Frontale vs Kashiwa Reysol on 2025-09-28 10:00:00 (ID: 186635)
+
+====================================================================================================
+ANALYSIS COMPLETE
+====================================================================================================

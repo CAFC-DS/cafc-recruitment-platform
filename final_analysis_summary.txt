@@ -1,0 +1,11 @@
+COMPREHENSIVE ANALYSIS SUMMARY
+================================================================================
+
+Total reports: 3215
+Can be imported: 3130 (97.4%)
+Cannot be imported: 49 (1.5%)
+
+Missing players: 3
+Missing fixtures: 13
+Manual player mappings used: 48
+Fuzzy fixture matches: 431

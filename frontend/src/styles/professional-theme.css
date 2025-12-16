@@ -801,13 +801,49 @@ body {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Compact Attributes Styles */
-.attributes-section-compact {
+/* Custom Scrollbar for Scouting History Section */
+.horizontal-timeline-section > div {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.horizontal-timeline-section > div::-webkit-scrollbar {
+  width: 8px;
+}
+
+.horizontal-timeline-section > div::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.horizontal-timeline-section > div::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.horizontal-timeline-section > div::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+[data-bs-theme="dark"] .horizontal-timeline-section > div::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+[data-bs-theme="dark"] .horizontal-timeline-section > div::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+[data-bs-theme="dark"] .horizontal-timeline-section > div::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Compact Attributes Styles - DEPRECATED (removed from layout) */
+/* .attributes-section-compact {
   background: var(--color-surface, #ffffff);
   border: 1px solid var(--color-border, #e5e7eb);
   border-radius: 8px;
   padding: 1.25rem;
-}
+} */
 
 .attributes-legend-compact {
   text-align: center;

@@ -62,6 +62,7 @@ interface ScoutReport {
   position_played: string | null;
   flag_category?: string;
   scouting_type?: string;
+  is_potential?: boolean;
 }
 
 interface ScoutReportsData {
@@ -74,6 +75,16 @@ interface ScoutReportsData {
 const getFlagBadge = (report: ScoutReport) => {
   // For archived reports, show grade badge in table view
   if (report.is_archived && report.flag_category) {
+    // Format grade text to split on "/" for better wrapping
+    const gradeText = report.flag_category.includes('/')
+      ? report.flag_category.split('/').map((part, index, array) => (
+          <React.Fragment key={index}>
+            {part.trim()}{index < array.length - 1 && '/'}
+            {index < array.length - 1 && <br />}
+          </React.Fragment>
+        ))
+      : report.flag_category;
+
     return (
       <span
         className="badge-grade"
@@ -83,10 +94,11 @@ const getFlagBadge = (report: ScoutReport) => {
           fontSize: "0.8rem",
           padding: "4px 8px",
           fontWeight: "500",
+          lineHeight: "1.2",
         }}
         title={`Grade: ${report.flag_category}`}
       >
-        {report.flag_category}
+        {gradeText}
       </span>
     );
   }
@@ -853,10 +865,18 @@ const PlayerProfilePage: React.FC = () => {
                                     fontSize: "0.65rem",
                                     padding: "2px 6px",
                                     fontWeight: "500",
+                                    lineHeight: "1.2",
                                   }}
                                   title={`Grade: ${report.flag_category}`}
                                 >
-                                  {report.flag_category}
+                                  {report.flag_category.includes('/')
+                                    ? report.flag_category.split('/').map((part, index, array) => (
+                                        <React.Fragment key={index}>
+                                          {part.trim()}{index < array.length - 1 && '/'}
+                                          {index < array.length - 1 && <br />}
+                                        </React.Fragment>
+                                      ))
+                                    : report.flag_category}
                                 </span>
                               </span>
                             )}
@@ -871,22 +891,26 @@ const PlayerProfilePage: React.FC = () => {
                           <td>{report.fixture || "N/A"}</td>
                           <td>{report.position_played || "N/A"}</td>
                           <td>
-                            <span
-                              className={`badge ${
-                                report.overall_rating === 9 ? 'performance-score-9' :
-                                report.overall_rating === 10 ? 'performance-score-10' : ''
-                              }`}
-                              style={{
-                                backgroundColor: getPerformanceScoreColor(
-                                  report.overall_rating || 0,
-                                ),
-                                color: "white !important",
-                                fontWeight: "bold",
-                                ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
-                              }}
-                            >
-                              {report.overall_rating}
-                            </span>
+                            <div className="d-flex align-items-center justify-content-center gap-1">
+                              <span
+                                className={`badge ${
+                                  report.overall_rating === 9 ? 'performance-score-9' :
+                                  report.overall_rating === 10 ? 'performance-score-10' : ''
+                                }`}
+                                style={{
+                                  backgroundColor: getPerformanceScoreColor(
+                                    report.overall_rating || 0,
+                                  ),
+                                  color: "white !important",
+                                  fontWeight: "bold",
+                                  fontSize: "0.9rem",
+                                  ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
+                                }}
+                                title={report.is_potential ? "Potential Score" : undefined}
+                              >
+                                {report.overall_rating}{report.is_potential && "*"}
+                              </span>
+                            </div>
                           </td>
                           <td>
                             <div
@@ -1034,9 +1058,17 @@ const PlayerProfilePage: React.FC = () => {
                                     style={{
                                       backgroundColor: getGradeColor(report.flag_category),
                                       fontSize: "0.7rem",
+                                      lineHeight: "1.2",
                                     }}
                                   >
-                                    {report.flag_category}
+                                    {report.flag_category.includes('/')
+                                      ? report.flag_category.split('/').map((part, index, array) => (
+                                          <React.Fragment key={index}>
+                                            {part.trim()}{index < array.length - 1 && '/'}
+                                            {index < array.length - 1 && <br />}
+                                          </React.Fragment>
+                                        ))
+                                      : report.flag_category}
                                   </span>
                                   {report.summary && extractVSSScore(report.summary!) && (
                                     <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
@@ -1063,8 +1095,9 @@ const PlayerProfilePage: React.FC = () => {
                                         fontSize: "0.9rem",
                                         ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
                                       }}
+                                      title={report.is_potential ? "Potential Score" : undefined}
                                     >
-                                      {report.overall_rating}
+                                      {report.overall_rating}{report.is_potential && "*"}
                                     </span>
                                   )}
                                 </>

@@ -1,0 +1,110 @@
+/* Help Modal Accordion Styling - Light Theme */
+
+/* Accordion items */
+.modal-body .accordion-item {
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  margin-bottom: 0.5rem;
+}
+
+/* Accordion headers */
+.modal-body .accordion-button {
+  background-color: #f8f9fa;
+  color: #212529;
+  font-weight: 600;
+  border: none;
+  padding: 1rem 1.25rem;
+}
+
+.modal-body .accordion-button:not(.collapsed) {
+  background-color: #e9ecef;
+  color: #000000;
+  box-shadow: none;
+}
+
+.modal-body .accordion-button:hover {
+  background-color: #e9ecef;
+}
+
+.modal-body .accordion-button:focus {
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  border-color: #86b7fe;
+}
+
+/* Accordion body */
+.modal-body .accordion-body {
+  background-color: #ffffff;
+  color: #212529;
+  padding: 1.25rem;
+  border-top: 1px solid #dee2e6;
+}
+
+/* Headings within accordion */
+.modal-body .accordion-body h6 {
+  color: #000000;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal-body .accordion-body h6:first-child {
+  margin-top: 0;
+}
+
+/* Lists */
+.modal-body .accordion-body ul,
+.modal-body .accordion-body ol {
+  margin-bottom: 0.75rem;
+}
+
+.modal-body .accordion-body li {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+  color: #212529;
+}
+
+.modal-body .accordion-body ul ul,
+.modal-body .accordion-body ol ul {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+/* Paragraphs */
+.modal-body .accordion-body p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  color: #212529;
+}
+
+/* Strong text */
+.modal-body .accordion-body strong {
+  color: #000000;
+  font-weight: 600;
+}
+
+/* Code/monospace text */
+.modal-body .accordion-body code {
+  background-color: #f8f9fa;
+  color: #d63384;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+/* Scrollbar styling for modal body */
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #adb5bd;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #6c757d;
+}

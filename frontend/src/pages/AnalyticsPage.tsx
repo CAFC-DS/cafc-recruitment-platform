@@ -42,6 +42,9 @@ const AnalyticsPage: React.FC = () => {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>📊 Analytics Dashboard</h2>
+        <span className="badge badge-neutral-grey">
+          Comprehensive Recruitment Analytics
+        </span>
       </div>
 
       {/* Tabbed Interface */}

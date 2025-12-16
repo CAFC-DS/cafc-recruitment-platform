@@ -1,0 +1,252 @@
+REPORTS THAT CANNOT BE IMPORTED
+================================================================================
+
+Total: 49 reports
+
+================================================================================
+
+Row 547: Kalidou Sidibe - nan
+  Scout: Thomas White
+  Errors:
+    - Empty fixture
+
+Row 891: Elkan Baggott - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 893: Kristian Pedersen - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 917: Ismail Oulad M'Hand - FC Arsenal U21 vs Nottingham Forest U21
+  Scout: Darren Sarll
+  Errors:
+    - Fixture not found: FC Arsenal U21 vs Nottingham Forest U21 on 2025-01-23 (36 fixtures checked)
+
+Row 926: Luke Faxon - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 962: James Shea - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 969: Connal Trueman - Bristol Rovers v Crawley Town 16.11.24 Wycombe Wanderers v Crawley Town 12.11.24 Crawley Town v Huddersfield Town 09.11.24
+  Scout: Stephen Henderson
+  Errors:
+    - Empty fixture date
+
+Row 1006: Oliver Dovin - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 1057: Jak Alnwick - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1090: Simon Eastwood - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 1172: Cheick Oumar Konate - nan
+  Scout: Thomas White
+  Errors:
+    - Empty fixture
+
+Row 1182: Pierce Charles - Luxembourg - Northern Ireland 18.11.24 Northern Ireland - Belarus 15.11.24 Brentford - Sheffield Wednesday 29.10.24
+  Scout: Stephen Henderson
+  Errors:
+    - Empty fixture date
+
+Row 1199: Matthew Cox - Cheltenham v Bristol Rovers- Bristol Rovers v Exeter City - Bristol Rovers v Blackpool
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Cheltenham v Bristol Rovers- Bristol Rovers v Exeter City - Bristol Rovers v Blackpool on 2023-04-13 (18 fixtures checked)
+
+Row 1276: Apostolos Stamatelopoulos - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1312: Kaheim Dixon - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1369: Divin Mubama - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1529: Luis Vega - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1631: Etienne Green - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 1649: Radek Vitek - Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz / Hartberg - Blau-Weiß Linz
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Austria Wien - Blau-Weiß / Sturm Graz - Blau-Weiß Linz / Hartberg - Blau-Weiß Linz on 2024-11-03 (283 fixtures checked)
+
+Row 1695: Alex Mitchell - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1740: Robbe Decostere - SV Zulte Waregem vs Jong Genk
+  Scout: Alfie Shaw
+  Errors:
+    - Player not found: Robbe Decostere
+
+Row 1754: Mahlon Romeo - Cardiff City 2-1 Southampton
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Mahlon Romeo
+
+Row 1762: Raimonds Krollis - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1769: Siemen Voet - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 1927: Jacob Karlstrom - Malmö FF v IFK Göteborg 28.10.24 - IFK Göteborg v AIK 21.10.24 - IFK Norrköping v IFK Göteborg 06.10.24
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Malmö FF v IFK Göteborg 28.10.24 - IFK Göteborg v AIK 21.10.24 - IFK Norrköping v IFK Göteborg 06.10.24 on 2024-10-28 (46 fixtures checked)
+
+Row 1971: Luke Mbete-Tabu - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2070: Robbie McCrorie - Dundee United - Kilmarnock 07.12.24 Rangers - Kilmarnock 04.12.24 Kilmarnock - Dundee 30.11.24
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: Dundee United - Kilmarnock 07.12.24 Rangers - Kilmarnock 04.12.24 Kilmarnock - Dundee 30.11.24 on 2024-12-07 (226 fixtures checked)
+
+Row 2175: Robbe Decostere - Lierse Kempenzonen 0-1 Zulte-Waregem
+  Scout: Alistair Clarke
+  Errors:
+    - Player not found: Robbe Decostere
+
+Row 2212: Mark Tamas - Sabail 1-1 Neftci
+  Scout: Liam Burden
+  Errors:
+    - Empty fixture date
+
+Row 2246: Terence Kongolo - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2268: Brandon Austin - K leagueXL v Tottenham 31.07.24 - Queens Park Rangers V Tottenham 20.07.24-Tottenham v Westham 18.07.23
+  Scout: Stephen Henderson
+  Errors:
+    - Fixture not found: K leagueXL v Tottenham 31.07.24 - Queens Park Rangers V Tottenham 20.07.24-Tottenham v Westham 18.07.23 on 2024-07-31 (19 fixtures checked)
+
+Row 2286: Callum Wright - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2385: Hidde Ter Avest - FC Utrecht 3-1 Sparta Rotterdam
+  Scout: Alistair Clarke
+  Errors:
+    - Fixture not found: FC Utrecht 3-1 Sparta Rotterdam on 2024-06-11 (8 fixtures checked)
+
+Row 2438: Tim Krul - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2498: Sam Sherring - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2501: Tomas Vaclik - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2527: Jonathan Afolabi - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2558: Bradley Mayo - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2577: Ilan Kebbal - nan
+  Scout: Reece Jackson
+  Errors:
+    - Empty fixture
+
+Row 2625: Ryan Lowe - Milton Keynes Dons 1-0 Walsall
+  Scout: Andy Scott
+  Errors:
+    - Player not found: Ryan Lowe
+
+Row 2723: Marcus McGuane - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2748: Josef Bursik - Ross County - Hibernian 30.10.24 Hibernian - Hearts 27.10.24 Dundee United - Hibernian 19.10.24
+  Scout: Stephen Henderson
+  Errors:
+    - Empty fixture date
+
+Row 2802: Ben Hamer - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2811: Karl Hein - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2863: Jake Beesley - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2886: Noah Ohio - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 2903: Andy Fisher - Stephen Henderson Goalkeeper Analysis
+  Scout: Stephen Henderson
+  Errors:
+    - Could not parse fixture: Stephen Henderson Goalkeeper Analysis
+
+Row 2928: Junior Olaitan - nan
+  Scout: Josh Hill
+  Errors:
+    - Empty fixture
+
+Row 3029: Áron Csongvai - nan
+  Scout: Reece Jackson
+  Errors:
+    - Empty fixture
+
