@@ -37,7 +37,7 @@ SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
 SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
 
 # Excel file path
-EXCEL_FILE = "/Users/hashim.umarji/Downloads/noAndyScott.xlsx"
+EXCEL_FILE = "/Users/hashim.umarji/Downloads/FinalScoutReports.xlsx"
 
 # Batch size for inserts
 BATCH_SIZE = 100
@@ -680,11 +680,6 @@ def import_reports(conn, reports_df, player_mappings):
     failure_count = 0
     batch_count = 0
     fuzzy_matches = []  # Track fuzzy fixture matches
-
-    # TESTING: Limit to first 10 rows only
-    TEST_LIMIT = 10
-    reports_df = reports_df.head(TEST_LIMIT)
-    print(f"⚠️  TESTING MODE: Processing only first {TEST_LIMIT} reports\n")
 
     print(f"Processing {len(reports_df)} reports...\n")
 
