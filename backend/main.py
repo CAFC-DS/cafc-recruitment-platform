@@ -4171,8 +4171,19 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
 async def get_all_scout_reports(
     current_user: User = Depends(get_current_user),
     page: int = 1,
-    limit: int = 10,
+    limit: int = 20,
     recency_days: Optional[int] = None,
+    # Server-side filtering parameters
+    performance_scores: Optional[str] = None,  # Comma-separated: "7,8,9,10"
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+    scout_name: Optional[str] = None,
+    player_name: Optional[str] = None,
+    report_types: Optional[str] = None,  # Comma-separated: "Player Assessment,Flag"
+    scouting_type: Optional[str] = None,  # "Live" or "Video"
+    position: Optional[str] = None,
+    date_from: Optional[str] = None,  # YYYY-MM-DD format
+    date_to: Optional[str] = None,  # YYYY-MM-DD format
 ):
     conn = None
     try:
@@ -4242,6 +4253,60 @@ async def get_all_scout_reports(
             # For Snowflake, use DATEADD to filter by date
             where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
             sql_params.append(recency_days)
+
+        # Apply server-side filters
+        # Performance scores filter (comma-separated)
+        if performance_scores:
+            scores = [int(s.strip()) for s in performance_scores.split(",") if s.strip().isdigit()]
+            if scores:
+                placeholders = ", ".join(["%s"] * len(scores))
+                where_clauses.append(f"sr.PERFORMANCE_SCORE IN ({placeholders})")
+                sql_params.extend(scores)
+
+        # Age range filter
+        if min_age is not None:
+            where_clauses.append("DATEDIFF(year, p.BIRTHDATE, CURRENT_DATE()) >= %s")
+            sql_params.append(min_age)
+        if max_age is not None:
+            where_clauses.append("DATEDIFF(year, p.BIRTHDATE, CURRENT_DATE()) <= %s")
+            sql_params.append(max_age)
+
+        # Scout name filter (case-insensitive partial match)
+        if scout_name:
+            where_clauses.append("(UPPER(u.FIRSTNAME) LIKE UPPER(%s) OR UPPER(u.LASTNAME) LIKE UPPER(%s) OR UPPER(u.USERNAME) LIKE UPPER(%s))")
+            search_pattern = f"%{scout_name}%"
+            sql_params.extend([search_pattern, search_pattern, search_pattern])
+
+        # Player name filter (case-insensitive partial match)
+        if player_name:
+            where_clauses.append("UPPER(p.PLAYERNAME) LIKE UPPER(%s)")
+            sql_params.append(f"%{player_name}%")
+
+        # Report types filter (comma-separated)
+        if report_types:
+            types = [t.strip() for t in report_types.split(",") if t.strip()]
+            if types:
+                placeholders = ", ".join(["%s"] * len(types))
+                where_clauses.append(f"sr.REPORT_TYPE IN ({placeholders})")
+                sql_params.extend(types)
+
+        # Scouting type filter
+        if scouting_type:
+            where_clauses.append("sr.SCOUTING_TYPE = %s")
+            sql_params.append(scouting_type)
+
+        # Position filter (case-insensitive partial match)
+        if position:
+            where_clauses.append("UPPER(sr.POSITION) LIKE UPPER(%s)")
+            sql_params.append(f"%{position}%")
+
+        # Date range filter
+        if date_from:
+            where_clauses.append("sr.CREATED_AT >= %s")
+            sql_params.append(date_from)
+        if date_to:
+            where_clauses.append("sr.CREATED_AT <= %s")
+            sql_params.append(date_to)
 
         # Construct WHERE clause
         if where_clauses:
@@ -4363,6 +4428,191 @@ async def get_all_scout_reports(
         logging.exception(e)
         raise HTTPException(
             status_code=500, detail=f"Error fetching scout reports: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/scout_reports/recent")
+async def get_recent_scout_reports(
+    current_user: User = Depends(get_current_user),
+    report_type: Optional[str] = None,  # "Player Assessment", "Flag", etc.
+    limit: int = 20,
+    offset: int = 0,
+    recency_days: Optional[int] = None,
+):
+    """
+    Get recent scout reports for homepage dashboard with infinite scroll support.
+    Optimized endpoint with caching for faster homepage loads.
+    """
+    # Generate cache key
+    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+
+    # Check cache
+    cached_result = get_cache(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Base SQL query
+        base_sql = f"""
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            LEFT JOIN SCOUT_REPORT_VIEWS srv ON (
+                sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
+            )
+        """
+
+        where_clauses = []
+        sql_params = []
+
+        # Apply role-based filtering
+        user_id_exists = has_column("scout_reports", "USER_ID")
+        if user_id_exists:
+            if current_user.role == "scout":
+                where_clauses.append("sr.USER_ID = %s")
+                sql_params.append(current_user.id)
+            elif current_user.role == "loan":
+                where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
+                sql_params.append(current_user.id)
+                sql_params.append("Loan Report")
+
+        # Apply report type filter
+        if report_type:
+            where_clauses.append("sr.REPORT_TYPE = %s")
+            sql_params.append(report_type)
+
+        # Apply recency filter
+        if recency_days is not None and recency_days > 0:
+            where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
+            sql_params.append(recency_days)
+
+        # Construct WHERE clause
+        if where_clauses:
+            base_sql += " WHERE " + " AND ".join(where_clauses)
+
+        # Get total count
+        count_sql = f"SELECT COUNT(*) {base_sql}"
+        cursor.execute(count_sql, sql_params)
+        total_reports = cursor.fetchone()[0]
+
+        # Get paginated reports
+        select_sql = f"""
+            SELECT
+                sr.CREATED_AT,
+                p.PLAYERNAME,
+                p.BIRTHDATE,
+                m.SCHEDULEDDATE,
+                m.HOMESQUADNAME,
+                m.AWAYSQUADNAME,
+                sr.POSITION,
+                sr.PERFORMANCE_SCORE,
+                sr.ATTRIBUTE_SCORE,
+                sr.ID,
+                sr.REPORT_TYPE,
+                sr.SCOUTING_TYPE,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
+                p.PLAYERID,
+                sr.FLAG_CATEGORY,
+                sr.PURPOSE,
+                p.CAFC_PLAYER_ID,
+                p.DATA_SOURCE,
+                sr.IS_ARCHIVED,
+                CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END as HAS_BEEN_VIEWED,
+                sr.IS_POTENTIAL
+            {base_sql}
+            ORDER BY sr.CREATED_AT DESC
+            LIMIT %s OFFSET %s
+        """
+        sql_params.extend([limit, offset])
+        cursor.execute(select_sql, sql_params)
+        reports = cursor.fetchall()
+
+        report_list = []
+        for row in reports:
+            player_birthdate = row[2]
+            age = None
+            if player_birthdate:
+                today = date.today()
+                age = (
+                    today.year
+                    - player_birthdate.year
+                    - (
+                        (today.month, today.day)
+                        < (player_birthdate.month, player_birthdate.day)
+                    )
+                )
+
+            # Format fixture details
+            fixture_details = "N/A"
+            if row[3]:
+                fixture_date = str(row[3])
+                home_team = row[4] if row[4] else "Unknown"
+                away_team = row[5] if row[5] else "Unknown"
+                fixture_details = f"{home_team} vs {away_team}"
+
+            # Generate universal_id
+            player_row = {
+                "CAFC_PLAYER_ID": row[16],
+                "PLAYERID": row[13],
+                "DATA_SOURCE": row[17],
+            }
+            nav_universal_id = get_player_universal_id(player_row)
+
+            report_list.append(
+                {
+                    "created_at": str(row[0]),
+                    "player_name": row[1],
+                    "age": age,
+                    "fixture_date": str(row[3]) if row[3] else "N/A",
+                    "fixture_details": fixture_details,
+                    "home_team": row[4] if row[4] else None,
+                    "away_team": row[5] if row[5] else None,
+                    "position_played": row[6],
+                    "performance_score": row[7],
+                    "attribute_score": row[8],
+                    "report_id": row[9],
+                    "report_type": row[10],
+                    "scouting_type": row[11],
+                    "scout_name": row[12] if row[12] else "Unknown Scout",
+                    "player_id": nav_universal_id,
+                    "flag_category": row[14],
+                    "purpose": row[15] if row[15] else None,
+                    "cafc_player_id": row[16],
+                    "data_source": row[17],
+                    "is_archived": row[18] if row[18] is not None else False,
+                    "has_been_viewed": row[19] if row[19] is not None else False,
+                    "is_potential": row[20] if row[20] is not None else False,
+                    "universal_id": nav_universal_id,
+                }
+            )
+
+        result = {
+            "total_reports": total_reports,
+            "limit": limit,
+            "offset": offset,
+            "has_more": (offset + limit) < total_reports,
+            "reports": report_list,
+        }
+
+        # Cache result for 5 minutes
+        set_cache(cache_key, result, ttl=300)
+
+        return result
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching recent scout reports: {e}"
         )
     finally:
         if conn:

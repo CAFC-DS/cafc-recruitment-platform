@@ -1932,3 +1932,82 @@ span.badge.badge-neutral-grey {
   pointer-events: none;
   cursor: not-allowed;
 }
+
+/* ================================
+   SHIMMER LOADING EFFECT
+   ================================ */
+
+/* Shimmer animation keyframes */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Shimmer line (skeleton) */
+.shimmer-line {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%,
+    #f0f0f0 100%
+  );
+  background-size: 2000px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+/* Dark mode shimmer */
+[data-bs-theme="dark"] .shimmer-line {
+  background: linear-gradient(
+    90deg,
+    #374151 0%,
+    #374151 25%,
+    #4b5563 50%,
+    #374151 75%,
+    #374151 100%
+  );
+  background-size: 2000px 100%;
+}
+
+/* Shimmer card wrapper */
+.shimmer-card {
+  background-color: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+[data-bs-theme="dark"] .shimmer-card {
+  background-color: #1f2937;
+  border-color: #4b5563;
+}
+
+/* Shimmer table styling */
+.table .shimmer-line {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Remove hover effect on shimmer rows */
+.table tbody tr:has(.shimmer-line):hover {
+  background-color: transparent !important;
+}
+
+/* Ensure shimmer is smooth on all devices */
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-line {
+    animation: none;
+    background: #f0f0f0;
+  }
+
+  [data-bs-theme="dark"] .shimmer-line {
+    background: #374151;
+  }
+}

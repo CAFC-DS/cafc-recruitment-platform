@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Container,
   Row,
@@ -16,6 +16,7 @@ import axiosInstance from "../axiosInstance";
 import { useAuth } from "../App";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import PlayerReportModal from "../components/PlayerReportModal";
+import ShimmerLoading from "../components/ShimmerLoading";
 import {
   getPerformanceScoreColor,
   getAttributeScoreColor,
@@ -71,8 +72,28 @@ const HomePage: React.FC = () => {
   const [databaseMetadata, setDatabaseMetadata] = useState<any>(null);
   const [recencyFilter, setRecencyFilter] = useState("7"); // Default to 7 days
 
+  // Infinite scroll state for Scout Reports
+  const [scoutReportsOffset, setScoutReportsOffset] = useState(0);
+  const [hasMoreScoutReports, setHasMoreScoutReports] = useState(true);
+  const [loadingMoreScoutReports, setLoadingMoreScoutReports] = useState(false);
+  const scoutReportsObserver = useRef<IntersectionObserver | null>(null);
+
+  // Infinite scroll state for Flag Reports
+  const [flagReportsOffset, setFlagReportsOffset] = useState(0);
+  const [hasMoreFlagReports, setHasMoreFlagReports] = useState(true);
+  const [loadingMoreFlagReports, setLoadingMoreFlagReports] = useState(false);
+  const flagReportsObserver = useRef<IntersectionObserver | null>(null);
+
+  // Reset state and fetch initial data when token or recency filter changes
   useEffect(() => {
     if (token) {
+      // Reset reports and offsets
+      setRecentScoutReports([]);
+      setRecentFlagReports([]);
+      setScoutReportsOffset(0);
+      setFlagReportsOffset(0);
+      setHasMoreScoutReports(true);
+      setHasMoreFlagReports(true);
       fetchDashboardData();
     }
   }, [token, recencyFilter]);
@@ -85,43 +106,25 @@ const HomePage: React.FC = () => {
       const userResponse = await axiosInstance.get("/users/me");
       setUserRole(userResponse.data.role || "scout");
 
-      // Fetch recent scout reports with recency filter
-      // Don't send recency_days parameter if "all" is selected
-      // Optimized: Fetch only 50 most recent reports for "Recent Reports" sections (95% cost reduction)
+      // Fetch initial scout reports using new endpoint with infinite scroll support
       const scoutUrl = recencyFilter === "all"
-        ? `/scout_reports/all?page=1&limit=50`
-        : `/scout_reports/all?page=1&limit=50&recency_days=${recencyFilter}`;
+        ? `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=0`
+        : `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=0&recency_days=${recencyFilter}`;
       const scoutResponse = await axiosInstance.get(scoutUrl);
-      const scoutReports =
-        scoutResponse.data.reports || scoutResponse.data || [];
+      const scoutReports = scoutResponse.data.reports || [];
+      setRecentScoutReports(scoutReports);
+      setHasMoreScoutReports(scoutResponse.data.has_more || false);
+      setScoutReportsOffset(20); // Set offset for next load
 
-      // Role-based filtering is handled by backend - no need for client-side filtering
-      const filteredScoutReports = Array.isArray(scoutReports)
-        ? scoutReports
-        : [];
-
-      // Separate flag reports from player assessment reports
-      // Show 10 most recent for dashboard overview (click "View All" for complete list)
-      const flagReports = filteredScoutReports
-        .filter(
-          (report) =>
-            report.report_type?.toLowerCase() === "flag" ||
-            report.report_type?.toLowerCase() === "flag assessment",
-        )
-        .slice(0, 10);
-
-      // Only show Player Assessment reports (exclude Flags and Clips)
-      // Show 10 most recent for dashboard overview (click "View All" for complete list)
-      const playerAssessmentReports = filteredScoutReports
-        .filter(
-          (report) =>
-            report.report_type?.toLowerCase() === "player assessment" ||
-            report.report_type?.toLowerCase() === "player_assessment",
-        )
-        .slice(0, 10);
-
-      setRecentScoutReports(playerAssessmentReports);
+      // Fetch initial flag reports using new endpoint
+      const flagUrl = recencyFilter === "all"
+        ? `/scout_reports/recent?report_type=Flag&limit=20&offset=0`
+        : `/scout_reports/recent?report_type=Flag&limit=20&offset=0&recency_days=${recencyFilter}`;
+      const flagResponse = await axiosInstance.get(flagUrl);
+      const flagReports = flagResponse.data.reports || [];
       setRecentFlagReports(flagReports);
+      setHasMoreFlagReports(flagResponse.data.has_more || false);
+      setFlagReportsOffset(20); // Set offset for next load
 
       // Fetch recent intel reports (last 5) - role-based filtering will be done on server
       const intelResponse = await axiosInstance.get(
@@ -183,6 +186,86 @@ const HomePage: React.FC = () => {
     setShowReportModal(false);
     setSelectedReport(null);
   };
+
+  // Load more scout reports (infinite scroll)
+  const loadMoreScoutReports = useCallback(async () => {
+    if (loadingMoreScoutReports || !hasMoreScoutReports) return;
+
+    try {
+      setLoadingMoreScoutReports(true);
+      const url = recencyFilter === "all"
+        ? `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=${scoutReportsOffset}`
+        : `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=${scoutReportsOffset}&recency_days=${recencyFilter}`;
+
+      const response = await axiosInstance.get(url);
+      const newReports = response.data.reports || [];
+
+      setRecentScoutReports((prev) => [...prev, ...newReports]);
+      setHasMoreScoutReports(response.data.has_more || false);
+      setScoutReportsOffset((prev) => prev + 20);
+    } catch (error) {
+      console.error("Error loading more scout reports:", error);
+    } finally {
+      setLoadingMoreScoutReports(false);
+    }
+  }, [loadingMoreScoutReports, hasMoreScoutReports, scoutReportsOffset, recencyFilter]);
+
+  // Load more flag reports (infinite scroll)
+  const loadMoreFlagReports = useCallback(async () => {
+    if (loadingMoreFlagReports || !hasMoreFlagReports) return;
+
+    try {
+      setLoadingMoreFlagReports(true);
+      const url = recencyFilter === "all"
+        ? `/scout_reports/recent?report_type=Flag&limit=20&offset=${flagReportsOffset}`
+        : `/scout_reports/recent?report_type=Flag&limit=20&offset=${flagReportsOffset}&recency_days=${recencyFilter}`;
+
+      const response = await axiosInstance.get(url);
+      const newReports = response.data.reports || [];
+
+      setRecentFlagReports((prev) => [...prev, ...newReports]);
+      setHasMoreFlagReports(response.data.has_more || false);
+      setFlagReportsOffset((prev) => prev + 20);
+    } catch (error) {
+      console.error("Error loading more flag reports:", error);
+    } finally {
+      setLoadingMoreFlagReports(false);
+    }
+  }, [loadingMoreFlagReports, hasMoreFlagReports, flagReportsOffset, recencyFilter]);
+
+  // Intersection Observer callback for scout reports (detect scroll to bottom)
+  const lastScoutReportElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loadingMoreScoutReports) return;
+      if (scoutReportsObserver.current) scoutReportsObserver.current.disconnect();
+
+      scoutReportsObserver.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMoreScoutReports) {
+          loadMoreScoutReports();
+        }
+      });
+
+      if (node) scoutReportsObserver.current.observe(node);
+    },
+    [loadingMoreScoutReports, hasMoreScoutReports, loadMoreScoutReports]
+  );
+
+  // Intersection Observer callback for flag reports (detect scroll to bottom)
+  const lastFlagReportElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loadingMoreFlagReports) return;
+      if (flagReportsObserver.current) flagReportsObserver.current.disconnect();
+
+      flagReportsObserver.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMoreFlagReports) {
+          loadMoreFlagReports();
+        }
+      });
+
+      if (node) flagReportsObserver.current.observe(node);
+    },
+    [loadingMoreFlagReports, hasMoreFlagReports, loadMoreFlagReports]
+  );
 
   // Note: Color functions now imported from utils/colorUtils.ts for consistency across the platform
 
@@ -311,16 +394,20 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentScoutReports.length === 0 ? (
+                {recentScoutReports.length === 0 && !loading ? (
                   <p className="text-muted text-center">
                     No recent scout reports
                   </p>
                 ) : (
-                  recentScoutReports.map((report) => (
-                    <div
-                      key={report.report_id}
-                      className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
-                    >
+                  <>
+                    {recentScoutReports.map((report, index) => {
+                      const isLastElement = index === recentScoutReports.length - 1;
+                      return (
+                        <div
+                          key={report.report_id}
+                          ref={isLastElement ? lastScoutReportElementRef : null}
+                          className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
+                        >
                       <div className="d-flex justify-content-between align-items-start">
                         <div className="d-flex align-items-start">
                           <Button
@@ -396,7 +483,16 @@ const HomePage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))
+                      );
+                    })}
+                    {/* Show shimmer loading while loading more */}
+                    {loadingMoreScoutReports && (
+                      <div className="text-center py-2">
+                        <Spinner animation="border" size="sm" />
+                        <p className="small text-muted mt-1">Loading more...</p>
+                      </div>
+                    )}
+                  </>
                 )}
               </Card.Body>
             </Card>
@@ -436,18 +532,21 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentFlagReports.length === 0 ? (
+                {recentFlagReports.length === 0 && !loading ? (
                   <p className="text-muted text-center">
                     No recent flag reports
                   </p>
                 ) : (
-                  recentFlagReports.map((report) => {
-                    const vssScore = report.summary ? extractVSSScore(report.summary) : null;
-                    return (
-                    <div
-                      key={report.report_id}
-                      className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
-                    >
+                  <>
+                    {recentFlagReports.map((report, index) => {
+                      const vssScore = report.summary ? extractVSSScore(report.summary) : null;
+                      const isLastElement = index === recentFlagReports.length - 1;
+                      return (
+                      <div
+                        key={report.report_id}
+                        ref={isLastElement ? lastFlagReportElementRef : null}
+                        className={`border-bottom pb-2 mb-2 ${report.is_archived ? 'report-card-archived' : ''}`}
+                      >
                       <div className="d-flex justify-content-between align-items-start">
                         <div className="d-flex align-items-start">
                           <Button
@@ -526,8 +625,16 @@ const HomePage: React.FC = () => {
                       </div>
                     </div>
                     );
-                  }))
-                }
+                    })}
+                    {/* Show shimmer loading while loading more */}
+                    {loadingMoreFlagReports && (
+                      <div className="text-center py-2">
+                        <Spinner animation="border" size="sm" />
+                        <p className="small text-muted mt-1">Loading more...</p>
+                      </div>
+                    )}
+                  </>
+                )}
               </Card.Body>
             </Card>
           </Col>
