@@ -4477,15 +4477,18 @@ async def get_recent_scout_reports(
         sql_params = []
 
         # Apply role-based filtering
-        user_id_exists = has_column("scout_reports", "USER_ID")
-        if user_id_exists:
-            if current_user.role == "scout":
-                where_clauses.append("sr.USER_ID = %s")
-                sql_params.append(current_user.id)
-            elif current_user.role == "loan":
-                where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
-                sql_params.append(current_user.id)
-                sql_params.append("Loan Report")
+        try:
+            user_id_exists = has_column("scout_reports", "USER_ID")
+            if user_id_exists:
+                if current_user.role == "scout":
+                    where_clauses.append("sr.USER_ID = %s")
+                    sql_params.append(current_user.id)
+                elif current_user.role == "loan":
+                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
+                    sql_params.append(current_user.id)
+                    sql_params.append("Loan Report")
+        except Exception as e:
+            logging.error(f"Error checking USER_ID column: {e}")
 
         # Apply report type filter
         if report_type:
