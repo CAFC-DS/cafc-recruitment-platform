@@ -16,7 +16,6 @@ import axiosInstance from "../axiosInstance";
 import { useAuth } from "../App";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import PlayerReportModal from "../components/PlayerReportModal";
-import ShimmerLoading from "../components/ShimmerLoading";
 import {
   getPerformanceScoreColor,
   getAttributeScoreColor,
@@ -271,9 +270,50 @@ const HomePage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container className="mt-4 text-center">
-        <Spinner animation="border" />
-        <p className="mt-2">Loading dashboard...</p>
+      <Container className="mt-4">
+        {/* Welcome Header Shimmer */}
+        <div className="mb-4">
+          <div className="shimmer-line mb-3" style={{ width: "300px", height: "36px" }}></div>
+          <div className="shimmer-line" style={{ width: "400px", height: "20px" }}></div>
+        </div>
+
+        {/* 2x2 Grid Dashboard Shimmer */}
+        <Row className="g-4">
+          {/* Four shimmer cards */}
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <Col md={6} key={`shimmer-card-${idx}`}>
+              <Card className="h-100">
+                <Card.Header className="bg-light border-bottom">
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="shimmer-line" style={{ width: "200px", height: "24px" }}></div>
+                    <div className="shimmer-line" style={{ width: "80px", height: "32px", borderRadius: "4px" }}></div>
+                  </div>
+                </Card.Header>
+                <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
+                  {Array.from({ length: 5 }).map((_, itemIdx) => (
+                    <div key={`shimmer-item-${itemIdx}`} className="border-bottom pb-2 mb-2">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div className="d-flex align-items-start">
+                          <div className="shimmer-line me-2 mt-1" style={{ width: "32px", height: "32px", borderRadius: "50%" }}></div>
+                          <div>
+                            <div className="shimmer-line mb-2" style={{ width: "150px", height: "20px" }}></div>
+                            <div className="shimmer-line" style={{ width: "100px", height: "16px" }}></div>
+                          </div>
+                        </div>
+                        <div className="text-end">
+                          <div className="mb-1">
+                            <div className="shimmer-line" style={{ width: "60px", height: "24px", borderRadius: "12px", marginLeft: "auto", marginBottom: "4px" }}></div>
+                          </div>
+                          <div className="shimmer-line" style={{ width: "80px", height: "16px", marginLeft: "auto" }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
       </Container>
     );
   }
@@ -394,7 +434,7 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentScoutReports.length === 0 && !loading ? (
+                {recentScoutReports.length === 0 && !loadingMoreScoutReports ? (
                   <p className="text-muted text-center">
                     No recent scout reports
                   </p>
@@ -487,10 +527,28 @@ const HomePage: React.FC = () => {
                     })}
                     {/* Show shimmer loading while loading more */}
                     {loadingMoreScoutReports && (
-                      <div className="text-center py-2">
-                        <Spinner animation="border" size="sm" />
-                        <p className="small text-muted mt-1">Loading more...</p>
-                      </div>
+                      <>
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                          <div key={`shimmer-${idx}`} className="border-bottom pb-2 mb-2">
+                            <div className="d-flex justify-content-between align-items-start">
+                              <div className="d-flex align-items-start">
+                                <div className="shimmer-line me-2 mt-1" style={{ width: "32px", height: "32px", borderRadius: "50%" }}></div>
+                                <div>
+                                  <div className="shimmer-line mb-2" style={{ width: "150px", height: "20px" }}></div>
+                                  <div className="shimmer-line" style={{ width: "100px", height: "16px" }}></div>
+                                </div>
+                              </div>
+                              <div className="text-end">
+                                <div className="mb-1 d-flex gap-1 justify-content-end">
+                                  <div className="shimmer-line" style={{ width: "40px", height: "24px", borderRadius: "12px" }}></div>
+                                  <div className="shimmer-line" style={{ width: "40px", height: "24px", borderRadius: "12px" }}></div>
+                                </div>
+                                <div className="shimmer-line" style={{ width: "80px", height: "16px", marginLeft: "auto" }}></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
                     )}
                   </>
                 )}
@@ -532,7 +590,7 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentFlagReports.length === 0 && !loading ? (
+                {recentFlagReports.length === 0 && !loadingMoreFlagReports ? (
                   <p className="text-muted text-center">
                     No recent flag reports
                   </p>
@@ -628,10 +686,27 @@ const HomePage: React.FC = () => {
                     })}
                     {/* Show shimmer loading while loading more */}
                     {loadingMoreFlagReports && (
-                      <div className="text-center py-2">
-                        <Spinner animation="border" size="sm" />
-                        <p className="small text-muted mt-1">Loading more...</p>
-                      </div>
+                      <>
+                        {Array.from({ length: 3 }).map((_, idx) => (
+                          <div key={`shimmer-${idx}`} className="border-bottom pb-2 mb-2">
+                            <div className="d-flex justify-content-between align-items-start">
+                              <div className="d-flex align-items-start">
+                                <div className="shimmer-line me-2 mt-1" style={{ width: "32px", height: "32px", borderRadius: "50%" }}></div>
+                                <div>
+                                  <div className="shimmer-line mb-2" style={{ width: "150px", height: "20px" }}></div>
+                                  <div className="shimmer-line" style={{ width: "100px", height: "16px" }}></div>
+                                </div>
+                              </div>
+                              <div className="text-end">
+                                <div className="mb-1">
+                                  <div className="shimmer-line" style={{ width: "80px", height: "24px", borderRadius: "12px", marginLeft: "auto", marginBottom: "4px" }}></div>
+                                </div>
+                                <div className="shimmer-line" style={{ width: "80px", height: "16px", marginLeft: "auto" }}></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
                     )}
                   </>
                 )}

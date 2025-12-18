@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Form,
   Button,
   Row,
   Col,
-  ListGroup,
   Card,
   Spinner,
   Table,
@@ -26,11 +25,9 @@ import { useViewMode } from "../contexts/ViewModeContext";
 import {
   getPerformanceScoreColor,
   getFlagColor,
-  getContrastTextColor,
   getGradeColor,
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
-import { containsAccentInsensitive } from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 
@@ -93,10 +90,6 @@ const ScoutingPage: React.FC = () => {
   const [reportTypeFilter, setReportTypeFilter] = useState("");
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
-
-  // Role-based permissions
-  const [userRole, setUserRole] = useState("");
-  const [currentUsername, setCurrentUsername] = useState("");
 
   // Edit and delete functionality
   const [editMode, setEditMode] = useState(false);
@@ -189,8 +182,6 @@ const ScoutingPage: React.FC = () => {
   const fetchUserInfo = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/users/me");
-      setUserRole(response.data.role || "scout");
-      setCurrentUsername(response.data.username || "");
       // Initialize user's view mode preference
       if (response.data.id || response.data.username) {
         initializeUserViewMode(
@@ -623,15 +614,15 @@ const ScoutingPage: React.FC = () => {
         <Col md={4} className="text-end">
           <small className="text-muted">
             Showing {Math.min(scoutReports.length, itemsPerPage)} of{" "}
-            {filteredReports.length} filtered results
-            {filteredReports.length !== totalReports && (
+            {scoutReports.length} filtered results
+            {scoutReports.length !== totalReports && (
               <span> ({totalReports} total)</span>
             )}
           </small>
-          {filteredReports.filter((r) => !r.has_been_viewed).length > 0 && (
+          {scoutReports.filter((r) => !r.has_been_viewed).length > 0 && (
             <div>
               <small className="text-primary fw-semibold">
-                {filteredReports.filter((r) => !r.has_been_viewed).length} unread
+                {scoutReports.filter((r) => !r.has_been_viewed).length} unread
               </small>
             </div>
           )}
