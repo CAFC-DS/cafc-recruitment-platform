@@ -380,7 +380,7 @@ if ENVIRONMENT == "production":
     SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_PROD_DATABASE")
     SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
     SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
-    logging.info(f"🚀 PRODUCTION MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
+    print(f"🚀 PRODUCTION MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
 else:
     # Development: Use personal account with DEVELOPMENT_WH
     SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_DEV_ACCOUNT", os.getenv("SNOWFLAKE_ACCOUNT"))
@@ -390,7 +390,7 @@ else:
     SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DEV_DATABASE", os.getenv("SNOWFLAKE_DATABASE"))
     SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_DEV_SCHEMA", os.getenv("SNOWFLAKE_SCHEMA"))
     SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_DEV_PRIVATE_KEY_PATH", os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH"))
-    logging.info(f"🔧 DEVELOPMENT MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
+    print(f"🔧 DEVELOPMENT MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
 
 # Legacy password support (kept for backward compatibility, not used with key-pair auth)
 SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD")
