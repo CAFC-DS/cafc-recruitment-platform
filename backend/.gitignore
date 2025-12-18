@@ -54,3 +54,6 @@ rsa_key.p8
 # Snowflake private key files
 *private_key*
 *rsa_key*
+keys/app_user_rsa_key.pem
+keys/app_user_rsa_key.pub
+keys/rsa_key_unencrypted.pem

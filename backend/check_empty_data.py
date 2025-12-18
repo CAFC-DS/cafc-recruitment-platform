@@ -10,19 +10,34 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Snowflake connection parameters - Environment-Based
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+if ENVIRONMENT == "production":
+    # Production: Use APP_USER with COMPUTE_WH
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_PROD_ACCOUNT")
+    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_PROD_USERNAME")
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_PROD_ROLE")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_PROD_WAREHOUSE")
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_PROD_DATABASE")
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
+    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
+    print(f"🚀 PRODUCTION MODE: Using {SNOWFLAKE_USER} with {SNOWFLAKE_WAREHOUSE}")
+else:
+    # Development: Use personal account with DEVELOPMENT_WH
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_DEV_ACCOUNT", os.getenv("SNOWFLAKE_ACCOUNT"))
+    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_DEV_USERNAME", os.getenv("SNOWFLAKE_USERNAME"))
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_DEV_ROLE", "SYSADMIN")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_DEV_WAREHOUSE", os.getenv("SNOWFLAKE_WAREHOUSE"))
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DEV_DATABASE", os.getenv("SNOWFLAKE_DATABASE"))
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_DEV_SCHEMA", os.getenv("SNOWFLAKE_SCHEMA"))
+    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_DEV_PRIVATE_KEY_PATH", os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH"))
+    print(f"🔧 DEVELOPMENT MODE: Using {SNOWFLAKE_USER} with {SNOWFLAKE_WAREHOUSE}")
+
 def get_snowflake_connection():
     """Create and return a Snowflake connection using the same method as main.py"""
     from cryptography.hazmat.backends import default_backend
     from cryptography.hazmat.primitives import serialization
-
-    # Get environment variables using the same names as main.py
-    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
-    SNOWFLAKE_USERNAME = os.getenv("SNOWFLAKE_USERNAME")
-    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
-    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
-    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
-    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
-    ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
     # Get private key (same method as main.py)
     def get_private_key():
@@ -52,8 +67,9 @@ def get_snowflake_connection():
         pkb = get_private_key()
 
         connect_params = {
-            "user": SNOWFLAKE_USERNAME,
+            "user": SNOWFLAKE_USER,
             "account": SNOWFLAKE_ACCOUNT,
+            "role": SNOWFLAKE_ROLE,
             "warehouse": SNOWFLAKE_WAREHOUSE,
             "database": SNOWFLAKE_DATABASE,
             "schema": SNOWFLAKE_SCHEMA,

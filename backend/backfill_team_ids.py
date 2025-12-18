@@ -18,6 +18,30 @@ import argparse
 env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
+# Snowflake connection parameters - Environment-Based
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+if ENVIRONMENT == "production":
+    # Production: Use APP_USER with COMPUTE_WH
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_PROD_ACCOUNT")
+    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_PROD_USERNAME")
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_PROD_ROLE")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_PROD_WAREHOUSE")
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_PROD_DATABASE")
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
+    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
+    print(f"🚀 PRODUCTION MODE: Using {SNOWFLAKE_USER} with {SNOWFLAKE_WAREHOUSE}")
+else:
+    # Development: Use personal account with DEVELOPMENT_WH
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_DEV_ACCOUNT", os.getenv("SNOWFLAKE_ACCOUNT"))
+    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_DEV_USERNAME", os.getenv("SNOWFLAKE_USERNAME"))
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_DEV_ROLE", "SYSADMIN")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_DEV_WAREHOUSE", os.getenv("SNOWFLAKE_WAREHOUSE"))
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DEV_DATABASE", os.getenv("SNOWFLAKE_DATABASE"))
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_DEV_SCHEMA", os.getenv("SNOWFLAKE_SCHEMA"))
+    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_DEV_PRIVATE_KEY_PATH", os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH"))
+    print(f"🔧 DEVELOPMENT MODE: Using {SNOWFLAKE_USER} with {SNOWFLAKE_WAREHOUSE}")
+
 def get_private_key():
     """Load private key from file"""
     private_key_path = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
@@ -39,11 +63,12 @@ def get_snowflake_connection():
     pkb = get_private_key()
 
     return snowflake.connector.connect(
-        user=os.getenv("SNOWFLAKE_USERNAME"),
-        account=os.getenv("SNOWFLAKE_ACCOUNT"),
-        warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
-        database=os.getenv("SNOWFLAKE_DATABASE"),
-        schema=os.getenv("SNOWFLAKE_SCHEMA"),
+        user=SNOWFLAKE_USER,
+        account=SNOWFLAKE_ACCOUNT,
+        role=SNOWFLAKE_ROLE,
+        warehouse=SNOWFLAKE_WAREHOUSE,
+        database=SNOWFLAKE_DATABASE,
+        schema=SNOWFLAKE_SCHEMA,
         private_key=pkb,
         client_session_keep_alive=True,
     )
