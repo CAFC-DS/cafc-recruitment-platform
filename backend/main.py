@@ -4529,7 +4529,8 @@ async def get_recent_scout_reports(
                 p.DATA_SOURCE,
                 sr.IS_ARCHIVED,
                 CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END as HAS_BEEN_VIEWED,
-                sr.IS_POTENTIAL
+                sr.IS_POTENTIAL,
+                sr.SUMMARY
             {base_sql}
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
@@ -4593,6 +4594,7 @@ async def get_recent_scout_reports(
                     "is_archived": row[18] if row[18] is not None else False,
                     "has_been_viewed": row[19] if row[19] is not None else False,
                     "is_potential": row[20] if row[20] is not None else False,
+                    "summary": row[21] if row[21] else None,
                     "universal_id": nav_universal_id,
                 }
             )
