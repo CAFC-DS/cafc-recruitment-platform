@@ -850,11 +850,7 @@ const ScoutingPage: React.FC = () => {
         </Collapse>
       </Card>
 
-      {loading ? (
-        <div className="text-center">
-          <Spinner animation="border" />
-        </div>
-      ) : errorReports ? (
+      {errorReports ? (
         <Alert variant="danger">{errorReports}</Alert>
       ) : (
         <>
