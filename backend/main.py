@@ -4611,7 +4611,7 @@ async def get_recent_scout_reports(
         }
 
         # Cache result for 5 minutes
-        set_cache(cache_key, result, ttl=300)
+        set_cache(cache_key, result, expiry_minutes=5)
 
         return result
     except Exception as e:
