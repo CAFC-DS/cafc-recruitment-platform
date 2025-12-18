@@ -13,7 +13,7 @@ const ShimmerLoading: React.FC<ShimmerLoadingProps> = ({
     return (
       <div className="row">
         {Array.from({ length: count }).map((_, index) => (
-          <div key={index} className="col-md-6 col-lg-4 mb-4">
+          <div key={index} className="col-sm-6 col-md-4 col-lg-3 mb-4">
             <div className="card shimmer-card" style={{ height: "280px" }}>
               <div className="card-body">
                 {/* Player name shimmer */}
@@ -90,83 +90,81 @@ const ShimmerLoading: React.FC<ShimmerLoadingProps> = ({
     );
   }
 
-  // Table variant
+  // Table variant - renders tbody rows only (no table wrapper or thead)
+  // This is because it's used inside an existing table structure
   return (
-    <table className="table table-hover">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th>Age</th>
-          <th>Fixture</th>
-          <th>Position</th>
-          <th>Score</th>
-          <th>Scout</th>
-          <th>Type</th>
-          <th>Date</th>
-          <th>Actions</th>
+    <>
+      {Array.from({ length: count }).map((_, index) => (
+        <tr key={index}>
+          <td style={{ width: "30px" }}>
+            <div
+              className="shimmer-line"
+              style={{ width: "8px", height: "8px", borderRadius: "50%" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "90px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "120px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "40px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "80px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "180px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "50px", height: "28px", borderRadius: "14px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "100px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "90px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "90px", height: "20px" }}
+            ></div>
+          </td>
+          <td>
+            <div
+              className="shimmer-line"
+              style={{ width: "100px", height: "32px", borderRadius: "4px" }}
+            ></div>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        {Array.from({ length: count }).map((_, index) => (
-          <tr key={index}>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "120px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "40px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "180px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "80px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "50px", height: "28px", borderRadius: "14px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "100px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "90px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "90px", height: "20px" }}
-              ></div>
-            </td>
-            <td>
-              <div
-                className="shimmer-line"
-                style={{ width: "100px", height: "32px", borderRadius: "4px" }}
-              ></div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+      ))}
+    </>
   );
 };
 

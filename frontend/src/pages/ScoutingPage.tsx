@@ -255,7 +255,10 @@ const ScoutingPage: React.FC = () => {
     if (!token) return;
 
     // Reset to page 1 when filters change
-    setCurrentPage(1);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return; // Let the page useEffect handle the fetch
+    }
 
     // Debounce text filters (500ms delay)
     const timer = setTimeout(() => {
@@ -281,10 +284,10 @@ const ScoutingPage: React.FC = () => {
 
   // Fetch when page changes (no debounce for pagination)
   useEffect(() => {
-    if (token && currentPage > 1) {
+    if (token) {
       fetchScoutReports(currentPage);
     }
-  }, [currentPage, token]);
+  }, [currentPage, token, fetchScoutReports]);
 
 
   const handleOpenReportModal = async (report_id: number) => {
@@ -880,11 +883,7 @@ const ScoutingPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td colSpan={11} style={{ padding: 0, border: "none" }}>
-                        <ShimmerLoading variant="table" count={10} />
-                      </td>
-                    </tr>
+                    <ShimmerLoading variant="table" count={10} />
                   ) : scoutReports.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="text-center text-muted py-4">

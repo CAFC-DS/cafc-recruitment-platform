@@ -1,7 +1,7 @@
 -- =====================================================================
--- Grant Permissions to SYSADMIN for Development Access
+-- Grant Permissions to DEV_ROLE for Development Access
 -- =====================================================================
--- This script grants the SYSADMIN role access to the RECRUITMENT_TEST
+-- This script grants the DEV_ROLE role access to the RECRUITMENT_TEST
 -- database and all its tables. Run this with an ACCOUNTADMIN account.
 --
 -- Usage:
@@ -13,31 +13,34 @@
 -- Switch to ACCOUNTADMIN role to grant permissions
 USE ROLE ACCOUNTADMIN;
 
--- Grant database access to SYSADMIN
-GRANT USAGE ON DATABASE RECRUITMENT_TEST TO ROLE SYSADMIN;
+-- Grant database access to DEV_ROLE
+GRANT USAGE ON DATABASE RECRUITMENT_TEST TO ROLE DEV_ROLE;
 
--- Grant schema access to SYSADMIN
-GRANT USAGE ON SCHEMA RECRUITMENT_TEST.PUBLIC TO ROLE SYSADMIN;
+-- Grant schema access to DEV_ROLE
+GRANT USAGE ON SCHEMA RECRUITMENT_TEST.PUBLIC TO ROLE DEV_ROLE;
 
--- Grant table permissions to SYSADMIN
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA RECRUITMENT_TEST.PUBLIC TO ROLE SYSADMIN;
+-- Grant table permissions to DEV_ROLE
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA RECRUITMENT_TEST.PUBLIC TO ROLE DEV_ROLE;
 
 -- Grant permissions on future tables (important for new tables created later)
-GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA RECRUITMENT_TEST.PUBLIC TO ROLE SYSADMIN;
+GRANT SELECT, INSERT, UPDATE, DELETE ON FUTURE TABLES IN SCHEMA RECRUITMENT_TEST.PUBLIC TO ROLE DEV_ROLE;
 
 -- Grant warehouse access (if not already granted)
-GRANT USAGE ON WAREHOUSE DEVELOPMENT_WH TO ROLE SYSADMIN;
-GRANT OPERATE ON WAREHOUSE DEVELOPMENT_WH TO ROLE SYSADMIN;
+GRANT USAGE ON WAREHOUSE DEVELOPMENT_WH TO ROLE DEV_ROLE;
+GRANT OPERATE ON WAREHOUSE DEVELOPMENT_WH TO ROLE DEV_ROLE;
+
+-- Grant role to HUMARJI user (if not already granted)
+GRANT ROLE DEV_ROLE TO USER HUMARJI;
 
 -- Verify the grants were applied
-SHOW GRANTS TO ROLE SYSADMIN;
+SHOW GRANTS TO ROLE DEV_ROLE;
 
 -- =====================================================================
 -- Verification Queries
 -- =====================================================================
--- Run these to verify SYSADMIN can access the tables:
+-- Run these to verify DEV_ROLE can access the tables:
 
-USE ROLE SYSADMIN;
+USE ROLE DEV_ROLE;
 USE WAREHOUSE DEVELOPMENT_WH;
 USE DATABASE RECRUITMENT_TEST;
 USE SCHEMA PUBLIC;

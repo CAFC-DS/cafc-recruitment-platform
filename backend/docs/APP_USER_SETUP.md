@@ -73,7 +73,7 @@ ENVIRONMENT=development
 # Development Configuration (your personal account)
 SNOWFLAKE_DEV_ACCOUNT=TDAPVGQ-SL30706
 SNOWFLAKE_DEV_USERNAME=HUMARJI
-SNOWFLAKE_DEV_ROLE=SYSADMIN
+SNOWFLAKE_DEV_ROLE=DEV_ROLE
 SNOWFLAKE_DEV_WAREHOUSE=DEVELOPMENT_WH
 SNOWFLAKE_DEV_DATABASE=RECRUITMENT_TEST
 SNOWFLAKE_DEV_SCHEMA=PUBLIC
@@ -111,7 +111,7 @@ python main.py
 
 You should see:
 ```
-🔧 DEVELOPMENT MODE: Connecting to Snowflake as HUMARJI with role SYSADMIN using warehouse DEVELOPMENT_WH
+🔧 DEVELOPMENT MODE: Connecting to Snowflake as HUMARJI with role DEV_ROLE using warehouse DEVELOPMENT_WH
 ```
 
 ### Test Production Mode (Locally)
@@ -168,7 +168,7 @@ ENVIRONMENT=production python analyze_all_reports.py
 │              │   │              │
 │ HUMARJI      │   │ APP_USER     │
 │ DEVELOPMENT_WH│   │ COMPUTE_WH   │
-│ SYSADMIN     │   │ APP_ROLE     │
+│ DEV_ROLE     │   │ APP_ROLE     │
 │ Dev Key      │   │ App Key      │
 └──────┬───────┘   └──────┬───────┘
        │                   │
