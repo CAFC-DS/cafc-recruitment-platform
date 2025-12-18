@@ -99,6 +99,9 @@ const ScoutingPage: React.FC = () => {
   const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Mark all as read functionality
+  const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
+
   const fetchScoutReports = useCallback(
     async (page: number = 1) => {
       setLoading(true);
@@ -241,6 +244,29 @@ const ScoutingPage: React.FC = () => {
     setEditMode(false);
     setEditReportId(null);
     setEditReportData(null);
+  };
+
+  const handleMarkAllAsRead = async () => {
+    // Check if there are any unread reports
+    const unreadCount = scoutReports.filter((r) => !r.has_been_viewed).length;
+    if (unreadCount === 0) {
+      return; // Nothing to mark
+    }
+
+    setMarkingAllAsRead(true);
+    try {
+      const response = await axiosInstance.post("/scout_reports/mark-all-viewed");
+
+      // Refresh reports to update viewed status
+      await fetchScoutReports(currentPage);
+
+      console.log(`Marked ${response.data.reports_marked} reports as read`);
+    } catch (error) {
+      console.error("Error marking all reports as read:", error);
+      setErrorReports("Failed to mark all reports as read. Please try again.");
+    } finally {
+      setMarkingAllAsRead(false);
+    }
   };
 
   // Initial fetch on load
@@ -587,6 +613,32 @@ const ScoutingPage: React.FC = () => {
             <option value="30">Last 30 Days</option>
             <option value="90">Last 90 Days</option>
           </Form.Select>
+
+          {/* Mark All as Read button - only show if there are unread reports */}
+          {scoutReports.filter((r) => !r.has_been_viewed).length > 0 && (
+            <Button
+              size="sm"
+              variant="outline-primary"
+              className="mt-2"
+              onClick={handleMarkAllAsRead}
+              disabled={markingAllAsRead || loading}
+              style={{ width: "150px" }}
+            >
+              {markingAllAsRead ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    className="me-1"
+                  />
+                  Marking...
+                </>
+              ) : (
+                <>✓ Mark All as Read</>
+              )}
+            </Button>
+          )}
         </Col>
         <Col md={4} className="text-center">
           {totalPages > 1 && (
