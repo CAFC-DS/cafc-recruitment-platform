@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Form,
   Button,
   Row,
   Col,
-  ListGroup,
   Card,
   Spinner,
   Table,
@@ -20,16 +19,15 @@ import PlayerReportModal from "../components/PlayerReportModal";
 import AddPlayerModal from "../components/AddPlayerModal";
 import AddFixtureModal from "../components/AddFixtureModal";
 import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
+import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import {
   getPerformanceScoreColor,
   getFlagColor,
-  getContrastTextColor,
   getGradeColor,
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
-import { containsAccentInsensitive } from "../utils/textNormalization";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 
@@ -93,10 +91,6 @@ const ScoutingPage: React.FC = () => {
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
 
-  // Role-based permissions
-  const [userRole, setUserRole] = useState("");
-  const [currentUsername, setCurrentUsername] = useState("");
-
   // Edit and delete functionality
   const [editMode, setEditMode] = useState(false);
   const [editReportId, setEditReportId] = useState<number | null>(null);
@@ -106,27 +100,59 @@ const ScoutingPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchScoutReports = useCallback(
-    async (recency: string) => {
+    async (page: number = 1) => {
       setLoading(true);
       setErrorReports(null);
       try {
         const params: any = {
-          page: 1,
-          limit: 1000, // Load all reports for client-side filtering and pagination
+          page,
+          limit: itemsPerPage, // Server-side pagination with 20 items per page
         };
-        if (recency !== "all") {
-          params.recency_days = parseInt(recency);
+
+        // Add recency filter
+        if (recencyFilter !== "all") {
+          params.recency_days = parseInt(recencyFilter);
         }
+
+        // Add server-side filters
+        if (performanceScores.length > 0) {
+          params.performance_scores = performanceScores.join(",");
+        }
+        if (minAge) {
+          params.min_age = parseInt(minAge);
+        }
+        if (maxAge) {
+          params.max_age = parseInt(maxAge);
+        }
+        if (scoutNameFilter) {
+          params.scout_name = scoutNameFilter;
+        }
+        if (playerNameFilter) {
+          params.player_name = playerNameFilter;
+        }
+        if (reportTypeFilter) {
+          params.report_types = reportTypeFilter;
+        }
+        if (scoutingTypeFilter) {
+          params.scouting_type = scoutingTypeFilter;
+        }
+        if (positionFilter) {
+          params.position = positionFilter;
+        }
+        if (dateFromFilter) {
+          params.date_from = dateFromFilter;
+        }
+        if (dateToFilter) {
+          params.date_to = dateToFilter;
+        }
+
         const response = await axiosInstance.get("/scout_reports/all", {
           params,
         });
-        let reports = response.data.reports || [];
 
         // Role-based filtering is now handled by the backend
-        // The backend already filters scout reports by USER_ID for scout users
-
-        setScoutReports(reports);
-        setTotalReports(reports.length); // Use actual loaded reports count
+        setScoutReports(response.data.reports || []);
+        setTotalReports(response.data.total_reports || 0);
       } catch (error) {
         console.error("Error fetching scout reports:", error);
         setErrorReports("Failed to load scout reports. Please try again.");
@@ -136,15 +162,26 @@ const ScoutingPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [userRole, currentUsername],
+    [
+      recencyFilter,
+      itemsPerPage,
+      performanceScores,
+      minAge,
+      maxAge,
+      scoutNameFilter,
+      playerNameFilter,
+      reportTypeFilter,
+      scoutingTypeFilter,
+      positionFilter,
+      dateFromFilter,
+      dateToFilter,
+    ],
   );
 
   // Fetch user role and username
   const fetchUserInfo = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/users/me");
-      setUserRole(response.data.role || "scout");
-      setCurrentUsername(response.data.username || "");
       // Initialize user's view mode preference
       if (response.data.id || response.data.username) {
         initializeUserViewMode(
@@ -191,7 +228,7 @@ const ScoutingPage: React.FC = () => {
       await axiosInstance.delete(`/scout_reports/${deleteReportId}`);
       setShowDeleteModal(false);
       setDeleteReportId(null);
-      fetchScoutReports(recencyFilter);
+      fetchScoutReports(1); // Refresh current page
     } catch (error) {
       console.error("Error deleting report:", error);
     } finally {
@@ -206,13 +243,51 @@ const ScoutingPage: React.FC = () => {
     setEditReportData(null);
   };
 
+  // Initial fetch on load
   useEffect(() => {
     if (token) {
-      fetchUserInfo().then(() => {
-        fetchScoutReports(recencyFilter);
-      });
+      fetchUserInfo();
     }
-  }, [token, recencyFilter, fetchScoutReports, fetchUserInfo]);
+  }, [token, fetchUserInfo]);
+
+  // Debounced fetch when filters change
+  useEffect(() => {
+    if (!token) return;
+
+    // Reset to page 1 when filters change
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return; // Let the page useEffect handle the fetch
+    }
+
+    // Debounce text filters (500ms delay)
+    const timer = setTimeout(() => {
+      fetchScoutReports(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    token,
+    recencyFilter,
+    performanceScores,
+    minAge,
+    maxAge,
+    scoutNameFilter,
+    playerNameFilter,
+    reportTypeFilter,
+    scoutingTypeFilter,
+    positionFilter,
+    dateFromFilter,
+    dateToFilter,
+    fetchScoutReports,
+  ]);
+
+  // Fetch when page changes (no debounce for pagination)
+  useEffect(() => {
+    if (token) {
+      fetchScoutReports(currentPage);
+    }
+  }, [currentPage, token, fetchScoutReports]);
 
 
   const handleOpenReportModal = async (report_id: number) => {
@@ -368,114 +443,8 @@ const ScoutingPage: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
-  // Filter reports based on advanced filters
-  const getFilteredReports = () => {
-    let filtered = scoutReports;
-
-    // Performance score filter - individual scores
-    if (performanceScores.length > 0) {
-      filtered = filtered.filter((report) =>
-        performanceScores.includes(report.performance_score),
-      );
-    }
-
-    // Age range filter
-    if (minAge || maxAge) {
-      filtered = filtered.filter((report) => {
-        if (!report.age) return false;
-        const min = minAge ? parseInt(minAge) : 0;
-        const max = maxAge ? parseInt(maxAge) : 100;
-        return report.age >= min && report.age <= max;
-      });
-    }
-
-    // Scout name filter
-    if (scoutNameFilter) {
-      filtered = filtered.filter((report) =>
-        report.scout_name.toLowerCase().includes(scoutNameFilter.toLowerCase()),
-      );
-    }
-
-    // Player name filter
-    if (playerNameFilter) {
-      filtered = filtered.filter((report) =>
-        containsAccentInsensitive(report.player_name, playerNameFilter),
-      );
-    }
-
-    // Report type filter
-    if (reportTypeFilter) {
-      filtered = filtered.filter((report) =>
-        report.report_type
-          .toLowerCase()
-          .includes(reportTypeFilter.toLowerCase()),
-      );
-    }
-
-    // Scouting type filter
-    if (scoutingTypeFilter) {
-      filtered = filtered.filter(
-        (report) =>
-          report.scouting_type.toLowerCase() ===
-          scoutingTypeFilter.toLowerCase(),
-      );
-    }
-
-    // Position filter
-    if (positionFilter) {
-      filtered = filtered.filter(
-        (report) =>
-          report.position_played &&
-          report.position_played
-            .toLowerCase()
-            .includes(positionFilter.toLowerCase()),
-      );
-    }
-
-    // Date range filter
-    if (dateFromFilter || dateToFilter) {
-      filtered = filtered.filter((report) => {
-        const reportDate = new Date(report.created_at);
-        const fromDate = dateFromFilter
-          ? new Date(dateFromFilter)
-          : new Date("1900-01-01");
-        const toDate = dateToFilter
-          ? new Date(dateToFilter)
-          : new Date("2100-12-31");
-        return reportDate >= fromDate && reportDate <= toDate;
-      });
-    }
-
-    return filtered;
-  };
-
-  const filteredReports = getFilteredReports();
-
-  // Client-side pagination for filtered results
-  const getPaginatedReports = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredReports.slice(startIndex, endIndex);
-  };
-
-  const paginatedReports = getPaginatedReports();
-  const filteredTotalPages = Math.ceil(filteredReports.length / itemsPerPage);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    performanceScores,
-    minAge,
-    maxAge,
-    scoutNameFilter,
-    playerNameFilter,
-    dateFromFilter,
-    dateToFilter,
-    reportTypeFilter,
-    scoutingTypeFilter,
-    positionFilter,
-  ]);
+  // Server-side pagination - reports are already filtered and paginated from backend
+  const totalPages = Math.ceil(totalReports / itemsPerPage);
 
   // Check if we should open the draft modal from URL parameter
   useEffect(() => {
@@ -525,7 +494,7 @@ const ScoutingPage: React.FC = () => {
         show={showAssessmentModal}
         onHide={handleAssessmentModalHide}
         selectedPlayer={selectedPlayer}
-        onAssessmentSubmitSuccess={() => fetchScoutReports(recencyFilter)}
+        onAssessmentSubmitSuccess={() => fetchScoutReports(1)}
         editMode={editMode}
         reportId={editReportId}
         existingReportData={editReportData}
@@ -620,7 +589,7 @@ const ScoutingPage: React.FC = () => {
           </Form.Select>
         </Col>
         <Col md={4} className="text-center">
-          {filteredTotalPages > 1 && (
+          {totalPages > 1 && (
             <div className="d-flex align-items-center justify-content-center">
               <Button
                 variant="outline-secondary"
@@ -632,13 +601,13 @@ const ScoutingPage: React.FC = () => {
                 ‹
               </Button>
               <small className="text-muted mx-2">
-                Page {currentPage} of {filteredTotalPages}
+                Page {currentPage} of {totalPages}
               </small>
               <Button
                 variant="outline-secondary"
                 size="sm"
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= filteredTotalPages || loading}
+                disabled={currentPage >= totalPages || loading}
               >
                 ›
               </Button>
@@ -647,16 +616,16 @@ const ScoutingPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {Math.min(paginatedReports.length, itemsPerPage)} of{" "}
-            {filteredReports.length} filtered results
-            {filteredReports.length !== totalReports && (
+            Showing {Math.min(scoutReports.length, itemsPerPage)} of{" "}
+            {scoutReports.length} filtered results
+            {scoutReports.length !== totalReports && (
               <span> ({totalReports} total)</span>
             )}
           </small>
-          {filteredReports.filter((r) => !r.has_been_viewed).length > 0 && (
+          {scoutReports.filter((r) => !r.has_been_viewed).length > 0 && (
             <div>
               <small className="text-primary fw-semibold">
-                {filteredReports.filter((r) => !r.has_been_viewed).length} unread
+                {scoutReports.filter((r) => !r.has_been_viewed).length} unread
               </small>
             </div>
           )}
@@ -884,11 +853,7 @@ const ScoutingPage: React.FC = () => {
         </Collapse>
       </Card>
 
-      {loading ? (
-        <div className="text-center">
-          <Spinner animation="border" />
-        </div>
-      ) : errorReports ? (
+      {errorReports ? (
         <Alert variant="danger">{errorReports}</Alert>
       ) : (
         <>
@@ -917,7 +882,16 @@ const ScoutingPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedReports.map((report) => (
+                  {loading ? (
+                    <ShimmerLoading variant="table" count={10} />
+                  ) : scoutReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="text-center text-muted py-4">
+                        No reports found
+                      </td>
+                    </tr>
+                  ) : (
+                    scoutReports.map((report) => (
                     <tr key={report.report_id}>
                       <td style={{ width: "30px", textAlign: "center", paddingRight: 0 }}>
                         {!report.has_been_viewed && (
@@ -1062,13 +1036,22 @@ const ScoutingPage: React.FC = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </Table>
             </div>
           ) : (
             <Row>
-              {paginatedReports.map((report) => (
+              {loading ? (
+                <ShimmerLoading variant="card" count={9} />
+              ) : scoutReports.length === 0 ? (
+                <Col xs={12}>
+                  <div className="text-center text-muted py-5">
+                    No reports found
+                  </div>
+                </Col>
+              ) : (
+                scoutReports.map((report) => (
                 <Col
                   sm={6}
                   md={4}
@@ -1309,12 +1292,12 @@ const ScoutingPage: React.FC = () => {
                     </Card.Body>
                   </Card>
                 </Col>
-              ))}
+              )))}
             </Row>
           )}
 
           {/* Bottom Pagination */}
-          {filteredTotalPages > 1 && (
+          {totalPages > 1 && (
             <Row className="mt-3 justify-content-center">
               <Col md={6}>
                 <div className="d-flex align-items-center justify-content-center">
@@ -1328,13 +1311,13 @@ const ScoutingPage: React.FC = () => {
                     ‹
                   </Button>
                   <small className="text-muted mx-2">
-                    Page {currentPage} of {filteredTotalPages}
+                    Page {currentPage} of {totalPages}
                   </small>
                   <Button
                     variant="outline-secondary"
                     size="sm"
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= filteredTotalPages || loading}
+                    disabled={currentPage >= totalPages || loading}
                   >
                     ›
                   </Button>

@@ -25,13 +25,29 @@ import unicodedata
 
 load_dotenv()
 
-# Snowflake connection parameters
-SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
-SNOWFLAKE_USER = os.getenv("SNOWFLAKE_USERNAME")
-SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
-SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
-SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
-SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
+# Snowflake connection parameters - Environment-Based
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+if ENVIRONMENT == "production":
+    # Production: Use APP_USER with COMPUTE_WH
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_PROD_ACCOUNT")
+    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_PROD_USERNAME")
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_PROD_ROLE")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_PROD_WAREHOUSE")
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_PROD_DATABASE")
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
+    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
+    print(f"🚀 PRODUCTION MODE: Using {SNOWFLAKE_USER} with {SNOWFLAKE_WAREHOUSE}")
+else:
+    # Development: Use personal account with DEVELOPMENT_WH
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_DEV_ACCOUNT", os.getenv("SNOWFLAKE_ACCOUNT"))
+    SNOWFLAKE_USER = os.getenv("SNOWFLAKE_DEV_USERNAME", os.getenv("SNOWFLAKE_USERNAME"))
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_DEV_ROLE", "SYSADMIN")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_DEV_WAREHOUSE", os.getenv("SNOWFLAKE_WAREHOUSE"))
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DEV_DATABASE", os.getenv("SNOWFLAKE_DATABASE"))
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_DEV_SCHEMA", os.getenv("SNOWFLAKE_SCHEMA"))
+    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_DEV_PRIVATE_KEY_PATH", os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH"))
+    print(f"🔧 DEVELOPMENT MODE: Using {SNOWFLAKE_USER} with {SNOWFLAKE_WAREHOUSE}")
 
 # Excel file path
 EXCEL_FILE = "/Users/hashim.umarji/Downloads/noAndyScott.xlsx"
@@ -67,6 +83,7 @@ def get_snowflake_connection():
     conn = snowflake.connector.connect(
         account=SNOWFLAKE_ACCOUNT,
         user=SNOWFLAKE_USER,
+        role=SNOWFLAKE_ROLE,
         warehouse=SNOWFLAKE_WAREHOUSE,
         database=SNOWFLAKE_DATABASE,
         schema=SNOWFLAKE_SCHEMA,
