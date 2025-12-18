@@ -618,11 +618,15 @@ const ScoutingPage: React.FC = () => {
           {scoutReports.filter((r) => !r.has_been_viewed).length > 0 && (
             <Button
               size="sm"
-              variant="outline-primary"
+              variant="outline-secondary"
               className="mt-2"
               onClick={handleMarkAllAsRead}
               disabled={markingAllAsRead || loading}
-              style={{ width: "150px" }}
+              style={{
+                width: "150px",
+                color: "#000000",
+                borderColor: "#000000"
+              }}
             >
               {markingAllAsRead ? (
                 <>
