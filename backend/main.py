@@ -4615,9 +4615,16 @@ async def get_recent_scout_reports(
 
         return result
     except Exception as e:
+        error_msg = f"Error fetching recent scout reports: {str(e)}"
+        print(f"\n{'='*80}")
+        print(f"ERROR in get_recent_scout_reports: {error_msg}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"{'='*80}\n")
+        import traceback
+        traceback.print_exc()
         logging.exception(e)
         raise HTTPException(
-            status_code=500, detail=f"Error fetching recent scout reports: {e}"
+            status_code=500, detail=error_msg
         )
     finally:
         if conn:
