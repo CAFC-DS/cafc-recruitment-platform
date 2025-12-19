@@ -2034,6 +2034,17 @@ span.badge.badge-neutral-grey {
 }
 
 /* ==================================================================
+   DESKTOP NAVBAR CONSTRAINTS
+   ================================================================== */
+
+/* Constrain search bar width on desktop only */
+@media (min-width: 769px) {
+  .navbar-collapse .d-flex.align-items-center {
+    max-width: 280px !important;
+  }
+}
+
+/* ==================================================================
    MOBILE RESPONSIVENESS
    ================================================================== */
 
@@ -2182,21 +2193,28 @@ span.badge.badge-neutral-grey {
   }
 
   /* Search bar full width on mobile */
-  .navbar .d-flex.align-items-center[style*="min-width"] {
-    min-width: 100% !important;
+  .navbar-collapse .d-flex.align-items-center {
+    width: 100% !important;
+    max-width: 100% !important;
     margin-right: 0 !important;
-    margin-bottom: 1rem;
+    margin-bottom: 1rem !important;
+  }
+
+  .navbar-search-input {
+    width: 100% !important;
   }
 
   /* Modal improvements for mobile */
   .modal-content {
-    margin: 0.5rem;
-    max-height: calc(100vh - 1rem);
+    margin: 0.25rem !important;
+    max-height: calc(100vh - 0.5rem);
     overflow-y: auto;
+    border-radius: 0.5rem !important;
   }
 
   .modal-header {
     padding: 1rem !important;
+    flex-shrink: 0;
   }
 
   .modal-title {
@@ -2205,17 +2223,41 @@ span.badge.badge-neutral-grey {
 
   .modal-body {
     padding: 1rem !important;
+    overflow-y: auto;
   }
 
   .modal-footer {
     padding: 1rem !important;
     flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .modal-footer .btn {
-    margin: 0.25rem;
+    margin: 0;
     flex: 1 1 auto;
     min-width: 120px;
+  }
+
+  /* Form layout improvements for mobile */
+  .modal-body .row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .modal-body .col,
+  .modal-body [class*="col-"] {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-bottom: 1rem !important;
+  }
+
+  /* Form labels - better spacing and readability */
+  .modal-body .form-label,
+  .modal-body label {
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.5rem !important;
+    display: block !important;
   }
 
   /* Form inputs in modals - better touch targets */
@@ -2223,15 +2265,48 @@ span.badge.badge-neutral-grey {
   .modal-body .form-select,
   .modal-body textarea {
     font-size: 16px !important;
-    min-height: 44px;
+    min-height: 48px !important;
+    padding: 0.75rem !important;
+    width: 100% !important;
+    border-radius: 0.375rem !important;
+  }
+
+  .modal-body textarea {
+    min-height: 120px !important;
   }
 
   /* React-select dropdown improvements */
   .modal-body .react-select__control {
+    min-height: 48px !important;
+    font-size: 16px !important;
+  }
+
+  .modal-body .react-select__input input {
+    font-size: 16px !important;
+  }
+
+  .modal-body .react-select__value-container {
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .modal-body .react-select__menu {
+    font-size: 16px !important;
+  }
+
+  .modal-body .react-select__option {
+    padding: 0.75rem !important;
     min-height: 44px !important;
   }
 
-  .modal-body .react-select__input {
-    font-size: 16px !important;
+  /* Better spacing between form sections */
+  .modal-body hr {
+    margin: 1.5rem 0 !important;
+  }
+
+  /* Buttons in modal body */
+  .modal-body .btn {
+    min-height: 48px !important;
+    font-size: 1rem !important;
+    padding: 0.75rem 1rem !important;
   }
 }

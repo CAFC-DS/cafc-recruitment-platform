@@ -378,8 +378,8 @@ const AppNavbar: React.FC = () => {
           {token && (
             <div
               ref={searchContainerRef}
-              className="d-flex align-items-center me-lg-3 mb-2 mb-lg-0"
-              style={{ position: "relative", width: "100%", maxWidth: "280px" }}
+              className="d-flex align-items-center me-lg-3 mb-2 mb-lg-0 w-100"
+              style={{ position: "relative", maxWidth: "100%" }}
             >
               <Form className="w-100">
                 <div style={{ position: "relative" }}>
