@@ -2046,6 +2046,7 @@ span.badge.badge-neutral-grey {
     -webkit-overflow-scrolling: touch;
     height: auto;
     min-height: 100vh;
+    touch-action: manipulation;
   }
 
   /* Ensure root container allows scrolling */
@@ -2053,6 +2054,22 @@ span.badge.badge-neutral-grey {
     overflow-x: hidden;
     overflow-y: auto;
     min-height: 100vh;
+    touch-action: manipulation;
+  }
+
+  /* Disable hover effects on mobile - they interfere with scrolling */
+  .hover-card {
+    touch-action: manipulation;
+  }
+
+  .hover-card:hover {
+    transform: none !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  /* Allow smooth scrolling on all interactive elements */
+  .card, .btn, a, button {
+    touch-action: manipulation;
   }
 
   /* Increase touch target sizes for easier tapping */
@@ -2093,10 +2110,14 @@ span.badge.badge-neutral-grey {
     min-height: 44px;
   }
 
-  /* Reduce container padding on mobile */
+  /* Reduce container padding on mobile and ensure scrolling */
   .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+    overflow-x: hidden;
+    overflow-y: visible;
+    height: auto !important;
+    max-height: none !important;
   }
 
   /* Make modals full width with less padding */
