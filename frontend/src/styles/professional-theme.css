@@ -2039,6 +2039,22 @@ span.badge.badge-neutral-grey {
 
 /* Mobile-specific styles for phones and small tablets */
 @media (max-width: 768px) {
+  /* Enable smooth scrolling on mobile */
+  html, body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  /* Ensure root container allows scrolling */
+  #root {
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 100vh;
+  }
+
   /* Increase touch target sizes for easier tapping */
   .btn-action-circle {
     width: 44px !important;
