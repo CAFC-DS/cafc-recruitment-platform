@@ -289,6 +289,21 @@ const ScoutingPage: React.FC = () => {
     }
   }, [currentPage, token, fetchScoutReports]);
 
+  // Force cards view on mobile devices for better UX
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && viewMode === "table") {
+        setViewMode("cards");
+      }
+    };
+
+    // Check on mount
+    handleResize();
+
+    // Check on window resize
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [viewMode, setViewMode]);
 
   const handleOpenReportModal = async (report_id: number) => {
     setLoadingReportId(report_id);

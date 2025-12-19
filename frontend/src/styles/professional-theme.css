@@ -2011,3 +2011,96 @@ span.badge.badge-neutral-grey {
     background: #374151;
   }
 }
+
+/* ==================================================================
+   PLAYER PROFILE CARD STYLES
+   ================================================================== */
+
+/* Hover card effects for scout report cards */
+.hover-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Archived report card styling */
+.report-card-archived {
+  opacity: 0.85;
+  border-left: 4px solid #6c757d !important;
+}
+
+/* ==================================================================
+   MOBILE RESPONSIVENESS
+   ================================================================== */
+
+/* Mobile-specific styles for phones and small tablets */
+@media (max-width: 768px) {
+  /* Increase touch target sizes for easier tapping */
+  .btn-action-circle {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 18px !important;
+  }
+
+  /* Increase base font size for better readability on small screens */
+  body {
+    font-size: 16px !important;
+  }
+
+  /* Reduce card padding to maximize screen real estate */
+  .card-body {
+    padding: 1rem !important;
+  }
+
+  /* Make buttons easier to tap on mobile */
+  .btn-sm {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+  }
+
+  /* Ensure minimum readable font size */
+  small, .small {
+    font-size: 0.875rem !important; /* 14px minimum */
+  }
+
+  /* Stack navigation items vertically on mobile */
+  .navbar-nav {
+    width: 100%;
+  }
+
+  /* Full height form controls for easier touch input */
+  .form-control, .form-select {
+    min-height: 44px;
+  }
+
+  /* Reduce container padding on mobile */
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Make modals full width with less padding */
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  .modal-body {
+    padding: 1rem;
+  }
+
+  /* Improve table readability on mobile */
+  .table-sm td, .table-sm th {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  /* Make sure images don't overflow on mobile */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}

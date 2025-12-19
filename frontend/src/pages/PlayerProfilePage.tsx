@@ -958,7 +958,15 @@ const PlayerProfilePage: React.FC = () => {
               }}>
               <Row>
                 {scoutReportsData.reports.map((report, index) => (
-                  <Col key={report.report_id} className="mb-4" style={{ flex: "0 0 20%", maxWidth: "20%" }}>
+                  <Col
+                    key={report.report_id}
+                    xs={12}
+                    sm={6}
+                    md={4}
+                    lg={3}
+                    xl={2.4}
+                    className="mb-4"
+                  >
                     <Card
                       className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
                       style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
@@ -1349,7 +1357,12 @@ const PlayerProfilePage: React.FC = () => {
                         justifyContent: "center",
                       }}
                     >
-                      <div style={{ width: "750px", height: "750px" }}>
+                      <div style={{
+                        width: "100%",
+                        maxWidth: "750px",
+                        aspectRatio: "1/1",
+                        margin: "0 auto"
+                      }}>
                         <PolarArea
                           data={chartData}
                           options={polarAreaChartOptions}
