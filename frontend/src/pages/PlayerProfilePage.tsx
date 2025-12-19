@@ -1221,6 +1221,9 @@ const PlayerProfilePage: React.FC = () => {
               }
 
               // Exact polar area chart options from PlayerReportModal
+              // Detect mobile screen
+              const isMobile = window.innerWidth < 768;
+
               const polarAreaChartOptions: any = {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -1236,7 +1239,7 @@ const PlayerProfilePage: React.FC = () => {
                       display: true, // Show the radial axis numbers
                       stepSize: 2,
                       font: {
-                        size: 10,
+                        size: isMobile ? 8 : 10,
                       },
                     },
                     grid: {
@@ -1248,11 +1251,11 @@ const PlayerProfilePage: React.FC = () => {
                     pointLabels: {
                       display: true,
                       font: {
-                        size: 12, // Larger font for better readability
+                        size: isMobile ? 10 : 12, // Smaller font on mobile
                         weight: "bold",
                       },
                       color: "#212529",
-                      padding: 15, // Reduced padding for compact A4 layout
+                      padding: isMobile ? 8 : 15, // Less padding on mobile for compact layout
                       centerPointLabels: true, // Center labels on their segments
                       callback: function (value: any, index: number) {
                         // Handle line wrapping for long labels
@@ -1285,6 +1288,10 @@ const PlayerProfilePage: React.FC = () => {
                   legend: {
                     position: "bottom",
                     labels: {
+                      font: {
+                        size: isMobile ? 10 : 12,
+                      },
+                      padding: isMobile ? 8 : 10,
                       generateLabels: () => {
                         return [
                           {
@@ -1319,7 +1326,7 @@ const PlayerProfilePage: React.FC = () => {
                     color: "#ffffff",
                     font: {
                       weight: "bold",
-                      size: 12,
+                      size: isMobile ? 10 : 12,
                     },
                     formatter: (value: any, context: any) => {
                       // Show actual score (0) for zero-scored attributes, not display value (10)
@@ -1350,7 +1357,7 @@ const PlayerProfilePage: React.FC = () => {
                   <div className="mb-4">
                     <div
                       style={{
-                        height: "800px",
+                        height: isMobile ? "400px" : "800px",
                         width: "100%",
                         display: "flex",
                         alignItems: "center",
@@ -1359,8 +1366,8 @@ const PlayerProfilePage: React.FC = () => {
                     >
                       <div style={{
                         width: "100%",
-                        maxWidth: "750px",
-                        aspectRatio: "1/1",
+                        maxWidth: isMobile ? "100%" : "750px",
+                        height: "100%",
                         margin: "0 auto"
                       }}>
                         <PolarArea
