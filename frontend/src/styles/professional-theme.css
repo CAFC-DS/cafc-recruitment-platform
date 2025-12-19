@@ -2140,4 +2140,98 @@ span.badge.badge-neutral-grey {
     max-width: 100%;
     height: auto;
   }
+
+  /* Navbar mobile improvements */
+  .navbar-brand {
+    font-size: 1rem !important;
+  }
+
+  .navbar-brand img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .navbar-toggler {
+    border: 2px solid rgba(255, 255, 255, 0.5) !important;
+    padding: 0.5rem !important;
+  }
+
+  .navbar-collapse {
+    margin-top: 1rem;
+  }
+
+  .navbar .nav-link {
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+  }
+
+  /* Stack navbar items vertically on mobile */
+  .navbar-nav {
+    margin-bottom: 1rem;
+  }
+
+  .navbar .dropdown-toggle {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    justify-content: center;
+  }
+
+  .navbar .d-flex.align-items-center {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Search bar full width on mobile */
+  .navbar .d-flex.align-items-center[style*="min-width"] {
+    min-width: 100% !important;
+    margin-right: 0 !important;
+    margin-bottom: 1rem;
+  }
+
+  /* Modal improvements for mobile */
+  .modal-content {
+    margin: 0.5rem;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
+  }
+
+  .modal-header {
+    padding: 1rem !important;
+  }
+
+  .modal-title {
+    font-size: 1.1rem !important;
+  }
+
+  .modal-body {
+    padding: 1rem !important;
+  }
+
+  .modal-footer {
+    padding: 1rem !important;
+    flex-wrap: wrap;
+  }
+
+  .modal-footer .btn {
+    margin: 0.25rem;
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+
+  /* Form inputs in modals - better touch targets */
+  .modal-body .form-control,
+  .modal-body .form-select,
+  .modal-body textarea {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  /* React-select dropdown improvements */
+  .modal-body .react-select__control {
+    min-height: 44px !important;
+  }
+
+  .modal-body .react-select__input {
+    font-size: 16px !important;
+  }
 }

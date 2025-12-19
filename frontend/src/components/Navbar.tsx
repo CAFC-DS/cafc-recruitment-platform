@@ -378,8 +378,8 @@ const AppNavbar: React.FC = () => {
           {token && (
             <div
               ref={searchContainerRef}
-              className="d-flex align-items-center me-3"
-              style={{ position: "relative", minWidth: "280px" }}
+              className="d-flex align-items-center me-lg-3 mb-2 mb-lg-0"
+              style={{ position: "relative", width: "100%", maxWidth: "280px" }}
             >
               <Form className="w-100">
                 <div style={{ position: "relative" }}>
@@ -556,13 +556,13 @@ const AppNavbar: React.FC = () => {
             </div>
           )}
 
-          <Nav className="d-flex align-items-center">
+          <Nav className="d-flex align-items-center flex-column flex-lg-row w-100 w-lg-auto">
             {token && (
-              <Dropdown className="ms-2">
+              <Dropdown className="ms-lg-2 mb-2 mb-lg-0 w-100 w-lg-auto">
                 <Dropdown.Toggle
                   variant="light"
                   size="sm"
-                  className="rounded-pill"
+                  className="rounded-pill w-100 w-lg-auto"
                   style={{ fontWeight: 600 }}
                   id="add-new-dropdown"
                 >
@@ -589,11 +589,11 @@ const AppNavbar: React.FC = () => {
               </Dropdown>
             )}
             {token && (hasSavedDraft || queueCount > 0) && (
-              <Dropdown className="ms-2">
+              <Dropdown className="ms-lg-2 mb-2 mb-lg-0 w-100 w-lg-auto">
                 <Dropdown.Toggle
                   variant="warning"
                   size="sm"
-                  className="rounded-pill"
+                  className="rounded-pill w-100 w-lg-auto"
                   style={{ fontWeight: 600 }}
                   id="in-progress-dropdown"
                 >
@@ -642,11 +642,11 @@ const AppNavbar: React.FC = () => {
               </Dropdown>
             )}
             {token ? (
-              <Dropdown className="ms-2">
+              <Dropdown className="ms-lg-2 mb-2 mb-lg-0 w-100 w-lg-auto">
                 <Dropdown.Toggle
                   variant="outline-light"
                   size="sm"
-                  className="rounded-pill"
+                  className="rounded-pill w-100 w-lg-auto"
                   style={{ fontWeight: 600 }}
                   id="settings-dropdown"
                 >
