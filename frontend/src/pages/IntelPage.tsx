@@ -306,7 +306,9 @@ const IntelPage: React.FC = () => {
     // Player name filter
     if (playerNameFilter) {
       filtered = filtered.filter((report) =>
-        containsAccentInsensitive(report.player_name, playerNameFilter),
+        report.player_name
+          .toLowerCase()
+          .includes(playerNameFilter.toLowerCase()),
       );
     }
 
