@@ -6149,26 +6149,39 @@ async def get_all_intel_reports(
 
         offset = (page - 1) * limit
 
-        # Base SQL query for fetching reports
+        # Check if columns exist (using cached schema)
+        has_player_id = has_column("player_information", "PLAYER_ID")
+        has_user_id = has_column("player_information", "USER_ID")
+        has_data_source_pi = has_column("player_information", "DATA_SOURCE")
+        has_data_source_p = has_column("players", "DATA_SOURCE")
+
+        # Build JOIN clause based on whether DATA_SOURCE columns exist
         # Use DATA_SOURCE to prevent ID collisions between internal and external players
-        base_sql = """
+        if has_data_source_pi and has_data_source_p:
+            join_clause = """
+            LEFT JOIN players p ON (
+                (pi.PLAYER_ID = p.PLAYERID AND COALESCE(pi.DATA_SOURCE, 'external') = 'external' AND COALESCE(p.DATA_SOURCE, 'external') = 'external') OR
+                (pi.PLAYER_ID = p.CAFC_PLAYER_ID AND COALESCE(pi.DATA_SOURCE, 'internal') = 'internal' AND COALESCE(p.DATA_SOURCE, 'internal') = 'internal')
+            )
+            """
+        else:
+            # Fallback to old JOIN without DATA_SOURCE check
+            join_clause = """
+            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
+            """
+
+        # Base SQL query for fetching reports
+        base_sql = f"""
             SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
             FROM player_information pi
-            LEFT JOIN players p ON (
-                (pi.PLAYER_ID = p.PLAYERID AND COALESCE(pi.DATA_SOURCE, 'external') = 'external' AND COALESCE(p.DATA_SOURCE, 'external') = 'external') OR
-                (pi.PLAYER_ID = p.CAFC_PLAYER_ID AND COALESCE(pi.DATA_SOURCE, 'internal') = 'internal' AND COALESCE(p.DATA_SOURCE, 'internal') = 'internal')
-            )
+            {join_clause}
         """
 
         where_clauses = []
         sql_params = []
-
-        # Check if PLAYER_ID column exists to determine if we can JOIN with players (using cached schema)
-        has_player_id = has_column("player_information", "PLAYER_ID")
-        has_user_id = has_column("player_information", "USER_ID")
 
         # Apply role-based filtering if USER_ID column exists
         if has_user_id and current_user.role == "scout":
@@ -6185,12 +6198,9 @@ async def get_all_intel_reports(
             base_sql += " WHERE " + " AND ".join(where_clauses)
 
         # Get total count - need to modify base_sql for counting
-        count_base_sql = """
+        count_base_sql = f"""
             FROM player_information pi
-            LEFT JOIN players p ON (
-                (pi.PLAYER_ID = p.PLAYERID AND COALESCE(pi.DATA_SOURCE, 'external') = 'external' AND COALESCE(p.DATA_SOURCE, 'external') = 'external') OR
-                (pi.PLAYER_ID = p.CAFC_PLAYER_ID AND COALESCE(pi.DATA_SOURCE, 'internal') = 'internal' AND COALESCE(p.DATA_SOURCE, 'internal') = 'internal')
-            )
+            {join_clause}
         """
         if where_clauses:
             count_base_sql += " WHERE " + " AND ".join(where_clauses)
