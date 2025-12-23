@@ -67,11 +67,6 @@ const IntelPage: React.FC = () => {
     "success" | "danger" | "info"
   >("success");
 
-  // Admin functionality
-  const [showAdminTools, setShowAdminTools] = useState(false);
-  const [, setUserRole] = useState<string>("");
-  const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
-
   // Filter collapse state
   const [showFilters, setShowFilters] = useState(false);
 
@@ -91,9 +86,6 @@ const IntelPage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
 
-  // Role-based permissions
-  const [, setCurrentUsername] = useState("");
-
   // Toast helper function
   const showNotification = (
     message: string,
@@ -104,38 +96,6 @@ const IntelPage: React.FC = () => {
     setShowToast(true);
   };
 
-  // Update intel table
-  const updateIntelTable = async () => {
-    setIsLoadingAdmin(true);
-    try {
-      const response = await axiosInstance.post("/admin/update-intel-table");
-      showNotification(response.data.message, "success");
-      fetchIntelReports(currentPage, itemsPerPage, recencyFilter); // Re-fetch with current filters
-    } catch (error: any) {
-      showNotification(
-        error.response?.data?.detail || "Failed to update intel table",
-        "danger",
-      );
-    } finally {
-      setIsLoadingAdmin(false);
-    }
-  };
-
-  // Optimize database performance
-  const optimizeDatabase = async () => {
-    setIsLoadingAdmin(true);
-    try {
-      const response = await axiosInstance.post("/admin/optimize-database");
-      showNotification(response.data.message, "success");
-    } catch (error: any) {
-      showNotification(
-        error.response?.data?.detail || "Failed to optimize database",
-        "danger",
-      );
-    } finally {
-      setIsLoadingAdmin(false);
-    }
-  };
 
   const fetchIntelReports = useCallback(
     async (page: number, limit: number, recency: string) => {
@@ -174,9 +134,6 @@ const IntelPage: React.FC = () => {
   const fetchUserInfo = useCallback(async () => {
     try {
       const response = await axiosInstance.get("/users/me");
-      setUserRole(response.data.role || "scout");
-      setCurrentUsername(response.data.username || "");
-      setShowAdminTools(response.data.role === "admin");
       // Initialize user's view mode preference
       if (response.data.id || response.data.username) {
         initializeUserViewMode(
@@ -333,41 +290,6 @@ const IntelPage: React.FC = () => {
 
   return (
     <Container className="mt-4">
-      {/* Admin Tools */}
-      {showAdminTools && (
-        <Alert variant="info" className="mt-3">
-          <Alert.Heading>🔧 Admin Tools</Alert.Heading>
-          <p>
-            Update the player_information table to support role-based access and
-            missing columns.
-          </p>
-          <div className="d-flex gap-2 flex-wrap">
-            <Button
-              variant="outline-primary"
-              onClick={updateIntelTable}
-              disabled={isLoadingAdmin}
-            >
-              {isLoadingAdmin ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                "🔧 Update Intel Table"
-              )}
-            </Button>
-            <Button
-              variant="outline-info"
-              onClick={optimizeDatabase}
-              disabled={isLoadingAdmin}
-            >
-              {isLoadingAdmin ? (
-                <Spinner animation="border" size="sm" />
-              ) : (
-                "⚡ Optimize Database"
-              )}
-            </Button>
-          </div>
-        </Alert>
-      )}
-
       {showIntelModal && (
         <IntelModal
           show={showIntelModal}
@@ -414,13 +336,6 @@ const IntelPage: React.FC = () => {
       <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h3>Intel Reports</h3>
         <div className="d-flex align-items-center gap-3">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowIntelModal(true)}
-          >
-            Add Intel Report
-          </Button>
           <div className="btn-group">
             <Button
               variant={viewMode === "cards" ? "secondary" : "outline-secondary"}
@@ -647,15 +562,9 @@ const IntelPage: React.FC = () => {
           {errorReports}
         </Alert>
       ) : intelReports.length === 0 ? (
-        <Card className="text-center p-4">
-          <Card.Body>
-            <h5>No Intel Reports Yet</h5>
-            <p className="text-muted">
-              Start by selecting a player and creating an intel report, or
-              adjust your filters.
-            </p>
-          </Card.Body>
-        </Card>
+        <div className="text-center text-muted py-5">
+          No reports found
+        </div>
       ) : viewMode === "cards" ? (
         <Row>
           {filteredIntelReports.map((report) => (
