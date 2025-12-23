@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Container,
   Form,
   Button,
   Row,
   Col,
-  ListGroup,
   Card,
   Spinner,
   Badge,
@@ -14,18 +13,15 @@ import {
   Alert,
   Collapse,
   Table,
+  Modal,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import IntelModal from "../components/IntelModal";
 import IntelReportModal from "../components/IntelReportModal";
+import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
-import {
-  normalizeText,
-  containsAccentInsensitive,
-} from "../utils/textNormalization";
-import { Player } from "../types/Player";
 
 interface IntelReport {
   intel_id: number;
@@ -49,12 +45,8 @@ const IntelPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const navigate = useNavigate();
-  const [playerSearch, setPlayerSearch] = useState("");
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [intelReports, setIntelReports] = useState<IntelReport[]>([]);
-  const [modalKey, setModalKey] = useState(0);
 
   // Pagination and filter states
   const [currentPage, setCurrentPage] = useState(1);
@@ -82,15 +74,6 @@ const IntelPage: React.FC = () => {
 
   // Filter collapse state
   const [showFilters, setShowFilters] = useState(false);
-
-  // Player search error state
-  const [playerSearchError, setPlayerSearchError] = useState("");
-  const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
-
-  // Add debouncing and caching for player search
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchCacheRef = useRef<Record<string, Player[]>>({});
-  const [showDropdown, setShowDropdown] = useState(false);
 
   // Advanced filters for Intel
   const [actionFilter, setActionFilter] = useState("");
@@ -211,129 +194,6 @@ const IntelPage: React.FC = () => {
     fetchUserInfo,
   ]);
 
-  const performPlayerSearch = useCallback(async (query: string) => {
-    const trimmedQuery = query.trim();
-    const normalizedQuery = normalizeText(trimmedQuery);
-
-    // Check cache first using normalized query
-    if (searchCacheRef.current[normalizedQuery]) {
-      setPlayers(searchCacheRef.current[normalizedQuery]);
-      setPlayerSearchError("");
-      setPlayerSearchLoading(false);
-      setShowDropdown(searchCacheRef.current[normalizedQuery].length > 0);
-      return;
-    }
-
-    try {
-      setPlayerSearchLoading(true);
-      // Backend now handles comprehensive accent-insensitive search
-      const response = await axiosInstance.get(
-        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
-      );
-      let results = response.data || [];
-
-      // Backend already handles accent-insensitive search and sorting
-      // No need for additional client-side filtering
-
-      // Cache the results using normalized query
-      searchCacheRef.current[normalizedQuery] = results;
-
-      setPlayers(results);
-      setShowDropdown(results.length > 0);
-
-      if (results.length === 0) {
-        setPlayerSearchError("No players found matching your search.");
-      } else {
-        setPlayerSearchError("");
-      }
-    } catch (error) {
-      console.error("Error searching players:", error);
-      setPlayers([]);
-      setShowDropdown(false);
-      setPlayerSearchError("Error searching for players. Please try again.");
-    } finally {
-      setPlayerSearchLoading(false);
-    }
-  }, []);
-
-  const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setPlayerSearch(query);
-
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    // Clear error immediately when user starts typing
-    setPlayerSearchError("");
-
-    if (query.length <= 2) {
-      setPlayers([]);
-      setShowDropdown(false);
-      setPlayerSearchLoading(false);
-      return;
-    }
-
-    // Set loading immediately for better UX
-    setPlayerSearchLoading(true);
-
-    // Debounce the actual search
-    searchTimeoutRef.current = setTimeout(() => {
-      performPlayerSearch(query);
-    }, 300); // 300ms delay
-  };
-
-  const handlePlayerSelect = (player: Player) => {
-    setSelectedPlayer(player);
-    const playerName =
-      player.player_name ||
-      player.name ||
-      player.playername ||
-      "Unknown Player";
-    const team =
-      player.team ||
-      player.club ||
-      player.current_team ||
-      player.squad_name ||
-      "Unknown Team";
-    setPlayerSearch(`${playerName} (${team})`);
-    setPlayers([]);
-    setShowDropdown(false);
-    setPlayerSearchError("");
-  };
-
-  // Close dropdown when clicking outside
-  const handleInputBlur = () => {
-    // Small delay to allow click on dropdown items
-    setTimeout(() => {
-      setShowDropdown(false);
-    }, 200);
-  };
-
-  const handleInputFocus = () => {
-    if (players.length > 0) {
-      setShowDropdown(true);
-    }
-  };
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleShowIntelModal = () => {
-    if (selectedPlayer) {
-      setModalKey((prevKey) => prevKey + 1);
-      setShowIntelModal(true);
-    } else {
-      alert("Please select a player first.");
-    }
-  };
 
   const getActionRequiredBadge = (action: string) => {
     switch (action) {
@@ -413,79 +273,6 @@ const IntelPage: React.FC = () => {
 
   return (
     <Container className="mt-4">
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Player Search</Card.Title>
-          <Form.Group as={Col} controlId="playerName">
-            <div className="position-relative">
-              <Form.Control
-                type="text"
-                placeholder="Enter player name"
-                value={playerSearch}
-                onChange={handlePlayerSearchChange}
-                onBlur={handleInputBlur}
-                onFocus={handleInputFocus}
-              />
-              {playerSearchLoading && (
-                <div
-                  className="position-absolute top-50 end-0 translate-middle-y me-3"
-                  style={{ zIndex: 10 }}
-                >
-                  <div
-                    className="spinner-border spinner-border-sm text-primary"
-                    role="status"
-                  >
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-              )}
-            </div>
-            {showDropdown && players.length > 0 && (
-              <ListGroup
-                className="mt-2"
-                style={{
-                  position: "absolute",
-                  zIndex: 1000,
-                  width: "calc(100% - 30px)",
-                  maxHeight: "200px",
-                  overflowY: "auto",
-                }}
-              >
-                {players.map((player, index) => (
-                  <ListGroup.Item
-                    key={
-                      player.universal_id ||
-                      `fallback-${index}-${player.player_name}`
-                    }
-                    action
-                    onClick={() => handlePlayerSelect(player)}
-                    className="d-flex justify-content-between align-items-center"
-                  >
-                    <span>{player.player_name}</span>
-                    <small className="text-muted">({player.team})</small>
-                  </ListGroup.Item>
-                ))}
-              </ListGroup>
-            )}
-            {playerSearchError && (
-              <div className="mt-2">
-                <small className="text-danger d-block">
-                  ⚠️ {playerSearchError}
-                </small>
-              </div>
-            )}
-          </Form.Group>
-          <Button
-            className="mt-2"
-            variant="danger"
-            onClick={handleShowIntelModal}
-            disabled={!selectedPlayer}
-          >
-            Add Intel Report
-          </Button>
-        </Card.Body>
-      </Card>
-
       {/* Admin Tools */}
       {showAdminTools && (
         <Alert variant="info" className="mt-3">
@@ -523,10 +310,9 @@ const IntelPage: React.FC = () => {
 
       {showIntelModal && (
         <IntelModal
-          key={modalKey}
           show={showIntelModal}
           onHide={() => setShowIntelModal(false)}
-          selectedPlayer={selectedPlayer}
+          selectedPlayer={null}
           onIntelSubmitSuccess={() => {
             setShowIntelModal(false);
             showNotification("Intel report submitted successfully!", "success");
@@ -536,23 +322,47 @@ const IntelPage: React.FC = () => {
       )}
 
       <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
-        <h3>Player Intel Reports</h3>
+        <h3>Intel Reports</h3>
         <div className="d-flex align-items-center gap-3">
-          <Badge className="badge-neutral-grey">{totalReports} reports</Badge>
-          <div className="btn-group" role="group">
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowIntelModal(true)}
+          >
+            Add Intel Report
+          </Button>
+          <div className="btn-group">
             <Button
-              variant={viewMode === "cards" ? "primary" : "outline-primary"}
+              variant={viewMode === "cards" ? "secondary" : "outline-secondary"}
               size="sm"
               onClick={() => setViewMode("cards")}
+              style={
+                viewMode === "cards"
+                  ? {
+                      backgroundColor: "#000000",
+                      borderColor: "#000000",
+                      color: "white",
+                    }
+                  : { color: "#000000", borderColor: "#000000" }
+              }
             >
-              🔳 Cards
+              Cards
             </Button>
             <Button
-              variant={viewMode === "table" ? "primary" : "outline-primary"}
+              variant={viewMode === "table" ? "secondary" : "outline-secondary"}
               size="sm"
               onClick={() => setViewMode("table")}
+              style={
+                viewMode === "table"
+                  ? {
+                      backgroundColor: "#000000",
+                      borderColor: "#000000",
+                      color: "white",
+                    }
+                  : { color: "#000000", borderColor: "#000000" }
+              }
             >
-              📊 Table
+              Table
             </Button>
           </div>
         </div>
@@ -561,8 +371,24 @@ const IntelPage: React.FC = () => {
       {/* Pagination and Filters Row */}
       <Row className="mb-3 align-items-center">
         <Col md={4}>
-          {totalReports > itemsPerPage && (
-            <div className="d-flex align-items-center">
+          <Form.Select
+            size="sm"
+            value={recencyFilter}
+            onChange={(e) => {
+              setRecencyFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{ maxWidth: "150px" }}
+          >
+            <option value="all">All Time</option>
+            <option value="7">Last 7 Days</option>
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+          </Form.Select>
+        </Col>
+        <Col md={4} className="text-center">
+          {Math.ceil(totalReports / itemsPerPage) > 1 && (
+            <div className="d-flex align-items-center justify-content-center">
               <Button
                 variant="outline-secondary"
                 size="sm"
@@ -589,25 +415,13 @@ const IntelPage: React.FC = () => {
             </div>
           )}
         </Col>
-        <Col md={4} className="text-center">
-          <Form.Select
-            size="sm"
-            value={recencyFilter}
-            onChange={(e) => {
-              setRecencyFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            style={{ maxWidth: "150px", display: "inline-block" }}
-          >
-            <option value="all">All Time</option>
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="90">Last 90 Days</option>
-          </Form.Select>
-        </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {filteredIntelReports.length} of {totalReports} reports
+            Showing {Math.min(filteredIntelReports.length, itemsPerPage)} of{" "}
+            {filteredIntelReports.length} filtered results
+            {filteredIntelReports.length !== totalReports && (
+              <span> ({totalReports} total)</span>
+            )}
           </small>
         </Col>
       </Row>
@@ -716,12 +530,28 @@ const IntelPage: React.FC = () => {
       </Card>
 
       {loading ? (
-        <div className="text-center p-5">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading reports...</span>
-          </Spinner>
-          <p className="text-muted mt-2">Loading intel reports...</p>
-        </div>
+        viewMode === "table" ? (
+          <Table striped bordered hover responsive>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Player</th>
+                <th>Contact</th>
+                <th>Organisation</th>
+                <th>Action Required</th>
+                <th>Deal Type</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ShimmerLoading variant="table" count={10} />
+            </tbody>
+          </Table>
+        ) : (
+          <Row>
+            <ShimmerLoading variant="card" count={9} />
+          </Row>
+        )
       ) : errorReports ? (
         <Alert variant="danger" className="text-center">
           {errorReports}
@@ -742,7 +572,7 @@ const IntelPage: React.FC = () => {
             <Col key={report.intel_id} lg={6} xl={4} className="mb-4">
               <Card
                 className="h-100 shadow-sm hover-card"
-                style={{ borderRadius: "12px", border: "2px solid #dc3545" }}
+                style={{ borderRadius: "12px", border: "1px solid #dee2e6" }}
               >
                 <Card.Header
                   className="border-0 bg-gradient"
