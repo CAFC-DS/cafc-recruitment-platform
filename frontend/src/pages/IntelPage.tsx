@@ -82,6 +82,15 @@ const IntelPage: React.FC = () => {
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
 
+  // Edit and delete functionality
+  const [editMode, setEditMode] = useState(false);
+  const [editReportId, setEditReportId] = useState<number | null>(null);
+  const [editReportData, setEditReportData] = useState<any>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
+
   // Role-based permissions
   const [, setCurrentUsername] = useState("");
 
@@ -178,6 +187,55 @@ const IntelPage: React.FC = () => {
       console.error("Error fetching user info:", error);
     }
   }, [initializeUserViewMode]);
+
+  // Handle editing intel report
+  const handleEditReport = async (reportId: number) => {
+    try {
+      setLoadingReportId(reportId);
+      const response = await axiosInstance.get(`/intel_reports/${reportId}`);
+      setEditReportData(response.data);
+      setEditReportId(reportId);
+      setEditMode(true);
+      setShowIntelModal(true);
+    } catch (error) {
+      console.error("Error fetching report for edit:", error);
+      showNotification("Error loading report for editing", "danger");
+    } finally {
+      setLoadingReportId(null);
+    }
+  };
+
+  // Handle deleting intel report
+  const handleDeleteReport = (reportId: number) => {
+    setDeleteReportId(reportId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteReport = async () => {
+    if (!deleteReportId) return;
+
+    try {
+      setDeleteLoading(true);
+      await axiosInstance.delete(`/intel_reports/${deleteReportId}`);
+      showNotification("Intel report deleted successfully", "success");
+      setShowDeleteModal(false);
+      setDeleteReportId(null);
+      // Refresh the reports list
+      fetchIntelReports(currentPage, itemsPerPage, recencyFilter);
+    } catch (error) {
+      console.error("Error deleting intel report:", error);
+      showNotification("Error deleting intel report", "danger");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleIntelModalHide = () => {
+    setShowIntelModal(false);
+    setEditMode(false);
+    setEditReportId(null);
+    setEditReportData(null);
+  };
 
   useEffect(() => {
     if (token) {
@@ -311,15 +369,45 @@ const IntelPage: React.FC = () => {
       {showIntelModal && (
         <IntelModal
           show={showIntelModal}
-          onHide={() => setShowIntelModal(false)}
+          onHide={handleIntelModalHide}
           selectedPlayer={null}
           onIntelSubmitSuccess={() => {
-            setShowIntelModal(false);
+            handleIntelModalHide();
             showNotification("Intel report submitted successfully!", "success");
             fetchIntelReports(currentPage, itemsPerPage, recencyFilter); // Re-fetch with current filters
           }}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header
+          closeButton
+          style={{ backgroundColor: "#000000", color: "white" }}
+        >
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this intel report? This action cannot
+          be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmDeleteReport}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? (
+              <Spinner animation="border" size="sm" />
+            ) : (
+              "Delete"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h3>Intel Reports</h3>
@@ -728,9 +816,24 @@ const IntelPage: React.FC = () => {
                       variant="outline-secondary"
                       size="sm"
                       className="rounded-pill"
+                      onClick={() => handleEditReport(report.intel_id)}
+                      disabled={loadingReportId === report.intel_id}
                       title="Edit"
                     >
-                      ✏️
+                      {loadingReportId === report.intel_id ? (
+                        <Spinner as="span" animation="border" size="sm" />
+                      ) : (
+                        "✏️"
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      className="rounded-pill"
+                      onClick={() => handleDeleteReport(report.intel_id)}
+                      title="Delete"
+                    >
+                      🗑️
                     </Button>
                   </div>
                 </Card.Footer>
@@ -827,9 +930,25 @@ const IntelPage: React.FC = () => {
                       <Button
                         variant="outline-secondary"
                         size="sm"
+                        onClick={() => handleEditReport(report.intel_id)}
+                        disabled={loadingReportId === report.intel_id}
                         title="Edit"
+                        className="btn-action-circle btn-action-edit"
                       >
-                        ✏️
+                        {loadingReportId === report.intel_id ? (
+                          <Spinner as="span" animation="border" size="sm" />
+                        ) : (
+                          "✏️"
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => handleDeleteReport(report.intel_id)}
+                        title="Delete"
+                        className="btn-action-circle btn-action-delete"
+                      >
+                        🗑️
                       </Button>
                     </div>
                   </td>
