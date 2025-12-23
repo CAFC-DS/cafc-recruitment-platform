@@ -6037,11 +6037,19 @@ async def create_intel_report(
         has_player_id = has_column("player_information", "PLAYER_ID")
         has_user_id = has_column("player_information", "USER_ID")
         has_created_at = has_column("player_information", "CREATED_AT")
+        has_data_source = has_column("player_information", "DATA_SOURCE")
 
         # Add CREATED_AT column if it doesn't exist
         if not has_created_at:
             cursor.execute(
                 "ALTER TABLE player_information ADD COLUMN CREATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()"
+            )
+            conn.commit()
+
+        # Add DATA_SOURCE column if it doesn't exist
+        if not has_data_source:
+            cursor.execute(
+                "ALTER TABLE player_information ADD COLUMN DATA_SOURCE VARCHAR(10)"
             )
             conn.commit()
 
@@ -6067,6 +6075,12 @@ async def create_intel_report(
             sql_columns.append("USER_ID")
             sql_values.append("%s")
             params.append(current_user.id)
+
+        # Add data_source if column exists and player_id was provided
+        if has_data_source and report.player_id:
+            sql_columns.append("DATA_SOURCE")
+            sql_values.append("%s")
+            params.append(player_data_source)
 
         # Add all other intel report fields
         sql_columns.extend(
@@ -6136,13 +6150,17 @@ async def get_all_intel_reports(
         offset = (page - 1) * limit
 
         # Base SQL query for fetching reports
+        # Use DATA_SOURCE to prevent ID collisions between internal and external players
         base_sql = """
             SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
             FROM player_information pi
-            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN players p ON (
+                (pi.PLAYER_ID = p.PLAYERID AND COALESCE(pi.DATA_SOURCE, 'external') = 'external' AND COALESCE(p.DATA_SOURCE, 'external') = 'external') OR
+                (pi.PLAYER_ID = p.CAFC_PLAYER_ID AND COALESCE(pi.DATA_SOURCE, 'internal') = 'internal' AND COALESCE(p.DATA_SOURCE, 'internal') = 'internal')
+            )
         """
 
         where_clauses = []
@@ -6169,7 +6187,10 @@ async def get_all_intel_reports(
         # Get total count - need to modify base_sql for counting
         count_base_sql = """
             FROM player_information pi
-            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
+            LEFT JOIN players p ON (
+                (pi.PLAYER_ID = p.PLAYERID AND COALESCE(pi.DATA_SOURCE, 'external') = 'external' AND COALESCE(p.DATA_SOURCE, 'external') = 'external') OR
+                (pi.PLAYER_ID = p.CAFC_PLAYER_ID AND COALESCE(pi.DATA_SOURCE, 'internal') = 'internal' AND COALESCE(p.DATA_SOURCE, 'internal') = 'internal')
+            )
         """
         if where_clauses:
             count_base_sql += " WHERE " + " AND ".join(where_clauses)
