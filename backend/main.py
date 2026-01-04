@@ -6033,25 +6033,12 @@ async def create_intel_report(
         else:
             actual_player_id = None
 
+        
         # Check which columns exist (using cached schema)
         has_player_id = has_column("player_information", "PLAYER_ID")
         has_user_id = has_column("player_information", "USER_ID")
         has_created_at = has_column("player_information", "CREATED_AT")
         has_data_source = has_column("player_information", "DATA_SOURCE")
-
-        # Add CREATED_AT column if it doesn't exist
-        if not has_created_at:
-            cursor.execute(
-                "ALTER TABLE player_information ADD COLUMN CREATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()"
-            )
-            conn.commit()
-
-        # Add DATA_SOURCE column if it doesn't exist
-        if not has_data_source:
-            cursor.execute(
-                "ALTER TABLE player_information ADD COLUMN DATA_SOURCE VARCHAR(10)"
-            )
-            conn.commit()
 
         # Convert potential_deal_types list to comma-separated string
         deal_types_str = (
@@ -6059,6 +6046,8 @@ async def create_intel_report(
             if report.potential_deal_types
             else None
         )
+
+        print (deal_types_str)
 
         # Prepare dynamic SQL
         sql_columns = ["CREATED_AT"]
