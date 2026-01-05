@@ -13,6 +13,8 @@ import LoginPage from './pages/LoginPage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
 import AdminPage from './pages/AdminPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import PlayerListsPage from './pages/PlayerListsPage';
+import KanbanPage from './pages/KanbanPage';
 
 interface AuthContextType {
   token: string | null;
@@ -252,6 +254,22 @@ function App() {
               element={
                 <PrivateRoute>
                   <IntelPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/lists"
+              element={
+                <PrivateRoute>
+                  <PlayerListsPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/lists/kanban"
+              element={
+                <PrivateRoute>
+                  <KanbanPage />
                 </PrivateRoute>
               }
             />

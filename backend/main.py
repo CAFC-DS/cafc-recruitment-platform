@@ -462,6 +462,14 @@ def get_cache(cache_key: str) -> any:
     return None
 
 
+def invalidate_cache(cache_key: str):
+    """Invalidate a specific cache entry"""
+    if cache_key in _data_cache:
+        del _data_cache[cache_key]
+    if cache_key in _cache_expiry:
+        del _cache_expiry[cache_key]
+
+
 def _create_new_connection():
     """Create a new Snowflake connection"""
     pkb = get_private_key()
@@ -8226,6 +8234,1427 @@ async def submit_feedback(
             status_code=500,
             detail="Failed to submit feedback. Please try again later."
         )
+
+
+# =====================================================
+# PLAYER LISTS ENDPOINTS
+# =====================================================
+
+
+# Pydantic models for player lists
+class PlayerListCreate(BaseModel):
+    list_name: str
+    description: Optional[str] = None
+
+
+class PlayerListUpdate(BaseModel):
+    list_name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class PlayerListAddPlayer(BaseModel):
+    player_id: Optional[int] = None  # For external players
+    cafc_player_id: Optional[int] = None  # For internal players
+    notes: Optional[str] = None
+    stage: Optional[str] = "Stage 1"  # Default to Stage 1
+
+
+class PlayerListReorder(BaseModel):
+    item_orders: List[dict]  # List of {item_id: int, display_order: int}
+
+
+class PlayerStageUpdate(BaseModel):
+    stage: str  # New stage value (Stage 1-4)
+
+
+@app.post("/player-lists")
+async def create_player_list(
+    list_data: PlayerListCreate, current_user: User = Depends(get_current_user)
+):
+    """Create a new player list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can create lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Create tables if they don't exist
+        try:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_lists (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_NAME VARCHAR(500),
+                    DESCRIPTION VARCHAR(2000),
+                    USER_ID INTEGER,
+                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UPDATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID)
+                )
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_list_items (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_ID INTEGER,
+                    PLAYER_ID INTEGER,
+                    CAFC_PLAYER_ID INTEGER,
+                    DISPLAY_ORDER INTEGER DEFAULT 0,
+                    NOTES VARCHAR(2000),
+                    ADDED_BY INTEGER,
+                    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID)
+                )
+            """
+            )
+
+            # Create indexes for performance optimization
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_list_id ON player_list_items(LIST_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_player_id ON player_list_items(PLAYER_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_cafc_player_id ON player_list_items(CAFC_PLAYER_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sr_scouting_type ON scout_reports(SCOUTING_TYPE)")
+        except Exception as e:
+            logging.warning(f"Tables/indexes may already exist: {e}")
+
+        # Add STAGE column if it doesn't exist (migration)
+        try:
+            cursor.execute(
+                """
+                ALTER TABLE player_list_items
+                ADD COLUMN STAGE VARCHAR(100) DEFAULT 'Stage 1'
+                """
+            )
+            logging.info("Added STAGE column to player_list_items table")
+        except Exception as e:
+            logging.debug(f"STAGE column may already exist: {e}")
+
+        # Insert new list
+        cursor.execute(
+            """
+            INSERT INTO player_lists (LIST_NAME, DESCRIPTION, USER_ID)
+            VALUES (%s, %s, %s)
+        """,
+            (list_data.list_name, list_data.description, current_user.id),
+        )
+
+        # Get the ID of the newly created list (Snowflake-compatible approach)
+        cursor.execute(
+            """
+            SELECT ID FROM player_lists
+            WHERE USER_ID = %s AND LIST_NAME = %s
+            ORDER BY CREATED_AT DESC LIMIT 1
+        """,
+            (current_user.id, list_data.list_name),
+        )
+        list_id = cursor.fetchone()[0]
+
+        conn.commit()
+
+        # Invalidate cache after creating list
+        invalidate_cache("player_lists_all")
+
+        return {
+            "message": "List created successfully",
+            "list_id": list_id,
+            "list_name": list_data.list_name,
+        }
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error creating list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/player-lists")
+async def get_all_player_lists(current_user: User = Depends(get_current_user)):
+    """Get all player lists (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view lists"
+        )
+
+    # Check cache first
+    cache_key = "player_lists_all"
+    cached_data = get_cache(cache_key)
+    if cached_data:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Get all lists with player counts and creator info
+        # If table doesn't exist, return empty list
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    pl.ID,
+                    pl.LIST_NAME,
+                    pl.DESCRIPTION,
+                    pl.USER_ID,
+                    pl.CREATED_AT,
+                    pl.UPDATED_AT,
+                    u.USERNAME,
+                    u.FIRSTNAME,
+                    u.LASTNAME,
+                    COUNT(DISTINCT pli.ID) as PLAYER_COUNT,
+                    AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as AVG_SCORE
+                FROM player_lists pl
+                LEFT JOIN users u ON pl.USER_ID = u.ID
+                LEFT JOIN player_list_items pli ON pl.ID = pli.LIST_ID
+                LEFT JOIN scout_reports sr ON (
+                    (pli.PLAYER_ID IS NOT NULL AND sr.PLAYER_ID = pli.PLAYER_ID) OR
+                    (pli.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = pli.CAFC_PLAYER_ID)
+                )
+                GROUP BY pl.ID, pl.LIST_NAME, pl.DESCRIPTION, pl.USER_ID,
+                         pl.CREATED_AT, pl.UPDATED_AT, u.USERNAME, u.FIRSTNAME, u.LASTNAME
+                ORDER BY pl.UPDATED_AT DESC
+            """
+            )
+
+            lists = []
+            for row in cursor.fetchall():
+                lists.append(
+                    {
+                        "id": row[0],
+                        "list_name": row[1],
+                        "description": row[2],
+                        "user_id": row[3],
+                        "created_at": row[4].isoformat() if row[4] else None,
+                        "updated_at": row[5].isoformat() if row[5] else None,
+                        "created_by_username": row[6],
+                        "created_by_firstname": row[7],
+                        "created_by_lastname": row[8],
+                        "player_count": row[9],
+                        "avg_performance_score": round(row[10], 1) if row[10] else None,
+                    }
+                )
+
+            result = {"lists": lists, "total": len(lists)}
+            # Cache for 5 minutes
+            set_cache(cache_key, result, expiry_minutes=5)
+            return result
+
+        except Exception as query_error:
+            # If table doesn't exist, return empty list
+            error_msg = str(query_error).lower()
+            if "does not exist" in error_msg or "object does not exist" in error_msg:
+                logging.info("Player lists tables don't exist yet. Returning empty list.")
+                return {"lists": [], "total": 0}
+            else:
+                # Re-raise if it's a different error
+                raise
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching lists: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/player-lists/all-with-details")
+async def get_all_lists_with_details(current_user: User = Depends(get_current_user)):
+    """
+    Get all player lists with complete player details in a single optimized query.
+    This reduces round trips from N+1 to 1 query.
+    (admin/manager only)
+    """
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # First, get all lists
+        cursor.execute(
+            """
+            SELECT
+                pl.ID,
+                pl.LIST_NAME,
+                pl.DESCRIPTION,
+                pl.USER_ID,
+                pl.CREATED_AT,
+                pl.UPDATED_AT,
+                u.USERNAME,
+                u.FIRSTNAME,
+                u.LASTNAME
+            FROM player_lists pl
+            LEFT JOIN users u ON pl.USER_ID = u.ID
+            ORDER BY pl.UPDATED_AT DESC
+            """
+        )
+
+        lists_data = {}
+        for row in cursor.fetchall():
+            list_id = row[0]
+            lists_data[list_id] = {
+                "id": list_id,
+                "list_name": row[1],
+                "description": row[2],
+                "user_id": row[3],
+                "created_at": row[4].isoformat() if row[4] else None,
+                "updated_at": row[5].isoformat() if row[5] else None,
+                "created_by_username": row[6],
+                "created_by_firstname": row[7],
+                "created_by_lastname": row[8],
+                "players": [],
+                "player_count": 0,
+                "avg_performance_score": None,
+            }
+
+        if not lists_data:
+            return {"lists": [], "total": 0}
+
+        # Get all players for all lists in one query
+        cursor.execute(
+            """
+            SELECT
+                pli.LIST_ID,
+                pli.ID as ITEM_ID,
+                pli.PLAYER_ID,
+                pli.CAFC_PLAYER_ID,
+                pli.DISPLAY_ORDER,
+                pli.NOTES,
+                pli.ADDED_BY,
+                pli.CREATED_AT,
+                pli.STAGE,
+                COALESCE(p.PLAYERNAME, ip.PLAYERNAME) as PLAYER_NAME,
+                COALESCE(p.FIRSTNAME, ip.FIRSTNAME) as FIRSTNAME,
+                COALESCE(p.LASTNAME, ip.LASTNAME) as LASTNAME,
+                COALESCE(p.POSITION, ip.POSITION) as POSITION,
+                COALESCE(p.SQUADNAME, ip.SQUADNAME) as SQUADNAME,
+                COALESCE(
+                    TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()),
+                    TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())
+                ) as AGE,
+                u.USERNAME as ADDED_BY_USERNAME,
+                p.DATA_SOURCE
+            FROM player_list_items pli
+            LEFT JOIN players p ON pli.PLAYER_ID = p.PLAYERID
+            LEFT JOIN players ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
+            LEFT JOIN users u ON pli.ADDED_BY = u.ID
+            ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
+            """
+        )
+
+        # Collect all player IDs for stats query
+        all_player_ids = set()
+        all_cafc_ids = set()
+        player_rows = []
+
+        for row in cursor.fetchall():
+            player_rows.append(row)
+            if row[2]:  # PLAYER_ID
+                all_player_ids.add(row[2])
+            if row[3]:  # CAFC_PLAYER_ID
+                all_cafc_ids.add(row[3])
+
+        # Get stats for all players in one query
+        stats_lookup = {}
+        if all_player_ids or all_cafc_ids:
+            external_ids_str = ",".join(str(pid) for pid in all_player_ids) if all_player_ids else "NULL"
+            internal_ids_str = ",".join(str(cid) for cid in all_cafc_ids) if all_cafc_ids else "NULL"
+
+            cursor.execute(
+                f"""
+                SELECT
+                    sr.PLAYER_ID,
+                    sr.CAFC_PLAYER_ID,
+                    COUNT(*) as report_count,
+                    AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as avg_performance_score,
+                    COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
+                    COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
+                FROM scout_reports sr
+                WHERE (sr.PLAYER_ID IN ({external_ids_str}) OR sr.CAFC_PLAYER_ID IN ({internal_ids_str}))
+                  AND sr.PERFORMANCE_SCORE IS NOT NULL
+                GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
+                """
+            )
+
+            for stats_row in cursor.fetchall():
+                key = (stats_row[0], stats_row[1])
+                stats_lookup[key] = {
+                    "report_count": stats_row[2],
+                    "avg_performance_score": round(stats_row[3], 1) if stats_row[3] else None,
+                    "live_reports": stats_row[4],
+                    "video_reports": stats_row[5],
+                }
+
+        # Build player data and attach to lists
+        for row in player_rows:
+            list_id = row[0]
+            if list_id not in lists_data:
+                continue
+
+            player_id = row[2]
+            cafc_player_id = row[3]
+            data_source = row[16]
+
+            # Get stats
+            stats = stats_lookup.get((player_id, cafc_player_id), {
+                "report_count": 0,
+                "avg_performance_score": None,
+                "live_reports": 0,
+                "video_reports": 0,
+            })
+
+            # Determine universal_id
+            if data_source == "internal" or (cafc_player_id and not player_id):
+                universal_id = f"internal_{cafc_player_id}"
+            else:
+                universal_id = f"external_{player_id}"
+
+            player_obj = {
+                "item_id": row[1],
+                "player_id": player_id,
+                "cafc_player_id": cafc_player_id,
+                "universal_id": universal_id,
+                "display_order": row[4],
+                "notes": row[5],
+                "added_by": row[6],
+                "created_at": row[7].isoformat() if row[7] else None,
+                "stage": row[8] or "Stage 1",
+                "player_name": row[9],
+                "first_name": row[10],
+                "last_name": row[11],
+                "position": row[12],
+                "squad_name": row[13],
+                "age": row[14],
+                "added_by_username": row[15],
+                "report_count": stats["report_count"],
+                "avg_performance_score": stats["avg_performance_score"],
+                "live_reports": stats["live_reports"],
+                "video_reports": stats["video_reports"],
+            }
+
+            lists_data[list_id]["players"].append(player_obj)
+
+        # Calculate aggregates for each list
+        for list_id, list_obj in lists_data.items():
+            list_obj["player_count"] = len(list_obj["players"])
+
+            scores = [p["avg_performance_score"] for p in list_obj["players"] if p["avg_performance_score"]]
+            if scores:
+                list_obj["avg_performance_score"] = round(sum(scores) / len(scores), 1)
+
+        result = {"lists": list(lists_data.values()), "total": len(lists_data)}
+        return result
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching lists with details: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/player-lists/{list_id}")
+async def get_player_list_detail(
+    list_id: int, current_user: User = Depends(get_current_user)
+):
+    """Get a specific player list with enriched player data"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Add STAGE column if it doesn't exist (migration)
+        try:
+            cursor.execute("DESCRIBE TABLE player_list_items")
+            columns = cursor.fetchall()
+            column_names = [col[0] for col in columns]
+            if "STAGE" not in column_names:
+                cursor.execute(
+                    """
+                    ALTER TABLE player_list_items
+                    ADD COLUMN STAGE VARCHAR(100) DEFAULT 'Stage 1'
+                    """
+                )
+                conn.commit()
+                logging.info("Added STAGE column to player_list_items table")
+        except Exception as e:
+            logging.debug(f"STAGE column may already exist: {e}")
+
+        # Get list metadata
+        cursor.execute(
+            """
+            SELECT ID, LIST_NAME, DESCRIPTION, USER_ID, CREATED_AT, UPDATED_AT
+            FROM player_lists
+            WHERE ID = %s
+        """,
+            (list_id,),
+        )
+
+        list_row = cursor.fetchone()
+        if not list_row:
+            raise HTTPException(status_code=404, detail="List not found")
+
+        list_data = {
+            "id": list_row[0],
+            "list_name": list_row[1],
+            "description": list_row[2],
+            "user_id": list_row[3],
+            "created_at": list_row[4].isoformat() if list_row[4] else None,
+            "updated_at": list_row[5].isoformat() if list_row[5] else None,
+        }
+
+        # OPTIMIZED: Get all player stats in ONE query instead of N queries
+        # First, get all players in the list
+        cursor.execute(
+            """
+            SELECT
+                pli.ID,
+                pli.PLAYER_ID,
+                pli.CAFC_PLAYER_ID,
+                pli.DISPLAY_ORDER,
+                pli.NOTES,
+                pli.ADDED_BY,
+                pli.CREATED_AT,
+                p.PLAYERNAME,
+                p.FIRSTNAME,
+                p.LASTNAME,
+                p.POSITION,
+                p.SQUADNAME,
+                p.BIRTHDATE,
+                u.USERNAME,
+                pli.STAGE
+            FROM player_list_items pli
+            LEFT JOIN players p ON (
+                pli.PLAYER_ID = p.PLAYERID OR
+                pli.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID
+            )
+            LEFT JOIN users u ON pli.ADDED_BY = u.ID
+            WHERE pli.LIST_ID = %s
+            ORDER BY pli.DISPLAY_ORDER ASC, pli.CREATED_AT DESC
+        """,
+            (list_id,),
+        )
+
+        player_rows = cursor.fetchall()
+
+        # OPTIMIZED: Fetch stats for ALL players in a single query
+        # Build a stats lookup dictionary
+        stats_lookup = {}
+        if player_rows:
+            # Get all external player IDs and internal player IDs
+            external_ids = [row[1] for row in player_rows if row[1]]
+            internal_ids = [row[2] for row in player_rows if row[2]]
+
+            if external_ids or internal_ids:
+                # Build dynamic query to get stats for all players at once
+                conditions = []
+                params = []
+
+                if external_ids:
+                    placeholders = ', '.join(['%s'] * len(external_ids))
+                    conditions.append(f"sr.PLAYER_ID IN ({placeholders})")
+                    params.extend(external_ids)
+
+                if internal_ids:
+                    placeholders = ', '.join(['%s'] * len(internal_ids))
+                    conditions.append(f"sr.CAFC_PLAYER_ID IN ({placeholders})")
+                    params.extend(internal_ids)
+
+                where_clause = ' OR '.join(conditions)
+
+                cursor.execute(
+                    f"""
+                    SELECT
+                        sr.PLAYER_ID,
+                        sr.CAFC_PLAYER_ID,
+                        COUNT(*) as report_count,
+                        AVG(sr.PERFORMANCE_SCORE) as avg_performance_score,
+                        COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
+                        COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
+                    FROM scout_reports sr
+                    WHERE ({where_clause})
+                      AND sr.PERFORMANCE_SCORE IS NOT NULL
+                      AND sr.PERFORMANCE_SCORE > 0
+                    GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
+                """,
+                    params,
+                )
+
+                # Build lookup dictionary: key is (player_id, cafc_player_id)
+                for stats_row in cursor.fetchall():
+                    key = (stats_row[0], stats_row[1])
+                    stats_lookup[key] = {
+                        'report_count': stats_row[2] or 0,
+                        'avg_score': round(stats_row[3], 1) if stats_row[3] else None,
+                        'live_reports': stats_row[4] or 0,
+                        'video_reports': stats_row[5] or 0
+                    }
+
+        # Now process all players using the pre-fetched stats
+        players = []
+        for row in player_rows:
+            player_id = row[1]
+            cafc_player_id = row[2]
+
+            # Calculate age from birthdate
+            age = None
+            if row[12]:
+                birthdate = row[12]
+                today = datetime.today()
+                age = (
+                    today.year
+                    - birthdate.year
+                    - ((today.month, today.day) < (birthdate.month, birthdate.day))
+                )
+
+            # OPTIMIZED: Look up stats from pre-fetched dictionary
+            stats_key = (player_id, cafc_player_id)
+            stats = stats_lookup.get(stats_key, {
+                'report_count': 0,
+                'avg_score': None,
+                'live_reports': 0,
+                'video_reports': 0
+            })
+
+            # Build universal ID
+            if cafc_player_id:
+                universal_id = f"internal_{cafc_player_id}"
+            else:
+                universal_id = f"external_{player_id}"
+
+            players.append(
+                {
+                    "item_id": row[0],
+                    "player_id": player_id,
+                    "cafc_player_id": cafc_player_id,
+                    "universal_id": universal_id,
+                    "display_order": row[3],
+                    "notes": row[4],
+                    "added_by": row[5],
+                    "created_at": row[6].isoformat() if row[6] else None,
+                    "player_name": row[7],
+                    "first_name": row[8],
+                    "last_name": row[9],
+                    "position": row[10],
+                    "squad_name": row[11],
+                    "age": age,
+                    "added_by_username": row[13],
+                    "stage": row[14] or "Stage 1",
+                    "report_count": stats['report_count'],
+                    "avg_performance_score": stats['avg_score'],
+                    "live_reports": stats['live_reports'],
+                    "video_reports": stats['video_reports'],
+                }
+            )
+
+        list_data["players"] = players
+
+        return list_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}")
+async def update_player_list(
+    list_id: int,
+    list_data: PlayerListUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update a player list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can update lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Build update query dynamically
+        update_fields = []
+        params = []
+
+        if list_data.list_name is not None:
+            update_fields.append("LIST_NAME = %s")
+            params.append(list_data.list_name)
+
+        if list_data.description is not None:
+            update_fields.append("DESCRIPTION = %s")
+            params.append(list_data.description)
+
+        if not update_fields:
+            return {"message": "No fields to update"}
+
+        update_fields.append("UPDATED_AT = %s")
+        params.append(datetime.utcnow())
+
+        params.append(list_id)
+
+        cursor.execute(
+            f"""
+            UPDATE player_lists
+            SET {', '.join(update_fields)}
+            WHERE ID = %s
+        """,
+            params,
+        )
+
+        conn.commit()
+
+        # Invalidate cache after updating list
+        invalidate_cache("player_lists_all")
+
+        return {"message": "List updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.delete("/player-lists/{list_id}")
+async def delete_player_list(
+    list_id: int, current_user: User = Depends(get_current_user)
+):
+    """Delete a player list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can delete lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Delete all items in the list first
+        cursor.execute("DELETE FROM player_list_items WHERE LIST_ID = %s", (list_id,))
+
+        # Delete the list
+        cursor.execute("DELETE FROM player_lists WHERE ID = %s", (list_id,))
+
+        conn.commit()
+
+        # Invalidate cache after deleting list
+        invalidate_cache("player_lists_all")
+
+        return {"message": "List deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error deleting list: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/player-lists/{list_id}/players")
+async def add_player_to_list(
+    list_id: int,
+    player_data: PlayerListAddPlayer,
+    current_user: User = Depends(get_current_user),
+):
+    """Add a player to a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can add players to lists"
+        )
+
+    if not player_data.player_id and not player_data.cafc_player_id:
+        raise HTTPException(
+            status_code=400, detail="Either player_id or cafc_player_id is required"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Check if player already in list
+        if player_data.player_id:
+            cursor.execute(
+                """
+                SELECT ID FROM player_list_items
+                WHERE LIST_ID = %s AND PLAYER_ID = %s
+            """,
+                (list_id, player_data.player_id),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT ID FROM player_list_items
+                WHERE LIST_ID = %s AND CAFC_PLAYER_ID = %s
+            """,
+                (list_id, player_data.cafc_player_id),
+            )
+
+        if cursor.fetchone():
+            raise HTTPException(
+                status_code=400, detail="Player already in this list"
+            )
+
+        # Get max display order
+        cursor.execute(
+            """
+            SELECT COALESCE(MAX(DISPLAY_ORDER), 0)
+            FROM player_list_items
+            WHERE LIST_ID = %s
+        """,
+            (list_id,),
+        )
+        max_order = cursor.fetchone()[0]
+
+        # Add player to list
+        cursor.execute(
+            """
+            INSERT INTO player_list_items
+            (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY, STAGE)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+            (
+                list_id,
+                player_data.player_id,
+                player_data.cafc_player_id,
+                max_order + 1,
+                player_data.notes,
+                current_user.id,
+                player_data.stage or "Stage 1",
+            ),
+        )
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache after adding player
+        invalidate_cache("player_lists_all")
+
+        return {"message": "Player added to list successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error adding player: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.delete("/player-lists/{list_id}/players/{item_id}")
+async def remove_player_from_list(
+    list_id: int, item_id: int, current_user: User = Depends(get_current_user)
+):
+    """Remove a player from a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins and managers can remove players from lists",
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if item exists
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (item_id, list_id),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Player not found in list")
+
+        # Delete the item
+        cursor.execute("DELETE FROM player_list_items WHERE ID = %s", (item_id,))
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache after removing player
+        invalidate_cache("player_lists_all")
+
+        return {"message": "Player removed from list successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error removing player: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}/reorder")
+async def reorder_players_in_list(
+    list_id: int,
+    reorder_data: PlayerListReorder,
+    current_user: User = Depends(get_current_user),
+):
+    """Reorder players in a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can reorder players"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Update display orders
+        for item in reorder_data.item_orders:
+            cursor.execute(
+                """
+                UPDATE player_list_items
+                SET DISPLAY_ORDER = %s
+                WHERE ID = %s AND LIST_ID = %s
+            """,
+                (item["display_order"], item["item_id"], list_id),
+            )
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache after reordering
+        invalidate_cache("player_lists_all")
+
+        return {"message": "Players reordered successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error reordering players: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}/players/{item_id}/stage")
+async def update_player_stage(
+    list_id: int,
+    item_id: int,
+    stage_data: PlayerStageUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Update a player's stage in a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can update player stages"
+        )
+
+    # Validate stage value
+    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4"]
+    if stage_data.stage not in valid_stages:
+        raise HTTPException(
+            status_code=400, detail=f"Stage must be one of: {', '.join(valid_stages)}"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if item exists in the list
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (item_id, list_id),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Player not found in list")
+
+        # Update the stage
+        cursor.execute(
+            """
+            UPDATE player_list_items
+            SET STAGE = %s
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (stage_data.stage, item_id, list_id),
+        )
+
+        # Update list timestamp
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache after updating stage
+        invalidate_cache("player_lists_all")
+
+        return {"message": "Player stage updated successfully", "stage": stage_data.stage}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating player stage: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/players/{universal_id}/lists")
+async def get_player_list_memberships(
+    universal_id: str, current_user: User = Depends(get_current_user)
+):
+    """Get all lists that a specific player belongs to (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view player lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Parse universal_id to get player_id and cafc_player_id
+        player_id = None
+        cafc_player_id = None
+
+        if universal_id.startswith("internal_"):
+            cafc_player_id = int(universal_id.replace("internal_", ""))
+        elif universal_id.startswith("external_"):
+            player_id = int(universal_id.replace("external_", ""))
+        else:
+            raise HTTPException(status_code=400, detail="Invalid universal_id format")
+
+        # Get all lists this player belongs to with stage information
+        query = """
+            SELECT
+                pl.ID,
+                pl.LIST_NAME,
+                pl.DESCRIPTION,
+                pli.ID as ITEM_ID,
+                pli.STAGE,
+                pli.CREATED_AT as ADDED_AT
+            FROM player_list_items pli
+            JOIN player_lists pl ON pli.LIST_ID = pl.ID
+            WHERE
+                (pli.PLAYER_ID = %s OR pli.CAFC_PLAYER_ID = %s)
+            ORDER BY pl.LIST_NAME ASC
+        """
+
+        cursor.execute(query, (player_id, cafc_player_id))
+
+        memberships = []
+        for row in cursor.fetchall():
+            memberships.append({
+                "list_id": row[0],
+                "list_name": row[1],
+                "description": row[2],
+                "item_id": row[3],
+                "stage": row[4],
+                "added_at": row[5].isoformat() if row[5] else None,
+            })
+
+        return {"player_id": universal_id, "lists": memberships, "total": len(memberships)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching player lists: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/players/list-memberships/batch")
+async def get_batch_player_list_memberships(
+    universal_ids: list[str], current_user: User = Depends(get_current_user)
+):
+    """
+    Get list memberships for multiple players in a single batch query.
+    This eliminates N+1 queries when displaying multi-list badges.
+
+    Args:
+        universal_ids: List of universal player IDs (internal_ or external_ prefixed)
+
+    Returns:
+        Dictionary mapping each universal_id to its list memberships
+    """
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can view player lists"
+        )
+
+    if not universal_ids:
+        return {}
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Parse all universal_ids into player_ids and cafc_player_ids
+        player_ids = []
+        cafc_player_ids = []
+        id_mapping = {}  # Maps (type, id) to universal_id for reconstruction
+
+        for universal_id in universal_ids:
+            if universal_id.startswith("internal_"):
+                cafc_id = int(universal_id.replace("internal_", ""))
+                cafc_player_ids.append(cafc_id)
+                id_mapping[("cafc", cafc_id)] = universal_id
+            elif universal_id.startswith("external_"):
+                player_id = int(universal_id.replace("external_", ""))
+                player_ids.append(player_id)
+                id_mapping[("external", player_id)] = universal_id
+
+        # Build dynamic query with IN clauses
+        conditions = []
+        params = []
+
+        if player_ids:
+            placeholders = ",".join(["%s"] * len(player_ids))
+            conditions.append(f"pli.PLAYER_ID IN ({placeholders})")
+            params.extend(player_ids)
+
+        if cafc_player_ids:
+            placeholders = ",".join(["%s"] * len(cafc_player_ids))
+            conditions.append(f"pli.CAFC_PLAYER_ID IN ({placeholders})")
+            params.extend(cafc_player_ids)
+
+        if not conditions:
+            return {}
+
+        # Get all memberships in single query
+        query = f"""
+            SELECT
+                pl.ID,
+                pl.LIST_NAME,
+                pl.DESCRIPTION,
+                pli.ID as ITEM_ID,
+                pli.STAGE,
+                pli.CREATED_AT as ADDED_AT,
+                pli.PLAYER_ID,
+                pli.CAFC_PLAYER_ID
+            FROM player_list_items pli
+            JOIN player_lists pl ON pli.LIST_ID = pl.ID
+            WHERE {" OR ".join(conditions)}
+            ORDER BY pl.LIST_NAME ASC
+        """
+
+        cursor.execute(query, params)
+
+        # Group results by universal_id
+        results = {}
+        for universal_id in universal_ids:
+            results[universal_id] = []
+
+        for row in cursor.fetchall():
+            list_id, list_name, description, item_id, stage, added_at, player_id, cafc_player_id = row
+
+            # Determine which universal_id this row belongs to
+            if player_id and ("external", player_id) in id_mapping:
+                universal_id = id_mapping[("external", player_id)]
+            elif cafc_player_id and ("cafc", cafc_player_id) in id_mapping:
+                universal_id = id_mapping[("cafc", cafc_player_id)]
+            else:
+                continue  # Skip if no matching universal_id (shouldn't happen)
+
+            results[universal_id].append({
+                "list_id": list_id,
+                "list_name": list_name,
+                "description": description,
+                "item_id": item_id,
+                "stage": stage,
+                "added_at": added_at.isoformat() if added_at else None,
+            })
+
+        return results
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching batch player lists: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+class BulkAddPlayersRequest(BaseModel):
+    """Request model for bulk adding players to a list"""
+    players: list[dict]  # List of {universal_id, stage} dicts
+
+
+@app.post("/player-lists/{list_id}/players/bulk")
+async def bulk_add_players_to_list(
+    list_id: int,
+    bulk_request: BulkAddPlayersRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk add multiple players to a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can add players to lists"
+        )
+
+    if not bulk_request.players:
+        raise HTTPException(status_code=400, detail="No players provided")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Verify list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        added_count = 0
+        skipped_count = 0
+        errors = []
+
+        for player_data in bulk_request.players:
+            universal_id = player_data.get("universal_id")
+            stage = player_data.get("stage", "Stage 1")
+
+            if not universal_id:
+                errors.append("Missing universal_id for a player")
+                continue
+
+            # Parse universal_id
+            player_id = None
+            cafc_player_id = None
+
+            if universal_id.startswith("internal_"):
+                cafc_player_id = int(universal_id.replace("internal_", ""))
+            elif universal_id.startswith("external_"):
+                player_id = int(universal_id.replace("external_", ""))
+            else:
+                errors.append(f"Invalid universal_id format: {universal_id}")
+                continue
+
+            # Check if player already in list
+            cursor.execute(
+                """
+                SELECT ID FROM player_list_items
+                WHERE LIST_ID = %s AND (PLAYER_ID = %s OR CAFC_PLAYER_ID = %s)
+                """,
+                (list_id, player_id, cafc_player_id),
+            )
+
+            if cursor.fetchone():
+                skipped_count += 1
+                continue
+
+            # Add player to list
+            cursor.execute(
+                """
+                INSERT INTO player_list_items
+                (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, ADDED_BY, STAGE, CREATED_AT)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (list_id, player_id, cafc_player_id, current_user.id, stage, datetime.utcnow()),
+            )
+            added_count += 1
+
+        # Update list timestamp
+        cursor.execute(
+            "UPDATE player_lists SET UPDATED_AT = %s WHERE ID = %s",
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache
+        invalidate_cache("player_lists_all")
+
+        return {
+            "message": f"Bulk add completed",
+            "added": added_count,
+            "skipped": skipped_count,
+            "errors": errors,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error bulk adding players: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+class BulkRemovePlayersRequest(BaseModel):
+    """Request model for bulk removing players from a list"""
+    item_ids: list[int]
+
+
+@app.delete("/player-lists/{list_id}/players/bulk")
+async def bulk_remove_players_from_list(
+    list_id: int,
+    bulk_request: BulkRemovePlayersRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk remove multiple players from a list (admin/manager only)"""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and managers can remove players from lists"
+        )
+
+    if not bulk_request.item_ids:
+        raise HTTPException(status_code=400, detail="No item IDs provided")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Verify list exists
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        # Build DELETE query for multiple IDs
+        placeholders = ", ".join(["%s"] * len(bulk_request.item_ids))
+        query = f"""
+            DELETE FROM player_list_items
+            WHERE LIST_ID = %s AND ID IN ({placeholders})
+        """
+
+        params = [list_id] + bulk_request.item_ids
+        cursor.execute(query, params)
+
+        removed_count = cursor.rowcount
+
+        # Update list timestamp
+        cursor.execute(
+            "UPDATE player_lists SET UPDATED_AT = %s WHERE ID = %s",
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache
+        invalidate_cache("player_lists_all")
+
+        return {
+            "message": f"Successfully removed {removed_count} players from list",
+            "removed": removed_count,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error bulk removing players: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":
