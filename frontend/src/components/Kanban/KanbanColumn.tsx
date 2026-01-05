@@ -7,6 +7,10 @@ import {
   getPerformanceScoreColor,
   getContrastTextColor,
 } from "../../utils/colorUtils";
+import {
+  getStageBgColor,
+  colors,
+} from "../../styles/playerLists.theme";
 
 /**
  * PlayerList interface matching the backend API summary
@@ -40,6 +44,8 @@ interface KanbanColumnProps {
   onRemovePlayer: (itemId: number) => void;
   removingPlayerId: number | null;
   isOver?: boolean;
+  pendingStageChanges?: Map<number, { fromStage: string; toStage: string; listId: number }>;
+  pendingRemovals?: Map<number, number>;
 }
 
 /**
@@ -73,6 +79,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   onRemovePlayer,
   removingPlayerId,
   isOver = false,
+  pendingStageChanges,
+  pendingRemovals,
 }) => {
   // Setup droppable area with @dnd-kit
   const { setNodeRef } = useDroppable({
@@ -98,50 +106,47 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   // Determine if this is a stage column by checking if list_name is a stage
   const isStageColumn = list.list_name.startsWith("Stage ");
 
-  // Get stage color if this is a stage column
-  const stageColor = isStageColumn
-    ? list.list_name === "Stage 4" ? "#16a34a"
-      : list.list_name === "Stage 3" ? "#3b82f6"
-      : list.list_name === "Stage 2" ? "#f59e0b"
-      : "#6b7280"
-    : "#3b82f6";
+  // Get stage color if this is a stage column (using theme helper)
+  const stageColor = isStageColumn ? getStageBgColor(list.list_name) : colors.primary;
 
   return (
     <div
       style={{
-        minWidth: "320px",
-        maxWidth: "320px",
+        flex: 1,
+        minWidth: "350px",
+        maxWidth: "500px",
         backgroundColor: "#f9fafb",
-        borderRadius: "8px",
+        borderRadius: "10px",
         display: "flex",
         flexDirection: "column",
-        height: "calc(100vh - 200px)",
+        height: "calc(100vh - 180px)",
         border: isOver ? `2px solid ${stageColor}` : "1px solid #e5e7eb",
         transition: "all 0.2s ease",
-        boxShadow: isOver ? `0 2px 8px ${stageColor}33` : "none",
+        boxShadow: isOver ? `0 4px 12px ${stageColor}33` : "0 1px 3px rgba(0,0,0,0.08)",
       }}
     >
       {/* Column Header */}
       <div
         style={{
-          padding: "14px",
-          borderBottom: "1px solid #e5e7eb",
+          padding: "18px 16px",
+          borderBottom: "2px solid #e5e7eb",
           backgroundColor: "white",
-          borderRadius: "8px 8px 0 0",
+          borderRadius: "10px 10px 0 0",
           ...(isStageColumn && {
-            borderTop: `3px solid ${stageColor}`,
+            borderTop: `4px solid ${stageColor}`,
           }),
         }}
       >
         {/* List name and count */}
         <div className="d-flex justify-content-between align-items-start mb-2">
           <div className="flex-grow-1">
-            <h6 className="fw-bold mb-1" style={{
-              fontSize: "0.95rem",
+            <h5 className="fw-bold mb-1" style={{
+              fontSize: "1.1rem",
+              letterSpacing: "-0.01em",
               ...(isStageColumn && { color: stageColor }),
             }}>
               {list.list_name}
-            </h6>
+            </h5>
             <small className="text-muted">
               {list.player_count} {list.player_count === 1 ? "player" : "players"}
             </small>
@@ -238,6 +243,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
           overflowY: "auto",
           overflowX: "hidden",
           padding: "12px",
+          minHeight: "200px", // Ensure adequate droppable area even when empty
         }}
       >
         <SortableContext items={playerIds} strategy={verticalListSortingStrategy}>
@@ -266,6 +272,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 player={player}
                 onRemove={onRemovePlayer}
                 isRemoving={removingPlayerId === player.item_id}
+                hasUnsavedChanges={pendingStageChanges?.has(player.item_id) || false}
+                isPendingRemoval={pendingRemovals?.has(player.item_id) || false}
               />
             ))
           )}

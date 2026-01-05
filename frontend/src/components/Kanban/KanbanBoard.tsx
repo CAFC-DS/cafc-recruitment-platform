@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -10,6 +12,7 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import KanbanColumn, { ListWithPlayers, PlayerList } from "./KanbanColumn";
@@ -33,6 +36,8 @@ interface KanbanBoardProps {
     newIndex: number
   ) => Promise<void>;
   removingPlayerId: number | null;
+  pendingStageChanges?: Map<number, { fromStage: string; toStage: string; listId: number }>;
+  pendingRemovals?: Map<number, number>;
 }
 
 /**
@@ -69,10 +74,13 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onMovePlayer,
   onReorderPlayer,
   removingPlayerId,
+  pendingStageChanges,
+  pendingRemovals,
 }) => {
   // Track the active player being dragged for the DragOverlay
   const [activePlayer, setActivePlayer] = useState<PlayerInList | null>(null);
   const [activeColumn, setActiveColumn] = useState<number | string | null>(null);
+  const [originalColumn, setOriginalColumn] = useState<number | string | null>(null); // Track original column before drag
 
   // Setup sensors for drag-and-drop
   // PointerSensor: Mouse and touch dragging
@@ -88,11 +96,30 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     })
   );
 
-  // Memoize column IDs for DndContext
-  const columnIds = useMemo(
-    () => lists.map((list) => `list-${list.id}`),
-    [lists]
-  );
+  /**
+   * Custom collision detection that prioritizes column droppables
+   * This ensures empty or sparse columns are easier to drop into
+   */
+  const customCollisionDetection: CollisionDetection = (args) => {
+    // First, try pointerWithin for column droppables (list-*)
+    const pointerCollisions = pointerWithin(args);
+    const columnCollisions = pointerCollisions.filter((collision) =>
+      typeof collision.id === "string" && collision.id.startsWith("list-")
+    );
+
+    if (columnCollisions.length > 0) {
+      return columnCollisions;
+    }
+
+    // If no column collision, try rectIntersection for better area detection
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) {
+      return rectCollisions;
+    }
+
+    // Finally fall back to closestCenter
+    return closestCenter(args);
+  };
 
   /**
    * Handler for drag start
@@ -110,6 +137,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       );
       if (sourceList) {
         setActiveColumn(sourceList.id);
+        setOriginalColumn(sourceList.id); // Capture original column before any optimistic updates
       }
     }
   };
@@ -178,36 +206,57 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
    */
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    console.log("🎯 handleDragEnd called:", { activeId: active.id, overId: over?.id, originalColumn });
 
     setActivePlayer(null);
     setActiveColumn(null);
 
-    if (!over) return;
+    if (!over) {
+      console.log("⚠️ No over - drag cancelled");
+      setOriginalColumn(null);
+      return;
+    }
 
     const activeId = active.id;
     const overId = over.id;
 
     const activeData = active.data.current;
+    console.log("📦 Active data:", activeData);
 
-    if (activeData?.type !== "player") return;
+    if (activeData?.type !== "player") {
+      console.log("⚠️ Not a player drag");
+      setOriginalColumn(null);
+      return;
+    }
 
-    // Find the final positions
-    const activeListIndex = lists.findIndex((list) =>
-      list.players.some((p) => p.item_id === activeId)
-    );
+    // Use originalColumn to find where the drag started (before optimistic updates)
+    const activeListIndex = originalColumn !== null
+      ? lists.findIndex((list) => list.id === originalColumn)
+      : lists.findIndex((list) => list.players.some((p) => p.item_id === activeId));
+
     const overListIndex = typeof overId === "string" && overId.startsWith("list-")
       ? lists.findIndex((list) => `list-${list.id}` === overId)
       : lists.findIndex((list) => list.players.some((p) => p.item_id === overId));
 
-    if (activeListIndex === -1) return;
+    console.log("📍 List indices:", { activeListIndex, overListIndex, originalColumn });
+    console.log("📋 Lists:", lists.map(l => ({ id: l.id, name: l.list_name, playerCount: l.players.length })));
+
+    if (activeListIndex === -1) {
+      console.log("⚠️ Active list not found");
+      setOriginalColumn(null);
+      return;
+    }
 
     const activeList = lists[activeListIndex];
     const activePlayerIndex = activeList.players.findIndex(
       (p) => p.item_id === activeId
     );
 
+    console.log("🎮 Active list:", { id: activeList.id, name: activeList.list_name });
+
     // Case 1: Reordering within the same list
     if (activeListIndex === overListIndex && activeId !== overId) {
+      console.log("📝 Case 1: Reordering within same list");
       const overPlayerIndex = activeList.players.findIndex(
         (p) => p.item_id === overId
       );
@@ -237,24 +286,38 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
     }
     // Case 2: Moving between different lists
     else if (overListIndex !== -1 && activeListIndex !== overListIndex) {
+      console.log("🔄 Case 2: Moving between different lists");
       const fromListId = activeList.id;
       const toListId = lists[overListIndex].id;
       const playerId = activeId as number;
 
+      console.log("📤 Calling onMovePlayer:", { playerId, fromListId, toListId });
+
       // Sync with server (optimistic update already done in handleDragOver)
       try {
         await onMovePlayer(playerId, fromListId, toListId);
+        console.log("✅ onMovePlayer completed successfully");
       } catch (error) {
-        console.error("Failed to move player:", error);
+        console.error("❌ Failed to move player:", error);
         // Could revert optimistic update here if needed
       }
+    } else {
+      console.log("⚠️ No case matched - drag not processed", {
+        overListIndex,
+        activeListIndex,
+        overListIndexValid: overListIndex !== -1,
+        differentLists: activeListIndex !== overListIndex,
+      });
     }
+
+    // Clear original column state
+    setOriginalColumn(null);
   };
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -263,10 +326,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <div
         style={{
           display: "flex",
-          gap: "16px",
+          gap: "20px",
           overflowX: "auto",
           overflowY: "hidden",
-          padding: "16px",
+          padding: "20px 24px",
           minHeight: "calc(100vh - 180px)",
         }}
         className="kanban-board-container"
@@ -281,6 +344,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             onRemovePlayer={(itemId) => onRemovePlayer(itemId, list.id)}
             removingPlayerId={removingPlayerId}
             isOver={activeColumn === list.id && activePlayer !== null}
+            pendingStageChanges={pendingStageChanges}
+            pendingRemovals={pendingRemovals}
           />
         ))}
 

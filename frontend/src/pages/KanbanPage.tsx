@@ -1,23 +1,49 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+/**
+ * KanbanPage Component - REDESIGNED
+ *
+ * Clean Kanban view for player lists with:
+ * - Stage-based columns (Stage 1-4) spanning full width
+ * - List selection with toggle pills
+ * - Drag & drop stage changes
+ * - Batch save mode for stage changes
+ * - Better empty states
+ * - Optimized data fetching
+ */
+
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Container,
   Button,
-  Spinner,
   Alert,
   Form,
   ListGroup,
   Modal,
+  Badge,
+  Spinner,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../axiosInstance";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { usePlayerLists } from "../hooks/usePlayerLists";
 import KanbanBoard from "../components/Kanban/KanbanBoard";
-import { ListWithPlayers, PlayerList } from "../components/Kanban/KanbanColumn";
+import { PlayerList } from "../components/Kanban/KanbanColumn";
 import { PlayerInList } from "../components/Kanban/PlayerKanbanCard";
+import LoadingSkeleton from "../components/PlayerLists/LoadingSkeleton";
+import EmptyState from "../components/PlayerLists/EmptyState";
+import {
+  createPlayerList,
+  updatePlayerList,
+  addPlayerToList,
+  removePlayerFromList,
+  updatePlayerStage,
+  searchPlayers,
+} from "../services/playerListsService";
+import {
+  colors,
+  borderRadius,
+  buttonStyles,
+  badgeStyles,
+} from "../styles/playerLists.theme";
 
-/**
- * Player search result interface
- */
 interface PlayerSearchResult {
   player_id: number;
   cafc_player_id: number | null;
@@ -28,66 +54,40 @@ interface PlayerSearchResult {
   universal_id: string;
 }
 
-/**
- * KanbanPage Component
- *
- * Main page for the Kanban-style player list management system.
- * Displays all player lists as columns in a horizontal scrolling board.
- *
- * Features:
- * - Drag-and-drop players between lists
- * - Reorder players within lists
- * - Create/edit/delete lists
- * - Add/remove players
- * - Search players with debounce
- * - Role-based access control (admin/manager only)
- * - Optimistic UI updates
- * - Comprehensive error handling
- *
- * Integration:
- * - Uses existing backend API endpoints
- * - Reuses existing components and utilities
- * - Maintains same permission checks as PlayerListsPage
- * - Preserves all existing data structures
- *
- * Performance:
- * - Loads all lists with players in optimized structure
- * - Memoized components prevent unnecessary re-renders
- * - Optimistic updates for instant feedback
- * - Debounced search (300ms)
- */
 const KanbanPage: React.FC = () => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading } = useCurrentUser();
 
-  // Derived permissions
+  // Permissions
   const isAdmin = currentUser?.role === "admin";
   const isManager = currentUser?.role === "manager";
 
-  // Main state
-  const [listsWithPlayers, setListsWithPlayers] = useState<ListWithPlayers[]>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
+  // Use the custom hook for data fetching
+  const { lists, loading, error: fetchError, refetch } = usePlayerLists();
+
+  // Local error state
   const [error, setError] = useState<string | null>(null);
 
-  // List filter state - which lists are visible in Kanban
-  const [visibleListIds, setVisibleListIds] = useState<Set<number | string>>(new Set());
+  // Filter states
+  const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
 
-  // Create/Edit List Modal
+  // Batch save mode for stage changes and removals
+  const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, { fromStage: string; toStage: string; listId: number }>>(new Map());
+  const [pendingRemovals, setPendingRemovals] = useState<Map<number, number>>(new Map()); // itemId -> listId
+  const [savingChanges, setSavingChanges] = useState(false);
+
+  // Modals
   const [showListModal, setShowListModal] = useState(false);
   const [editingList, setEditingList] = useState<PlayerList | null>(null);
   const [listName, setListName] = useState("");
   const [listDescription, setListDescription] = useState("");
   const [savingList, setSavingList] = useState(false);
 
-  // Add Player Modal
+  // Add player modal
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
-  const [currentListId, setCurrentListId] = useState<number | string | null>(null);
+  const [currentListId, setCurrentListId] = useState<number | null>(null);
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
-  const [playerSearchResults, setPlayerSearchResults] = useState<
-    PlayerSearchResult[]
-  >([]);
+  const [playerSearchResults, setPlayerSearchResults] = useState<PlayerSearchResult[]>([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,67 +95,32 @@ const KanbanPage: React.FC = () => {
   // Remove player state
   const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
 
-  // Search cache to avoid redundant API calls
-  const searchCache = useRef<Map<string, PlayerSearchResult[]>>(new Map());
-  const CACHE_SIZE_LIMIT = 20;
-
-  /**
-   * Check permissions - redirect if unauthorized
-   */
+  // Permission check - redirect if unauthorized
   useEffect(() => {
     if (!userLoading && !isAdmin && !isManager) {
       navigate("/");
     }
   }, [userLoading, isAdmin, isManager, navigate]);
 
-  /**
-   * Fetch all lists with their players
-   * This is more efficient than fetching lists and then details separately
-   */
-  const fetchAllLists = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // First, get all list summaries
-      const listsResponse = await axiosInstance.get("/player-lists");
-      const lists: PlayerList[] = listsResponse.data.lists;
-
-      // Then, fetch details for each list in parallel
-      const detailPromises = lists.map((list) =>
-        axiosInstance.get(`/player-lists/${list.id}`)
-      );
-
-      const detailResponses = await Promise.all(detailPromises);
-
-      // Combine summaries with details
-      const listsWithPlayersData: ListWithPlayers[] = lists.map(
-        (list, index) => ({
-          ...list,
-          players: detailResponses[index].data.players || [],
-        })
-      );
-
-      setListsWithPlayers(listsWithPlayersData);
-
-      // Initialize all lists as visible
-      const allListIds = new Set(lists.map(list => list.id));
+  // Initialize all lists as visible when data loads
+  useEffect(() => {
+    if (lists.length > 0 && visibleListIds.size === 0) {
+      const allListIds = new Set(lists.map((list) => list.id));
       setVisibleListIds(allListIds);
-    } catch (err: any) {
-      console.error("Error fetching lists:", err);
-      setError(
-        err.response?.data?.detail || "Failed to load player lists. Please try again."
-      );
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [lists]);
+
+  // Merge fetch error with local error
+  useEffect(() => {
+    if (fetchError) {
+      setError(fetchError);
+    }
+  }, [fetchError]);
 
   /**
-   * Transform list-based data into stage-based columns
-   * Groups players by stage and enriches them with list information
+   * Transform lists into stage-based columns
    */
-  const stageColumns = React.useMemo(() => {
+  const stageColumns = useMemo(() => {
     const stages = {
       "Stage 1": [] as PlayerInList[],
       "Stage 2": [] as PlayerInList[],
@@ -163,15 +128,21 @@ const KanbanPage: React.FC = () => {
       "Stage 4": [] as PlayerInList[],
     };
 
-    // Collect all players from all lists, enriching with list info
-    listsWithPlayers.forEach((list) => {
+    lists.forEach((list) => {
       // Skip lists that are not visible
       if (!visibleListIds.has(list.id)) return;
 
       list.players.forEach((player) => {
-        const stage = player.stage || "Stage 1";
+        // Filter out players with pending removals (optimistic update)
+        if (pendingRemovals.has(player.item_id)) {
+          return;
+        }
+
+        // Check if this player has a pending stage change (optimistic update)
+        const pendingChange = pendingStageChanges.get(player.item_id);
+        const stage = pendingChange ? pendingChange.toStage : (player.stage || "Stage 1");
+
         if (stages[stage as keyof typeof stages]) {
-          // Enrich player with list information
           stages[stage as keyof typeof stages].push({
             ...player,
             list_id: list.id,
@@ -200,12 +171,12 @@ const KanbanPage: React.FC = () => {
           : null,
       players,
     }));
-  }, [listsWithPlayers, visibleListIds]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals]);
 
   /**
-   * Toggle list visibility in filter
+   * Toggle list visibility
    */
-  const toggleListVisibility = (listId: number | string) => {
+  const toggleListVisibility = (listId: number) => {
     setVisibleListIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(listId)) {
@@ -218,13 +189,16 @@ const KanbanPage: React.FC = () => {
   };
 
   /**
-   * Initial load
+   * Toggle all lists
    */
-  useEffect(() => {
-    if (isAdmin || isManager) {
-      fetchAllLists();
+  const toggleAllLists = (visible: boolean) => {
+    if (visible) {
+      const allListIds = new Set(lists.map((list) => list.id));
+      setVisibleListIds(allListIds);
+    } else {
+      setVisibleListIds(new Set());
     }
-  }, [isAdmin, isManager, fetchAllLists]);
+  };
 
   /**
    * Create or update list
@@ -240,73 +214,28 @@ const KanbanPage: React.FC = () => {
       setError(null);
 
       if (editingList) {
-        // Update existing list
-        await axiosInstance.put(`/player-lists/${editingList.id}`, {
-          list_name: listName,
-          description: listDescription || null,
-        });
+        // Cast to number since stage columns can't be edited (id is always number for real lists)
+        await updatePlayerList(Number(editingList.id), listName, listDescription);
       } else {
-        // Create new list
-        await axiosInstance.post("/player-lists", {
-          list_name: listName,
-          description: listDescription || null,
-        });
+        await createPlayerList(listName, listDescription);
       }
 
-      // Refresh lists
-      await fetchAllLists();
+      await refetch();
 
-      // Close modal and reset
       setShowListModal(false);
       setEditingList(null);
       setListName("");
       setListDescription("");
     } catch (err: any) {
       console.error("Error saving list:", err);
-      setError(
-        err.response?.data?.detail || "Failed to save list. Please try again."
-      );
+      setError(err.response?.data?.detail || "Failed to save list. Please try again.");
     } finally {
       setSavingList(false);
     }
   };
 
   /**
-   * Delete list
-   */
-  const handleDeleteList = async (listId: number) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this list? All players will be removed from it."
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setError(null);
-      await axiosInstance.delete(`/player-lists/${listId}`);
-      await fetchAllLists();
-    } catch (err: any) {
-      console.error("Error deleting list:", err);
-      setError(
-        err.response?.data?.detail || "Failed to delete list. Please try again."
-      );
-    }
-  };
-
-  /**
-   * Open modal to edit list
-   */
-  const openEditModal = (list: PlayerList) => {
-    setEditingList(list);
-    setListName(list.list_name);
-    setListDescription(list.description || "");
-    setShowListModal(true);
-  };
-
-  /**
-   * Open modal to create new list
+   * Open create modal
    */
   const openCreateModal = () => {
     setEditingList(null);
@@ -324,29 +253,10 @@ const KanbanPage: React.FC = () => {
       return;
     }
 
-    // Check cache first
-    if (searchCache.current.has(query)) {
-      setPlayerSearchResults(searchCache.current.get(query)!);
-      return;
-    }
-
     try {
       setSearchingPlayers(true);
-      const response = await axiosInstance.get(`/players/search`, {
-        params: { q: query },
-      });
-
-      const results = response.data.players || [];
+      const results = await searchPlayers(query);
       setPlayerSearchResults(results);
-
-      // Update cache
-      searchCache.current.set(query, results);
-
-      // Limit cache size
-      if (searchCache.current.size > CACHE_SIZE_LIMIT) {
-        const firstKey = searchCache.current.keys().next().value;
-        searchCache.current.delete(firstKey);
-      }
     } catch (err) {
       console.error("Error searching players:", err);
       setPlayerSearchResults([]);
@@ -384,15 +294,9 @@ const KanbanPage: React.FC = () => {
       setAddingPlayer(true);
       setError(null);
 
-      await axiosInstance.post(`/player-lists/${currentListId}/players`, {
-        player_id: player.player_id || null,
-        cafc_player_id: player.cafc_player_id || null,
-      });
+      await addPlayerToList(currentListId, player.universal_id);
+      await refetch();
 
-      // Refresh lists
-      await fetchAllLists();
-
-      // Close modal and reset
       setShowAddPlayerModal(false);
       setCurrentListId(null);
       setPlayerSearchQuery("");
@@ -409,106 +313,106 @@ const KanbanPage: React.FC = () => {
   };
 
   /**
-   * Remove player from list
+   * Remove player from list (batch mode)
+   * Adds to pending removals instead of immediately saving
    */
-  const handleRemovePlayer = async (itemId: number, listId: number | string) => {
-    if (!window.confirm("Remove this player from the list?")) {
-      return;
-    }
-
-    try {
-      setRemovingPlayerId(itemId);
-      setError(null);
-
-      await axiosInstance.delete(`/player-lists/${listId}/players/${itemId}`);
-
-      // Refresh lists
-      await fetchAllLists();
-    } catch (err: any) {
-      console.error("Error removing player:", err);
-      setError(
-        err.response?.data?.detail || "Failed to remove player. Please try again."
-      );
-    } finally {
-      setRemovingPlayerId(null);
-    }
+  const handleRemovePlayer = async (itemId: number, listId: number | string): Promise<void> => {
+    setPendingRemovals((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(itemId, Number(listId));
+      return newMap;
+    });
   };
 
   /**
-   * Move player between lists (drag-and-drop)
+   * Handle stage change (drag-and-drop)
+   * Now adds to pending changes instead of immediately saving
    */
-  /**
-   * Handle moving player between stage columns (updates stage)
-   */
-  const handleStageChange = async (
+  const handleStageChange = (
     itemId: number,
     fromStage: string,
     toStage: string,
     listId: number | string
   ) => {
-    try {
-      // Update the player's stage via API
-      await axiosInstance.put(`/player-lists/${listId}/players/${itemId}/stage`, {
-        stage: toStage,
-      });
+    // Add or update pending change
+    setPendingStageChanges((prev) => {
+      const newMap = new Map(prev);
 
-      // Refresh lists to sync any server-side changes
-      await fetchAllLists();
-    } catch (err: any) {
-      console.error("Error moving player:", err);
-      setError(
-        err.response?.data?.detail ||
-          "Failed to move player. They may already be in the destination list."
-      );
-      // Refresh to revert optimistic update
-      await fetchAllLists();
-    }
+      // If there's already a pending change for this item, update the toStage
+      // but keep the original fromStage
+      const existing = newMap.get(itemId);
+      if (existing) {
+        newMap.set(itemId, {
+          fromStage: existing.fromStage, // Keep original fromStage
+          toStage,
+          listId: Number(listId),
+        });
+      } else {
+        newMap.set(itemId, {
+          fromStage,
+          toStage,
+          listId: Number(listId),
+        });
+      }
+
+      return newMap;
+    });
   };
 
   /**
-   * Reorder player within the same list
+   * Save all pending stage changes in a batch
    */
-  const handleReorderPlayer = async (
-    listId: number | string,
-    oldIndex: number,
-    newIndex: number
-  ) => {
+  const savePendingChanges = async () => {
+    if (pendingStageChanges.size === 0 && pendingRemovals.size === 0) return;
+
     try {
-      const list = listsWithPlayers.find((l) => l.id === listId);
-      if (!list) return;
+      setSavingChanges(true);
+      setError(null);
 
-      // Build reorder data
-      const reorderedPlayers = [...list.players];
-      const [movedPlayer] = reorderedPlayers.splice(oldIndex, 1);
-      reorderedPlayers.splice(newIndex, 0, movedPlayer);
-
-      const itemOrders = reorderedPlayers.map((player, index) => ({
-        item_id: player.item_id,
-        display_order: index,
-      }));
-
-      // Send to server
-      await axiosInstance.put(`/player-lists/${listId}/reorder`, {
-        item_orders: itemOrders,
-      });
-
-      // Optionally refresh lists
-      // await fetchAllLists();
-    } catch (err: any) {
-      console.error("Error reordering players:", err);
-      setError(
-        err.response?.data?.detail || "Failed to reorder players. Please try again."
+      // Execute all stage updates
+      const stageUpdatePromises = Array.from(pendingStageChanges.entries()).map(
+        ([itemId, change]) => updatePlayerStage(change.listId, itemId, change.toStage)
       );
-      // Refresh to revert optimistic update
-      await fetchAllLists();
+
+      // Execute all removals
+      const removalPromises = Array.from(pendingRemovals.entries()).map(
+        ([itemId, listId]) => removePlayerFromList(listId, itemId)
+      );
+
+      await Promise.all([...stageUpdatePromises, ...removalPromises]);
+      await refetch();
+
+      // Clear pending changes
+      setPendingStageChanges(new Map());
+      setPendingRemovals(new Map());
+    } catch (err: any) {
+      console.error("Error saving changes:", err);
+      setError(err.response?.data?.detail || "Failed to save changes. Please try again.");
+    } finally {
+      setSavingChanges(false);
     }
   };
 
   /**
-   * Open add player modal for specific list
+   * Discard all pending changes
+   */
+  const discardPendingChanges = () => {
+    const totalChanges = pendingStageChanges.size + pendingRemovals.size;
+    if (totalChanges === 0) return;
+
+    if (!window.confirm(`Discard ${totalChanges} unsaved change(s)?`)) {
+      return;
+    }
+    setPendingStageChanges(new Map());
+    setPendingRemovals(new Map());
+    refetch(); // Refresh to show original state
+  };
+
+  /**
+   * Open add player modal
    */
   const openAddPlayerModal = (listId: number | string) => {
-    setCurrentListId(listId);
+    setCurrentListId(Number(listId));
     setPlayerSearchQuery("");
     setPlayerSearchResults([]);
     setShowAddPlayerModal(true);
@@ -517,33 +421,30 @@ const KanbanPage: React.FC = () => {
   // Loading state
   if (userLoading || loading) {
     return (
-      <Container className="text-center mt-5">
-        <Spinner animation="border" />
-        <p className="mt-3 text-muted">Loading Kanban board...</p>
+      <Container fluid className="py-4">
+        <div className="mb-4">
+          <h3>Player Lists - Kanban View</h3>
+        </div>
+        <LoadingSkeleton variant="column" count={4} />
       </Container>
     );
   }
 
   return (
-    <Container fluid className="py-4">
+    <Container fluid className="py-3 px-4">
       {/* Error Alert */}
       {error && (
-        <Alert
-          variant="danger"
-          dismissible
-          onClose={() => setError(null)}
-          className="mb-3"
-        >
+        <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
           {error}
         </Alert>
       )}
 
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
-          <h3 className="mb-1">Player Lists - Kanban View</h3>
+          <h3 className="mb-1" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Player Lists - Kanban View</h3>
           <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-            Drag players between lists to organize your recruitment pipeline
+            Drag players between stages to track recruitment progress
           </p>
         </div>
         <div className="d-flex gap-2">
@@ -551,8 +452,8 @@ const KanbanPage: React.FC = () => {
             variant="outline-secondary"
             onClick={() => navigate("/lists")}
             style={{
-              borderRadius: "20px",
-              padding: "8px 16px",
+              ...buttonStyles.secondary,
+              borderRadius: borderRadius.pill,
             }}
           >
             Switch to Table View
@@ -561,9 +462,7 @@ const KanbanPage: React.FC = () => {
             variant="dark"
             onClick={openCreateModal}
             style={{
-              borderRadius: "20px",
-              padding: "8px 20px",
-              fontWeight: "600",
+              ...buttonStyles.primary,
             }}
           >
             + New List
@@ -571,59 +470,174 @@ const KanbanPage: React.FC = () => {
         </div>
       </div>
 
-      {/* List Filter Controls */}
-      {listsWithPlayers.length > 0 && (
-        <div className="mb-3 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
-          <div className="d-flex align-items-center gap-3 flex-wrap">
-            <span className="fw-bold" style={{ fontSize: "0.9rem" }}>
-              Filter Lists:
-            </span>
-            {listsWithPlayers.map((list) => (
-              <Form.Check
-                key={list.id}
-                type="checkbox"
-                id={`list-filter-${list.id}`}
-                label={list.list_name}
-                checked={visibleListIds.has(list.id)}
-                onChange={() => toggleListVisibility(list.id)}
-                style={{ fontSize: "0.85rem" }}
-              />
-            ))}
+      {lists.length === 0 ? (
+        <EmptyState
+          title="No Player Lists Yet"
+          message="Create your first player list to start organizing your recruitment pipeline."
+          actionLabel="Create Your First List"
+          onAction={openCreateModal}
+          icon="📋"
+        />
+      ) : (
+        <>
+          {/* Filters Section */}
+          <div
+            className="mb-3 p-2 px-3"
+            style={{
+              backgroundColor: colors.gray[50],
+              borderRadius: borderRadius.md,
+              border: `1px solid ${colors.gray[200]}`,
+            }}
+          >
+            {/* List Filter Pills */}
+            <div>
+              <div className="d-flex align-items-center gap-2 mb-2">
+                <span className="fw-semibold" style={{ fontSize: "0.85rem", color: colors.gray[700] }}>
+                  Lists:
+                </span>
+                <Button
+                  size="sm"
+                  variant="link"
+                  onClick={() => toggleAllLists(true)}
+                  style={{ fontSize: "0.75rem", padding: "0 4px" }}
+                >
+                  All
+                </Button>
+                <span style={{ color: colors.gray[400] }}>|</span>
+                <Button
+                  size="sm"
+                  variant="link"
+                  onClick={() => toggleAllLists(false)}
+                  style={{ fontSize: "0.75rem", padding: "0 4px" }}
+                >
+                  None
+                </Button>
+              </div>
+              <div className="d-flex gap-2 flex-wrap">
+                {lists.map((list) => {
+                  const isVisible = visibleListIds.has(list.id);
+                  return (
+                    <Badge
+                      key={list.id}
+                      bg=""
+                      onClick={() => toggleListVisibility(list.id)}
+                      style={{
+                        ...badgeStyles.pill,
+                        backgroundColor: isVisible ? colors.primary : colors.gray[300],
+                        color: isVisible ? colors.white : colors.gray[600],
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        opacity: isVisible ? 1 : 0.7,
+                      }}
+                    >
+                      {list.list_name} ({list.player_count})
+                    </Badge>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Kanban Board */}
+          <KanbanBoard
+            lists={stageColumns}
+            onListsChange={() => {}}
+            onEditList={() => {}}
+            onDeleteList={() => {}}
+            onAddPlayer={openAddPlayerModal}
+            onRemovePlayer={handleRemovePlayer}
+            onMovePlayer={async (itemId, fromStageId, toStageId) => {
+              console.log("onMovePlayer called:", { itemId, fromStageId, toStageId });
+              // Search in the target column because optimistic update already moved the player there
+              const toStageColumn = stageColumns.find((c) => c.id === toStageId);
+              console.log("toStageColumn:", toStageColumn);
+              const player = toStageColumn?.players.find((p) => p.item_id === itemId);
+              console.log("player found:", player);
+              if (player && player.list_id !== undefined) {
+                const fromStage = typeof fromStageId === "string" ? fromStageId : "";
+                const toStage = typeof toStageId === "string" ? toStageId : "";
+                console.log("Calling handleStageChange:", { itemId, fromStage, toStage, listId: player.list_id });
+                handleStageChange(itemId, fromStage, toStage, player.list_id);
+              } else {
+                console.warn("Player not found or list_id is undefined:", { player, itemId, toStageId });
+              }
+            }}
+            onReorderPlayer={async () => {}}
+            removingPlayerId={removingPlayerId}
+            pendingStageChanges={pendingStageChanges}
+            pendingRemovals={pendingRemovals}
+          />
+
+          {/* Floating Save/Discard Changes Button */}
+          {(pendingStageChanges.size > 0 || pendingRemovals.size > 0) && (
+            <div
+              style={{
+                position: "fixed",
+                bottom: "30px",
+                right: "30px",
+                zIndex: 1000,
+                display: "flex",
+                gap: "10px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                borderRadius: borderRadius.lg,
+                backgroundColor: colors.white,
+                padding: "12px 16px",
+                border: `2px solid ${colors.primary}`,
+              }}
+            >
+              <div className="d-flex align-items-center gap-2">
+                <span style={{ fontSize: "0.9rem", fontWeight: 600, color: colors.gray[700] }}>
+                  {pendingStageChanges.size + pendingRemovals.size} unsaved change
+                  {pendingStageChanges.size + pendingRemovals.size > 1 ? "s" : ""}
+                  {pendingStageChanges.size > 0 && pendingRemovals.size > 0 && (
+                    <span style={{ fontSize: "0.8rem", fontWeight: 400 }}>
+                      {" "}({pendingStageChanges.size} stage, {pendingRemovals.size} removal{pendingRemovals.size > 1 ? "s" : ""})
+                    </span>
+                  )}
+                </span>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={discardPendingChanges}
+                  disabled={savingChanges}
+                  style={{
+                    ...buttonStyles.secondary,
+                    fontSize: "0.85rem",
+                    padding: "6px 14px",
+                  }}
+                >
+                  Discard
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={savePendingChanges}
+                  disabled={savingChanges}
+                  style={{
+                    ...buttonStyles.primary,
+                    fontSize: "0.85rem",
+                    padding: "6px 14px",
+                  }}
+                >
+                  {savingChanges ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" className="me-2" style={{ width: "12px", height: "12px" }} />
+                      Saving...
+                    </>
+                  ) : (
+                    `Save ${pendingStageChanges.size + pendingRemovals.size} Change${pendingStageChanges.size + pendingRemovals.size > 1 ? "s" : ""}`
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Kanban Board - Stage-based */}
-      <KanbanBoard
-        lists={stageColumns}
-        onListsChange={() => {}} // Not used in stage-based view
-        onEditList={() => {}} // Stages are fixed, can't edit
-        onDeleteList={() => {}} // Stages are fixed, can't delete
-        onAddPlayer={openAddPlayerModal}
-        onRemovePlayer={handleRemovePlayer}
-        onMovePlayer={async (itemId, fromStageId, toStageId) => {
-          // Extract list_id from the player
-          const fromStageColumn = stageColumns.find(c => c.id === fromStageId);
-          const player = fromStageColumn?.players.find(p => p.item_id === itemId);
-          if (player && player.list_id !== undefined) {
-            const fromStage = typeof fromStageId === 'string' ? fromStageId : '';
-            const toStage = typeof toStageId === 'string' ? toStageId : '';
-            await handleStageChange(itemId, fromStage, toStage, player.list_id);
-          }
-        }}
-        onReorderPlayer={handleReorderPlayer}
-        removingPlayerId={removingPlayerId}
-      />
-
       {/* Create/Edit List Modal */}
-      <Modal
-        show={showListModal}
-        onHide={() => !savingList && setShowListModal(false)}
-      >
+      <Modal show={showListModal} onHide={() => !savingList && setShowListModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>
-            {editingList ? "Edit List" : "Create New List"}
-          </Modal.Title>
+          <Modal.Title>{editingList ? "Edit List" : "Create New List"}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
@@ -651,11 +665,7 @@ const KanbanPage: React.FC = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowListModal(false)}
-            disabled={savingList}
-          >
+          <Button variant="secondary" onClick={() => setShowListModal(false)} disabled={savingList}>
             Cancel
           </Button>
           <Button
@@ -665,12 +675,7 @@ const KanbanPage: React.FC = () => {
           >
             {savingList ? (
               <>
-                <Spinner
-                  as="span"
-                  animation="border"
-                  size="sm"
-                  className="me-2"
-                />
+                <Spinner as="span" animation="border" size="sm" className="me-2" />
                 Saving...
               </>
             ) : editingList ? (
@@ -704,7 +709,6 @@ const KanbanPage: React.FC = () => {
             />
           </Form.Group>
 
-          {/* Search Loading */}
           {searchingPlayers && (
             <div className="text-center py-4">
               <Spinner animation="border" className="me-2" />
@@ -712,7 +716,6 @@ const KanbanPage: React.FC = () => {
             </div>
           )}
 
-          {/* Add Loading */}
           {addingPlayer && (
             <div className="text-center py-4">
               <Spinner animation="border" className="me-2" />
@@ -720,7 +723,6 @@ const KanbanPage: React.FC = () => {
             </div>
           )}
 
-          {/* Search Results */}
           {!searchingPlayers && !addingPlayer && playerSearchResults.length > 0 && (
             <ListGroup>
               {playerSearchResults.map((player) => (
@@ -739,31 +741,24 @@ const KanbanPage: React.FC = () => {
                       {player.age && ` • Age ${player.age}`}
                     </div>
                   </div>
-                  <span style={{ color: "#0d6efd", fontSize: "0.9rem" }}>
-                    Add →
-                  </span>
+                  <span style={{ color: "#0d6efd", fontSize: "0.9rem" }}>Add →</span>
                 </ListGroup.Item>
               ))}
             </ListGroup>
           )}
 
-          {/* Empty States */}
           {!searchingPlayers &&
             !addingPlayer &&
             playerSearchQuery.trim() &&
             playerSearchResults.length === 0 && (
-              <Alert variant="info">
-                No players found matching "{playerSearchQuery}"
-              </Alert>
+              <Alert variant="info">No players found matching "{playerSearchQuery}"</Alert>
             )}
 
-          {!searchingPlayers &&
-            !addingPlayer &&
-            !playerSearchQuery.trim() && (
-              <div className="text-center text-muted py-4">
-                <p>Start typing to search for players</p>
-              </div>
-            )}
+          {!searchingPlayers && !addingPlayer && !playerSearchQuery.trim() && (
+            <div className="text-center text-muted py-4">
+              <p>Start typing to search for players</p>
+            </div>
+          )}
         </Modal.Body>
       </Modal>
     </Container>

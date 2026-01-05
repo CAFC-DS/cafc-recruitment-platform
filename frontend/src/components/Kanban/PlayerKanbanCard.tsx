@@ -7,6 +7,7 @@ import {
   getPerformanceScoreColor,
   getContrastTextColor,
 } from "../../utils/colorUtils";
+import MultiListBadges from "../PlayerLists/MultiListBadges";
 
 /**
  * PlayerInList interface matching the backend API response
@@ -41,6 +42,8 @@ interface PlayerKanbanCardProps {
   player: PlayerInList;
   onRemove: (itemId: number) => void;
   isRemoving: boolean;
+  hasUnsavedChanges?: boolean;
+  isPendingRemoval?: boolean;
 }
 
 /**
@@ -66,6 +69,8 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
   player,
   onRemove,
   isRemoving,
+  hasUnsavedChanges = false,
+  isPendingRemoval = false,
 }) => {
   const navigate = useNavigate();
 
@@ -133,16 +138,25 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
         style={{
           backgroundColor: "white",
           borderRadius: "8px",
-          border: "1px solid #e5e7eb",
-          padding: "12px",
-          marginBottom: "8px",
+          border: isPendingRemoval
+            ? "2px solid #ef4444"
+            : hasUnsavedChanges
+            ? "2px solid #f59e0b"
+            : "1px solid #e5e7eb",
+          padding: "10px",
+          marginBottom: "10px",
           cursor: isDragging ? "grabbing" : "grab",
           boxShadow: isDragging
             ? "0 8px 16px rgba(0,0,0,0.15)"
+            : isPendingRemoval
+            ? "0 2px 6px rgba(239, 68, 68, 0.15)"
+            : hasUnsavedChanges
+            ? "0 2px 6px rgba(245, 158, 11, 0.15)"
             : "0 1px 3px rgba(0,0,0,0.05)",
           transition: "all 0.2s ease",
           userSelect: "none",
           transform: isDragging ? "scale(1.02)" : "scale(1)",
+          opacity: isPendingRemoval ? 0.6 : 1,
         }}
         onMouseEnter={(e) => {
           if (!isDragging) {
@@ -160,17 +174,49 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
         {/* Header: Player name and score */}
         <div className="d-flex justify-content-between align-items-start mb-2">
           <div className="flex-grow-1">
-            <div
-              className="fw-bold"
-              style={{
-                fontSize: "0.9rem",
-                marginBottom: "4px",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {player.player_name}
+            <div className="d-flex align-items-center gap-2">
+              <div
+                className="fw-bold"
+                style={{
+                  fontSize: "0.9rem",
+                  marginBottom: "4px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {player.player_name}
+              </div>
+              {hasUnsavedChanges && !isPendingRemoval && (
+                <Badge
+                  bg=""
+                  style={{
+                    backgroundColor: "#f59e0b",
+                    color: "white",
+                    fontSize: "0.6rem",
+                    padding: "2px 6px",
+                    fontWeight: "600",
+                  }}
+                  title="Unsaved stage change"
+                >
+                  UNSAVED
+                </Badge>
+              )}
+              {isPendingRemoval && (
+                <Badge
+                  bg=""
+                  style={{
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    fontSize: "0.6rem",
+                    padding: "2px 6px",
+                    fontWeight: "600",
+                  }}
+                  title="Pending removal"
+                >
+                  REMOVING
+                </Badge>
+              )}
             </div>
             <small className="text-muted">
               {player.position || "Unknown"} • Age {player.age || "N/A"}
@@ -211,24 +257,10 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
           </div>
         </div>
 
-        {/* List name badge */}
-        {player.list_name && (
-          <div className="mb-2">
-            <Badge
-              bg=""
-              style={{
-                backgroundColor: "#3b82f6",
-                color: "#ffffff",
-                fontSize: "0.7rem",
-                padding: "3px 8px",
-                borderRadius: "10px",
-                fontWeight: "600",
-              }}
-            >
-              📋 {player.list_name}
-            </Badge>
-          </div>
-        )}
+        {/* Multi-list badges - shows all lists the player belongs to */}
+        <div className="mb-2">
+          <MultiListBadges universalId={player.universal_id} maxVisible={2} showStage={false} />
+        </div>
 
         {/* Remove button */}
         <div className="d-flex justify-content-end mt-2 pt-2 border-top">
