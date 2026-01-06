@@ -43,12 +43,13 @@ export const usePlayerLists = (): UsePlayerListsReturn => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial fetch
   useEffect(() => {
     fetchLists();
-  }, [fetchLists]);
+    // Only run once on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     lists,
