@@ -81,11 +81,7 @@ type SortDirection = "asc" | "desc";
 
 const PlayerListsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user: currentUser, loading: userLoading } = useCurrentUser();
-
-  // Permissions
-  const isAdmin = currentUser?.role === "admin";
-  const isManager = currentUser?.role === "manager";
+  const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
   // Use custom hook for data
   const { lists, loading, error: fetchError, refetch } = usePlayerLists();
@@ -128,10 +124,10 @@ const PlayerListsPage: React.FC = () => {
 
   // Permission check
   useEffect(() => {
-    if (!userLoading && !isAdmin && !isManager) {
+    if (!userLoading && !canAccessLists) {
       navigate("/");
     }
-  }, [userLoading, isAdmin, isManager, navigate]);
+  }, [userLoading, canAccessLists, navigate]);
 
   // Auto-select first list
   useEffect(() => {
