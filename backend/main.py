@@ -4978,6 +4978,104 @@ async def mark_report_viewed(
             conn.close()
 
 
+@app.post("/scout_reports/mark-all-viewed")
+async def mark_all_reports_viewed(current_user: User = Depends(get_current_user)):
+    """
+    Mark all visible scout reports as viewed for the current user.
+    Respects role-based filtering (scouts see only their reports, loan users see their reports + loan reports, etc.)
+    Returns the count of reports marked as viewed.
+    """
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Build WHERE clause based on user role (same logic as GET /scout_reports/all)
+        where_clauses = []
+        sql_params = []
+
+        # Check if USER_ID column exists
+        user_id_exists = has_column("scout_reports", "USER_ID")
+
+        if user_id_exists:
+            if current_user.role == "scout":
+                # Scout sees only their own reports
+                where_clauses.append("sr.USER_ID = %s")
+                sql_params.append(current_user.id)
+                logging.info(f"Marking all reports for scout user ID: {current_user.id}")
+            elif current_user.role == "loan":
+                # Loan users see their own reports OR any Loan Reports
+                where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
+                sql_params.append(current_user.id)
+                sql_params.append("Loan Report")
+                logging.info(f"Marking all reports for loan user ID: {current_user.id}")
+            else:
+                # Manager/Admin see all reports - no filter needed
+                logging.info(f"Marking all reports for {current_user.role} user")
+
+        # Get all report IDs that match the filter
+        where_clause_sql = ""
+        if where_clauses:
+            where_clause_sql = " WHERE " + " AND ".join(where_clauses)
+
+        get_report_ids_sql = f"""
+            SELECT sr.ID
+            FROM scout_reports sr
+            {where_clause_sql}
+        """
+
+        cursor.execute(get_report_ids_sql, sql_params)
+        report_ids = [row[0] for row in cursor.fetchall()]
+
+        if not report_ids:
+            return {
+                "success": True,
+                "reports_marked": 0,
+                "message": "No reports to mark as viewed"
+            }
+
+        # Use MERGE to bulk insert/update viewed status for all reports
+        # Build dynamic SQL for bulk MERGE operation
+        merge_sql = """
+            MERGE INTO SCOUT_REPORT_VIEWS AS target
+            USING (
+                SELECT sr.ID AS SCOUT_REPORT_ID, %s AS USER_ID
+                FROM scout_reports sr
+                WHERE sr.ID IN ({placeholders})
+            ) AS source
+            ON target.SCOUT_REPORT_ID = source.SCOUT_REPORT_ID
+               AND target.USER_ID = source.USER_ID
+            WHEN NOT MATCHED THEN
+                INSERT (SCOUT_REPORT_ID, USER_ID, VIEWED_AT)
+                VALUES (source.SCOUT_REPORT_ID, source.USER_ID, CURRENT_TIMESTAMP())
+            WHEN MATCHED THEN
+                UPDATE SET VIEWED_AT = CURRENT_TIMESTAMP()
+        """.format(placeholders=", ".join(["%s"] * len(report_ids)))
+
+        # Parameters: current_user.id first, then all report_ids
+        merge_params = [current_user.id] + report_ids
+
+        cursor.execute(merge_sql, merge_params)
+        conn.commit()
+
+        logging.info(f"Marked {len(report_ids)} reports as viewed for user {current_user.username} (ID: {current_user.id})")
+
+        return {
+            "success": True,
+            "reports_marked": len(report_ids),
+            "message": f"Marked {len(report_ids)} report(s) as viewed"
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error marking all reports as viewed: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 # --- Player Profile Endpoints ---
 class PlayerNote(BaseModel):
     player_id: int
