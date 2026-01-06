@@ -207,6 +207,85 @@ const AdminPage: React.FC = () => {
     }
   };
 
+  const migrateRoles = async () => {
+    setError(null);
+    setSuccess(null);
+
+    if (
+      !window.confirm(
+        "Migrate user roles from old naming to new 5-tier system?\n\n" +
+        "This will update:\n" +
+        "- 'loan' → 'loan_scout'\n\n" +
+        "Safe to run multiple times.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post("/admin/migrate-roles");
+      setSuccess(
+        `Role migration completed!\n${response.data.results.join("\n")}`,
+      );
+      fetchUsers(); // Refresh user list
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.detail || "Failed to migrate roles");
+      } else {
+        setError("An unexpected error occurred");
+      }
+    }
+  };
+
+  const createTestUsers = async () => {
+    setError(null);
+    setSuccess(null);
+
+    if (
+      !window.confirm(
+        "Create 5 test users (one for each role)?\n\n" +
+        "Users:\n" +
+        "- test_admin (admin)\n" +
+        "- test_senior_manager (senior_manager)\n" +
+        "- test_manager (manager)\n" +
+        "- test_loan_scout (loan_scout)\n" +
+        "- test_scout (scout)\n\n" +
+        "Password for all: TestPassword123!\n\n" +
+        "Existing users will be skipped.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post("/admin/create-test-users");
+      let message = `${response.data.message}\n\n${response.data.note}`;
+
+      if (response.data.created_users.length > 0) {
+        message += "\n\n✅ Created Users:\n";
+        response.data.created_users.forEach((user: any) => {
+          message += `- ${user.username} (${user.role})\n`;
+        });
+      }
+
+      if (response.data.skipped_users.length > 0) {
+        message += "\n\n⏭️ Skipped Users:\n";
+        response.data.skipped_users.forEach((user: any) => {
+          message += `- ${user.username}: ${user.reason}\n`;
+        });
+      }
+
+      setSuccess(message);
+      fetchUsers(); // Refresh user list
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.detail || "Failed to create test users");
+      } else {
+        setError("An unexpected error occurred");
+      }
+    }
+  };
+
   return (
     <Container className="mt-4">
       <h2 className="mb-4">⚙️ Admin Dashboard</h2>
@@ -246,6 +325,22 @@ const AdminPage: React.FC = () => {
                 size="sm"
               >
                 📋 Migrate Purpose Values
+              </Button>
+              <Button
+                variant="outline-success"
+                onClick={migrateRoles}
+                className="me-2"
+                size="sm"
+              >
+                🔄 Migrate Roles
+              </Button>
+              <Button
+                variant="outline-primary"
+                onClick={createTestUsers}
+                className="me-2"
+                size="sm"
+              >
+                👥 Create Test Users
               </Button>
               <Button
                 variant="primary"
@@ -314,9 +409,10 @@ const AdminPage: React.FC = () => {
                         style={{ width: "auto" }}
                       >
                         <option value="scout">Scout</option>
+                        <option value="loan_scout">Loan Scout</option>
                         <option value="manager">Manager</option>
+                        <option value="senior_manager">Senior Manager</option>
                         <option value="admin">Admin</option>
-                        <option value="loan">Loan</option>
                       </Form.Select>
                       <Button
                         variant="outline-danger"
@@ -421,9 +517,10 @@ const AdminPage: React.FC = () => {
                 }
               >
                 <option value="scout">Scout</option>
+                <option value="loan_scout">Loan Scout</option>
                 <option value="manager">Manager</option>
+                <option value="senior_manager">Senior Manager</option>
                 <option value="admin">Admin</option>
-                <option value="loan">Loan</option>
               </Form.Select>
             </Form.Group>
           </Form>
