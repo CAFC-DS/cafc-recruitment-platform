@@ -9333,7 +9333,7 @@ async def update_player_stage(
         )
 
     # Validate stage value
-    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4"]
+    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"]
     if stage_data.stage not in valid_stages:
         raise HTTPException(
             status_code=400, detail=f"Stage must be one of: {', '.join(valid_stages)}"

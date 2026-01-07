@@ -32,6 +32,12 @@ export const stageColors = {
     light: "#22c55e",
     border: "#15803d",
   },
+  "Archived": {
+    bg: "#9ca3af", // Gray (archived)
+    text: "#ffffff",
+    light: "#d1d5db",
+    border: "#6b7280",
+  },
 };
 
 export const getStageBgColor = (stage: string): string => {

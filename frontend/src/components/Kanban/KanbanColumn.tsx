@@ -11,6 +11,7 @@ import {
   getStageBgColor,
   colors,
 } from "../../styles/playerLists.theme";
+import { PlayerListMembership } from "../../services/playerListsService";
 
 /**
  * PlayerList interface matching the backend API summary
@@ -46,6 +47,8 @@ interface KanbanColumnProps {
   isOver?: boolean;
   pendingStageChanges?: Map<number, { fromStage: string; toStage: string; listId: number }>;
   pendingRemovals?: Map<number, number>;
+  batchMemberships?: Record<string, PlayerListMembership[]>;
+  loadingMemberships?: boolean;
 }
 
 /**
@@ -81,6 +84,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   isOver = false,
   pendingStageChanges,
   pendingRemovals,
+  batchMemberships,
+  loadingMemberships,
 }) => {
   // Setup droppable area with @dnd-kit
   const { setNodeRef } = useDroppable({
@@ -105,9 +110,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
 
   // Determine if this is a stage column by checking if list_name is a stage
   const isStageColumn = list.list_name.startsWith("Stage ");
+  const isArchivedColumn = list.list_name === "Archived";
 
   // Get stage color if this is a stage column (using theme helper)
-  const stageColor = isStageColumn ? getStageBgColor(list.list_name) : colors.primary;
+  const stageColor = (isStageColumn || isArchivedColumn) ? getStageBgColor(list.list_name) : colors.primary;
 
   return (
     <div
@@ -120,9 +126,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
         display: "flex",
         flexDirection: "column",
         height: "calc(100vh - 180px)",
-        border: isOver ? `2px solid ${stageColor}` : "1px solid #e5e7eb",
+        border: isOver ? `2px solid ${stageColor}` : (isArchivedColumn ? "1px dashed #9ca3af" : "1px solid #e5e7eb"),
         transition: "all 0.2s ease",
         boxShadow: isOver ? `0 4px 12px ${stageColor}33` : "0 1px 3px rgba(0,0,0,0.08)",
+        opacity: isArchivedColumn ? 0.7 : 1,
       }}
     >
       {/* Column Header */}
@@ -132,7 +139,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
           borderBottom: "2px solid #e5e7eb",
           backgroundColor: "white",
           borderRadius: "10px 10px 0 0",
-          ...(isStageColumn && {
+          ...((isStageColumn || isArchivedColumn) && {
             borderTop: `4px solid ${stageColor}`,
           }),
         }}
@@ -143,7 +150,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
             <h5 className="fw-bold mb-1" style={{
               fontSize: "1.1rem",
               letterSpacing: "-0.01em",
-              ...(isStageColumn && { color: stageColor }),
+              ...((isStageColumn || isArchivedColumn) && { color: stageColor }),
             }}>
               {list.list_name}
             </h5>
@@ -151,22 +158,6 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
               {list.player_count} {list.player_count === 1 ? "player" : "players"}
             </small>
           </div>
-          {/* Average score badge */}
-          {list.avg_performance_score !== null && (
-            <Badge
-              bg=""
-              style={{
-                backgroundColor: scoreColor,
-                color: textColor,
-                fontWeight: "bold",
-                fontSize: "0.75rem",
-                padding: "4px 8px",
-                marginLeft: "8px",
-              }}
-            >
-              {list.avg_performance_score.toFixed(1)}
-            </Badge>
-          )}
         </div>
 
         {/* Description (if exists) */}
@@ -186,8 +177,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
           </p>
         )}
 
-        {/* Actions: Edit and Delete (only for list columns, not stages) */}
-        {!isStageColumn && (
+        {/* Actions: Edit and Delete (only for list columns, not stages or archived) */}
+        {!isStageColumn && !isArchivedColumn && (
           <div className="d-flex gap-1 justify-content-between align-items-center mt-2">
             <div className="d-flex gap-1">
               <span
@@ -274,6 +265,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 isRemoving={removingPlayerId === player.item_id}
                 hasUnsavedChanges={pendingStageChanges?.has(player.item_id) || false}
                 isPendingRemoval={pendingRemovals?.has(player.item_id) || false}
+                batchMemberships={batchMemberships}
+                loadingMemberships={loadingMemberships}
               />
             ))
           )}

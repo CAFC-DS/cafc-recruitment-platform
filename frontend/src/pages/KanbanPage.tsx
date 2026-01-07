@@ -20,6 +20,8 @@ import {
   Modal,
   Badge,
   Spinner,
+  Dropdown,
+  DropdownButton,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -36,6 +38,8 @@ import {
   removePlayerFromList,
   updatePlayerStage,
   searchPlayers,
+  getBatchPlayerListMemberships,
+  PlayerListMembership,
 } from "../services/playerListsService";
 import {
   colors,
@@ -70,11 +74,16 @@ const KanbanPage: React.FC = () => {
 
   // Filter states
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   // Batch save mode for stage changes and removals
   const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, { fromStage: string; toStage: string; listId: number }>>(new Map());
   const [pendingRemovals, setPendingRemovals] = useState<Map<number, number>>(new Map()); // itemId -> listId
   const [savingChanges, setSavingChanges] = useState(false);
+
+  // Batch list memberships (for MultiListBadges performance)
+  const [batchMemberships, setBatchMemberships] = useState<Record<string, PlayerListMembership[]>>({});
+  const [loadingMemberships, setLoadingMemberships] = useState(false);
 
   // Modals
   const [showListModal, setShowListModal] = useState(false);
@@ -126,6 +135,7 @@ const KanbanPage: React.FC = () => {
       "Stage 2": [] as PlayerInList[],
       "Stage 3": [] as PlayerInList[],
       "Stage 4": [] as PlayerInList[],
+      ...(showArchived ? { "Archived": [] as PlayerInList[] } : {}),
     };
 
     lists.forEach((list) => {
@@ -142,8 +152,9 @@ const KanbanPage: React.FC = () => {
         const pendingChange = pendingStageChanges.get(player.item_id);
         const stage = pendingChange ? pendingChange.toStage : (player.stage || "Stage 1");
 
-        if (stages[stage as keyof typeof stages]) {
-          stages[stage as keyof typeof stages].push({
+        const stageArray = stages[stage as keyof typeof stages];
+        if (stageArray) {
+          stageArray.push({
             ...player,
             list_id: list.id,
             list_name: list.list_name,
@@ -171,7 +182,42 @@ const KanbanPage: React.FC = () => {
           : null,
       players,
     }));
-  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived]);
+
+  /**
+   * Fetch batch memberships when stage columns change
+   * This eliminates N+1 queries - one batch request instead of one per player
+   */
+  useEffect(() => {
+    const fetchBatchMemberships = async () => {
+      // Collect all unique universal_ids from all stage columns
+      const allUniversalIds = new Set<string>();
+      stageColumns.forEach((column) => {
+        column.players.forEach((player) => {
+          allUniversalIds.add(player.universal_id);
+        });
+      });
+
+      if (allUniversalIds.size === 0) {
+        setBatchMemberships({});
+        return;
+      }
+
+      try {
+        setLoadingMemberships(true);
+        const universalIdsArray = Array.from(allUniversalIds);
+        const memberships = await getBatchPlayerListMemberships(universalIdsArray);
+        setBatchMemberships(memberships);
+      } catch (err) {
+        console.error("Error fetching batch memberships:", err);
+        setBatchMemberships({});
+      } finally {
+        setLoadingMemberships(false);
+      }
+    };
+
+    fetchBatchMemberships();
+  }, [stageColumns]);
 
   /**
    * Toggle list visibility
@@ -440,34 +486,11 @@ const KanbanPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div>
-          <h3 className="mb-1" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Player Lists - Kanban View</h3>
-          <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-            Drag players between stages to track recruitment progress
-          </p>
-        </div>
-        <div className="d-flex gap-2">
-          <Button
-            variant="outline-secondary"
-            onClick={() => navigate("/lists")}
-            style={{
-              ...buttonStyles.secondary,
-              borderRadius: borderRadius.pill,
-            }}
-          >
-            Switch to Table View
-          </Button>
-          <Button
-            variant="dark"
-            onClick={openCreateModal}
-            style={{
-              ...buttonStyles.primary,
-            }}
-          >
-            + New List
-          </Button>
-        </div>
+      <div className="mb-3">
+        <h3 className="mb-1" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Player Lists - Kanban View</h3>
+        <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
+          Drag players between stages to track recruitment progress
+        </p>
       </div>
 
       {lists.length === 0 ? (
@@ -480,62 +503,61 @@ const KanbanPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* Filters Section */}
-          <div
-            className="mb-3 p-2 px-3"
-            style={{
-              backgroundColor: colors.gray[50],
-              borderRadius: borderRadius.md,
-              border: `1px solid ${colors.gray[200]}`,
-            }}
-          >
-            {/* List Filter Pills */}
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <span className="fw-semibold" style={{ fontSize: "0.85rem", color: colors.gray[700] }}>
-                  Lists:
-                </span>
-                <Button
-                  size="sm"
-                  variant="link"
-                  onClick={() => toggleAllLists(true)}
-                  style={{ fontSize: "0.75rem", padding: "0 4px" }}
-                >
-                  All
-                </Button>
-                <span style={{ color: colors.gray[400] }}>|</span>
-                <Button
-                  size="sm"
-                  variant="link"
-                  onClick={() => toggleAllLists(false)}
-                  style={{ fontSize: "0.75rem", padding: "0 4px" }}
-                >
-                  None
-                </Button>
-              </div>
-              <div className="d-flex gap-2 flex-wrap">
-                {lists.map((list) => {
-                  const isVisible = visibleListIds.has(list.id);
-                  return (
-                    <Badge
-                      key={list.id}
-                      bg=""
-                      onClick={() => toggleListVisibility(list.id)}
-                      style={{
-                        ...badgeStyles.pill,
-                        backgroundColor: isVisible ? colors.primary : colors.gray[300],
-                        color: isVisible ? colors.white : colors.gray[600],
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        opacity: isVisible ? 1 : 0.7,
-                      }}
-                    >
-                      {list.list_name} ({list.player_count})
-                    </Badge>
-                  );
-                })}
-              </div>
-            </div>
+          {/* Dropdowns Row */}
+          <div className="d-flex gap-2 align-items-center mb-3">
+            {/* List Selection Dropdown */}
+            <DropdownButton
+              variant="light"
+              title={`Select Lists (${visibleListIds.size})`}
+              size="sm"
+              className="rounded-pill"
+              style={{
+                fontWeight: 600,
+              }}
+            >
+              <Dropdown.Item onClick={() => toggleAllLists(true)}>
+                ✓ Select All
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => toggleAllLists(false)}>
+                ✗ Deselect All
+              </Dropdown.Item>
+              <Dropdown.Divider />
+              {lists.map((list) => {
+                const isVisible = visibleListIds.has(list.id);
+                return (
+                  <Dropdown.Item
+                    key={list.id}
+                    onClick={() => toggleListVisibility(list.id)}
+                    active={isVisible}
+                  >
+                    {list.list_name} ({list.player_count})
+                  </Dropdown.Item>
+                );
+              })}
+            </DropdownButton>
+
+            {/* Actions Dropdown */}
+            <DropdownButton
+              variant="light"
+              title="Actions"
+              size="sm"
+              className="rounded-pill"
+              style={{
+                fontWeight: 600,
+              }}
+            >
+              <Dropdown.Item onClick={() => navigate("/lists")}>
+                📊 Switch to Table View
+              </Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Item onClick={openCreateModal}>
+                + New List
+              </Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Item onClick={() => setShowArchived(!showArchived)}>
+                {showArchived ? "✓" : ""} Show Archived
+              </Dropdown.Item>
+            </DropdownButton>
           </div>
 
           {/* Kanban Board */}
@@ -566,6 +588,8 @@ const KanbanPage: React.FC = () => {
             removingPlayerId={removingPlayerId}
             pendingStageChanges={pendingStageChanges}
             pendingRemovals={pendingRemovals}
+            batchMemberships={batchMemberships}
+            loadingMemberships={loadingMemberships}
           />
 
           {/* Floating Save/Discard Changes Button */}

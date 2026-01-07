@@ -11,7 +11,7 @@
 import React from "react";
 import { Badge, Spinner } from "react-bootstrap";
 import { usePlayerListMemberships } from "../../hooks/usePlayerListMemberships";
-import { getListBadgeColor, badgeStyles } from "../../styles/playerLists.theme";
+import { badgeStyles } from "../../styles/playerLists.theme";
 import { PlayerListMembership } from "../../services/playerListsService";
 
 interface MultiListBadgesProps {
@@ -29,13 +29,14 @@ const MultiListBadges: React.FC<MultiListBadgesProps> = ({
   memberships: propMemberships,
   loading: propLoading,
 }) => {
-  // Only fetch if memberships not provided via props (backward compatibility)
-  const useBatchMode = propMemberships !== undefined;
+  // Use batch mode if loading prop is provided (indicates parent is managing data)
+  // OR if memberships array is provided (even if empty)
+  const useBatchMode = propLoading !== undefined || propMemberships !== undefined;
   const hookData = usePlayerListMemberships(useBatchMode ? "" : universalId);
 
   // Use prop values (batch mode) or hook values (individual fetch)
-  const memberships = useBatchMode ? propMemberships : hookData.memberships;
-  const loading = propLoading !== undefined ? propLoading : hookData.loading;
+  const memberships = propMemberships ?? hookData.memberships;
+  const loading = useBatchMode ? (propLoading ?? false) : hookData.loading;
 
   if (loading) {
     return (
@@ -59,15 +60,14 @@ const MultiListBadges: React.FC<MultiListBadgesProps> = ({
       style={{ maxWidth: "100%" }}
     >
       {visibleMemberships.map((membership, index) => {
-        const colors = getListBadgeColor(index);
-
         return (
           <Badge
             key={membership.item_id}
             bg=""
             style={{
-              backgroundColor: colors.bg,
-              color: colors.text,
+              backgroundColor: "#ffffff",
+              color: "#000000",
+              border: "1px solid #dee2e6",
               ...badgeStyles.default,
               fontSize: "0.65rem",
               maxWidth: "120px",
@@ -89,8 +89,11 @@ const MultiListBadges: React.FC<MultiListBadgesProps> = ({
 
       {hiddenCount > 0 && (
         <Badge
-          bg="secondary"
+          bg=""
           style={{
+            backgroundColor: "#ffffff",
+            color: "#000000",
+            border: "1px solid #dee2e6",
             ...badgeStyles.default,
             fontSize: "0.65rem",
             opacity: 0.7,
