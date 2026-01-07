@@ -8681,7 +8681,6 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                     COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
                 FROM scout_reports sr
                 WHERE (sr.PLAYER_ID IN ({external_ids_str}) OR sr.CAFC_PLAYER_ID IN ({internal_ids_str}))
-                  AND sr.PERFORMANCE_SCORE IS NOT NULL
                 GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
                 """
             )
