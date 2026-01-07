@@ -674,6 +674,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
   useEffect(() => {
     if (editMode && existingReportData) {
       setAssessmentType(existingReportData.reportType);
+      setSelectedMatch(existingReportData.selectedMatch?.toString() || "");
       setFormData({
         selectedMatch: existingReportData.selectedMatch?.toString() || "",
         playerPosition: existingReportData.playerPosition || "",

@@ -37,7 +37,7 @@ SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
 SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
 
 # Excel file path
-EXCEL_FILE = "/Users/hashim.umarji/Downloads/FinalScoutReports.xlsx"
+EXCEL_FILE = "/Users/hashim.umarji/Desktop/2025-26/Recruitment/Scout Reports/alfie-scout-reports.xlsx"
 
 # Batch size for inserts
 BATCH_SIZE = 100

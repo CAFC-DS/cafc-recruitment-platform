@@ -130,6 +130,7 @@ const AppNavbar: React.FC = () => {
           payload.scoutingType = queuedReport.formData.scoutingType;
           payload.purposeOfAssessment = queuedReport.formData.purposeOfAssessment;
           payload.performanceScore = queuedReport.formData.performanceScore;
+          payload.isPotential = queuedReport.formData.isPotential;
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.justificationRationale = queuedReport.formData.justificationRationale;
           payload.oppositionDetails = queuedReport.formData.oppositionDetails;
@@ -153,6 +154,7 @@ const AppNavbar: React.FC = () => {
           payload.weaknesses = queuedReport.weaknesses.map((w: any) => w.value);
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.performanceScore = queuedReport.formData.performanceScore;
+          payload.isPotential = queuedReport.formData.isPotential;
         }
 
         await axiosInstance.post("/scout_reports", payload);
