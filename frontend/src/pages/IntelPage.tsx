@@ -19,6 +19,7 @@ import IntelReportModal from "../components/IntelReportModal";
 import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
+import { getPlayerProfilePath } from "../utils/playerNavigation";
 
 interface IntelReport {
   intel_id: number;
@@ -36,6 +37,9 @@ interface IntelReport {
   conversation_notes: string;
   action_required: string;
   player_id: number | null;
+  universal_id?: string;
+  position?: string;
+  squad_name?: string;
 }
 
 const IntelPage: React.FC = () => {
@@ -560,16 +564,12 @@ const IntelPage: React.FC = () => {
                         {new Date(report.created_at).toLocaleDateString()}
                       </td>
                       <td>
-                        {report.player_id ? (
                           <Button
                             variant="link"
-                            onClick={() => navigate(`/player/${report.player_id}`)}
+                            onClick={() => navigate(getPlayerProfilePath(report as any))}
                           >
                             {report.player_name}
                           </Button>
-                        ) : (
-                          report.player_name
-                        )}
                       </td>
                       <td>{report.contact_name}</td>
                       <td>
@@ -596,18 +596,6 @@ const IntelPage: React.FC = () => {
                           >
                             👁️
                           </Button>
-                          {report.player_id && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                navigate(`/player/${report.player_id}`)
-                              }
-                              title="View Player Profile"
-                              className="btn-action-circle"
-                            >
-                              👤
-                            </Button>
-                          )}
                           <Button
                             size="sm"
                             onClick={() => handleEditReport(report.intel_id)}
@@ -671,17 +659,17 @@ const IntelPage: React.FC = () => {
                           <div>
                             {report.player_id ? (
                               <Button
-                                variant="link"
-                                className="p-0 text-decoration-none fw-bold d-block mb-1"
-                                style={{
-                                  color: "#212529",
-                                  fontSize: "1rem",
-                                  textAlign: "left",
-                                }}
-                                onClick={() =>
-                                  navigate(`/player/${report.player_id}`)
-                                }
-                              >
+                              variant="link"
+                              className="p-0 text-decoration-none fw-bold d-block mb-1"
+                              style={{
+                                color: "#212529",
+                                fontSize: "1rem",
+                                textAlign: "left",
+                              }}
+                              onClick={() =>
+                                navigate(`/player/${report.player_id}`)
+                              }
+                            >
                                 {report.player_name}
                               </Button>
                             ) : (

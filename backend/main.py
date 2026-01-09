@@ -6164,7 +6164,8 @@ async def get_all_intel_reports(
             SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
-                   pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
+                   pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME,
+                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE
             FROM player_information pi
             {join_clause}
         """
@@ -6219,39 +6220,43 @@ async def get_all_intel_reports(
         # pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
 
         for row in reports:
-            deal_types = row[10].split(",") if row[10] else []  # POTENTIAL_DEAL_TYPE
+            deal_types = row[10].split(",") if row[10] else []
+
+            player_id = row[14]
+            cafc_player_id = row[15]
+            data_source = row[16]
+            universal_id = None
+            if data_source == 'internal' and cafc_player_id:
+                universal_id = f"internal_{cafc_player_id}"
+            elif player_id:
+                universal_id = f"external_{player_id}"
+
             report_list.append(
                 {
-                    "intel_id": row[0],  # pi.ID
-                    "created_at": str(row[1]),  # pi.CREATED_AT
-                    "contact_name": row[2],  # pi.CONTACT_NAME
-                    "contact_organisation": row[3],  # pi.CONTACT_ORGANISATION
-                    "action_required": row[4],  # pi.ACTION_REQUIRED
-                    "conversation_notes": row[5],  # pi.CONVERSATION_NOTES
-                    "transfer_fee": row[6],  # pi.TRANSFER_FEE
-                    "current_wages": (
-                        str(row[7]) if row[7] else None
-                    ),  # pi.CURRENT_WAGES
-                    "expected_wages": (
-                        str(row[8]) if row[8] else None
-                    ),  # pi.EXPECTED_WAGES
-                    "confirmed_contract_expiry": (
-                        str(row[9]) if row[9] else None
-                    ),  # pi.CONTRACT_EXPIRY
-                    "potential_deal_types": deal_types,  # pi.POTENTIAL_DEAL_TYPE
-                    "player_name": (
-                        row[11] if row[11] else "Unknown Player"
-                    ),  # p.PLAYERNAME
-                    "position": row[12],  # p.POSITION
-                    "squad_name": row[13],  # p.SQUADNAME
+                    "intel_id": row[0],
+                    "created_at": str(row[1]),
+                    "contact_name": row[2],
+                    "contact_organisation": row[3],
+                    "action_required": row[4],
+                    "conversation_notes": row[5],
+                    "transfer_fee": row[6],
+                    "current_wages": row[7],
+                    "expected_wages": row[8],
+                    "confirmed_contract_expiry": str(row[9]) if row[9] else None,
+                    "potential_deal_types": deal_types,
+                    "player_name": row[11],
+                    "position": row[12],
+                    "squad_name": row[13],
+                    "player_id": player_id,
+                    "universal_id": universal_id,
                 }
             )
 
         return {
+            "reports": report_list, 
             "total_intel_reports": total_intel_reports,
             "page": page,
             "limit": limit,
-            "reports": report_list,
         }
 
     except Exception as e:
