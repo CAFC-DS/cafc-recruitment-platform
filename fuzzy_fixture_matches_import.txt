@@ -6,22 +6,16 @@ Similarity threshold: 85%
 
 ================================================================================
 
-SEARCHED FOR: Mjällby AIF vs Degerfors IF
-MATCHED WITH: Mjällby AIF vs Degerfors IF
-DATE: 2025-04-27
-SIMILARITY: 100.00%
+SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden
+MATCHED WITH: VfL Osnabrück vs SV Wehen Wiesbaden
+DATE: 2025-03-07
+SIMILARITY: 95.45%
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: Hertha BSC vs 1.FC Magdeburg
-MATCHED WITH: Hertha BSC vs 1. FC Magdeburg
-DATE: 2025-04-25
-SIMILARITY: 98.28%
---------------------------------------------------------------------------------
-
-SEARCHED FOR: Mjällby AIF vs IF Brommapojkarna
-MATCHED WITH: Mjällby AIF vs IF Brommapojkarna
-DATE: 2025-05-19
-SIMILARITY: 100.00%
+SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden
+MATCHED WITH: VfL Osnabrück vs SV Wehen Wiesbaden
+DATE: 2025-03-07
+SIMILARITY: 95.45%
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden

@@ -39,15 +39,6 @@ interface ScoutReport {
   is_potential?: boolean;
 }
 
-interface IntelReport {
-  intel_id: number;
-  created_at: string;
-  player_name: string;
-  contact_name: string;
-  action_required: string;
-  player_id: number | null;
-}
-
 const HomePage: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -57,9 +48,6 @@ const HomePage: React.FC = () => {
     [],
   );
   const [recentFlagReports, setRecentFlagReports] = useState<ScoutReport[]>([]);
-  const [recentIntelReports, setRecentIntelReports] = useState<IntelReport[]>(
-    [],
-  );
   const [topAttributeReports, setTopAttributeReports] = useState<ScoutReport[]>(
     [],
   );
@@ -124,17 +112,6 @@ const HomePage: React.FC = () => {
       setRecentFlagReports(flagReports);
       setHasMoreFlagReports(flagResponse.data.has_more || false);
       setFlagReportsOffset(20); // Set offset for next load
-
-      // Fetch recent intel reports (last 5) - role-based filtering will be done on server
-      const intelResponse = await axiosInstance.get(
-        "/intel_reports/all?page=1&limit=5",
-      );
-      const intelReports =
-        intelResponse.data.reports || intelResponse.data || [];
-
-      // For now, intel reports don't have scout_name field, so we show all for scouts
-      // TODO: Add created_by field to intel reports for proper filtering
-      setRecentIntelReports(Array.isArray(intelReports) ? intelReports : []);
 
       // Fetch top attribute reports using dedicated endpoint (sorted by attribute score, not recency)
       // This ensures we get the ACTUAL top 10 highest attribute scores in the selected time period
@@ -277,11 +254,11 @@ const HomePage: React.FC = () => {
           <div className="shimmer-line" style={{ width: "400px", height: "20px" }}></div>
         </div>
 
-        {/* 2x2 Grid Dashboard Shimmer */}
+        {/* 1x3 Grid Dashboard Shimmer */}
         <Row className="g-4">
-          {/* Four shimmer cards */}
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <Col md={6} key={`shimmer-card-${idx}`}>
+          {/* Three shimmer cards */}
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <Col md={4} key={`shimmer-card-${idx}`}>
               <Card className="h-100">
                 <Card.Header className="bg-light border-bottom">
                   <div className="d-flex justify-content-between align-items-center">
@@ -398,10 +375,10 @@ const HomePage: React.FC = () => {
           </Row>
         </div>
 
-        {/* 2x2 Grid Dashboard */}
+        {/* 1x3 Grid Dashboard */}
         <Row className="g-4">
-          {/* Top Left: Recent Scout Reports */}
-          <Col md={6}>
+          {/* Recent Scout Reports */}
+          <Col md={4}>
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
@@ -556,8 +533,8 @@ const HomePage: React.FC = () => {
             </Card>
           </Col>
 
-          {/* Top Right: Recent Flag Reports */}
-          <Col md={6}>
+          {/* Recent Flag Reports */}
+          <Col md={4}>
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
@@ -714,8 +691,8 @@ const HomePage: React.FC = () => {
             </Card>
           </Col>
 
-          {/* Bottom Left: Top Attribute Scores */}
-          <Col md={6}>
+          {/* Top Attribute Scores */}
+          <Col md={4}>
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
@@ -810,95 +787,6 @@ const HomePage: React.FC = () => {
                               {report.attribute_score}
                             </span>
                           </div>
-                          <div className="small text-muted">
-                            {new Date(report.created_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </Card.Body>
-            </Card>
-          </Col>
-
-          {/* Bottom Right: Recent Intel Reports */}
-          <Col md={6}>
-            <Card className="h-100">
-              <Card.Header className="bg-light border-bottom">
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0 d-flex align-items-center">
-                    🕵️{" "}
-                    {userRole === "scout"
-                      ? "Your Recent Intel Reports"
-                      : "Recent Intel Reports"}{" "}
-                    ({recentIntelReports.length})
-                    <OverlayTrigger
-                      placement="top"
-                      overlay={
-                        <Tooltip>
-                          Shows the 5 most recent Intel reports. Intel reports contain transfer and contract information from various contacts. This section is not affected by the time filter.
-                        </Tooltip>
-                      }
-                    >
-                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
-                        ℹ️
-                      </span>
-                    </OverlayTrigger>
-                  </h5>
-                  <Button
-                    variant="outline-dark"
-                    size="sm"
-                    onClick={() => navigate("/intel")}
-                  >
-                    View All
-                  </Button>
-                </div>
-              </Card.Header>
-              <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentIntelReports.length === 0 ? (
-                  <div className="text-center">
-                    <p className="text-muted">No intel reports yet</p>
-                    <Button
-                      variant="outline-secondary"
-                      size="sm"
-                      onClick={() => navigate("/intel")}
-                    >
-                      Create First Intel Report
-                    </Button>
-                  </div>
-                ) : (
-                  recentIntelReports.map((report) => (
-                    <div
-                      key={report.intel_id}
-                      className="border-bottom pb-2 mb-2"
-                    >
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          {report.player_id ? (
-                            <Button
-                              variant="link"
-                              className="p-0 text-decoration-none text-start fw-bold"
-                              style={{ color: "inherit" }}
-                              onClick={() =>
-                                navigate(`/player/${report.player_id}`)
-                              }
-                            >
-                              {report.player_name}
-                            </Button>
-                          ) : (
-                            <span className="fw-bold">
-                              {report.player_name}
-                            </span>
-                          )}
-                          <div className="small text-muted">
-                            by {report.contact_name}
-                          </div>
-                        </div>
-                        <div className="text-end">
-                          <span className="badge badge-neutral-grey">
-                            {report.action_required}
-                          </span>
                           <div className="small text-muted">
                             {new Date(report.created_at).toLocaleDateString()}
                           </div>

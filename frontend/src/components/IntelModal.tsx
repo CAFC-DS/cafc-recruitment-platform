@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Modal, Form, Button, Row, Col, Alert, Spinner, ListGroup, Card } from "react-bootstrap";
+import Select from "react-select";
 import axiosInstance from "../axiosInstance";
 import { Player } from "../types/Player";
 
@@ -67,21 +68,11 @@ const IntelModal: React.FC<IntelModalProps> = ({
 
   const handleNumericInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    // Allow numbers, decimals, commas, currency symbols, and common wage/fee formats
-    const numericRegex = /^[0-9.,€£$k/weeM\s]*$/;
+    // Allow numbers only
+    const numericRegex = /^[0-9]*$/;
     if (value === "" || numericRegex.test(value)) {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
-
-  const handleDealTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      potentialDealTypes: checked
-        ? [...prev.potentialDealTypes, value]
-        : prev.potentialDealTypes.filter((type) => type !== value),
-    }));
   };
 
   // Player search functions
@@ -139,7 +130,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
     // Debounce the actual search
     searchTimeoutRef.current = setTimeout(() => {
       performPlayerSearch(query);
-    }, 300); // 300ms delay
+    }, 300);
   };
 
   const handlePlayerSelect = (player: Player) => {
@@ -154,8 +145,12 @@ const IntelModal: React.FC<IntelModalProps> = ({
       player.club ||
       player.current_team ||
       player.squad_name ||
-      "Unknown Team";
-    setPlayerSearch(`${playerName} (${team})`);
+      "";
+    const age = player.age || "";
+
+    // Format: "Name (Team • Age X)"
+    const searchText = `${playerName} (${[team, age ? `Age ${age}` : ""].filter(Boolean).join(" • ")})`;
+    setPlayerSearch(searchText);
     setSearchedPlayers([]);
     setShowPlayerDropdown(false);
   };
@@ -278,18 +273,22 @@ const IntelModal: React.FC<IntelModalProps> = ({
         <Modal.Title>🕵️ Player Intel Report</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        {/* Player Search Section - Only show when no player is selected */}
-        {!selectedPlayer && (
-          <Card className="mb-4" style={{ backgroundColor: "#f8f9fa", border: "2px solid #dee2e6" }}>
-            <Card.Body>
-              <Card.Title style={{ fontSize: "1.1rem", marginBottom: "1rem" }}>
-                Select Player
-              </Card.Title>
-              <Form.Group controlId="playerSearch">
+        <Form onSubmit={handleSubmit}>
+          <p>
+            <span className="text-danger">*</span> indicates a required field.
+          </p>
+
+          {/* Player Search Section - Only show when no player is selected */}
+          {!selectedPlayer && (
+            <>
+              <Form.Group className="mb-3" controlId="playerSearch">
+                <Form.Label>
+                  Player <span className="text-danger">*</span>
+                </Form.Label>
                 <div className="position-relative">
                   <Form.Control
                     type="text"
-                    placeholder="Enter player name (minimum 3 characters)"
+                    placeholder="Search for player..."
                     value={playerSearch}
                     onChange={handlePlayerSearchChange}
                     onBlur={handleInputBlur}
@@ -311,81 +310,79 @@ const IntelModal: React.FC<IntelModalProps> = ({
                     style={{
                       position: "absolute",
                       zIndex: 1000,
-                      width: "calc(100% - 30px)",
                       maxHeight: "200px",
                       overflowY: "auto",
+                      width: "calc(100% - 30px)",
                     }}
                   >
-                    {searchedPlayers.map((player, index) => (
-                      <ListGroup.Item
-                        key={
-                          player.universal_id ||
-                          `fallback-${index}-${player.player_name}`
-                        }
-                        action
-                        onClick={() => handlePlayerSelect(player)}
-                        className="d-flex justify-content-between align-items-center"
-                      >
-                        <span>{player.player_name}</span>
-                        <small className="text-muted">({player.team})</small>
-                      </ListGroup.Item>
-                    ))}
+                    {searchedPlayers.map((player, index) => {
+                      const playerName =
+                        player.player_name ||
+                        player.name ||
+                        player.playername ||
+                        "Unknown Player";
+                      const team =
+                        player.team ||
+                        player.club ||
+                        player.current_team ||
+                        player.squad_name ||
+                        "";
+                      const age = player.age || "";
+
+                      return (
+                        <ListGroup.Item
+                          key={
+                            player.universal_id ||
+                            `fallback-${index}-${playerName}`
+                          }
+                          action
+                          onClick={() => handlePlayerSelect(player)}
+                        >
+                          <div style={{ fontWeight: 600 }}>{playerName}</div>
+                          {(team || age) && (
+                            <small className="text-muted">
+                              {[team, age ? `Age ${age}` : ""].filter(Boolean).join(" • ")}
+                            </small>
+                          )}
+                        </ListGroup.Item>
+                      );
+                    })}
                   </ListGroup>
                 )}
+                {searchedPlayer && (
+                  <div
+                    className="mt-2 p-2"
+                    style={{ backgroundColor: "#e7f3ff", borderRadius: "4px" }}
+                  >
+                    <strong>Selected:</strong> {searchedPlayer.player_name} (
+                    {searchedPlayer.squad_name || searchedPlayer.team})
+                  </div>
+                )}
               </Form.Group>
-            </Card.Body>
-          </Card>
-        )}
 
-        {/* Show selected player confirmation */}
-        {searchedPlayer && (
-          <Alert variant="success" className="mb-3">
-            <strong>Selected Player:</strong> {searchedPlayer.player_name} ({searchedPlayer.team})
-          </Alert>
-        )}
+              <hr className="my-4" />
+            </>
+          )}
 
-        {error && (
-          <Alert variant="danger" className="mb-3">
-            {error}
-          </Alert>
-        )}
+          {error && (
+            <Alert variant="danger" className="mb-3">
+              {error}
+            </Alert>
+          )}
 
-        {/* Form Section - Greyed out when no player is selected */}
-        <div style={{ opacity: (selectedPlayer || searchedPlayer) ? 1 : 0.5, pointerEvents: (selectedPlayer || searchedPlayer) ? 'auto' : 'none' }}>
-          <Form onSubmit={handleSubmit}>
-          <Row className="mb-3">
-            <Col md={6}>
-              <Form.Group controlId="contactName">
-                <Form.Label>Contact Name *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="contactName"
-                  value={formData.contactName}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g. John Smith"
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group controlId="contactOrganisation">
-                <Form.Label>Contact Organisation *</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="contactOrganisation"
-                  value={formData.contactOrganisation}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g. Manchester United FC"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
-          <Row className="mb-3">
-            <Col md={6}>
-              <Form.Group controlId="dateOfInformation">
-                <Form.Label>Date of Information *</Form.Label>
+          {/* Form Section - Greyed out when no player is selected */}
+          <div
+            style={{
+              opacity: selectedPlayer || searchedPlayer ? 1 : 0.5,
+              pointerEvents: selectedPlayer || searchedPlayer ? "auto" : "none",
+            }}
+          >
+            {/* Row 1: Date of Information, Contact Name, Contact Organisation */}
+            <Row className="mb-3">
+              <Form.Group as={Col} controlId="dateOfInformation">
+                <Form.Label>
+                  Date of Information <span className="text-danger">*</span>
+                </Form.Label>
                 <Form.Control
                   type="date"
                   name="dateOfInformation"
@@ -394,150 +391,172 @@ const IntelModal: React.FC<IntelModalProps> = ({
                   required
                 />
               </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group controlId="confirmedContractExpiry">
-                <Form.Label>Confirmed Contract Expiry</Form.Label>
+              <Form.Group as={Col} controlId="contactName">
+                <Form.Label>
+                  Contact Name <span className="text-danger">*</span>
+                </Form.Label>
                 <Form.Control
-                  type="date"
-                  name="confirmedContractExpiry"
-                  value={formData.confirmedContractExpiry}
+                  type="text"
+                  name="contactName"
+                  value={formData.contactName}
+                  onChange={handleInputChange}
+                  required
+                />
+              </Form.Group>
+              <Form.Group as={Col} controlId="contactOrganisation">
+                <Form.Label>
+                  Contact Organisation <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  name="contactOrganisation"
+                  value={formData.contactOrganisation}
+                  onChange={handleInputChange}
+                  required
+                />
+              </Form.Group>
+            </Row>
+
+            {/* Row 2: Confirmed Contract Expiry */}
+            <Form.Group className="mb-3" controlId="confirmedContractExpiry">
+              <Form.Label>Confirmed Contract Expiry</Form.Label>
+              <Form.Control
+                type="date"
+                name="confirmedContractExpiry"
+                value={formData.confirmedContractExpiry}
+                onChange={handleInputChange}
+              />
+            </Form.Group>
+
+            {/* Row 3: Contract Options and Potential Deal Types */}
+            <Row className="mb-3">
+              <Form.Group as={Col} md={6} controlId="contractOptions">
+                <Form.Label>Contract Options</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="contractOptions"
+                  value={formData.contractOptions}
                   onChange={handleInputChange}
                 />
               </Form.Group>
-            </Col>
-          </Row>
-
-          <Form.Group className="mb-3" controlId="contractOptions">
-            <Form.Label>Contract Options</Form.Label>
-            <Form.Control
-              type="text"
-              name="contractOptions"
-              value={formData.contractOptions}
-              onChange={handleInputChange}
-              placeholder="e.g. 1+1 year option, Release clause €50M"
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label>Potential Deal Types *</Form.Label>
-            <div className="mt-2">
-              {dealTypeOptions.map((option) => (
-                <Form.Check
-                  key={option.value}
-                  inline
-                  type="checkbox"
-                  id={`deal-type-${option.value}`}
-                  label={option.label}
-                  value={option.value}
-                  checked={formData.potentialDealTypes.includes(option.value)}
-                  onChange={handleDealTypeChange}
+              <Form.Group as={Col} md={6} controlId="potentialDealTypes">
+                <Form.Label>
+                  Potential Deal Types <span className="text-danger">*</span>
+                </Form.Label>
+                <Select
+                  isMulti
+                  options={dealTypeOptions}
+                  value={dealTypeOptions.filter((option) =>
+                    formData.potentialDealTypes.includes(option.value),
+                  )}
+                  onChange={(selectedOptions) => {
+                    setFormData({
+                      ...formData,
+                      potentialDealTypes: selectedOptions
+                        ? selectedOptions.map((opt) => opt.value)
+                        : [],
+                    });
+                  }}
+                  placeholder="Select deal types..."
+                  classNamePrefix="react-select"
                 />
-              ))}
-            </div>
-          </Form.Group>
+              </Form.Group>
+            </Row>
 
-          <Row className="mb-3">
-            <Col md={4}>
-              <Form.Group controlId="transferFee">
+            {/* Row 4: Transfer Fee, Current Wages, Expected Wages */}
+            <Row className="mb-3">
+              <Form.Group as={Col} md={4} controlId="transferFee">
                 <Form.Label>Transfer Fee</Form.Label>
                 <Form.Control
                   type="text"
                   name="transferFee"
                   value={formData.transferFee}
-                  onChange={handleNumericInputChange}
-                  placeholder="e.g. 25M, Free, Undisclosed"
-                  title="Enter numeric values with common formats (25M, 25.5M, etc.)"
+                  onChange={handleInputChange}
                 />
-                <Form.Text className="text-muted">
-                  Use formats like: 25M, 50k, Free, Undisclosed
-                </Form.Text>
               </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group controlId="currentWages">
+              <Form.Group as={Col} md={4} controlId="currentWages">
                 <Form.Label>Current Wages</Form.Label>
                 <Form.Control
                   type="text"
                   name="currentWages"
                   value={formData.currentWages}
                   onChange={handleNumericInputChange}
-                  placeholder="e.g. 50k/week"
-                  title="Enter numeric wage values"
+                  placeholder="e.g. 50000"
                 />
                 <Form.Text className="text-muted">
-                  Use formats like: 50k/week, 2.5M/year
+                  Wages/week in GBP (numbers only)
                 </Form.Text>
               </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group controlId="expectedWages">
+              <Form.Group as={Col} md={4} controlId="expectedWages">
                 <Form.Label>Expected Wages</Form.Label>
                 <Form.Control
                   type="text"
                   name="expectedWages"
                   value={formData.expectedWages}
                   onChange={handleNumericInputChange}
-                  placeholder="e.g. 75k/week"
-                  title="Enter numeric wage values"
+                  placeholder="e.g. 75000"
                 />
                 <Form.Text className="text-muted">
-                  Use formats like: 75k/week, 3M/year
+                  Wages/week in GBP (numbers only)
                 </Form.Text>
               </Form.Group>
-            </Col>
-          </Row>
+            </Row>
 
-          <Form.Group className="mb-3" controlId="conversationNotes">
-            <Form.Label>Conversation Notes *</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={4}
-              name="conversationNotes"
-              value={formData.conversationNotes}
-              onChange={handleInputChange}
-              required
-              placeholder="Detailed notes about the conversation, key information disclosed, reliability of source, etc."
-            />
-          </Form.Group>
+            {/* Conversation Notes */}
+            <Form.Group className="mb-3" controlId="conversationNotes">
+              <Form.Label>
+                Conversation Notes <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                name="conversationNotes"
+                value={formData.conversationNotes}
+                onChange={handleInputChange}
+                required
+              />
+            </Form.Group>
 
-          <Form.Group className="mb-4" controlId="actionRequired">
-            <Form.Label>Action Required *</Form.Label>
-            <Form.Select
-              name="actionRequired"
-              value={formData.actionRequired}
-              onChange={handleInputChange}
-              required
-            >
-              {actionOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
+            {/* Action Required */}
+            <Form.Group className="mb-4" controlId="actionRequired">
+              <Form.Label>
+                Action Required <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Select
+                name="actionRequired"
+                value={formData.actionRequired}
+                onChange={handleInputChange}
+                required
+              >
+                {actionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Form.Select>
+            </Form.Group>
 
-          <div className="d-flex justify-content-end gap-2">
-            <Button
-              variant="secondary"
-              onClick={onHide}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Intel Report"
-              )}
-            </Button>
+            <div className="d-flex justify-content-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={onHide}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Intel Report"
+                )}
+              </Button>
+            </div>
           </div>
-          </Form>
-        </div>
+        </Form>
       </Modal.Body>
       <style>{`
         .modal-header-dark .btn-close {
