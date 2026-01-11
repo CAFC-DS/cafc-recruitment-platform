@@ -82,10 +82,6 @@ const KanbanPage: React.FC = () => {
   const [pendingRemovals, setPendingRemovals] = useState<Map<number, number>>(new Map()); // itemId -> listId
   const [savingChanges, setSavingChanges] = useState(false);
 
-  // Batch list memberships (for MultiListBadges performance)
-  const [batchMemberships, setBatchMemberships] = useState<Record<string, PlayerListMembership[]>>({});
-  const [loadingMemberships, setLoadingMemberships] = useState(false);
-
   // Modals
   const [showListModal, setShowListModal] = useState(false);
   const [editingList, setEditingList] = useState<PlayerList | null>(null);
@@ -747,8 +743,6 @@ const KanbanPage: React.FC = () => {
             onDeleteList={() => {}}
             onAddPlayer={openAddPlayerModal}
             onRemovePlayer={handleRemovePlayer}
-            batchMemberships={batchMemberships}
-            loadingMemberships={loadingMemberships}
             onMovePlayer={async (itemId, fromStageId, toStageId) => {
               console.log("onMovePlayer called:", { itemId, fromStageId, toStageId });
               // Search in the target column because optimistic update already moved the player there
