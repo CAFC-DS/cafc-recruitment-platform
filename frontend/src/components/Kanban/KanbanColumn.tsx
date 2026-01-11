@@ -265,7 +265,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 isRemoving={removingPlayerId === player.item_id}
                 hasUnsavedChanges={pendingStageChanges?.has(player.item_id) || false}
                 isPendingRemoval={pendingRemovals?.has(player.item_id) || false}
-                batchMemberships={batchMemberships}
+                memberships={batchMemberships?.[player.universal_id]}
                 loadingMemberships={loadingMemberships}
               />
             ))

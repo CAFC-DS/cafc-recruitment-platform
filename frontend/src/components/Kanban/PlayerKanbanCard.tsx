@@ -45,7 +45,7 @@ interface PlayerKanbanCardProps {
   isRemoving: boolean;
   hasUnsavedChanges?: boolean;
   isPendingRemoval?: boolean;
-  batchMemberships?: Record<string, PlayerListMembership[]>;
+  memberships?: PlayerListMembership[];
   loadingMemberships?: boolean;
 }
 
@@ -74,7 +74,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
   isRemoving,
   hasUnsavedChanges = false,
   isPendingRemoval = false,
-  batchMemberships,
+  memberships,
   loadingMemberships,
 }) => {
   const navigate = useNavigate();
@@ -286,7 +286,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
                     universalId={player.universal_id}
                     maxVisible={2}
                     showStage={false}
-                    memberships={batchMemberships?.[player.universal_id]}
+                    memberships={memberships}
                     loading={loadingMemberships}
                   />
                 </div>

@@ -29,14 +29,14 @@ const MultiListBadges: React.FC<MultiListBadgesProps> = ({
   memberships: propMemberships,
   loading: propLoading,
 }) => {
-  // Use batch mode if loading prop is provided (indicates parent is managing data)
-  // OR if memberships array is provided (even if empty)
-  const useBatchMode = propLoading !== undefined || propMemberships !== undefined;
+  // Only fetch if memberships not provided via props (backward compatibility)
+  // Check loading prop to determine batch mode - if loading is explicitly passed, we're in batch mode
+  const useBatchMode = propLoading !== undefined;
   const hookData = usePlayerListMemberships(useBatchMode ? "" : universalId);
 
   // Use prop values (batch mode) or hook values (individual fetch)
-  const memberships = propMemberships ?? hookData.memberships;
-  const loading = useBatchMode ? (propLoading ?? false) : hookData.loading;
+  const memberships = useBatchMode ? (propMemberships || []) : hookData.memberships;
+  const loading = useBatchMode ? propLoading : hookData.loading;
 
   if (loading) {
     return (
