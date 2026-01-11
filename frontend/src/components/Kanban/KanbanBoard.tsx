@@ -17,6 +17,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import KanbanColumn, { ListWithPlayers, PlayerList } from "./KanbanColumn";
 import PlayerKanbanCard, { PlayerInList } from "./PlayerKanbanCard";
+import { PlayerListMembership } from "../../services/playerListsService";
 
 interface KanbanBoardProps {
   lists: ListWithPlayers[];
@@ -38,6 +39,8 @@ interface KanbanBoardProps {
   removingPlayerId: number | null;
   pendingStageChanges?: Map<number, { fromStage: string; toStage: string; listId: number }>;
   pendingRemovals?: Map<number, number>;
+  batchMemberships?: Record<string, PlayerListMembership[]>;
+  loadingMemberships?: boolean;
 }
 
 /**
@@ -76,6 +79,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   removingPlayerId,
   pendingStageChanges,
   pendingRemovals,
+  batchMemberships,
+  loadingMemberships,
 }) => {
   // Track the active player being dragged for the DragOverlay
   const [activePlayer, setActivePlayer] = useState<PlayerInList | null>(null);
@@ -346,6 +351,8 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             isOver={activeColumn === list.id && activePlayer !== null}
             pendingStageChanges={pendingStageChanges}
             pendingRemovals={pendingRemovals}
+            batchMemberships={batchMemberships}
+            loadingMemberships={loadingMemberships}
           />
         ))}
 

@@ -11,6 +11,7 @@ import {
   getStageBgColor,
   colors,
 } from "../../styles/playerLists.theme";
+import { PlayerListMembership } from "../../services/playerListsService";
 
 /**
  * PlayerList interface matching the backend API summary
@@ -46,6 +47,8 @@ interface KanbanColumnProps {
   isOver?: boolean;
   pendingStageChanges?: Map<number, { fromStage: string; toStage: string; listId: number }>;
   pendingRemovals?: Map<number, number>;
+  batchMemberships?: Record<string, PlayerListMembership[]>;
+  loadingMemberships?: boolean;
 }
 
 /**
@@ -81,6 +84,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   isOver = false,
   pendingStageChanges,
   pendingRemovals,
+  batchMemberships,
+  loadingMemberships,
 }) => {
   // Setup droppable area with @dnd-kit
   const { setNodeRef } = useDroppable({
@@ -274,6 +279,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 isRemoving={removingPlayerId === player.item_id}
                 hasUnsavedChanges={pendingStageChanges?.has(player.item_id) || false}
                 isPendingRemoval={pendingRemovals?.has(player.item_id) || false}
+                memberships={batchMemberships?.[player.universal_id]}
+                loadingMemberships={loadingMemberships}
               />
             ))
           )}

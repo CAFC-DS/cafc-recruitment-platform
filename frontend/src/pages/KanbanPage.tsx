@@ -20,6 +20,7 @@ import {
   Modal,
   Badge,
   Spinner,
+  Dropdown,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -32,10 +33,14 @@ import EmptyState from "../components/PlayerLists/EmptyState";
 import {
   createPlayerList,
   updatePlayerList,
+  deletePlayerList,
   addPlayerToList,
   removePlayerFromList,
   updatePlayerStage,
   searchPlayers,
+  exportPlayersToCSV,
+  getBatchPlayerListMemberships,
+  PlayerListMembership,
 } from "../services/playerListsService";
 import {
   colors,
@@ -95,6 +100,10 @@ const KanbanPage: React.FC = () => {
   // Remove player state
   const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
 
+  // Batch list memberships (for MultiListBadges optimization)
+  const [batchMemberships, setBatchMemberships] = useState<Record<string, PlayerListMembership[]>>({});
+  const [loadingMemberships, setLoadingMemberships] = useState(false);
+
   // Permission check - redirect if unauthorized
   useEffect(() => {
     if (!userLoading && !isAdmin && !isManager) {
@@ -102,13 +111,8 @@ const KanbanPage: React.FC = () => {
     }
   }, [userLoading, isAdmin, isManager, navigate]);
 
-  // Initialize all lists as visible when data loads
-  useEffect(() => {
-    if (lists.length > 0 && visibleListIds.size === 0) {
-      const allListIds = new Set(lists.map((list) => list.id));
-      setVisibleListIds(allListIds);
-    }
-  }, [lists]);
+  // Don't auto-select lists - let user choose
+  // useEffect removed - lists start deselected
 
   // Merge fetch error with local error
   useEffect(() => {
@@ -172,6 +176,37 @@ const KanbanPage: React.FC = () => {
       players,
     }));
   }, [lists, visibleListIds, pendingStageChanges, pendingRemovals]);
+
+  /**
+   * Fetch batch memberships when stage columns change (eliminates N+1 queries)
+   */
+  useEffect(() => {
+    const fetchBatchMemberships = async () => {
+      // Collect all unique universal_ids from all stage columns
+      const allPlayers = stageColumns.flatMap((column) => column.players);
+
+      if (allPlayers.length === 0) {
+        setBatchMemberships({});
+        return;
+      }
+
+      try {
+        setLoadingMemberships(true);
+        const universalIds = allPlayers.map((p) => p.universal_id);
+        // Remove duplicates
+        const uniqueIds = Array.from(new Set(universalIds));
+        const memberships = await getBatchPlayerListMemberships(uniqueIds);
+        setBatchMemberships(memberships);
+      } catch (err) {
+        console.error("Error fetching batch memberships:", err);
+        setBatchMemberships({});
+      } finally {
+        setLoadingMemberships(false);
+      }
+    };
+
+    fetchBatchMemberships();
+  }, [stageColumns]);
 
   /**
    * Toggle list visibility
@@ -242,6 +277,69 @@ const KanbanPage: React.FC = () => {
     setListName("");
     setListDescription("");
     setShowListModal(true);
+  };
+
+  /**
+   * Open edit modal
+   */
+  const openEditModal = (list: PlayerList) => {
+    setEditingList(list);
+    setListName(list.list_name);
+    setListDescription(list.description || "");
+    setShowListModal(true);
+  };
+
+  /**
+   * Delete a list
+   */
+  const handleDeleteList = async (listId: number | string) => {
+    if (typeof listId !== "number") return; // Can't delete stage columns
+
+    if (!window.confirm("Are you sure you want to delete this list?")) {
+      return;
+    }
+
+    try {
+      setError(null);
+      await deletePlayerList(listId);
+
+      // Remove the deleted list from visible lists
+      setVisibleListIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(listId);
+        return newSet;
+      });
+
+      await refetch();
+    } catch (err: any) {
+      console.error("Error deleting list:", err);
+      setError(err.response?.data?.detail || "Failed to delete list.");
+    }
+  };
+
+  /**
+   * Export players to CSV
+   */
+  const handleExport = () => {
+    // Get all players from visible lists
+    const allPlayers: any[] = [];
+    stageColumns.forEach((column) => {
+      column.players.forEach((player) => {
+        allPlayers.push(player);
+      });
+    });
+
+    if (allPlayers.length === 0) {
+      alert("No players to export");
+      return;
+    }
+
+    const listNames = lists
+      .filter((list) => visibleListIds.has(list.id))
+      .map((list) => list.list_name)
+      .join("_");
+
+    exportPlayersToCSV(allPlayers, `${listNames || "players"}.csv`);
   };
 
   /**
@@ -447,27 +545,6 @@ const KanbanPage: React.FC = () => {
             Drag players between stages to track recruitment progress
           </p>
         </div>
-        <div className="d-flex gap-2">
-          <Button
-            variant="outline-secondary"
-            onClick={() => navigate("/lists")}
-            style={{
-              ...buttonStyles.secondary,
-              borderRadius: borderRadius.pill,
-            }}
-          >
-            Switch to Table View
-          </Button>
-          <Button
-            variant="dark"
-            onClick={openCreateModal}
-            style={{
-              ...buttonStyles.primary,
-            }}
-          >
-            + New List
-          </Button>
-        </div>
       </div>
 
       {lists.length === 0 ? (
@@ -536,6 +613,90 @@ const KanbanPage: React.FC = () => {
                 })}
               </div>
             </div>
+
+            {/* Action Buttons */}
+            <div className="mt-3 pt-3 border-top">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                {/* Create New List Pill - Always visible */}
+                <Button
+                  size="sm"
+                  variant="dark"
+                  onClick={openCreateModal}
+                  style={{
+                    borderRadius: "50px",
+                    padding: "0.4rem 1rem",
+                    fontSize: "0.85rem",
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                  }}
+                >
+                  ➕ New List
+                </Button>
+
+                {/* List Actions Dropdown - Only visible when lists are selected */}
+                {visibleListIds.size > 0 && (
+                  <Dropdown>
+                    <Dropdown.Toggle
+                      variant="dark"
+                      size="sm"
+                      style={{
+                        borderRadius: "50px",
+                        padding: "0.4rem 1rem",
+                        fontSize: "0.85rem",
+                        fontWeight: 500,
+                      }}
+                    >
+                      ⚙️ List Actions
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu>
+                      <Dropdown.Item onClick={() => navigate("/lists")}>
+                        🔄 Switch to Table View
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item
+                        onClick={() => {
+                          // Can only edit a single list (not stage columns)
+                          const selectedLists = lists.filter((list) => visibleListIds.has(list.id));
+                          if (selectedLists.length === 1) {
+                            openEditModal(selectedLists[0]);
+                          } else {
+                            alert("Please select exactly one list to edit");
+                          }
+                        }}
+                      >
+                        ✏️ Edit List
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        onClick={() => {
+                          // Can only delete a single list
+                          const selectedLists = lists.filter((list) => visibleListIds.has(list.id));
+                          if (selectedLists.length === 1) {
+                            handleDeleteList(selectedLists[0].id);
+                          } else {
+                            alert("Please select exactly one list to delete");
+                          }
+                        }}
+                      >
+                        🗑️ Delete List
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item onClick={handleExport}>
+                        📊 Export CSV
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                )}
+              </div>
+
+              {visibleListIds.size > 0 && lists.filter((list) => visibleListIds.has(list.id)).length !== 1 && (
+                <div className="mt-2" style={{ fontSize: "0.75rem", color: colors.gray[600], fontStyle: "italic" }}>
+                  Select a single list to access Edit and Delete actions
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Kanban Board */}
@@ -546,6 +707,8 @@ const KanbanPage: React.FC = () => {
             onDeleteList={() => {}}
             onAddPlayer={openAddPlayerModal}
             onRemovePlayer={handleRemovePlayer}
+            batchMemberships={batchMemberships}
+            loadingMemberships={loadingMemberships}
             onMovePlayer={async (itemId, fromStageId, toStageId) => {
               console.log("onMovePlayer called:", { itemId, fromStageId, toStageId });
               // Search in the target column because optimistic update already moved the player there

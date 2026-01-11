@@ -21,6 +21,7 @@ import {
   Modal,
   Spinner,
   ListGroup,
+  Dropdown,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -93,8 +94,8 @@ const PlayerListsPage: React.FC = () => {
   // Local error
   const [error, setError] = useState<string | null>(null);
 
-  // Selected list
-  const [selectedListId, setSelectedListId] = useState<number | null>(null);
+  // Visible lists (multi-select)
+  const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>("name");
@@ -133,12 +134,8 @@ const PlayerListsPage: React.FC = () => {
     }
   }, [userLoading, isAdmin, isManager, navigate]);
 
-  // Auto-select first list
-  useEffect(() => {
-    if (lists.length > 0 && !selectedListId) {
-      setSelectedListId(lists[0].id);
-    }
-  }, [lists, selectedListId]);
+  // Don't auto-select lists - let user choose
+  // useEffect removed - lists start deselected
 
   // Merge errors
   useEffect(() => {
@@ -147,22 +144,75 @@ const PlayerListsPage: React.FC = () => {
     }
   }, [fetchError]);
 
-  // Get current list and players
-  const currentList = useMemo(() => {
-    return lists.find((list) => list.id === selectedListId) || null;
-  }, [lists, selectedListId]);
+  // Toggle list visibility
+  const toggleListVisibility = (listId: number) => {
+    setVisibleListIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(listId)) {
+        newSet.delete(listId);
+      } else {
+        newSet.add(listId);
+      }
+      return newSet;
+    });
+  };
 
-  // Fetch batch memberships when current list changes
+  // Toggle all lists
+  const toggleAllLists = (visible: boolean) => {
+    if (visible) {
+      setVisibleListIds(new Set(lists.map((list) => list.id)));
+    } else {
+      setVisibleListIds(new Set());
+    }
+  };
+
+  // Get visible lists and merged players
+  const visibleLists = useMemo(() => {
+    return lists.filter((list) => visibleListIds.has(list.id));
+  }, [lists, visibleListIds]);
+
+  // Merge players from all visible lists (deduplicate by universal_id)
+  const mergedPlayers = useMemo(() => {
+    const playerMap = new Map();
+
+    visibleLists.forEach((list) => {
+      list.players.forEach((player) => {
+        // If player not yet in map, add them
+        if (!playerMap.has(player.universal_id)) {
+          playerMap.set(player.universal_id, {
+            ...player,
+            // Track which lists this player is in
+            _listIds: [list.id],
+            _listNames: [list.list_name],
+          });
+        } else {
+          // Player already exists, add this list to their tracking
+          const existing = playerMap.get(player.universal_id);
+          existing._listIds.push(list.id);
+          existing._listNames.push(list.list_name);
+        }
+      });
+    });
+
+    return Array.from(playerMap.values());
+  }, [visibleLists]);
+
+  // For backwards compatibility, use first visible list as "current" for certain operations
+  const currentList = useMemo(() => {
+    return visibleLists.length === 1 ? visibleLists[0] : null;
+  }, [visibleLists]);
+
+  // Fetch batch memberships when merged players change
   useEffect(() => {
     const fetchBatchMemberships = async () => {
-      if (!currentList || currentList.players.length === 0) {
+      if (mergedPlayers.length === 0) {
         setBatchMemberships({});
         return;
       }
 
       try {
         setLoadingMemberships(true);
-        const universalIds = currentList.players.map((p) => p.universal_id);
+        const universalIds = mergedPlayers.map((p) => p.universal_id);
         const memberships = await getBatchPlayerListMemberships(universalIds);
         setBatchMemberships(memberships);
       } catch (err) {
@@ -174,14 +224,12 @@ const PlayerListsPage: React.FC = () => {
     };
 
     fetchBatchMemberships();
-  }, [currentList]);
+  }, [mergedPlayers]);
 
   // Sort players with optimistic updates applied
   const sortedPlayers = useMemo(() => {
-    if (!currentList) return [];
-
     // Filter out pending removals (optimistic update)
-    let result = currentList.players.filter(
+    let result = mergedPlayers.filter(
       (player) => !pendingRemovals.has(player.item_id)
     );
 
@@ -224,7 +272,7 @@ const PlayerListsPage: React.FC = () => {
     });
 
     return result;
-  }, [currentList, sortField, sortDirection, pendingStageChanges, pendingRemovals]);
+  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals]);
 
   // Handlers
   const handleSort = (field: SortField) => {
@@ -264,7 +312,8 @@ const PlayerListsPage: React.FC = () => {
         await updatePlayerList(editingList.id, listName, listDescription);
       } else {
         const result = await createPlayerList(listName, listDescription);
-        setSelectedListId(result.list_id);
+        // Show only the newly created list
+        setVisibleListIds(new Set([result.list_id]));
       }
 
       await refetch();
@@ -289,9 +338,12 @@ const PlayerListsPage: React.FC = () => {
       setError(null);
       await deletePlayerList(listId);
 
-      if (selectedListId === listId) {
-        setSelectedListId(null);
-      }
+      // Remove the deleted list from visible lists
+      setVisibleListIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(listId);
+        return newSet;
+      });
 
       await refetch();
     } catch (err: any) {
@@ -319,13 +371,13 @@ const PlayerListsPage: React.FC = () => {
   };
 
   const handleAddPlayer = async (player: PlayerSearchResult) => {
-    if (!selectedListId) return;
+    if (!currentList) return; // Only works with single list selected
 
     try {
       setAddingPlayer(true);
       setError(null);
 
-      await addPlayerToList(selectedListId, player.universal_id);
+      await addPlayerToList(currentList.id, player.universal_id);
       await refetch();
 
       setShowAddPlayerModal(false);
@@ -375,7 +427,7 @@ const PlayerListsPage: React.FC = () => {
    * Save all pending changes in batch
    */
   const savePendingChanges = async () => {
-    if (!selectedListId || (pendingStageChanges.size === 0 && pendingRemovals.size === 0)) {
+    if (!currentList || (pendingStageChanges.size === 0 && pendingRemovals.size === 0)) {
       return;
     }
 
@@ -385,12 +437,12 @@ const PlayerListsPage: React.FC = () => {
 
       // Execute all stage updates
       const stageUpdatePromises = Array.from(pendingStageChanges.entries()).map(
-        ([itemId, newStage]) => updatePlayerStage(selectedListId, itemId, newStage)
+        ([itemId, newStage]) => updatePlayerStage(currentList.id, itemId, newStage)
       );
 
       // Execute all removals
       const removalPromises = Array.from(pendingRemovals).map(
-        (itemId) => removePlayerFromList(selectedListId, itemId)
+        (itemId) => removePlayerFromList(currentList.id, itemId)
       );
 
       await Promise.all([...stageUpdatePromises, ...removalPromises]);
@@ -596,27 +648,6 @@ const PlayerListsPage: React.FC = () => {
             Manage your player recruitment lists
           </p>
         </div>
-        <div className="d-flex gap-2">
-          <Button
-            variant="outline-secondary"
-            onClick={() => navigate("/lists/kanban")}
-            style={{
-              ...buttonStyles.secondary,
-              borderRadius: borderRadius.pill,
-            }}
-          >
-            Switch to Kanban View
-          </Button>
-          <Button
-            variant="dark"
-            onClick={openCreateModal}
-            style={{
-              ...buttonStyles.primary,
-            }}
-          >
-            + New List
-          </Button>
-        </div>
       </div>
 
       {lists.length === 0 ? (
@@ -640,21 +671,28 @@ const PlayerListsPage: React.FC = () => {
           >
             <div className="d-flex align-items-center gap-2 mb-2">
               <span className="fw-semibold" style={{ fontSize: "0.85rem", color: colors.gray[700] }}>
-                Select List:
+                Lists:
               </span>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(true)} style={{ fontSize: "0.75rem", padding: "0 0.25rem" }}>
+                All
+              </Button>
+              <span style={{ color: colors.gray[400] }}>|</span>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(false)} style={{ fontSize: "0.75rem", padding: "0 0.25rem" }}>
+                None
+              </Button>
             </div>
             <div className="d-flex gap-2 flex-wrap align-items-center">
               {lists.map((list) => {
-                const isSelected = selectedListId === list.id;
+                const isVisible = visibleListIds.has(list.id);
                 return (
                   <Badge
                     key={list.id}
                     bg=""
-                    onClick={() => setSelectedListId(list.id)}
+                    onClick={() => toggleListVisibility(list.id)}
                     style={{
                       ...badgeStyles.pill,
-                      backgroundColor: isSelected ? colors.primary : colors.gray[300],
-                      color: isSelected ? colors.white : colors.gray[600],
+                      backgroundColor: isVisible ? colors.primary : colors.gray[300],
+                      color: isVisible ? colors.white : colors.gray[600],
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                     }}
@@ -665,54 +703,91 @@ const PlayerListsPage: React.FC = () => {
               })}
             </div>
 
-            {/* List Actions */}
-            {currentList && (
-              <div className="mt-3 pt-3 border-top d-flex gap-2 align-items-center">
+            {/* Action Buttons */}
+            <div className="mt-3 pt-3 border-top">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                {/* Create New List Pill - Always visible */}
                 <Button
                   size="sm"
-                  variant="outline-secondary"
-                  onClick={() => openEditModal(currentList)}
-                  style={{ fontSize: "0.8rem" }}
+                  variant="dark"
+                  onClick={openCreateModal}
+                  style={{
+                    borderRadius: "50px",
+                    padding: "0.4rem 1rem",
+                    fontSize: "0.85rem",
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.25rem",
+                  }}
                 >
-                  ✏️ Edit
+                  ➕ New List
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline-danger"
-                  onClick={() => handleDeleteList(currentList.id)}
-                  style={{ fontSize: "0.8rem" }}
-                >
-                  🗑️ Delete
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-primary"
-                  onClick={() => setShowAddPlayerModal(true)}
-                  style={{ fontSize: "0.8rem" }}
-                >
-                  + Add Player
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline-success"
-                  onClick={handleExport}
-                  style={{ fontSize: "0.8rem" }}
-                >
-                  📊 Export CSV
-                </Button>
+
+                {/* List Actions Dropdown - Only visible when lists are selected */}
+                {visibleListIds.size > 0 && (
+                  <Dropdown>
+                    <Dropdown.Toggle
+                      variant="dark"
+                      size="sm"
+                      style={{
+                        borderRadius: "50px",
+                        padding: "0.4rem 1rem",
+                        fontSize: "0.85rem",
+                        fontWeight: 500,
+                      }}
+                    >
+                      ⚙️ List Actions
+                    </Dropdown.Toggle>
+
+                    <Dropdown.Menu>
+                      <Dropdown.Item onClick={() => navigate("/lists/kanban")}>
+                        🔄 Switch to Kanban View
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)}>
+                        ✏️ Edit List
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)}>
+                        🗑️ Delete List
+                      </Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
+                        + Add Player
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={handleExport}>
+                        📊 Export CSV
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                )}
               </div>
-            )}
+
+              {visibleListIds.size > 0 && !currentList && (
+                <div
+                  className="mt-2"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: colors.gray[600],
+                    fontStyle: "italic",
+                  }}
+                >
+                  Select a single list to access actions
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {currentList && (
+          {visibleListIds.size > 0 && (
             <>
               {/* Content */}
               {sortedPlayers.length === 0 ? (
                 <EmptyState
-                  title="No Players in This List"
-                  message="Add players to start building your recruitment pipeline."
-                  actionLabel="Add Player"
-                  onAction={() => setShowAddPlayerModal(true)}
+                  title="No Players Found"
+                  message={currentList ? "Add players to start building your recruitment pipeline." : "No players in the selected lists."}
+                  actionLabel={currentList ? "Add Player" : undefined}
+                  onAction={currentList ? () => setShowAddPlayerModal(true) : undefined}
                   icon="📋"
                 />
               ) : (
@@ -818,25 +893,39 @@ const PlayerListsPage: React.FC = () => {
                             <td>{player.age || "N/A"}</td>
                             <td>{player.squad_name || "Unknown"}</td>
                             <td>
-                              <Form.Select
-                                size="sm"
-                                value={currentStage}
-                                onChange={(e) => handleStageChange(player.item_id, e.target.value)}
-                                disabled={pendingRemoval}
-                                style={{
-                                  fontSize: "0.75rem",
-                                  width: "110px",
-                                  backgroundColor: getStageBgColor(currentStage),
-                                  color: getStageTextColor(currentStage),
-                                  border: hasPendingStageChange ? "2px solid #f59e0b" : "none",
-                                  fontWeight: "600",
-                                }}
-                              >
-                                <option value="Stage 1">Stage 1</option>
-                                <option value="Stage 2">Stage 2</option>
-                                <option value="Stage 3">Stage 3</option>
-                                <option value="Stage 4">Stage 4</option>
-                              </Form.Select>
+                              {currentList ? (
+                                <Form.Select
+                                  size="sm"
+                                  value={currentStage}
+                                  onChange={(e) => handleStageChange(player.item_id, e.target.value)}
+                                  disabled={pendingRemoval}
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    width: "110px",
+                                    backgroundColor: getStageBgColor(currentStage),
+                                    color: getStageTextColor(currentStage),
+                                    border: hasPendingStageChange ? "2px solid #f59e0b" : "none",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  <option value="Stage 1">Stage 1</option>
+                                  <option value="Stage 2">Stage 2</option>
+                                  <option value="Stage 3">Stage 3</option>
+                                  <option value="Stage 4">Stage 4</option>
+                                </Form.Select>
+                              ) : (
+                                <Badge
+                                  bg=""
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    backgroundColor: getStageBgColor(currentStage),
+                                    color: getStageTextColor(currentStage),
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  {currentStage}
+                                </Badge>
+                              )}
                             </td>
                             <td>
                               <MultiListBadges
@@ -878,7 +967,8 @@ const PlayerListsPage: React.FC = () => {
                                 size="sm"
                                 variant="outline-danger"
                                 onClick={() => handleRemovePlayer(player.item_id)}
-                                disabled={removingPlayerId === player.item_id}
+                                disabled={!currentList || removingPlayerId === player.item_id}
+                                title={!currentList ? "Select a single list to remove players" : "Remove from list"}
                               >
                                 {removingPlayerId === player.item_id ? "..." : "×"}
                               </Button>
@@ -1020,7 +1110,7 @@ const PlayerListsPage: React.FC = () => {
       </Modal>
 
       {/* Floating Save/Discard Changes Button */}
-      {(pendingStageChanges.size > 0 || pendingRemovals.size > 0) && (
+      {currentList && (pendingStageChanges.size > 0 || pendingRemovals.size > 0) && (
         <div
           style={{
             position: "fixed",

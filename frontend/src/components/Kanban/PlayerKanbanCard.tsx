@@ -8,6 +8,7 @@ import {
   getContrastTextColor,
 } from "../../utils/colorUtils";
 import MultiListBadges from "../PlayerLists/MultiListBadges";
+import { PlayerListMembership } from "../../services/playerListsService";
 
 /**
  * PlayerInList interface matching the backend API response
@@ -44,6 +45,8 @@ interface PlayerKanbanCardProps {
   isRemoving: boolean;
   hasUnsavedChanges?: boolean;
   isPendingRemoval?: boolean;
+  memberships?: PlayerListMembership[];
+  loadingMemberships?: boolean;
 }
 
 /**
@@ -71,6 +74,8 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
   isRemoving,
   hasUnsavedChanges = false,
   isPendingRemoval = false,
+  memberships,
+  loadingMemberships,
 }) => {
   const navigate = useNavigate();
 
@@ -259,7 +264,13 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
 
         {/* Multi-list badges - shows all lists the player belongs to */}
         <div className="mb-2">
-          <MultiListBadges universalId={player.universal_id} maxVisible={2} showStage={false} />
+          <MultiListBadges
+            universalId={player.universal_id}
+            maxVisible={2}
+            showStage={false}
+            memberships={memberships}
+            loading={loadingMemberships}
+          />
         </div>
 
         {/* Remove button */}
