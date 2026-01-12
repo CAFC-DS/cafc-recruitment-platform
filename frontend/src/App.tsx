@@ -182,21 +182,72 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   return token ? children : null; // Render children only if authenticated
 };
 
-const AdminManagerRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
-  const { canAccessPlayers, loading } = useCurrentUser();
+  const { canAccessAdmin, loading } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: location.pathname } });
-    } else if (!loading && !canAccessPlayers) {
+    } else if (!loading && !canAccessAdmin) {
       navigate('/', { replace: true });
     }
-  }, [token, canAccessPlayers, loading, navigate, location]);
+  }, [token, canAccessAdmin, loading, navigate, location]);
 
-  return token && canAccessPlayers ? children : null;
+  return token && canAccessAdmin ? children : null;
+};
+
+const IntelRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessIntel, loading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && !canAccessIntel) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessIntel, loading, navigate, location]);
+
+  return token && canAccessIntel ? children : null;
+};
+
+const AnalyticsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessAnalytics, loading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && !canAccessAnalytics) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessAnalytics, loading, navigate, location]);
+
+  return token && canAccessAnalytics ? children : null;
+};
+
+const ListsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessLists, loading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && !canAccessLists) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessLists, loading, navigate, location]);
+
+  return token && canAccessLists ? children : null;
 };
 
 // New wrapper component for LoginPage
@@ -252,25 +303,25 @@ function App() {
             <Route
               path="/intel"
               element={
-                <PrivateRoute>
+                <IntelRoute>
                   <IntelPage />
-                </PrivateRoute>
+                </IntelRoute>
               }
             />
             <Route
               path="/lists"
               element={
-                <PrivateRoute>
+                <ListsRoute>
                   <PlayerListsPage />
-                </PrivateRoute>
+                </ListsRoute>
               }
             />
             <Route
               path="/lists/kanban"
               element={
-                <PrivateRoute>
+                <ListsRoute>
                   <KanbanPage />
-                </PrivateRoute>
+                </ListsRoute>
               }
             />
             <Route
@@ -292,17 +343,17 @@ function App() {
             <Route
               path="/admin"
               element={
-                <PrivateRoute>
+                <AdminRoute>
                   <AdminPage />
-                </PrivateRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/analytics"
               element={
-                <PrivateRoute>
+                <AnalyticsRoute>
                   <AnalyticsPage />
-                </PrivateRoute>
+                </AnalyticsRoute>
               }
             />
           </Routes>

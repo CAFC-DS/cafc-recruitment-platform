@@ -602,6 +602,15 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
+# --- Role Constants ---
+ROLE_ADMIN = "admin"
+ROLE_SENIOR_MANAGER = "senior_manager"
+ROLE_MANAGER = "manager"
+ROLE_LOAN_MANAGER = "loan_manager"
+ROLE_SCOUT = "scout"
+
+VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT]
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -659,7 +668,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: Optional[str] = "scout"  # scout, manager, admin, loan
+    role: Optional[str] = "scout"  # admin, senior_manager, manager, loan_manager, scout
     firstname: str
     lastname: str
 
@@ -1022,6 +1031,12 @@ async def get_analytics_timeline(
     current_user: User = Depends(get_current_user)
 ):
     """Get timeline analytics data for scout reports by month and user"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
     # Generate cache key based on parameters
     cache_key = f"analytics_timeline_{min_months or 12}"
 
@@ -1133,9 +1148,9 @@ async def get_analytics_timeline_daily(
     days: int = 30, current_user: User = Depends(get_current_user)
 ):
     """Get daily timeline analytics data for scout reports"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Access denied. Admin or manager role required."
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
         )
 
     conn = None
@@ -1227,7 +1242,7 @@ async def get_analytics_timeline_daily(
 @app.get("/debug/scout_reports")
 async def debug_scout_reports(current_user: User = Depends(get_current_user)):
     """Debug endpoint to check scout reports and USER_ID data"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1380,7 +1395,7 @@ class AdminUserCreate(BaseModel):
 @app.get("/admin/users")
 async def get_all_users(current_user: User = Depends(get_current_user)):
     """Get all users (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1446,7 +1461,7 @@ async def create_user_as_admin(
     user: AdminUserCreate, current_user: User = Depends(get_current_user)
 ):
     """Create a new user (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     # Check if username exists
@@ -1525,7 +1540,7 @@ async def create_user_as_admin(
 @app.delete("/admin/users/{user_id}")
 async def delete_user(user_id: int, current_user: User = Depends(get_current_user)):
     """Delete a user (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     if user_id == current_user.id:
@@ -1564,12 +1579,12 @@ async def update_user_role(
     user_id: int, new_role: str, current_user: User = Depends(get_current_user)
 ):
     """Update user role (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    if new_role not in ["admin", "scout", "manager", "loan"]:
+    if new_role not in VALID_ROLES:
         raise HTTPException(
-            status_code=400, detail="Invalid role. Must be admin, scout, manager, or loan"
+            status_code=400, detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}"
         )
 
     if user_id == current_user.id:
@@ -1608,7 +1623,7 @@ async def admin_reset_user_password(
     user_id: int, new_password: str, current_user: User = Depends(get_current_user)
 ):
     """Reset user password (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1646,7 +1661,7 @@ async def admin_reset_user_password(
 @app.post("/admin/add-email-column")
 async def add_email_column_to_users(current_user: User = Depends(get_current_user)):
     """Add EMAIL column to users table (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1680,7 +1695,7 @@ async def add_email_column_to_users(current_user: User = Depends(get_current_use
 @app.get("/admin/cafc-system-status")
 async def get_cafc_system_status(current_user: User = Depends(get_current_user)):
     """Check CAFC Player ID system status (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1740,7 +1755,7 @@ async def get_cafc_system_status(current_user: User = Depends(get_current_user))
 @app.post("/admin/setup-cafc-player-ids")
 async def setup_cafc_player_ids(current_user: User = Depends(get_current_user)):
     """Add CAFC_PLAYER_ID system for data provider independence (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1909,7 +1924,7 @@ async def check_player_deletion_safety(
     player_id: int, current_user: User = Depends(get_current_user)
 ):
     """Check if a player can be safely deleted (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -1993,7 +2008,7 @@ async def merge_players(
     current_user: User = Depends(get_current_user),
 ):
     """Merge a removed player back to existing CAFC_PLAYER_ID (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -2083,7 +2098,7 @@ async def detect_data_clashes(
 ):
     """Detect potential duplicate players and fixtures (admin only).
     Optional name_filter to search for specific player names."""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -2385,7 +2400,7 @@ async def check_player_duplicates(
     current_user: User = Depends(get_current_user)
 ):
     """Check if a specific player name has duplicates in the database"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -2442,7 +2457,7 @@ async def merge_duplicate_match(
     current_user: User = Depends(get_current_user),
 ):
     """Merge duplicate match records (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -2531,7 +2546,7 @@ async def delete_duplicate(
     current_user: User = Depends(get_current_user),
 ):
     """Delete a duplicate player or match (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     if entity_type not in ["player", "match"]:
@@ -3792,7 +3807,7 @@ async def get_tables(current_user: User = Depends(get_current_user)):
 
 @app.post("/admin/add-user-id-column")
 async def add_user_id_column(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -3822,7 +3837,7 @@ async def add_user_id_column(current_user: User = Depends(get_current_user)):
 
 @app.post("/admin/create-scout-user")
 async def create_scout_user(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     # Create a test scout user
@@ -3853,7 +3868,7 @@ async def create_scout_user(current_user: User = Depends(get_current_user)):
 
 @app.post("/admin/update-intel-table")
 async def update_intel_table(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -3897,7 +3912,7 @@ async def update_intel_table(current_user: User = Depends(get_current_user)):
 @app.post("/admin/optimize-database")
 async def optimize_database(current_user: User = Depends(get_current_user)):
     """Create indexes to improve query performance"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -4244,27 +4259,29 @@ async def get_all_scout_reports(
             if user_id_exists:
                 # Column exists, apply role-based filtering
                 print(f"🔍 Applying filter for role: {current_user.role}")
-                if current_user.role == "scout":
+                if current_user.role == ROLE_SCOUT:
+                    # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
                     logging.info(
                         f"Applied scout filtering for user ID: {current_user.id}"
                     )
-                elif current_user.role == "loan":
-                    # Loan users see their own reports OR any Loan Reports
+                elif current_user.role == ROLE_LOAN_MANAGER:
+                    # Loan scouts see their own reports OR any Loan Reports
                     # Use UPPER() for case-insensitive comparison
                     where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
                     sql_params.append(current_user.id)
                     sql_params.append("Loan Report")
-                    print(f"🔍 LOAN FILTER APPLIED - User: {current_user.username} (ID: {current_user.id})")
+                    print(f"🔍 LOAN SCOUT FILTER APPLIED - User: {current_user.username} (ID: {current_user.id})")
                     print(f"🔍 Filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
                     logging.info(
-                        f"Applied loan filtering for user ID: {current_user.id}, username: {current_user.username}"
+                        f"Applied loan scout filtering for user ID: {current_user.id}, username: {current_user.username}"
                     )
-                    logging.info(f"Loan filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
+                    logging.info(f"Loan scout filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
+                # Admin, Senior Manager, and Manager see ALL reports (no filtering)
                 else:
                     logging.info(
-                        f"User role '{current_user.role}' - no filtering applied"
+                        f"User role '{current_user.role}' - no filtering applied (sees all reports)"
                     )
             else:
                 logging.warning("USER_ID column does not exist in scout_reports table")
@@ -4471,7 +4488,7 @@ async def get_recent_scout_reports(
     Optimized endpoint with caching for faster homepage loads.
     """
     # Generate cache key
-    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache
     cached_result = get_cache(cache_key)
@@ -4504,13 +4521,16 @@ async def get_recent_scout_reports(
         try:
             user_id_exists = has_column("scout_reports", "USER_ID")
             if user_id_exists:
-                if current_user.role == "scout":
+                if current_user.role == ROLE_SCOUT:
+                    # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
-                elif current_user.role == "loan":
+                elif current_user.role == ROLE_LOAN_MANAGER:
+                    # Loan scouts see their own reports OR any Loan Reports
                     where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
                     sql_params.append(current_user.id)
                     sql_params.append("Loan Report")
+                # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except Exception as e:
             logging.error(f"Error checking USER_ID column: {e}")
 
@@ -4667,7 +4687,7 @@ async def get_top_attribute_reports(
     not just the top N from the most recent reports.
     """
     # Generate cache key based on parameters and user role
-    cache_key = f"top_attributes_{recency_days}_{limit}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+    cache_key = f"top_attributes_{recency_days}_{limit}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first (5 min TTL for dashboard widgets)
     cached_data = get_cache(cache_key)
@@ -4697,13 +4717,16 @@ async def get_top_attribute_reports(
         try:
             user_id_exists = has_column("scout_reports", "USER_ID")
             if user_id_exists:
-                if current_user.role == "scout":
+                if current_user.role == ROLE_SCOUT:
+                    # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
-                elif current_user.role == "loan":
+                elif current_user.role == ROLE_LOAN_MANAGER:
+                    # Loan scouts see their own reports OR any Loan Reports
                     where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
                     sql_params.append(current_user.id)
                     sql_params.append("Loan Report")
+                # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except Exception as e:
             logging.error(f"Error checking USER_ID column: {e}")
 
@@ -5090,8 +5113,8 @@ class PlayerNote(BaseModel):
 async def get_player_profile(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
-    # Generate cache key based on player_id and user role (scouts/loan see filtered data)
-    cache_key = f"player_profile_{player_id}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
+    cache_key = f"player_profile_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5137,19 +5160,21 @@ async def get_player_profile(
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
             test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
-            if current_user.role == "scout":
+            if current_user.role == ROLE_SCOUT:
+                # Scouts see ONLY their own reports
                 scout_sql = scout_sql.replace(
                     f"WHERE {player_id_column} = %s",
                     f"WHERE {player_id_column} = %s AND sr.USER_ID = %s",
                 )
                 scout_values = (actual_player_id, current_user.id)
-            elif current_user.role == "loan":
-                # Loan users see their own reports OR any Loan Reports
+            elif current_user.role == ROLE_LOAN_MANAGER:
+                # Loan scouts see their own reports OR any Loan Reports
                 scout_sql = scout_sql.replace(
                     f"WHERE {player_id_column} = %s",
                     f"WHERE {player_id_column} = %s AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))",
                 )
                 scout_values = (actual_player_id, current_user.id, "Loan Report")
+            # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
 
@@ -5298,8 +5323,8 @@ async def get_player_attributes(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get player attribute averages grouped by categories from all scout reports"""
-    # Generate cache key based on player_id and user role (scouts see only their reports)
-    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role == 'scout' else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered reports)
+    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5344,19 +5369,21 @@ async def get_player_attributes(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users and loan
+        # Apply role-based filtering for scout users and loan scouts
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
             test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
-            if current_user.role == "scout":
+            if current_user.role == ROLE_SCOUT:
+                # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == "loan":
-                # Loan users see their own reports OR any Loan Reports
+            elif current_user.role == ROLE_LOAN_MANAGER:
+                # Loan scouts see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
+            # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             # USER_ID column doesn't exist, skip filtering
             pass
@@ -5497,8 +5524,8 @@ async def get_player_scout_reports(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get scout reports timeline for a player"""
-    # Generate cache key based on player_id and user role (scouts/loan see filtered data)
-    cache_key = f"player_scout_reports_{player_id}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
+    cache_key = f"player_scout_reports_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5555,18 +5582,20 @@ async def get_player_scout_reports(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users and loan
+        # Apply role-based filtering for scout users and loan scouts
         try:
             test_cursor = conn.cursor()
             test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
-            if current_user.role == "scout":
+            if current_user.role == ROLE_SCOUT:
+                # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == "loan":
-                # Loan users see their own reports OR any Loan Reports
+            elif current_user.role == ROLE_LOAN_MANAGER:
+                # Loan scouts see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
+            # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
 
@@ -5643,8 +5672,8 @@ async def get_player_position_counts(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get count of scout reports by position for a player"""
-    # Generate cache key based on player_id and user role (scouts/loan see filtered data)
-    cache_key = f"player_position_counts_{player_id}_{current_user.role}_{current_user.id if current_user.role in ['scout', 'loan'] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
+    cache_key = f"player_position_counts_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5685,18 +5714,20 @@ async def get_player_position_counts(
 
         query_params = [actual_player_id]
 
-        # Apply role-based filtering for scout users and loan
+        # Apply role-based filtering for scout users and loan scouts
         try:
             test_cursor = conn.cursor()
             test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
-            if current_user.role == "scout":
+            if current_user.role == ROLE_SCOUT:
+                # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == "loan":
-                # Loan users see their own reports OR any Loan Reports
+            elif current_user.role == ROLE_LOAN_MANAGER:
+                # Loan scouts see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
                 query_params.append("Loan Report")
+            # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
 
@@ -5800,9 +5831,9 @@ async def get_all_players(
     team: str = None,
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Access denied. Admin or manager role required."
+            status_code=403, detail="Access denied. Admin or Senior Manager role required."
         )
 
     conn = None
@@ -6114,6 +6145,13 @@ async def export_player_pdf(
 async def create_intel_report(
     report: IntelReport, current_user: User = Depends(get_current_user)
 ):
+    # Intel reports are only accessible to Admin and Senior Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+        )
+
     print(f"🔍 DEBUG: Intel report creation started")
     print(f"🔍 DEBUG: player_id={report.player_id}")
     conn = None
@@ -6237,6 +6275,13 @@ async def get_all_intel_reports(
     limit: int = 10,
     recency_days: Optional[int] = None,
 ):
+    # Intel reports are only accessible to Admin and Senior Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+        )
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -6280,7 +6325,9 @@ async def get_all_intel_reports(
         sql_params = []
 
         # Apply role-based filtering if USER_ID column exists
-        if has_user_id and current_user.role == "scout":
+        # Admin, Senior Manager, and Manager see ALL intel reports (no filtering)
+        # Scout and Loan Manager only see their own reports
+        if has_user_id and current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER]:
             where_clauses.append("pi.USER_ID = %s")
             sql_params.append(current_user.id)
 
@@ -6379,6 +6426,13 @@ async def get_all_intel_reports(
 async def get_single_intel_report(
     intel_id: int, current_user: User = Depends(get_current_user)
 ):
+    # Intel reports are only accessible to Admin and Senior Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+        )
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -6729,7 +6783,7 @@ async def get_teams_with_ids(current_user: User = Depends(get_current_user)):
 @app.post("/admin/clear-cache")
 async def clear_cache(current_user: User = Depends(get_current_user)):
     """Clear all cached data"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     global _data_cache, _cache_expiry
@@ -6742,7 +6796,7 @@ async def clear_cache(current_user: User = Depends(get_current_user)):
 @app.get("/admin/cache-stats")
 async def get_cache_stats(current_user: User = Depends(get_current_user)):
     """Get cache statistics"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     from datetime import datetime
@@ -6763,7 +6817,7 @@ async def get_cache_stats(current_user: User = Depends(get_current_user)):
 @app.post("/admin/optimize-all")
 async def optimize_all_operations(current_user: User = Depends(get_current_user)):
     """Run comprehensive database optimization"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -6848,7 +6902,7 @@ async def optimize_all_operations(current_user: User = Depends(get_current_user)
 @app.post("/admin/migrate-purpose-values")
 async def migrate_purpose_values(current_user: User = Depends(get_current_user)):
     """Migrate PURPOSE values from Assessment to Report format (admin only)"""
-    if current_user.role != "admin":
+    if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
     conn = None
@@ -6906,6 +6960,176 @@ async def migrate_purpose_values(current_user: User = Depends(get_current_user))
             conn.rollback()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error during migration: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/admin/migrate-roles")
+async def migrate_user_roles(current_user: User = Depends(get_current_user)):
+    """Migrate old role names to new 5-tier role system (admin only)"""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        results = []
+
+        # Check current role distribution
+        cursor.execute(
+            "SELECT ROLE, COUNT(*) FROM users GROUP BY ROLE ORDER BY ROLE"
+        )
+        current_roles = cursor.fetchall()
+        results.append(f"Current role distribution: {dict(current_roles)}")
+
+        # Migrate 'loan' to 'loan_manager'
+        cursor.execute(
+            "UPDATE users SET ROLE = %s WHERE ROLE = %s",
+            (ROLE_LOAN_MANAGER, "loan")
+        )
+        loan_updates = cursor.rowcount
+        results.append(
+            f"Migrated {loan_updates} users from 'loan' to 'loan_manager'"
+        )
+
+        conn.commit()
+
+        # Verify updates
+        cursor.execute(
+            "SELECT ROLE, COUNT(*) FROM users GROUP BY ROLE ORDER BY ROLE"
+        )
+        updated_roles = cursor.fetchall()
+        results.append(f"Updated role distribution: {dict(updated_roles)}")
+
+        return {
+            "message": "Role migration completed successfully",
+            "results": results,
+            "loan_to_loan_manager_updates": loan_updates,
+        }
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error during role migration: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/admin/create-test-users")
+async def create_test_users(current_user: User = Depends(get_current_user)):
+    """Create test users for all 5 roles for testing purposes (admin only)"""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        test_users = [
+            {
+                "username": "test_admin",
+                "email": "admin@test.com",
+                "password": "TestPassword123!",
+                "role": ROLE_ADMIN,
+                "firstname": "Admin",
+                "lastname": "Test"
+            },
+            {
+                "username": "test_senior_manager",
+                "email": "senior@test.com",
+                "password": "TestPassword123!",
+                "role": ROLE_SENIOR_MANAGER,
+                "firstname": "Senior",
+                "lastname": "Manager"
+            },
+            {
+                "username": "test_manager",
+                "email": "manager@test.com",
+                "password": "TestPassword123!",
+                "role": ROLE_MANAGER,
+                "firstname": "Manager",
+                "lastname": "Test"
+            },
+            {
+                "username": "test_loan_manager",
+                "email": "loan@test.com",
+                "password": "TestPassword123!",
+                "role": ROLE_LOAN_MANAGER,
+                "firstname": "Loan",
+                "lastname": "Scout"
+            },
+            {
+                "username": "test_scout",
+                "email": "scout@test.com",
+                "password": "TestPassword123!",
+                "role": ROLE_SCOUT,
+                "firstname": "Scout",
+                "lastname": "Test"
+            }
+        ]
+
+        created_users = []
+        skipped_users = []
+
+        for user_data in test_users:
+            # Check if user already exists
+            cursor.execute(
+                "SELECT ID, USERNAME, ROLE FROM users WHERE USERNAME = %s",
+                (user_data["username"],)
+            )
+            existing_user = cursor.fetchone()
+
+            if existing_user:
+                skipped_users.append({
+                    "username": user_data["username"],
+                    "reason": f"User already exists with role: {existing_user[2]}"
+                })
+                continue
+
+            # Create user
+            hashed_password = get_password_hash(user_data["password"])
+
+            cursor.execute(
+                """
+                INSERT INTO users (USERNAME, HASHED_PASSWORD, ROLE, EMAIL, FIRSTNAME, LASTNAME)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    user_data["username"],
+                    hashed_password,
+                    user_data["role"],
+                    user_data["email"],
+                    user_data["firstname"],
+                    user_data["lastname"]
+                )
+            )
+
+            created_users.append({
+                "username": user_data["username"],
+                "role": user_data["role"],
+                "password": user_data["password"]  # Return password for testing convenience
+            })
+
+        conn.commit()
+
+        return {
+            "message": f"Test user creation completed. Created: {len(created_users)}, Skipped: {len(skipped_users)}",
+            "created_users": created_users,
+            "skipped_users": skipped_users,
+            "note": "All test users have password: TestPassword123!"
+        }
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error creating test users: {e}")
     finally:
         if conn:
             conn.close()
@@ -6971,6 +7195,12 @@ async def get_database_metadata():
 @app.get("/analytics/player-coverage")
 async def get_player_coverage_analytics(current_user: User = Depends(get_current_user)):
     """Get analytics on player coverage per game"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
     # Generate cache key
     cache_key = "analytics_player_coverage"
 
@@ -7196,6 +7426,12 @@ async def get_player_analytics(
     min_performance_score: Optional[int] = None
 ):
     """Get player-focused analytics data"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
     # Generate cache key based on parameters
     cache_key = f"analytics_players_{months}_{position}_{min_performance_score}"
 
@@ -7576,6 +7812,12 @@ async def get_match_team_analytics(
     months: Optional[int] = None
 ):
     """Get match and team-focused analytics data"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
     # Generate cache key based on parameters
     cache_key = f"analytics_matches_teams_{months}"
 
@@ -7885,6 +8127,12 @@ async def get_scout_analytics(
     position: Optional[str] = None
 ):
     """Get scout-focused analytics data"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
     # Generate cache key based on parameters
     cache_key = f"analytics_scouts_{months}_{position}"
 
@@ -8036,6 +8284,12 @@ async def get_players_by_score(
     position: Optional[str] = None
 ):
     """Get players filtered by performance and attribute score thresholds"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -8395,9 +8649,9 @@ async def create_player_list(
     list_data: PlayerListCreate, current_user: User = Depends(get_current_user)
 ):
     """Create a new player list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can create lists"
+            status_code=403, detail="Only admins and senior managers can create lists"
         )
 
     conn = None
@@ -8501,9 +8755,9 @@ async def create_player_list(
 @app.get("/player-lists")
 async def get_all_player_lists(current_user: User = Depends(get_current_user)):
     """Get all player lists (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can view lists"
+            status_code=403, detail="Only admins and senior managers can view lists"
         )
 
     # Check cache first
@@ -8595,9 +8849,9 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
     This reduces round trips from N+1 to 1 query.
     (admin/manager only)
     """
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can view lists"
+            status_code=403, detail="Only admins and senior managers can view lists"
         )
 
     conn = None
@@ -8792,9 +9046,9 @@ async def get_player_list_detail(
     list_id: int, current_user: User = Depends(get_current_user)
 ):
     """Get a specific player list with enriched player data"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can view lists"
+            status_code=403, detail="Only admins and senior managers can view lists"
         )
 
     conn = None
@@ -9007,9 +9261,9 @@ async def update_player_list(
     current_user: User = Depends(get_current_user),
 ):
     """Update a player list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can update lists"
+            status_code=403, detail="Only admins and senior managers can update lists"
         )
 
     conn = None
@@ -9075,9 +9329,9 @@ async def delete_player_list(
     list_id: int, current_user: User = Depends(get_current_user)
 ):
     """Delete a player list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can delete lists"
+            status_code=403, detail="Only admins and senior managers can delete lists"
         )
 
     conn = None
@@ -9122,9 +9376,9 @@ async def add_player_to_list(
     current_user: User = Depends(get_current_user),
 ):
     """Add a player to a list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can add players to lists"
+            status_code=403, detail="Only admins and senior managers can add players to lists"
         )
 
     if not player_data.player_id and not player_data.cafc_player_id:
@@ -9289,9 +9543,9 @@ async def reorder_players_in_list(
     current_user: User = Depends(get_current_user),
 ):
     """Reorder players in a list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can reorder players"
+            status_code=403, detail="Only admins and senior managers can reorder players"
         )
 
     conn = None
@@ -9352,9 +9606,9 @@ async def update_player_stage(
     current_user: User = Depends(get_current_user),
 ):
     """Update a player's stage in a list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can update player stages"
+            status_code=403, detail="Only admins and senior managers can update player stages"
         )
 
     # Validate stage value
@@ -9424,9 +9678,9 @@ async def get_player_list_memberships(
     universal_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get all lists that a specific player belongs to (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can view player lists"
+            status_code=403, detail="Only admins and senior managers can view player lists"
         )
 
     conn = None
@@ -9500,9 +9754,9 @@ async def get_batch_player_list_memberships(
     Returns:
         Dictionary mapping each universal_id to its list memberships
     """
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can view player lists"
+            status_code=403, detail="Only admins and senior managers can view player lists"
         )
 
     if not universal_ids:
@@ -9613,9 +9867,9 @@ async def bulk_add_players_to_list(
     current_user: User = Depends(get_current_user),
 ):
     """Bulk add multiple players to a list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can add players to lists"
+            status_code=403, detail="Only admins and senior managers can add players to lists"
         )
 
     if not bulk_request.players:
@@ -9721,9 +9975,9 @@ async def bulk_remove_players_from_list(
     current_user: User = Depends(get_current_user),
 ):
     """Bulk remove multiple players from a list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and managers can remove players from lists"
+            status_code=403, detail="Only admins and senior managers can remove players from lists"
         )
 
     if not bulk_request.item_ids:

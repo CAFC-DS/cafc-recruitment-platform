@@ -38,14 +38,28 @@ export const useCurrentUser = () => {
     fetchCurrentUser();
   }, [token]);
 
+  // Role checks
+  const isAdmin = user?.role === "admin";
+  const isSeniorManager = user?.role === "senior_manager";
+  const isManager = user?.role === "manager";
+  const isLoanManager = user?.role === "loan_manager";
+  const isScout = user?.role === "scout";
+
   return {
     user,
     loading,
-    isAdmin: user?.role === "admin",
-    isManager: user?.role === "manager",
-    isLoanManager: user?.role === "loan",
-    canAccessPlayers: user?.role === "admin" || user?.role === "manager",
-    canAccessAnalytics: user?.role === "admin" || user?.role === "manager",
-    canAccessLoanReports: user?.role === "admin" || user?.role === "manager" || user?.role === "loan",
+    // Individual role checks
+    isAdmin,
+    isSeniorManager,
+    isManager,
+    isLoanManager,
+    isScout,
+    // Permission checks
+    canAccessAdmin: isAdmin,
+    canAccessIntel: isAdmin || isSeniorManager,
+    canAccessAnalytics: isAdmin || isSeniorManager || isManager,
+    canAccessLists: isAdmin || isSeniorManager,
+    canSeeAllReports: isAdmin || isSeniorManager || isManager,
+    canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanManager,
   };
 };

@@ -30,7 +30,7 @@ const AnalyticsPage: React.FC = () => {
           <Alert.Heading>Access Denied</Alert.Heading>
           <p>
             You don't have permission to access analytics. This feature is only
-            available to managers and administrators.
+            available to Admin, Senior Manager, and Manager roles.
           </p>
         </Alert>
       </Container>

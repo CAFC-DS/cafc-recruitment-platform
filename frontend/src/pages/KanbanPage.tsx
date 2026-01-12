@@ -61,11 +61,7 @@ interface PlayerSearchResult {
 
 const KanbanPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user: currentUser, loading: userLoading } = useCurrentUser();
-
-  // Permissions
-  const isAdmin = currentUser?.role === "admin";
-  const isManager = currentUser?.role === "manager";
+  const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
   // Use the custom hook for data fetching
   const { lists, loading, error: fetchError, refetch } = usePlayerLists();
@@ -107,10 +103,10 @@ const KanbanPage: React.FC = () => {
 
   // Permission check - redirect if unauthorized
   useEffect(() => {
-    if (!userLoading && !isAdmin && !isManager) {
+    if (!userLoading && !canAccessLists) {
       navigate("/");
     }
-  }, [userLoading, isAdmin, isManager, navigate]);
+  }, [userLoading, canAccessLists, navigate]);
 
   // Don't auto-select lists - let user choose
   // useEffect removed - lists start deselected

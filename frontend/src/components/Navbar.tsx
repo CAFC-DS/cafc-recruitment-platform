@@ -27,7 +27,7 @@ import HelpModal from "./HelpModal";
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme, toggleDarkMode } = useTheme();
-  const { user, isAdmin, isLoanManager, canAccessPlayers, canAccessAnalytics, canAccessLoanReports } = useCurrentUser();
+  const { user, isAdmin, isSeniorManager, isManager, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
@@ -359,10 +359,12 @@ const AppNavbar: React.FC = () => {
                 <Nav.Link as={Link} to="/scouting">
                   ⚽ Scouting
                 </Nav.Link>
-                <Nav.Link as={Link} to="/intel">
-                  🕵️ Intel
-                </Nav.Link>
-                {canAccessAnalytics && (
+                {canAccessIntel && (
+                  <Nav.Link as={Link} to="/intel">
+                    🕵️ Intel
+                  </Nav.Link>
+                )}
+                {canAccessLists && (
                   <Nav.Link as={Link} to="/lists">
                     📋 Lists
                   </Nav.Link>
@@ -372,7 +374,7 @@ const AppNavbar: React.FC = () => {
                     📊 Analytics
                   </Nav.Link>
                 )}
-                {isAdmin && (
+                {canAccessAdmin && (
                   <Nav.Link as={Link} to="/admin">
                     🔧 Admin
                   </Nav.Link>
@@ -579,15 +581,19 @@ const AppNavbar: React.FC = () => {
                   <Dropdown.Item onClick={() => setShowAssessmentModal(true)}>
                     📊 Add Assessment
                   </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowIntelModal(true)}>
-                    📝 Add Intel
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
-                    ⚽ Add Fixture
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
-                    👤 Add Player
-                  </Dropdown.Item>
+                  {(isAdmin || isSeniorManager || isManager) && (
+                    <>
+                      <Dropdown.Item onClick={() => setShowIntelModal(true)}>
+                        📝 Add Intel
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
+                        ⚽ Add Fixture
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
+                        👤 Add Player
+                      </Dropdown.Item>
+                    </>
+                  )}
                   <Dropdown.Divider />
                   <Dropdown.Item onClick={() => setShowFeedbackModal(true)}>
                     💬 Send Feedback
