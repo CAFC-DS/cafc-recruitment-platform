@@ -619,6 +619,18 @@ const KanbanPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Show Archived Toggle */}
+            <div className="mt-2">
+              <Form.Check
+                type="checkbox"
+                id="show-archived-checkbox"
+                label="Show Archived Players"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                style={{ fontSize: "0.85rem", color: colors.gray[700] }}
+              />
+            </div>
+
             {/* Action Buttons */}
             <div className="mt-3 pt-3 border-top">
               <div className="d-flex align-items-center gap-2 flex-wrap">

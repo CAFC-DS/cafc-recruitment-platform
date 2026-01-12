@@ -8387,7 +8387,7 @@ class PlayerListReorder(BaseModel):
 
 
 class PlayerStageUpdate(BaseModel):
-    stage: str  # New stage value (Stage 1-4)
+    stage: str  # New stage value (Stage 1-4, Archived)
 
 
 @app.post("/player-lists")

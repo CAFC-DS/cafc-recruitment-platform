@@ -834,6 +834,7 @@ const PlayerListsPage: React.FC = () => {
                         const currentStage = hasPendingStageChange
                           ? pendingStageChanges.get(player.item_id)!
                           : player.stage;
+                        const isArchived = currentStage === "Archived";
 
                         return (
                           <tr
@@ -843,9 +844,12 @@ const PlayerListsPage: React.FC = () => {
                                 ? "rgba(239, 68, 68, 0.05)" // Light red for removals
                                 : hasPendingStageChange
                                 ? "rgba(245, 158, 11, 0.05)" // Light orange for stage changes
+                                : isArchived
+                                ? "#f9fafb" // Muted background for archived
                                 : "transparent",
-                              opacity: pendingRemoval ? 0.6 : 1,
+                              opacity: pendingRemoval ? 0.6 : isArchived ? 0.85 : 1,
                               textDecoration: pendingRemoval ? "line-through" : "none",
+                              borderLeft: isArchived ? "3px solid #9ca3af" : "none",
                             }}
                           >
                             <td>
@@ -890,6 +894,22 @@ const PlayerListsPage: React.FC = () => {
                                     REMOVING
                                   </Badge>
                                 )}
+                                {isArchived && !pendingRemoval && !hasPendingStageChange && (
+                                  <Badge
+                                    bg=""
+                                    className="ms-2"
+                                    style={{
+                                      backgroundColor: "#9ca3af",
+                                      color: "white",
+                                      fontSize: "0.6rem",
+                                      padding: "2px 6px",
+                                      fontWeight: "600",
+                                    }}
+                                    title="Archived player"
+                                  >
+                                    ARCHIVED
+                                  </Badge>
+                                )}
                               </a>
                             </td>
                             <td>{player.age || "N/A"}</td>
@@ -914,6 +934,7 @@ const PlayerListsPage: React.FC = () => {
                                   <option value="Stage 2">Stage 2</option>
                                   <option value="Stage 3">Stage 3</option>
                                   <option value="Stage 4">Stage 4</option>
+                                  <option value="Archived">Archived</option>
                                 </Form.Select>
                               ) : (
                                 <Badge

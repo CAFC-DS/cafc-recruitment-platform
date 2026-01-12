@@ -33,7 +33,7 @@ export const stageColors = {
     border: "#15803d",
   },
   "Archived": {
-    bg: "#9ca3af", // Gray (archived)
+    bg: "#9ca3af", // Gray (matching archived reports)
     text: "#ffffff",
     light: "#d1d5db",
     border: "#6b7280",

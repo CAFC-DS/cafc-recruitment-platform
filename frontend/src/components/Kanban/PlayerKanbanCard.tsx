@@ -1,7 +1,7 @@
 import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Card, Row, Col, Button } from "react-bootstrap";
+import { Badge } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import {
   getPerformanceScoreColor,
@@ -141,9 +141,10 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
       className="kanban-card"
       onClick={handleCardClick}
     >
-      <Card
-        className={`h-100 shadow-sm ${isArchived ? 'report-card-archived' : ''}`}
+      {/* Card container with refined platform styling */}
+      <div
         style={{
+          backgroundColor: isArchived ? "#f9fafb" : "white",
           borderRadius: "8px",
           border: isPendingRemoval
             ? "2px solid #ef4444"
@@ -151,7 +152,8 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
             ? "2px solid #f59e0b"
             : isArchived
             ? "1px dashed #9ca3af"
-            : "1px solid #dee2e6",
+            : "1px solid #e5e7eb",
+          padding: "10px",
           marginBottom: "10px",
           cursor: isDragging ? "grabbing" : "grab",
           boxShadow: isDragging
@@ -160,153 +162,177 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
             ? "0 2px 6px rgba(239, 68, 68, 0.15)"
             : hasUnsavedChanges
             ? "0 2px 6px rgba(245, 158, 11, 0.15)"
-            : undefined,
+            : "0 1px 3px rgba(0,0,0,0.05)",
           transition: "all 0.2s ease",
           userSelect: "none",
           transform: isDragging ? "scale(1.02)" : "scale(1)",
-          opacity: isPendingRemoval ? 0.6 : 1,
+          opacity: isPendingRemoval ? 0.6 : isArchived ? 0.85 : 1,
         }}
         onMouseEnter={(e) => {
-          if (!isDragging && !isArchived) {
+          if (!isDragging) {
             e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
             e.currentTarget.style.transform = "translateY(-1px)";
           }
         }}
         onMouseLeave={(e) => {
-          if (!isDragging && !isArchived) {
-            e.currentTarget.style.boxShadow = "";
+          if (!isDragging) {
+            e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.05)";
             e.currentTarget.style.transform = "translateY(0)";
           }
         }}
       >
-        <Card.Body className="p-3">
-          {/* Row 1: Player Info & Badges */}
-          <Row className="mb-3 pb-2 border-bottom">
-            <Col xs={6}>
+        {/* Header: Player name and score */}
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <div className="flex-grow-1">
+            <div className="d-flex align-items-center gap-2">
               <div
-                className="fw-bold d-block mb-1"
+                className="fw-bold"
                 style={{
-                  color: "#212529",
-                  fontSize: "1rem",
-                  textAlign: "left",
+                  fontSize: "0.9rem",
+                  marginBottom: "4px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {player.player_name}
               </div>
-              <small className="text-muted d-block">
-                Team: {player.squad_name || "Unknown"}
-              </small>
-              <small className="text-muted d-block">
-                Age: {player.age || "N/A"}
-              </small>
-            </Col>
-            <Col xs={6} className="text-end">
-              <div>
-                {hasUnsavedChanges && !isPendingRemoval && (
-                  <Badge
-                    bg=""
-                    style={{
-                      backgroundColor: "#f59e0b",
-                      color: "white",
-                      fontSize: "0.6rem",
-                      padding: "2px 6px",
-                      fontWeight: "600",
-                    }}
-                    className="d-block mb-1"
-                    title="Unsaved stage change"
-                  >
-                    UNSAVED
-                  </Badge>
-                )}
-                {isPendingRemoval && (
-                  <Badge
-                    bg=""
-                    style={{
-                      backgroundColor: "#ef4444",
-                      color: "white",
-                      fontSize: "0.6rem",
-                      padding: "2px 6px",
-                      fontWeight: "600",
-                    }}
-                    className="d-block mb-1"
-                    title="Pending removal"
-                  >
-                    REMOVING
-                  </Badge>
-                )}
-                {isArchived && (
-                  <span className="badge-archived d-block mb-1">ARCHIVED</span>
-                )}
-              </div>
-            </Col>
-          </Row>
-
-          {/* Row 2: Reports & Performance Score */}
-          <Row className="mb-3 pb-2 border-bottom">
-            <Col xs={6}>
-              <small className="text-muted d-block">
-                📊 {player.report_count} {player.report_count === 1 ? "report" : "reports"}
-              </small>
-              {player.live_reports > 0 && (
-                <small className="text-muted d-block" style={{ marginTop: "4px" }}>
-                  🏟️ {player.live_reports} live
-                </small>
-              )}
-            </Col>
-            <Col xs={6} className="text-end">
-              {player.avg_performance_score !== null && (
-                <div>
-                  <small className="text-muted d-block mb-1">Average Score</small>
-                  <span
-                    className={`badge ${
-                      player.avg_performance_score === 9 ? 'performance-score-9' :
-                      player.avg_performance_score === 10 ? 'performance-score-10' : ''
-                    }`}
-                    style={{
-                      backgroundColor: scoreColor,
-                      color: "white",
-                      fontWeight: "bold",
-                      fontSize: "0.9rem",
-                      ...(player.avg_performance_score !== 9 && player.avg_performance_score !== 10 ? { border: "none" } : {}),
-                    }}
-                  >
-                    {player.avg_performance_score.toFixed(1)}
-                  </span>
-                </div>
-              )}
-            </Col>
-          </Row>
-
-          {/* Row 3: Lists & Delete Button */}
-          <Row className="align-items-center">
-            <Col>
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <MultiListBadges
-                    universalId={player.universal_id}
-                    maxVisible={2}
-                    showStage={false}
-                    memberships={memberships}
-                    loading={loadingMemberships}
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="btn-action-circle btn-action-delete"
-                  title="Delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(player.item_id);
+              {hasUnsavedChanges && !isPendingRemoval && (
+                <Badge
+                  bg=""
+                  style={{
+                    backgroundColor: "#f59e0b",
+                    color: "white",
+                    fontSize: "0.6rem",
+                    padding: "2px 6px",
+                    fontWeight: "600",
                   }}
-                  disabled={isRemoving}
+                  title="Unsaved stage change"
                 >
-                  {isRemoving ? "..." : "🗑️"}
-                </Button>
-              </div>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+                  UNSAVED
+                </Badge>
+              )}
+              {isPendingRemoval && (
+                <Badge
+                  bg=""
+                  style={{
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    fontSize: "0.6rem",
+                    padding: "2px 6px",
+                    fontWeight: "600",
+                  }}
+                  title="Pending removal"
+                >
+                  REMOVING
+                </Badge>
+              )}
+              {isArchived && !isPendingRemoval && !hasUnsavedChanges && (
+                <Badge
+                  bg=""
+                  style={{
+                    backgroundColor: "#9ca3af",
+                    color: "white",
+                    fontSize: "0.6rem",
+                    padding: "2px 6px",
+                    fontWeight: "600",
+                  }}
+                  title="Archived player"
+                >
+                  ARCHIVED
+                </Badge>
+              )}
+            </div>
+            <small className="text-muted">
+              {player.position || "Unknown"} • Age {player.age || "N/A"}
+            </small>
+          </div>
+          {/* Performance score badge */}
+          {player.avg_performance_score !== null && (
+            <Badge
+              bg=""
+              style={{
+                backgroundColor: scoreColor,
+                color: textColor,
+                fontWeight: "bold",
+                fontSize: "0.75rem",
+                padding: "4px 8px",
+                marginLeft: "8px",
+              }}
+            >
+              {player.avg_performance_score.toFixed(1)}
+            </Badge>
+          )}
+        </div>
+
+        {/* Player details */}
+        <div className="mb-2" style={{ fontSize: "0.8rem" }}>
+          <div className="text-muted mb-1" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            🏟️ {player.squad_name || "Unknown Club"}
+          </div>
+          <div className="d-flex gap-2">
+            <span className="text-muted">
+              📊 {player.report_count} {player.report_count === 1 ? "report" : "reports"}
+            </span>
+            {player.live_reports > 0 && (
+              <Badge bg="primary" style={{ fontSize: "0.7rem", padding: "2px 6px" }}>
+                👁️ {player.live_reports} live
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Multi-list badges - shows all lists the player belongs to */}
+        <div className="mb-2">
+          <MultiListBadges
+            universalId={player.universal_id}
+            maxVisible={2}
+            showStage={false}
+            memberships={memberships}
+            loading={loadingMemberships}
+          />
+        </div>
+
+        {/* Remove button */}
+        <div className="d-flex justify-content-end mt-2 pt-2 border-top">
+          <button
+            className="remove-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(player.item_id);
+            }}
+            disabled={isRemoving}
+            style={{
+              backgroundColor: "transparent",
+              border: "1px solid #dc2626",
+              borderRadius: "50%",
+              width: "28px",
+              height: "28px",
+              padding: "0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: isRemoving ? "not-allowed" : "pointer",
+              color: "#dc2626",
+              fontSize: "1rem",
+              opacity: isRemoving ? 0.6 : 1,
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!isRemoving) {
+                e.currentTarget.style.backgroundColor = "#dc2626";
+                e.currentTarget.style.color = "white";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#dc2626";
+            }}
+          >
+            {isRemoving ? "..." : "×"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 });
