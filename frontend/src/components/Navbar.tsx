@@ -27,7 +27,7 @@ import HelpModal from "./HelpModal";
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme, toggleDarkMode } = useTheme();
-  const { user, isAdmin, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists } = useCurrentUser();
+  const { user, isAdmin, isSeniorManager, isManager, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
@@ -579,15 +579,19 @@ const AppNavbar: React.FC = () => {
                   <Dropdown.Item onClick={() => setShowAssessmentModal(true)}>
                     📊 Add Assessment
                   </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowIntelModal(true)}>
-                    📝 Add Intel
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
-                    ⚽ Add Fixture
-                  </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
-                    👤 Add Player
-                  </Dropdown.Item>
+                  {(isAdmin || isSeniorManager || isManager) && (
+                    <>
+                      <Dropdown.Item onClick={() => setShowIntelModal(true)}>
+                        📝 Add Intel
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
+                        ⚽ Add Fixture
+                      </Dropdown.Item>
+                      <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
+                        👤 Add Player
+                      </Dropdown.Item>
+                    </>
+                  )}
                   <Dropdown.Divider />
                   <Dropdown.Item onClick={() => setShowFeedbackModal(true)}>
                     💬 Send Feedback

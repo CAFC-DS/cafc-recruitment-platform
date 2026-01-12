@@ -606,10 +606,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 120
 ROLE_ADMIN = "admin"
 ROLE_SENIOR_MANAGER = "senior_manager"
 ROLE_MANAGER = "manager"
-ROLE_LOAN_SCOUT = "loan_scout"
+ROLE_LOAN_MANAGER = "loan_manager"
 ROLE_SCOUT = "scout"
 
-VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_SCOUT, ROLE_SCOUT]
+VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT]
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -668,7 +668,7 @@ class UserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: Optional[str] = "scout"  # admin, senior_manager, manager, loan_scout, scout
+    role: Optional[str] = "scout"  # admin, senior_manager, manager, loan_manager, scout
     firstname: str
     lastname: str
 
@@ -4266,7 +4266,7 @@ async def get_all_scout_reports(
                     logging.info(
                         f"Applied scout filtering for user ID: {current_user.id}"
                     )
-                elif current_user.role == ROLE_LOAN_SCOUT:
+                elif current_user.role == ROLE_LOAN_MANAGER:
                     # Loan scouts see their own reports OR any Loan Reports
                     # Use UPPER() for case-insensitive comparison
                     where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
@@ -4488,7 +4488,7 @@ async def get_recent_scout_reports(
     Optimized endpoint with caching for faster homepage loads.
     """
     # Generate cache key
-    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_SCOUT] else 'all'}"
+    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache
     cached_result = get_cache(cache_key)
@@ -4525,7 +4525,7 @@ async def get_recent_scout_reports(
                     # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
-                elif current_user.role == ROLE_LOAN_SCOUT:
+                elif current_user.role == ROLE_LOAN_MANAGER:
                     # Loan scouts see their own reports OR any Loan Reports
                     where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
                     sql_params.append(current_user.id)
@@ -4687,7 +4687,7 @@ async def get_top_attribute_reports(
     not just the top N from the most recent reports.
     """
     # Generate cache key based on parameters and user role
-    cache_key = f"top_attributes_{recency_days}_{limit}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_SCOUT] else 'all'}"
+    cache_key = f"top_attributes_{recency_days}_{limit}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first (5 min TTL for dashboard widgets)
     cached_data = get_cache(cache_key)
@@ -4721,7 +4721,7 @@ async def get_top_attribute_reports(
                     # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
-                elif current_user.role == ROLE_LOAN_SCOUT:
+                elif current_user.role == ROLE_LOAN_MANAGER:
                     # Loan scouts see their own reports OR any Loan Reports
                     where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
                     sql_params.append(current_user.id)
@@ -5015,8 +5015,8 @@ class PlayerNote(BaseModel):
 async def get_player_profile(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
-    # Generate cache key based on player_id and user role (scouts/loan_scout see filtered data)
-    cache_key = f"player_profile_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_SCOUT] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
+    cache_key = f"player_profile_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5069,7 +5069,7 @@ async def get_player_profile(
                     f"WHERE {player_id_column} = %s AND sr.USER_ID = %s",
                 )
                 scout_values = (actual_player_id, current_user.id)
-            elif current_user.role == ROLE_LOAN_SCOUT:
+            elif current_user.role == ROLE_LOAN_MANAGER:
                 # Loan scouts see their own reports OR any Loan Reports
                 scout_sql = scout_sql.replace(
                     f"WHERE {player_id_column} = %s",
@@ -5225,8 +5225,8 @@ async def get_player_attributes(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get player attribute averages grouped by categories from all scout reports"""
-    # Generate cache key based on player_id and user role (scouts/loan_scout see filtered reports)
-    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_SCOUT] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered reports)
+    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5280,7 +5280,7 @@ async def get_player_attributes(
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == ROLE_LOAN_SCOUT:
+            elif current_user.role == ROLE_LOAN_MANAGER:
                 # Loan scouts see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
@@ -5426,8 +5426,8 @@ async def get_player_scout_reports(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get scout reports timeline for a player"""
-    # Generate cache key based on player_id and user role (scouts/loan_scout see filtered data)
-    cache_key = f"player_scout_reports_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_SCOUT] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
+    cache_key = f"player_scout_reports_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5492,7 +5492,7 @@ async def get_player_scout_reports(
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == ROLE_LOAN_SCOUT:
+            elif current_user.role == ROLE_LOAN_MANAGER:
                 # Loan scouts see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
@@ -5574,8 +5574,8 @@ async def get_player_position_counts(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get count of scout reports by position for a player"""
-    # Generate cache key based on player_id and user role (scouts/loan_scout see filtered data)
-    cache_key = f"player_position_counts_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_SCOUT] else 'all'}"
+    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
+    cache_key = f"player_position_counts_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -5624,7 +5624,7 @@ async def get_player_position_counts(
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == ROLE_LOAN_SCOUT:
+            elif current_user.role == ROLE_LOAN_MANAGER:
                 # Loan scouts see their own reports OR any Loan Reports
                 base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
                 query_params.append(current_user.id)
@@ -6853,14 +6853,14 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
         current_roles = cursor.fetchall()
         results.append(f"Current role distribution: {dict(current_roles)}")
 
-        # Migrate 'loan' to 'loan_scout'
+        # Migrate 'loan' to 'loan_manager'
         cursor.execute(
             "UPDATE users SET ROLE = %s WHERE ROLE = %s",
-            (ROLE_LOAN_SCOUT, "loan")
+            (ROLE_LOAN_MANAGER, "loan")
         )
         loan_updates = cursor.rowcount
         results.append(
-            f"Migrated {loan_updates} users from 'loan' to 'loan_scout'"
+            f"Migrated {loan_updates} users from 'loan' to 'loan_manager'"
         )
 
         conn.commit()
@@ -6875,7 +6875,7 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
         return {
             "message": "Role migration completed successfully",
             "results": results,
-            "loan_to_loan_scout_updates": loan_updates,
+            "loan_to_loan_manager_updates": loan_updates,
         }
 
     except Exception as e:
@@ -6925,10 +6925,10 @@ async def create_test_users(current_user: User = Depends(get_current_user)):
                 "lastname": "Test"
             },
             {
-                "username": "test_loan_scout",
+                "username": "test_loan_manager",
                 "email": "loan@test.com",
                 "password": "TestPassword123!",
-                "role": ROLE_LOAN_SCOUT,
+                "role": ROLE_LOAN_MANAGER,
                 "firstname": "Loan",
                 "lastname": "Scout"
             },

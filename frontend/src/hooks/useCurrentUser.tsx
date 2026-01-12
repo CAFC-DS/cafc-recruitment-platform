@@ -42,7 +42,7 @@ export const useCurrentUser = () => {
   const isAdmin = user?.role === "admin";
   const isSeniorManager = user?.role === "senior_manager";
   const isManager = user?.role === "manager";
-  const isLoanScout = user?.role === "loan_scout";
+  const isLoanManager = user?.role === "loan_manager";
   const isScout = user?.role === "scout";
 
   return {
@@ -52,7 +52,7 @@ export const useCurrentUser = () => {
     isAdmin,
     isSeniorManager,
     isManager,
-    isLoanScout,
+    isLoanManager,
     isScout,
     // Permission checks
     canAccessAdmin: isAdmin,
@@ -60,6 +60,6 @@ export const useCurrentUser = () => {
     canAccessAnalytics: isAdmin || isSeniorManager || isManager,
     canAccessLists: isAdmin || isSeniorManager,
     canSeeAllReports: isAdmin || isSeniorManager || isManager,
-    canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanScout,
+    canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanManager,
   };
 };

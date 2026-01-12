@@ -8,7 +8,7 @@ This guide will help you test the new 5-tier role-based access control system.
 1. **Login as an Admin** to your application
 2. Navigate to the **Admin Dashboard**
 3. Click the **"🔄 Migrate Roles"** button
-   - This will migrate any existing `loan` role users to `loan_scout`
+   - This will migrate any existing `loan` role users to `loan_manager`
    - Safe to run multiple times
    - Check the success message for results
 
@@ -22,7 +22,7 @@ This guide will help you test the new 5-tier role-based access control system.
 | `test_admin` | admin | TestPassword123! |
 | `test_senior_manager` | senior_manager | TestPassword123! |
 | `test_manager` | manager | TestPassword123! |
-| `test_loan_scout` | loan_scout | TestPassword123! |
+| `test_loan_manager` | loan_manager | TestPassword123! |
 | `test_scout` | scout | TestPassword123! |
 
 3. The system will skip any users that already exist
@@ -48,7 +48,7 @@ This guide will help you test the new 5-tier role-based access control system.
 7. Create a scout report and verify you can see it
 8. Verify you cannot see reports from other users
 
-### Test 2: Loan Scout Role (`test_loan_scout`)
+### Test 2: Loan Manager Role (`test_loan_manager`)
 
 **Expected Access:**
 - ✅ Can access: Scouting page, Home page
@@ -57,7 +57,7 @@ This guide will help you test the new 5-tier role-based access control system.
 - ❌ Cannot see: Other scouts' non-loan reports
 
 **Test Steps:**
-1. Logout and login as `test_loan_scout` / `TestPassword123!`
+1. Logout and login as `test_loan_manager` / `TestPassword123!`
 2. Check navbar - should only show "Scouting"
 3. Create a scout report with PURPOSE = "Loan Report"
 4. Create a scout report with PURPOSE = "Player Report"
@@ -121,7 +121,7 @@ This guide will help you test the new 5-tier role-based access control system.
    - 1 with PURPOSE = "Player Report"
    - 1 with PURPOSE = "Loan Report"
 
-2. Login as `test_loan_scout` and create 2 scout reports:
+2. Login as `test_loan_manager` and create 2 scout reports:
    - 1 with PURPOSE = "Player Report"
    - 1 with PURPOSE = "Loan Report"
 
@@ -130,7 +130,7 @@ This guide will help you test the new 5-tier role-based access control system.
    - Should see: Only their 2 reports
    - Total visible: 2 reports
 
-2. **Login as `test_loan_scout`:**
+2. **Login as `test_loan_manager`:**
    - Should see: Their 2 reports + test_scout's loan report
    - Total visible: 3 reports
 
@@ -177,7 +177,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ## Role Summary Table
 
-| Feature | Scout | Loan Scout | Manager | Senior Manager | Admin |
+| Feature | Scout | Loan Manager | Manager | Senior Manager | Admin |
 |---------|-------|------------|---------|----------------|-------|
 | **Scouting Page** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **See Own Reports** | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -192,28 +192,28 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ### Scout Reports
 - **Scout:** `WHERE USER_ID = current_user.id`
-- **Loan Scout:** `WHERE (USER_ID = current_user.id OR PURPOSE = 'Loan Report')`
+- **Loan Manager:** `WHERE (USER_ID = current_user.id OR PURPOSE = 'Loan Report')`
 - **Manager:** No filter (sees all)
 - **Senior Manager:** No filter (sees all)
 - **Admin:** No filter (sees all)
 
 ### Intel Reports
 - **Scout:** No access (403)
-- **Loan Scout:** No access (403)
+- **Loan Manager:** No access (403)
 - **Manager:** No access (403)
 - **Senior Manager:** No filter (sees all)
 - **Admin:** No filter (sees all)
 
 ### Analytics
 - **Scout:** No access (403)
-- **Loan Scout:** No access (403)
+- **Loan Manager:** No access (403)
 - **Manager:** Full access
 - **Senior Manager:** Full access
 - **Admin:** Full access
 
 ### Lists
 - **Scout:** No access (403)
-- **Loan Scout:** No access (403)
+- **Loan Manager:** No access (403)
 - **Manager:** No access (403)
 - **Senior Manager:** Full access
 - **Admin:** Full access

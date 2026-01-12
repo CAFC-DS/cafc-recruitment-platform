@@ -215,7 +215,7 @@ const AdminPage: React.FC = () => {
       !window.confirm(
         "Migrate user roles from old naming to new 5-tier system?\n\n" +
         "This will update:\n" +
-        "- 'loan' → 'loan_scout'\n\n" +
+        "- 'loan' → 'loan_manager'\n\n" +
         "Safe to run multiple times.",
       )
     ) {
@@ -248,7 +248,7 @@ const AdminPage: React.FC = () => {
         "- test_admin (admin)\n" +
         "- test_senior_manager (senior_manager)\n" +
         "- test_manager (manager)\n" +
-        "- test_loan_scout (loan_scout)\n" +
+        "- test_loan_manager (loan_manager)\n" +
         "- test_scout (scout)\n\n" +
         "Password for all: TestPassword123!\n\n" +
         "Existing users will be skipped.",
@@ -409,7 +409,7 @@ const AdminPage: React.FC = () => {
                         style={{ width: "auto" }}
                       >
                         <option value="scout">Scout</option>
-                        <option value="loan_scout">Loan Scout</option>
+                        <option value="loan_manager">Loan Manager</option>
                         <option value="manager">Manager</option>
                         <option value="senior_manager">Senior Manager</option>
                         <option value="admin">Admin</option>
@@ -517,7 +517,7 @@ const AdminPage: React.FC = () => {
                 }
               >
                 <option value="scout">Scout</option>
-                <option value="loan_scout">Loan Scout</option>
+                <option value="loan_manager">Loan Manager</option>
                 <option value="manager">Manager</option>
                 <option value="senior_manager">Senior Manager</option>
                 <option value="admin">Admin</option>
