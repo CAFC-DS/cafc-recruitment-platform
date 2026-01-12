@@ -75,6 +75,7 @@ const KanbanPage: React.FC = () => {
 
   // Filter states
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   // Batch save mode for stage changes and removals
   const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, { fromStage: string; toStage: string; listId: number }>>(new Map());
@@ -130,6 +131,7 @@ const KanbanPage: React.FC = () => {
       "Stage 2": [] as PlayerInList[],
       "Stage 3": [] as PlayerInList[],
       "Stage 4": [] as PlayerInList[],
+      ...(showArchived ? { "Archived": [] as PlayerInList[] } : {}),
     };
 
     lists.forEach((list) => {
@@ -146,8 +148,9 @@ const KanbanPage: React.FC = () => {
         const pendingChange = pendingStageChanges.get(player.item_id);
         const stage = pendingChange ? pendingChange.toStage : (player.stage || "Stage 1");
 
-        if (stages[stage as keyof typeof stages]) {
-          stages[stage as keyof typeof stages].push({
+        const stageArray = stages[stage as keyof typeof stages];
+        if (stageArray) {
+          stageArray.push({
             ...player,
             list_id: list.id,
             list_name: list.list_name,
@@ -175,7 +178,7 @@ const KanbanPage: React.FC = () => {
           : null,
       players,
     }));
-  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived]);
 
   /**
    * Fetch batch memberships when stage columns change (eliminates N+1 queries)
@@ -612,6 +615,18 @@ const KanbanPage: React.FC = () => {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Show Archived Toggle */}
+            <div className="mt-2">
+              <Form.Check
+                type="checkbox"
+                id="show-archived-checkbox"
+                label="Show Archived Players"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                style={{ fontSize: "0.85rem", color: colors.gray[700] }}
+              />
             </div>
 
             {/* Action Buttons */}

@@ -129,6 +129,9 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
     navigate(getPlayerPath(player.universal_id));
   };
 
+  // Determine if this card is in archived stage
+  const isArchived = player.stage === "Archived";
+
   return (
     <div
       ref={setNodeRef}
@@ -141,12 +144,14 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
       {/* Card container with refined platform styling */}
       <div
         style={{
-          backgroundColor: "white",
+          backgroundColor: isArchived ? "#f9fafb" : "white",
           borderRadius: "8px",
           border: isPendingRemoval
             ? "2px solid #ef4444"
             : hasUnsavedChanges
             ? "2px solid #f59e0b"
+            : isArchived
+            ? "1px dashed #9ca3af"
             : "1px solid #e5e7eb",
           padding: "10px",
           marginBottom: "10px",
@@ -161,7 +166,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
           transition: "all 0.2s ease",
           userSelect: "none",
           transform: isDragging ? "scale(1.02)" : "scale(1)",
-          opacity: isPendingRemoval ? 0.6 : 1,
+          opacity: isPendingRemoval ? 0.6 : isArchived ? 0.85 : 1,
         }}
         onMouseEnter={(e) => {
           if (!isDragging) {
@@ -220,6 +225,21 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
                   title="Pending removal"
                 >
                   REMOVING
+                </Badge>
+              )}
+              {isArchived && !isPendingRemoval && !hasUnsavedChanges && (
+                <Badge
+                  bg=""
+                  style={{
+                    backgroundColor: "#9ca3af",
+                    color: "white",
+                    fontSize: "0.6rem",
+                    padding: "2px 6px",
+                    fontWeight: "600",
+                  }}
+                  title="Archived player"
+                >
+                  ARCHIVED
                 </Badge>
               )}
             </div>
