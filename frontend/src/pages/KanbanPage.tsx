@@ -82,6 +82,10 @@ const KanbanPage: React.FC = () => {
   const [pendingRemovals, setPendingRemovals] = useState<Map<number, number>>(new Map()); // itemId -> listId
   const [savingChanges, setSavingChanges] = useState(false);
 
+  // Batch list memberships (for MultiListBadges performance)
+  const [batchMemberships, setBatchMemberships] = useState<Record<string, PlayerListMembership[]>>({});
+  const [loadingMemberships, setLoadingMemberships] = useState(false);
+
   // Modals
   const [showListModal, setShowListModal] = useState(false);
   const [editingList, setEditingList] = useState<PlayerList | null>(null);
@@ -100,10 +104,6 @@ const KanbanPage: React.FC = () => {
 
   // Remove player state
   const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
-
-  // Batch list memberships (for MultiListBadges optimization)
-  const [batchMemberships, setBatchMemberships] = useState<Record<string, PlayerListMembership[]>>({});
-  const [loadingMemberships, setLoadingMemberships] = useState(false);
 
   // Permission check - redirect if unauthorized
   useEffect(() => {
