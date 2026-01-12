@@ -216,37 +216,6 @@ const KanbanPage: React.FC = () => {
   }, [stageColumns]);
 
   /**
-   * Fetch batch memberships when stage columns change (eliminates N+1 queries)
-   */
-  useEffect(() => {
-    const fetchBatchMemberships = async () => {
-      // Collect all unique universal_ids from all stage columns
-      const allPlayers = stageColumns.flatMap((column) => column.players);
-
-      if (allPlayers.length === 0) {
-        setBatchMemberships({});
-        return;
-      }
-
-      try {
-        setLoadingMemberships(true);
-        const universalIds = allPlayers.map((p) => p.universal_id);
-        // Remove duplicates
-        const uniqueIds = Array.from(new Set(universalIds));
-        const memberships = await getBatchPlayerListMemberships(uniqueIds);
-        setBatchMemberships(memberships);
-      } catch (err) {
-        console.error("Error fetching batch memberships:", err);
-        setBatchMemberships({});
-      } finally {
-        setLoadingMemberships(false);
-      }
-    };
-
-    fetchBatchMemberships();
-  }, [stageColumns]);
-
-  /**
    * Toggle list visibility
    */
   const toggleListVisibility = (listId: number) => {
