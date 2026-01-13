@@ -948,13 +948,12 @@ const PlayerProfilePage: React.FC = () => {
                               {canGenerateShareLinks && (
                                 <Button
                                   size="sm"
-                                  variant="outline-secondary"
                                   onClick={() => {
                                     setShareReportId(report.report_id);
                                     setShowShareModal(true);
                                   }}
                                   title="Generate shareable link"
-                                  className="ms-1"
+                                  className="btn-action-circle ms-1"
                                 >
                                   🔗
                                 </Button>
@@ -1172,7 +1171,6 @@ const PlayerProfilePage: React.FC = () => {
                             {canGenerateShareLinks && (
                               <Button
                                 size="sm"
-                                variant="outline-secondary"
                                 onClick={() => {
                                   setShareReportId(report.report_id);
                                   setShowShareModal(true);
@@ -1180,9 +1178,13 @@ const PlayerProfilePage: React.FC = () => {
                                 title="Generate shareable link"
                                 className="ms-2"
                                 style={{
-                                  padding: "6px 12px",
+                                  backgroundColor: "white",
+                                  color: "#000000",
+                                  fontWeight: 600,
+                                  padding: "6px 16px",
                                   borderRadius: "20px",
                                   fontSize: "0.85rem",
+                                  border: "2px solid #dee2e6",
                                 }}
                               >
                                 🔗 Share
