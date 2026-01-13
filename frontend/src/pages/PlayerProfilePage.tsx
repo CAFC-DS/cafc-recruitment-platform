@@ -1570,11 +1570,13 @@ const PlayerProfilePage: React.FC = () => {
       />
 
       {/* Share Link Modal */}
-      <ShareLinkModal
-        show={showShareModal}
-        onHide={() => setShowShareModal(false)}
-        reportId={shareReportId}
-      />
+      {shareReportId && (
+        <ShareLinkModal
+          show={showShareModal}
+          onHide={() => setShowShareModal(false)}
+          reportId={shareReportId}
+        />
+      )}
 
       <style>{`
         .player-profile-page {
