@@ -15,6 +15,7 @@ import AdminPage from './pages/AdminPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import PlayerListsPage from './pages/PlayerListsPage';
 import KanbanPage from './pages/KanbanPage';
+import SharedReportPage from './pages/SharedReportPage';
 
 interface AuthContextType {
   token: string | null;
@@ -292,6 +293,8 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePageWrapper />} />
             <Route path="/login" element={<LoginPageWrapper />} /> {/* Use the wrapper here */}
+            {/* Public route for shared reports - no authentication required */}
+            <Route path="/shared-report/:token" element={<SharedReportPage />} />
             <Route
               path="/scouting"
               element={

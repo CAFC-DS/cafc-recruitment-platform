@@ -564,12 +564,16 @@ const IntelPage: React.FC = () => {
                         {new Date(report.created_at).toLocaleDateString()}
                       </td>
                       <td>
-                          <Button
-                            variant="link"
-                            onClick={() => navigate(getPlayerProfilePath(report as any))}
+                          <a
+                            href={getPlayerProfilePath(report as any)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(getPlayerProfilePath(report as any));
+                            }}
+                            style={{ textDecoration: "none", color: "#0d6efd", cursor: "pointer" }}
                           >
                             {report.player_name}
-                          </Button>
+                          </a>
                       </td>
                       <td>{report.contact_name}</td>
                       <td>
@@ -658,20 +662,22 @@ const IntelPage: React.FC = () => {
                         <Col xs={6}>
                           <div>
                             {report.player_id ? (
-                              <Button
-                              variant="link"
-                              className="p-0 text-decoration-none fw-bold d-block mb-1"
+                              <a
+                              href={getPlayerProfilePath(report as any)}
+                              className="text-decoration-none fw-bold d-block mb-1"
                               style={{
                                 color: "#212529",
                                 fontSize: "1rem",
                                 textAlign: "left",
+                                cursor: "pointer",
                               }}
-                              onClick={() =>
-                                navigate(`/player/${report.player_id}`)
-                              }
+                              onClick={(e) => {
+                                e.preventDefault();
+                                navigate(getPlayerProfilePath(report as any));
+                              }}
                             >
                                 {report.player_name}
-                              </Button>
+                              </a>
                             ) : (
                               <div
                                 className="fw-bold d-block mb-1"

@@ -1,0 +1,26 @@
+-- Create SHARED_REPORT_LINKS table for shareable scout report links
+-- This allows generating secure public links for external viewing
+
+CREATE TABLE IF NOT EXISTS SHARED_REPORT_LINKS (
+    ID INTEGER AUTOINCREMENT PRIMARY KEY,
+    REPORT_ID INTEGER NOT NULL,
+    SHARE_TOKEN VARCHAR(255) UNIQUE NOT NULL,
+    CREATED_BY INTEGER NOT NULL,
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    EXPIRES_AT TIMESTAMP,
+    ACCESS_COUNT INTEGER DEFAULT 0,
+    LAST_ACCESSED TIMESTAMP,
+    IS_ACTIVE BOOLEAN DEFAULT TRUE,
+
+    -- Foreign key constraints
+    FOREIGN KEY (REPORT_ID) REFERENCES SCOUT_REPORTS(ID),
+    FOREIGN KEY (CREATED_BY) REFERENCES USERS(ID)
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_shared_links_token ON SHARED_REPORT_LINKS(SHARE_TOKEN);
+CREATE INDEX IF NOT EXISTS idx_shared_links_report_id ON SHARED_REPORT_LINKS(REPORT_ID);
+CREATE INDEX IF NOT EXISTS idx_shared_links_active ON SHARED_REPORT_LINKS(IS_ACTIVE, EXPIRES_AT);
+
+-- Add comment
+COMMENT ON TABLE SHARED_REPORT_LINKS IS 'Stores shareable links for scout reports to allow external viewing without authentication';

@@ -27,7 +27,9 @@ import {
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
+import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getPerformanceScoreColor, getFlagColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import {
@@ -189,6 +191,7 @@ const PlayerProfilePage: React.FC = () => {
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
   const { viewMode, setViewMode } = useViewMode();
+  const { canGenerateShareLinks } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -202,6 +205,8 @@ const PlayerProfilePage: React.FC = () => {
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [selectedIntelId, setSelectedIntelId] = useState<number | null>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareReportId, setShareReportId] = useState<number | null>(null);
 
   // Notes functionality
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
@@ -940,6 +945,20 @@ const PlayerProfilePage: React.FC = () => {
                                   "👁️"
                                 )}
                               </Button>
+                              {canGenerateShareLinks && (
+                                <Button
+                                  size="sm"
+                                  variant="outline-secondary"
+                                  onClick={() => {
+                                    setShareReportId(report.report_id);
+                                    setShowShareModal(true);
+                                  }}
+                                  title="Generate shareable link"
+                                  className="ms-1"
+                                >
+                                  🔗
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1150,6 +1169,25 @@ const PlayerProfilePage: React.FC = () => {
                                 "View Report 👁️"
                               )}
                             </Button>
+                            {canGenerateShareLinks && (
+                              <Button
+                                size="sm"
+                                variant="outline-secondary"
+                                onClick={() => {
+                                  setShareReportId(report.report_id);
+                                  setShowShareModal(true);
+                                }}
+                                title="Generate shareable link"
+                                className="ms-2"
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: "20px",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                🔗 Share
+                              </Button>
+                            )}
                           </Col>
                         </Row>
                       </Card.Body>
@@ -1527,6 +1565,13 @@ const PlayerProfilePage: React.FC = () => {
         show={showIntelModal}
         onHide={() => setShowIntelModal(false)}
         intelId={selectedIntelId}
+      />
+
+      {/* Share Link Modal */}
+      <ShareLinkModal
+        show={showShareModal}
+        onHide={() => setShowShareModal(false)}
+        reportId={shareReportId}
       />
 
       <style>{`
