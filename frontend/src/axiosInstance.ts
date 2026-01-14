@@ -9,7 +9,7 @@ const getApiUrl = () => {
   }
 
   // In development, use localhost
-  return process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  return process.env.REACT_APP_API_URL || 'http://localhost:3001';
 };
 
 const axiosInstance = axios.create({
