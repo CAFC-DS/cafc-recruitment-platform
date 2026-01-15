@@ -1263,32 +1263,34 @@ const PlayerProfilePage: React.FC = () => {
 
                           {/* Right: Actions */}
                           <Col xs={6} className="text-end">
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenReportModal(report.report_id)}
-                              disabled={loadingReportId === report.report_id}
-                              title="View Report"
-                              className="btn-action-circle btn-action-view"
-                            >
-                              {loadingReportId === report.report_id ? (
-                                <Spinner as="span" animation="border" size="sm" />
-                              ) : (
-                                "👁️"
-                              )}
-                            </Button>
-                            {canGenerateShareLinks && (
+                            <div className="d-flex justify-content-end gap-1">
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  setShareReportId(report.report_id);
-                                  setShowShareModal(true);
-                                }}
-                                title="Generate shareable link"
-                                className="btn-action-circle ms-1"
+                                onClick={() => handleOpenReportModal(report.report_id)}
+                                disabled={loadingReportId === report.report_id}
+                                title="View Report"
+                                className="btn-action-circle btn-action-view"
                               >
-                                🔗
+                                {loadingReportId === report.report_id ? (
+                                  <Spinner as="span" animation="border" size="sm" />
+                                ) : (
+                                  "👁️"
+                                )}
                               </Button>
-                            )}
+                              {canGenerateShareLinks && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setShareReportId(report.report_id);
+                                    setShowShareModal(true);
+                                  }}
+                                  title="Generate shareable link"
+                                  className="btn-action-circle"
+                                >
+                                  🔗
+                                </Button>
+                              )}
+                            </div>
                           </Col>
                         </Row>
                       </Card.Body>
