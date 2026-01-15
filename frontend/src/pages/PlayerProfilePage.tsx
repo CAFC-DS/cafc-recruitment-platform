@@ -11,6 +11,7 @@ import {
   Spinner,
   Modal,
   Table,
+  Dropdown,
 } from "react-bootstrap";
 import { PolarArea } from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -27,7 +28,9 @@ import {
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
+import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getPerformanceScoreColor, getFlagColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import {
@@ -189,6 +192,7 @@ const PlayerProfilePage: React.FC = () => {
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
   const { viewMode, setViewMode } = useViewMode();
+  const { canGenerateShareLinks } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -202,6 +206,8 @@ const PlayerProfilePage: React.FC = () => {
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [selectedIntelId, setSelectedIntelId] = useState<number | null>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareReportId, setShareReportId] = useState<number | null>(null);
 
   // Notes functionality
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
@@ -209,14 +215,21 @@ const PlayerProfilePage: React.FC = () => {
   const [isPrivateNote, setIsPrivateNote] = useState(true);
   const [addingNote, setAddingNote] = useState(false);
 
-  // Position filter for radar charts
-  const [selectedPosition, setSelectedPosition] = useState<string>("");
+  // Position filter for radar charts - updated for multi-select
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [positionAttributes, setPositionAttributes] = useState<string[]>([]);
   const [positionAttributeScores, setPositionAttributeScores] = useState<{
     [key: string]: number;
   }>({});
   const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [positionCounts, setPositionCounts] = useState<Array<{position: string, report_count: number}>>([]);
+
+  // Report filtering for attribute analysis
+  const [selectedReportIds, setSelectedReportIds] = useState<number[]>([]);
+  const [filteredReports, setFilteredReports] = useState<any[]>([]);
+  const [filteredAttributeScores, setFilteredAttributeScores] = useState<{
+    [key: string]: { avg_score: number; report_count: number };
+  }>({});
 
   // Report carousel controls
   const [currentReportPage, setCurrentReportPage] = useState(0);
@@ -292,34 +305,52 @@ const PlayerProfilePage: React.FC = () => {
     return positions;
   };
 
-  // Handle position change like ScoutingAssessmentModal
-  const handlePositionChange = async (position: string) => {
-    setSelectedPosition(position);
-    if (position) {
+  // Handle position change - updated to support multiple positions
+  const handlePositionChange = async (positions: string[]) => {
+    setSelectedPositions(positions);
+
+    if (positions.length > 0) {
       try {
-        const response = await axiosInstance.get(`/attributes/${position}`);
-        setPositionAttributes(response.data);
+        // Fetch attributes for all selected positions
+        const attributePromises = positions.map(position =>
+          axiosInstance.get(`/attributes/${position}`)
+        );
+        const responses = await Promise.all(attributePromises);
 
-        // Calculate average scores for this position's attributes
+        // Union of all attributes from selected positions
+        const allPositionAttributes = new Set<string>();
+        responses.forEach(response => {
+          response.data.forEach((attr: string) => allPositionAttributes.add(attr));
+        });
+
+        const mergedAttributes = Array.from(allPositionAttributes);
+        setPositionAttributes(mergedAttributes);
+
+        // Fetch filtered attribute scores based on selected positions
+        const params = new URLSearchParams();
+        params.append('position_filter', positions.join(','));
+
+        // Include report filter if reports are selected
+        if (selectedReportIds.length > 0) {
+          params.append('report_ids', selectedReportIds.join(','));
+        }
+
+        const attributeResponse = await axiosInstance.get(
+          `/players/${playerId}/attributes?${params.toString()}`
+        );
+
+        // Extract scores from the response
         const positionScores: { [key: string]: number } = {};
-
-        if (attributes && attributes.attribute_groups) {
-          // Flatten all attributes from all groups to find matches
-          const allAttributes = Object.values(
-            attributes.attribute_groups,
-          ).flat();
-
-          response.data.forEach((attr: string) => {
-            const matchingAttribute = allAttributes.find(
-              (a: AttributeData) => a.name === attr,
-            );
-            positionScores[attr] = matchingAttribute
-              ? matchingAttribute.average_score
-              : 0;
+        if (attributeResponse.data?.attribute_groups) {
+          Object.values(attributeResponse.data.attribute_groups).flat().forEach((attr: any) => {
+            positionScores[attr.name] = attr.average_score;
           });
         }
 
         setPositionAttributeScores(positionScores);
+
+        // Update filtered reports based on selected positions
+        updateFilteredReports(positions, selectedReportIds);
       } catch (error) {
         console.error("Error fetching attributes:", error);
         setPositionAttributes([]);
@@ -328,7 +359,88 @@ const PlayerProfilePage: React.FC = () => {
     } else {
       setPositionAttributes([]);
       setPositionAttributeScores({});
+      setFilteredAttributeScores({});
+      // Reset filtered reports when no positions selected
+      updateFilteredReports([], selectedReportIds);
     }
+  };
+
+  // Update filtered reports based on position and report selections
+  const updateFilteredReports = (positions: string[], reportIds: number[]) => {
+    if (!scoutReportsData?.reports) {
+      setFilteredReports([]);
+      return;
+    }
+
+    let filtered = scoutReportsData.reports;
+
+    // Filter by positions if any are selected
+    if (positions.length > 0) {
+      filtered = filtered.filter(report =>
+        report.position_played && positions.includes(report.position_played)
+      );
+    }
+
+    setFilteredReports(filtered);
+  };
+
+  // Handle report selection for attribute filtering
+  const handleReportSelection = (reportIds: number[]) => {
+    setSelectedReportIds(reportIds);
+    // Fetch filtered attribute scores from backend
+    if (reportIds.length > 0) {
+      fetchFilteredAttributes(reportIds);
+    } else {
+      setFilteredAttributeScores({});
+    }
+  };
+
+  // Fetch filtered attributes based on selected reports
+  const fetchFilteredAttributes = async (reportIds: number[]) => {
+    if (!playerId || reportIds.length === 0) {
+      setFilteredAttributeScores({});
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams();
+      params.append('report_ids', reportIds.join(','));
+
+      if (selectedPositions.length > 0) {
+        params.append('position_filter', selectedPositions.join(','));
+      }
+
+      const response = await axiosInstance.get(
+        `/players/${playerId}/attributes?${params.toString()}`
+      );
+
+      // Transform response to match expected format
+      const scores: { [key: string]: { avg_score: number; report_count: number } } = {};
+
+      if (response.data?.attribute_groups) {
+        Object.values(response.data.attribute_groups).flat().forEach((attr: any) => {
+          scores[attr.name] = {
+            avg_score: attr.average_score,
+            report_count: attr.report_count,
+          };
+        });
+      }
+
+      setFilteredAttributeScores(scores);
+    } catch (error) {
+      console.error("Error fetching filtered attributes:", error);
+      setFilteredAttributeScores({});
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSelectedPositions([]);
+    setSelectedReportIds([]);
+    setFilteredReports([]);
+    setFilteredAttributeScores({});
+    setPositionAttributes([]);
+    setPositionAttributeScores({});
   };
 
   // Helper functions for attribute grouping (copied from PlayerReportModal)
@@ -434,12 +546,23 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   // Get polar area chart data using exact logic from PlayerReportModal
-  const getPolarAreaChartData = (position: string) => {
+  const getPolarAreaChartData = () => {
     if (!positionAttributes.length || !positionAttributeScores) return null;
+
+    // Use filtered scores if reports are selected, otherwise use position-filtered scores
+    const scoresToUse = selectedReportIds.length > 0 && Object.keys(filteredAttributeScores).length > 0
+      ? filteredAttributeScores
+      : positionAttributeScores;
 
     // Sort attributes by group like PlayerReportModal
     const sortedAttributes = positionAttributes
-      .map((attr) => [attr, positionAttributeScores[attr] || 0])
+      .map((attr) => {
+        // Handle both formats: direct number or object with avg_score
+        const score = typeof scoresToUse[attr] === 'object'
+          ? (scoresToUse[attr] as { avg_score: number; report_count: number }).avg_score
+          : (scoresToUse[attr] || 0);
+        return [attr, score];
+      })
       .sort(([a], [b]) => {
         const groupA = getAttributeGroup(a as string);
         const groupB = getAttributeGroup(b as string);
@@ -529,9 +652,7 @@ const PlayerProfilePage: React.FC = () => {
     if (profile) {
       const positions = getAvailablePositions();
       setAvailablePositions(positions);
-      if (positions.length > 0 && !selectedPosition) {
-        setSelectedPosition(positions[0]); // Default to first position
-      }
+      // No default selection - user must select positions manually
     }
   }, [profile]);
 
@@ -940,6 +1061,19 @@ const PlayerProfilePage: React.FC = () => {
                                   "👁️"
                                 )}
                               </Button>
+                              {canGenerateShareLinks && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setShareReportId(report.report_id);
+                                    setShowShareModal(true);
+                                  }}
+                                  title="Generate shareable link"
+                                  className="btn-action-circle ms-1"
+                                >
+                                  🔗
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1129,27 +1263,34 @@ const PlayerProfilePage: React.FC = () => {
 
                           {/* Right: Actions */}
                           <Col xs={6} className="text-end">
-                            <Button
-                              size="sm"
-                              onClick={() => handleOpenReportModal(report.report_id)}
-                              disabled={loadingReportId === report.report_id}
-                              title="View Report"
-                              style={{
-                                backgroundColor: "white",
-                                color: "#000000",
-                                fontWeight: 600,
-                                padding: "6px 16px",
-                                borderRadius: "20px",
-                                fontSize: "0.85rem",
-                                border: "2px solid #dee2e6",
-                              }}
-                            >
-                              {loadingReportId === report.report_id ? (
-                                <Spinner as="span" animation="border" size="sm" />
-                              ) : (
-                                "View Report 👁️"
+                            <div className="d-flex justify-content-end gap-1">
+                              <Button
+                                size="sm"
+                                onClick={() => handleOpenReportModal(report.report_id)}
+                                disabled={loadingReportId === report.report_id}
+                                title="View Report"
+                                className="btn-action-circle btn-action-view"
+                              >
+                                {loadingReportId === report.report_id ? (
+                                  <Spinner as="span" animation="border" size="sm" />
+                                ) : (
+                                  "👁️"
+                                )}
+                              </Button>
+                              {canGenerateShareLinks && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setShareReportId(report.report_id);
+                                    setShowShareModal(true);
+                                  }}
+                                  title="Generate shareable link"
+                                  className="btn-action-circle"
+                                >
+                                  🔗
+                                </Button>
                               )}
-                            </Button>
+                            </div>
                           </Col>
                         </Row>
                       </Card.Body>
@@ -1182,31 +1323,107 @@ const PlayerProfilePage: React.FC = () => {
               Attribute scores shown are averages across all reports and may not be representative
               of the player's ability in specific positions where they have limited or no assessments.
             </div>
-            <div className="d-flex align-items-center gap-3">
-              <Form.Select
-                value={selectedPosition}
-                onChange={(e) => handlePositionChange(e.target.value)}
-                style={{ width: "200px" }}
-              >
-                <option value="">Select Position</option>
-                {playerPositions.map((pos) => (
-                  <option key={pos} value={pos}>
-                    {pos}
-                  </option>
-                ))}
-              </Form.Select>
+            <div className="d-flex align-items-center gap-3 flex-wrap">
+              {/* Multi-select Position Dropdown */}
+              <Dropdown>
+                <Dropdown.Toggle variant="outline-secondary" id="position-filter-dropdown" style={{ minWidth: "200px" }}>
+                  {selectedPositions.length === 0
+                    ? "Select Positions"
+                    : `${selectedPositions.join(", ")} (${selectedPositions.length} selected)`}
+                </Dropdown.Toggle>
+                <Dropdown.Menu style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  {positionCounts.map((posCount) => (
+                    <Dropdown.Item
+                      key={posCount.position}
+                      as="div"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const newSelection = selectedPositions.includes(posCount.position)
+                          ? selectedPositions.filter(p => p !== posCount.position)
+                          : [...selectedPositions, posCount.position];
+                        handlePositionChange(newSelection);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Form.Check
+                        type="checkbox"
+                        label={`${posCount.position} (${posCount.report_count})`}
+                        checked={selectedPositions.includes(posCount.position)}
+                        onChange={() => {}} // Handled by parent onClick
+                        style={{ pointerEvents: "none" }}
+                      />
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown>
+
+              {/* Multi-select Reports Dropdown */}
+              <Dropdown>
+                <Dropdown.Toggle
+                  variant="outline-secondary"
+                  id="reports-filter-dropdown"
+                  style={{ minWidth: "200px" }}
+                  disabled={filteredReports.length === 0 && selectedPositions.length > 0}
+                >
+                  {selectedReportIds.length === 0
+                    ? "Select Reports"
+                    : `${selectedReportIds.length} report(s) selected`}
+                </Dropdown.Toggle>
+                <Dropdown.Menu style={{ maxHeight: "400px", overflowY: "auto", minWidth: "350px" }}>
+                  {(selectedPositions.length > 0 ? filteredReports : scoutReportsData?.reports || []).map((report) => (
+                    <Dropdown.Item
+                      key={report.report_id}
+                      as="div"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const newSelection = selectedReportIds.includes(report.report_id)
+                          ? selectedReportIds.filter(id => id !== report.report_id)
+                          : [...selectedReportIds, report.report_id];
+                        handleReportSelection(newSelection);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Form.Check
+                        type="checkbox"
+                        label={
+                          <span style={{ fontSize: "0.9rem" }}>
+                            {report.report_date} - {report.scout_name} - {report.position_played}
+                            {report.overall_rating && ` (${report.overall_rating}/10)`}
+                          </span>
+                        }
+                        checked={selectedReportIds.includes(report.report_id)}
+                        onChange={() => {}} // Handled by parent onClick
+                        style={{ pointerEvents: "none" }}
+                      />
+                    </Dropdown.Item>
+                  ))}
+                  {(selectedPositions.length > 0 ? filteredReports : scoutReportsData?.reports || []).length === 0 && (
+                    <Dropdown.Item disabled>No reports available</Dropdown.Item>
+                  )}
+                </Dropdown.Menu>
+              </Dropdown>
+
+              {/* Clear Filters Button */}
+              {(selectedPositions.length > 0 || selectedReportIds.length > 0) && (
+                <Button
+                  variant="outline-danger"
+                  size="sm"
+                  onClick={clearFilters}
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           </div>
 
-          {selectedPosition &&
+          {selectedPositions.length > 0 &&
             (() => {
-              const chartData = getPolarAreaChartData(selectedPosition);
+              const chartData = getPolarAreaChartData();
               if (!chartData || !chartData.labels.length) {
                 return (
                   <div className="text-center py-4">
                     <p className="text-muted">
-                      No attribute data available for {selectedPosition}{" "}
-                      position.
+                      No attribute data available for the selected position(s).
                     </p>
                   </div>
                 );
@@ -1371,39 +1588,67 @@ const PlayerProfilePage: React.FC = () => {
                           <h6 className="mb-0">📋 Attribute Breakdown</h6>
                         </Card.Header>
                         <Card.Body>
+                          {selectedReportIds.length > 0 && (
+                            <div className="alert alert-info mb-3" style={{ fontSize: "0.85rem", padding: "0.5rem" }}>
+                              <strong>Filtered View:</strong> Showing averages from {selectedReportIds.length} selected report(s)
+                            </div>
+                          )}
                           <div className="attribute-breakdown">
-                            {chartData.labels.map((label, index) => (
-                              <div
-                                key={label}
-                                className="attribute-breakdown-item mb-2"
-                              >
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <span
-                                    className="attribute-name"
-                                    style={{ fontSize: "0.85rem" }}
-                                  >
-                                    {label}
-                                  </span>
-                                  <span
-                                    className="badge"
-                                    style={{
-                                      backgroundColor:
-                                        chartData.datasets[0].backgroundColor[
-                                          index
-                                        ],
-                                      color: "white !important",
-                                      fontWeight: "bold",
-                                      fontSize: "0.75rem",
-                                      border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
-                                    }}
-                                  >
-                                    {chartData.actualValues[index] === 0
-                                      ? "N/A"
-                                      : `${chartData.actualValues[index].toFixed(2)}/10`}
-                                  </span>
+                            {chartData.labels.map((label, index) => {
+                              const filteredValue = chartData.actualValues[index];
+                              // Get overall average if we're showing filtered data
+                              const overallValue = selectedReportIds.length > 0 && positionAttributeScores[label]
+                                ? positionAttributeScores[label]
+                                : null;
+
+                              return (
+                                <div
+                                  key={label}
+                                  className="attribute-breakdown-item mb-2"
+                                >
+                                  <div className="d-flex justify-content-between align-items-center">
+                                    <span
+                                      className="attribute-name"
+                                      style={{ fontSize: "0.85rem", flex: 1 }}
+                                    >
+                                      {label}
+                                    </span>
+                                    <div className="d-flex gap-2 align-items-center">
+                                      {selectedReportIds.length > 0 && overallValue !== null && (
+                                        <span
+                                          className="badge bg-secondary"
+                                          style={{
+                                            fontSize: "0.7rem",
+                                            fontWeight: "normal",
+                                          }}
+                                          title="Overall average across all reports"
+                                        >
+                                          All: {overallValue === 0 ? "N/A" : `${overallValue.toFixed(2)}`}
+                                        </span>
+                                      )}
+                                      <span
+                                        className="badge"
+                                        style={{
+                                          backgroundColor:
+                                            chartData.datasets[0].backgroundColor[
+                                              index
+                                            ],
+                                          color: "white !important",
+                                          fontWeight: "bold",
+                                          fontSize: "0.75rem",
+                                          border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
+                                        }}
+                                        title={selectedReportIds.length > 0 ? "Filtered average" : "Overall average"}
+                                      >
+                                        {filteredValue === 0
+                                          ? "N/A"
+                                          : `${filteredValue.toFixed(2)}/10`}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </Card.Body>
                       </Card>
@@ -1528,6 +1773,15 @@ const PlayerProfilePage: React.FC = () => {
         onHide={() => setShowIntelModal(false)}
         intelId={selectedIntelId}
       />
+
+      {/* Share Link Modal */}
+      {shareReportId && (
+        <ShareLinkModal
+          show={showShareModal}
+          onHide={() => setShowShareModal(false)}
+          reportId={shareReportId}
+        />
+      )}
 
       <style>{`
         .player-profile-page {

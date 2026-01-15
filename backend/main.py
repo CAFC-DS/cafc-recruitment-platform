@@ -32,6 +32,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
+import uuid
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
@@ -4959,6 +4960,406 @@ async def get_single_scout_report(
             conn.close()
 
 
+# --- Shareable Report Links Endpoints ---
+
+@app.post("/scout_reports/{report_id}/share")
+async def create_shareable_link(
+    report_id: int,
+    expires_days: Optional[int] = 30,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate a shareable link for a scout report.
+    Only Manager, Senior Manager, and Admin roles can create links.
+    """
+    # Check role permission
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Manager, Senior Manager, or Admin role required to generate share links."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Verify report exists
+        cursor.execute("SELECT ID FROM SCOUT_REPORTS WHERE ID = %s", (report_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Scout report not found")
+
+        # Generate unique token
+        share_token = str(uuid.uuid4())
+
+        # Calculate expiration date
+        expires_at = None
+        if expires_days and expires_days > 0:
+            # Maximum 90 days
+            expires_days = min(expires_days, 90)
+            expires_at = datetime.now() + timedelta(days=expires_days)
+
+        # Insert share link
+        cursor.execute(
+            """
+            INSERT INTO SHARED_REPORT_LINKS
+            (REPORT_ID, SHARE_TOKEN, CREATED_BY, EXPIRES_AT, IS_ACTIVE)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (report_id, share_token, current_user.id, expires_at, True)
+        )
+        conn.commit()
+
+        # Get frontend URL from environment or use default
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+        share_url = f"{frontend_url}/shared-report/{share_token}"
+
+        return {
+            "success": True,
+            "share_token": share_token,
+            "share_url": share_url,
+            "expires_at": str(expires_at) if expires_at else None,
+            "expires_days": expires_days
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        if conn:
+            conn.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating shareable link: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/public/report/{token}")
+async def get_public_report(token: str):
+    """
+    Get a scout report via public shareable link.
+    No authentication required.
+    """
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Validate token and get report_id
+        cursor.execute(
+            """
+            SELECT REPORT_ID, EXPIRES_AT, IS_ACTIVE
+            FROM SHARED_REPORT_LINKS
+            WHERE SHARE_TOKEN = %s
+            """,
+            (token,)
+        )
+        link_data = cursor.fetchone()
+
+        if not link_data:
+            raise HTTPException(status_code=404, detail="Share link not found")
+
+        report_id, expires_at, is_active = link_data
+
+        # Check if link is active
+        if not is_active:
+            raise HTTPException(status_code=403, detail="This share link has been revoked")
+
+        # Check if link has expired
+        if expires_at and datetime.now() > expires_at:
+            raise HTTPException(status_code=403, detail="This share link has expired")
+
+        # Update access count and last accessed
+        cursor.execute(
+            """
+            UPDATE SHARED_REPORT_LINKS
+            SET ACCESS_COUNT = ACCESS_COUNT + 1,
+                LAST_ACCESSED = CURRENT_TIMESTAMP
+            WHERE SHARE_TOKEN = %s
+            """,
+            (token,)
+        )
+        conn.commit()
+
+        # Fetch full report data (same query as get_single_scout_report)
+        sql = """
+            SELECT
+                sr.CREATED_AT,
+                p.PLAYERNAME,
+                p.BIRTHDATE,
+                m.HOMESQUADNAME,
+                m.AWAYSQUADNAME,
+                m.SCHEDULEDDATE,
+                sr.POSITION,
+                sr.BUILD,
+                sr.HEIGHT,
+                sr.STRENGTHS,
+                sr.WEAKNESSES,
+                sr.SUMMARY,
+                sr.JUSTIFICATION,
+                sr.PERFORMANCE_SCORE,
+                sr.SCOUTING_TYPE,
+                sr.PURPOSE,
+                sr.FORMATION,
+                sr.ATTRIBUTE_SCORE,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as SCOUT_NAME,
+                sr.REPORT_TYPE,
+                sr.FLAG_CATEGORY,
+                sr.OPPOSITION_DETAILS,
+                sr.IS_ARCHIVED,
+                sr.IS_POTENTIAL,
+                p.POSITION as PLAYER_POSITION,
+                p.SQUADNAME
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            WHERE sr.ID = %s
+        """
+        cursor.execute(sql, (report_id,))
+        report_data = cursor.fetchone()
+
+        if not report_data:
+            raise HTTPException(status_code=404, detail="Scout report not found")
+
+        # Calculate age
+        player_birthdate = report_data[2]
+        age = None
+        if player_birthdate:
+            today = date.today()
+            age = (
+                today.year
+                - player_birthdate.year
+                - (
+                    (today.month, today.day)
+                    < (player_birthdate.month, player_birthdate.day)
+                )
+            )
+
+        # Fetch individual attribute scores
+        cursor.execute(
+            """
+            SELECT ATTRIBUTE_NAME, ATTRIBUTE_SCORE
+            FROM SCOUT_REPORT_ATTRIBUTE_SCORES
+            WHERE SCOUT_REPORT_ID = %s
+            """,
+            (report_id,),
+        )
+        attribute_scores_data = cursor.fetchall()
+        individual_attribute_scores = {row[0]: row[1] for row in attribute_scores_data}
+
+        # Calculate non-zero average attribute score
+        non_zero_scores = [
+            score for score in individual_attribute_scores.values() if score > 0
+        ]
+        average_attribute_score = (
+            sum(non_zero_scores) / len(non_zero_scores) if non_zero_scores else 0
+        )
+
+        report = {
+            "report_id": report_id,
+            "created_at": str(report_data[0]),
+            "player_name": report_data[1],
+            "age": age,
+            "birth_date": str(player_birthdate) if player_birthdate else None,
+            "home_squad_name": report_data[3],
+            "away_squad_name": report_data[4],
+            "fixture_date": str(report_data[5]) if report_data[5] else "N/A",
+            "position_played": report_data[6],
+            "build": report_data[7],
+            "height": report_data[8],
+            "strengths": report_data[9].split(", ") if report_data[9] else [],
+            "weaknesses": report_data[10].split(", ") if report_data[10] else [],
+            "summary": report_data[11],
+            "justification": report_data[12],
+            "performance_score": report_data[13],
+            "scouting_type": report_data[14],
+            "purpose_of_assessment": report_data[15],
+            "formation": report_data[16],
+            "total_attribute_score": report_data[17],
+            "scout_name": report_data[18] if report_data[18] else "Unknown Scout",
+            "report_type": report_data[19] if report_data[19] else "Player Assessment",
+            "flag_category": report_data[20],
+            "opposition_details": report_data[21],
+            "is_archived": report_data[22] if report_data[22] is not None else False,
+            "is_potential": report_data[23] if report_data[23] is not None else False,
+            "player_position": report_data[24],
+            "squad_name": report_data[25],
+            "individual_attribute_scores": individual_attribute_scores,
+            "average_attribute_score": round(average_attribute_score, 2),
+            "is_shared_view": True  # Flag to indicate this is a public/shared view
+        }
+
+        return report
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching public report: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/scout_reports/{report_id}/shares")
+async def get_report_share_links(
+    report_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all share links for a specific report.
+    Only Manager, Senior Manager, and Admin roles can view share links.
+    """
+    # Check role permission
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Manager, Senior Manager, or Admin role required."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Verify report exists
+        cursor.execute("SELECT ID FROM SCOUT_REPORTS WHERE ID = %s", (report_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Scout report not found")
+
+        # Get all share links for this report
+        cursor.execute(
+            """
+            SELECT
+                sl.SHARE_TOKEN,
+                sl.CREATED_AT,
+                sl.EXPIRES_AT,
+                sl.ACCESS_COUNT,
+                sl.LAST_ACCESSED,
+                sl.IS_ACTIVE,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown') as CREATED_BY_NAME
+            FROM SHARED_REPORT_LINKS sl
+            LEFT JOIN USERS u ON sl.CREATED_BY = u.ID
+            WHERE sl.REPORT_ID = %s
+            ORDER BY sl.CREATED_AT DESC
+            """,
+            (report_id,)
+        )
+
+        links_data = cursor.fetchall()
+
+        # Get frontend URL
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+        links = []
+        for link in links_data:
+            links.append({
+                "share_token": link[0],
+                "share_url": f"{frontend_url}/shared-report/{link[0]}",
+                "created_at": str(link[1]),
+                "expires_at": str(link[2]) if link[2] else None,
+                "access_count": link[3],
+                "last_accessed": str(link[4]) if link[4] else None,
+                "is_active": link[5],
+                "created_by": link[6]
+            })
+
+        return {
+            "report_id": report_id,
+            "links": links,
+            "total_links": len(links)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching share links: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.delete("/shared-reports/{token}")
+async def revoke_share_link(
+    token: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Revoke (deactivate) a share link.
+    Only Manager, Senior Manager, Admin roles, or the creator can revoke.
+    """
+    # Check role permission
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Manager, Senior Manager, or Admin role required."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if link exists and get creator
+        cursor.execute(
+            "SELECT CREATED_BY FROM SHARED_REPORT_LINKS WHERE SHARE_TOKEN = %s",
+            (token,)
+        )
+        result = cursor.fetchone()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Share link not found")
+
+        created_by = result[0]
+
+        # Allow if user is admin/senior_manager/manager OR is the creator
+        if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER] and created_by != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only revoke your own share links"
+            )
+
+        # Deactivate the link
+        cursor.execute(
+            "UPDATE SHARED_REPORT_LINKS SET IS_ACTIVE = FALSE WHERE SHARE_TOKEN = %s",
+            (token,)
+        )
+        conn.commit()
+
+        return {
+            "success": True,
+            "message": "Share link has been revoked"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        if conn:
+            conn.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error revoking share link: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.post("/scout_reports/{report_id}/mark-viewed")
 async def mark_report_viewed(
     report_id: int, current_user: User = Depends(get_current_user)
@@ -5320,16 +5721,24 @@ async def get_player_profile(
 
 @app.get("/players/{player_id}/attributes")
 async def get_player_attributes(
-    player_id: str, current_user: User = Depends(get_current_user)
+    player_id: str,
+    report_ids: Optional[str] = None,  # Comma-separated report IDs
+    position_filter: Optional[str] = None,  # Comma-separated positions
+    current_user: User = Depends(get_current_user)
 ):
-    """Get player attribute averages grouped by categories from all scout reports"""
-    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered reports)
-    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
+    """Get player attribute averages grouped by categories from all scout reports, with optional filtering"""
+    # Generate cache key based on player_id, user role, and filters (disable cache when filters are active)
+    if report_ids or position_filter:
+        # Don't use cache when filters are active
+        cache_key = None
+    else:
+        cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
-    # Check cache first
-    cached_data = get_cache(cache_key)
-    if cached_data is not None:
-        return cached_data
+    # Check cache first (only if cache_key is not None)
+    if cache_key:
+        cached_data = get_cache(cache_key)
+        if cached_data is not None:
+            return cached_data
 
     conn = None
     try:
@@ -5368,6 +5777,22 @@ async def get_player_attributes(
         """
 
         query_params = [actual_player_id]
+
+        # Apply optional report ID filtering
+        if report_ids:
+            report_id_list = [int(rid.strip()) for rid in report_ids.split(',') if rid.strip()]
+            if report_id_list:
+                placeholders = ', '.join(['%s'] * len(report_id_list))
+                base_query += f" AND sr.ID IN ({placeholders})"
+                query_params.extend(report_id_list)
+
+        # Apply optional position filtering
+        if position_filter:
+            position_list = [pos.strip() for pos in position_filter.split(',') if pos.strip()]
+            if position_list:
+                placeholders = ', '.join(['%s'] * len(position_list))
+                base_query += f" AND sr.POSITION IN ({placeholders})"
+                query_params.extend(position_list)
 
         # Apply role-based filtering for scout users and loan scouts
         try:
@@ -5416,22 +5841,23 @@ async def get_player_attributes(
         # Since players don't have positions, get attributes directly from their scout reports
         # and look up their ATTRIBUTE_GROUP from POSITION_ATTRIBUTES table
         # Use MIN(DISPLAY_ORDER) to avoid duplicates when same attribute has multiple display orders
-        cursor.execute(
-            f"""
-            SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
-            FROM POSITION_ATTRIBUTES pa
-            WHERE pa.ATTRIBUTE_NAME IN (
-                SELECT DISTINCT sras.ATTRIBUTE_NAME
-                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
-                JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
-                WHERE {where_clause}
+        # Use the attributes we already fetched to avoid parameter mismatch
+        if not attribute_averages:
+            position_attributes = []
+        else:
+            attribute_names = list(attribute_averages.keys())
+            placeholders = ', '.join(['%s'] * len(attribute_names))
+            cursor.execute(
+                f"""
+                SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
+                FROM POSITION_ATTRIBUTES pa
+                WHERE pa.ATTRIBUTE_NAME IN ({placeholders})
+                GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
+                ORDER BY pa.ATTRIBUTE_GROUP, display_order
+            """,
+                attribute_names,
             )
-            GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
-            ORDER BY pa.ATTRIBUTE_GROUP, display_order
-        """,
-            (actual_player_id,),
-        )
-        position_attributes = cursor.fetchall()
+            position_attributes = cursor.fetchall()
 
         # Use the real ATTRIBUTE_GROUP column from database
         attribute_groups = {}
@@ -5465,31 +5891,25 @@ async def get_player_attributes(
             group.sort(key=lambda x: x["display_order"])
 
         # DEBUG: Get what attributes exist in scout reports for this player
-        cursor.execute(
-            f"""
-            SELECT DISTINCT sras.ATTRIBUTE_NAME
-            FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
-            JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
-            WHERE {where_clause}
-            ORDER BY sras.ATTRIBUTE_NAME
-        """,
-            (actual_player_id,),
-        )
-        scout_report_attributes = [row[0] for row in cursor.fetchall()]
+        # Use the same query we used earlier to avoid parameter mismatch
+        scout_report_attributes = list(attribute_averages.keys())
 
         # DEBUG: Check if these attributes exist in POSITION_ATTRIBUTES
-        cursor.execute(
-            """
-            SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP 
-            FROM POSITION_ATTRIBUTES 
-            WHERE ATTRIBUTE_NAME IN ({})
-            ORDER BY ATTRIBUTE_NAME
-        """.format(
-                ",".join(["%s"] * len(scout_report_attributes))
-            ),
-            scout_report_attributes,
-        )
-        matching_attributes = cursor.fetchall()
+        if scout_report_attributes:
+            cursor.execute(
+                """
+                SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP
+                FROM POSITION_ATTRIBUTES
+                WHERE ATTRIBUTE_NAME IN ({})
+                ORDER BY ATTRIBUTE_NAME
+            """.format(
+                    ",".join(["%s"] * len(scout_report_attributes))
+                ),
+                scout_report_attributes,
+            )
+            matching_attributes = cursor.fetchall()
+        else:
+            matching_attributes = []
 
         result = {
             "player_id": player_id,
@@ -5504,8 +5924,9 @@ async def get_player_attributes(
             "debug_position_attributes_found": len(position_attributes),
         }
 
-        # Cache for 15 minutes (attribute aggregations change slowly)
-        set_cache(cache_key, result, expiry_minutes=15)
+        # Cache for 15 minutes (attribute aggregations change slowly) - only if not filtered
+        if cache_key:
+            set_cache(cache_key, result, expiry_minutes=15)
 
         return result
 

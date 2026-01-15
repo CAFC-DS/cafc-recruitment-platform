@@ -15,6 +15,7 @@ import AdminPage from './pages/AdminPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import PlayerListsPage from './pages/PlayerListsPage';
 import KanbanPage from './pages/KanbanPage';
+import SharedReportPage from './pages/SharedReportPage';
 
 interface AuthContextType {
   token: string | null;
@@ -281,6 +282,14 @@ const HomePageWrapper: React.FC = () => {
   return token ? <HomePage /> : null;
 };
 
+// Conditional navbar wrapper - only show navbar if not on shared report page
+const ConditionalNavbar: React.FC = () => {
+  const location = useLocation();
+  const isSharedReportPage = location.pathname.startsWith('/shared-report/');
+
+  return isSharedReportPage ? null : <AppNavbar />;
+};
+
 
 function App() {
   return (
@@ -288,10 +297,12 @@ function App() {
       <ViewModeProvider>
         <Router>
           <AuthProvider>
-            <AppNavbar />
+            <ConditionalNavbar />
           <Routes>
             <Route path="/" element={<HomePageWrapper />} />
             <Route path="/login" element={<LoginPageWrapper />} /> {/* Use the wrapper here */}
+            {/* Public route for shared reports - no authentication required */}
+            <Route path="/shared-report/:token" element={<SharedReportPage />} />
             <Route
               path="/scouting"
               element={
