@@ -5010,8 +5010,21 @@ async def create_shareable_link(
         )
         conn.commit()
 
-        # Get frontend URL from environment or use default
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+        # Get frontend URL - auto-detect based on environment
+        environment = os.getenv("ENVIRONMENT", "development")
+
+        if environment == "production":
+            # In production, require explicit FRONTEND_URL or fail with helpful message
+            frontend_url = os.getenv("FRONTEND_URL")
+            if not frontend_url:
+                raise HTTPException(
+                    status_code=500,
+                    detail="FRONTEND_URL environment variable must be set in production. Please add it in your Railway dashboard."
+                )
+        else:
+            # Development: use localhost or explicit override
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+
         share_url = f"{frontend_url}/shared-report/{share_token}"
 
         return {
@@ -5258,8 +5271,20 @@ async def get_report_share_links(
 
         links_data = cursor.fetchall()
 
-        # Get frontend URL
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        # Get frontend URL - auto-detect based on environment
+        environment = os.getenv("ENVIRONMENT", "development")
+
+        if environment == "production":
+            # In production, require explicit FRONTEND_URL
+            frontend_url = os.getenv("FRONTEND_URL")
+            if not frontend_url:
+                raise HTTPException(
+                    status_code=500,
+                    detail="FRONTEND_URL environment variable must be set in production. Please add it in your Railway dashboard."
+                )
+        else:
+            # Development: use localhost or explicit override
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
 
         links = []
         for link in links_data:
