@@ -282,6 +282,14 @@ const HomePageWrapper: React.FC = () => {
   return token ? <HomePage /> : null;
 };
 
+// Conditional navbar wrapper - only show navbar if not on shared report page
+const ConditionalNavbar: React.FC = () => {
+  const location = useLocation();
+  const isSharedReportPage = location.pathname.startsWith('/shared-report/');
+
+  return isSharedReportPage ? null : <AppNavbar />;
+};
+
 
 function App() {
   return (
@@ -289,7 +297,7 @@ function App() {
       <ViewModeProvider>
         <Router>
           <AuthProvider>
-            <AppNavbar />
+            <ConditionalNavbar />
           <Routes>
             <Route path="/" element={<HomePageWrapper />} />
             <Route path="/login" element={<LoginPageWrapper />} /> {/* Use the wrapper here */}

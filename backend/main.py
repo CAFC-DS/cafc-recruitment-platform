@@ -5011,7 +5011,7 @@ async def create_shareable_link(
         conn.commit()
 
         # Get frontend URL from environment or use default
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
         share_url = f"{frontend_url}/shared-report/{share_token}"
 
         return {
@@ -5167,6 +5167,7 @@ async def get_public_report(token: str):
             "created_at": str(report_data[0]),
             "player_name": report_data[1],
             "age": age,
+            "birth_date": str(player_birthdate) if player_birthdate else None,
             "home_squad_name": report_data[3],
             "away_squad_name": report_data[4],
             "fixture_date": str(report_data[5]) if report_data[5] else "N/A",
@@ -5720,16 +5721,24 @@ async def get_player_profile(
 
 @app.get("/players/{player_id}/attributes")
 async def get_player_attributes(
-    player_id: str, current_user: User = Depends(get_current_user)
+    player_id: str,
+    report_ids: Optional[str] = None,  # Comma-separated report IDs
+    position_filter: Optional[str] = None,  # Comma-separated positions
+    current_user: User = Depends(get_current_user)
 ):
-    """Get player attribute averages grouped by categories from all scout reports"""
-    # Generate cache key based on player_id and user role (scouts/loan_manager see filtered reports)
-    cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
+    """Get player attribute averages grouped by categories from all scout reports, with optional filtering"""
+    # Generate cache key based on player_id, user role, and filters (disable cache when filters are active)
+    if report_ids or position_filter:
+        # Don't use cache when filters are active
+        cache_key = None
+    else:
+        cache_key = f"player_attributes_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
-    # Check cache first
-    cached_data = get_cache(cache_key)
-    if cached_data is not None:
-        return cached_data
+    # Check cache first (only if cache_key is not None)
+    if cache_key:
+        cached_data = get_cache(cache_key)
+        if cached_data is not None:
+            return cached_data
 
     conn = None
     try:
@@ -5768,6 +5777,22 @@ async def get_player_attributes(
         """
 
         query_params = [actual_player_id]
+
+        # Apply optional report ID filtering
+        if report_ids:
+            report_id_list = [int(rid.strip()) for rid in report_ids.split(',') if rid.strip()]
+            if report_id_list:
+                placeholders = ', '.join(['%s'] * len(report_id_list))
+                base_query += f" AND sr.ID IN ({placeholders})"
+                query_params.extend(report_id_list)
+
+        # Apply optional position filtering
+        if position_filter:
+            position_list = [pos.strip() for pos in position_filter.split(',') if pos.strip()]
+            if position_list:
+                placeholders = ', '.join(['%s'] * len(position_list))
+                base_query += f" AND sr.POSITION IN ({placeholders})"
+                query_params.extend(position_list)
 
         # Apply role-based filtering for scout users and loan scouts
         try:
@@ -5816,22 +5841,23 @@ async def get_player_attributes(
         # Since players don't have positions, get attributes directly from their scout reports
         # and look up their ATTRIBUTE_GROUP from POSITION_ATTRIBUTES table
         # Use MIN(DISPLAY_ORDER) to avoid duplicates when same attribute has multiple display orders
-        cursor.execute(
-            f"""
-            SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
-            FROM POSITION_ATTRIBUTES pa
-            WHERE pa.ATTRIBUTE_NAME IN (
-                SELECT DISTINCT sras.ATTRIBUTE_NAME
-                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
-                JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
-                WHERE {where_clause}
+        # Use the attributes we already fetched to avoid parameter mismatch
+        if not attribute_averages:
+            position_attributes = []
+        else:
+            attribute_names = list(attribute_averages.keys())
+            placeholders = ', '.join(['%s'] * len(attribute_names))
+            cursor.execute(
+                f"""
+                SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
+                FROM POSITION_ATTRIBUTES pa
+                WHERE pa.ATTRIBUTE_NAME IN ({placeholders})
+                GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
+                ORDER BY pa.ATTRIBUTE_GROUP, display_order
+            """,
+                attribute_names,
             )
-            GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
-            ORDER BY pa.ATTRIBUTE_GROUP, display_order
-        """,
-            (actual_player_id,),
-        )
-        position_attributes = cursor.fetchall()
+            position_attributes = cursor.fetchall()
 
         # Use the real ATTRIBUTE_GROUP column from database
         attribute_groups = {}
@@ -5865,31 +5891,25 @@ async def get_player_attributes(
             group.sort(key=lambda x: x["display_order"])
 
         # DEBUG: Get what attributes exist in scout reports for this player
-        cursor.execute(
-            f"""
-            SELECT DISTINCT sras.ATTRIBUTE_NAME
-            FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
-            JOIN scout_reports sr ON sras.SCOUT_REPORT_ID = sr.ID
-            WHERE {where_clause}
-            ORDER BY sras.ATTRIBUTE_NAME
-        """,
-            (actual_player_id,),
-        )
-        scout_report_attributes = [row[0] for row in cursor.fetchall()]
+        # Use the same query we used earlier to avoid parameter mismatch
+        scout_report_attributes = list(attribute_averages.keys())
 
         # DEBUG: Check if these attributes exist in POSITION_ATTRIBUTES
-        cursor.execute(
-            """
-            SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP 
-            FROM POSITION_ATTRIBUTES 
-            WHERE ATTRIBUTE_NAME IN ({})
-            ORDER BY ATTRIBUTE_NAME
-        """.format(
-                ",".join(["%s"] * len(scout_report_attributes))
-            ),
-            scout_report_attributes,
-        )
-        matching_attributes = cursor.fetchall()
+        if scout_report_attributes:
+            cursor.execute(
+                """
+                SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP
+                FROM POSITION_ATTRIBUTES
+                WHERE ATTRIBUTE_NAME IN ({})
+                ORDER BY ATTRIBUTE_NAME
+            """.format(
+                    ",".join(["%s"] * len(scout_report_attributes))
+                ),
+                scout_report_attributes,
+            )
+            matching_attributes = cursor.fetchall()
+        else:
+            matching_attributes = []
 
         result = {
             "player_id": player_id,
@@ -5904,8 +5924,9 @@ async def get_player_attributes(
             "debug_position_attributes_found": len(position_attributes),
         }
 
-        # Cache for 15 minutes (attribute aggregations change slowly)
-        set_cache(cache_key, result, expiry_minutes=15)
+        # Cache for 15 minutes (attribute aggregations change slowly) - only if not filtered
+        if cache_key:
+            set_cache(cache_key, result, expiry_minutes=15)
 
         return result
 
