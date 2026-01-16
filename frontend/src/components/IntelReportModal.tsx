@@ -62,7 +62,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
       free: "Free Transfer",
       permanent: "Permanent",
       loan: "Loan",
-      loan_with_option: "Loan + Option",
+      loan_with_option: "Loan with Option",
     };
 
     return (
@@ -70,6 +70,26 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
         {labels[type] || type}
       </span>
     );
+  };
+
+  const formatCurrency = (value: string | null) => {
+    if (!value) return "Not specified";
+    // If already has a currency symbol, return as is
+    if (value.includes("£") || value.includes("$") || value.includes("€")) {
+      return value;
+    }
+    // Otherwise add £ prefix
+    return `£${value}`;
+  };
+
+  const formatActionRequired = (action: string) => {
+    const formatted: { [key: string]: string } = {
+      "discuss urgently": "Discuss Urgently",
+      "monitor": "Monitor",
+      "beyond us": "Beyond Us",
+      "no action": "No Action",
+    };
+    return formatted[action.toLowerCase()] || action;
   };
 
   const handleClose = () => {
@@ -85,7 +105,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
         style={{ backgroundColor: "#000000", color: "white" }}
         className="modal-header-dark"
       >
-        <Modal.Title>🕵️ Intel Report</Modal.Title>
+        <Modal.Title>Intel Report</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {loading && (
@@ -102,21 +122,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
             {/* Header Information */}
             <Card className="mb-4">
               <Card.Header className="bg-light">
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0">📊 Report Overview</h5>
-                  <span
-                    className="badge"
-                    style={{
-                      backgroundColor: getFlagColor(intel.action_required),
-                      color: getContrastTextColor(
-                        getFlagColor(intel.action_required),
-                      ),
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {intel.action_required}
-                  </span>
-                </div>
+                <h5 className="mb-0">Report Overview</h5>
               </Card.Header>
               <Card.Body>
                 <Row>
@@ -126,11 +132,11 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                     </p>
                     <p>
                       <strong>Date Submitted:</strong>{" "}
-                      {new Date(intel.created_at).toLocaleDateString()}
+                      {new Date(intel.created_at).toLocaleDateString("en-GB")}
                     </p>
                     <p>
-                      <strong>Date of Information:</strong>{" "}
-                      {new Date(intel.date_of_information).toLocaleDateString()}
+                      <strong>Information Date:</strong>{" "}
+                      {new Date(intel.date_of_information).toLocaleDateString("en-GB")}
                     </p>
                   </Col>
                   <Col md={6}>
@@ -149,7 +155,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
             {/* Contract Information */}
             <Card className="mb-4">
               <Card.Header className="bg-light text-dark">
-                <h6 className="mb-0">📋 Contract Information</h6>
+                <h6 className="mb-0">Contract Information</h6>
               </Card.Header>
               <Card.Body>
                 <Row>
@@ -159,8 +165,8 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                       {intel.confirmed_contract_expiry
                         ? new Date(
                             intel.confirmed_contract_expiry,
-                          ).toLocaleDateString()
-                        : "Unknown"}
+                          ).toLocaleDateString("en-GB")
+                        : "Not specified"}
                     </p>
                     <p>
                       <strong>Contract Options:</strong>{" "}
@@ -170,11 +176,11 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                   <Col md={6}>
                     <p>
                       <strong>Current Wages:</strong>{" "}
-                      {intel.current_wages || "Unknown"}
+                      {formatCurrency(intel.current_wages)}
                     </p>
                     <p>
                       <strong>Expected Wages:</strong>{" "}
-                      {intel.expected_wages || "Unknown"}
+                      {formatCurrency(intel.expected_wages)}
                     </p>
                   </Col>
                 </Row>
@@ -184,30 +190,41 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
             {/* Deal Information */}
             <Card className="mb-4">
               <Card.Header className="bg-light text-dark">
-                <h6 className="mb-0">💰 Deal Information</h6>
+                <h6 className="mb-0">Deal Information</h6>
               </Card.Header>
               <Card.Body>
                 <Row>
                   <Col md={6}>
                     <p>
                       <strong>Transfer Fee:</strong>{" "}
-                      {intel.transfer_fee || "Not specified"}
+                      {formatCurrency(intel.transfer_fee)}
                     </p>
                   </Col>
                   <Col md={6}>
-                    <div>
-                      <strong>Potential Deal Types:</strong>
-                      <div className="mt-2">
-                        {intel.potential_deal_types &&
-                        intel.potential_deal_types.length > 0 ? (
-                          intel.potential_deal_types.map((type) =>
-                            getDealTypeBadge(type),
-                          )
-                        ) : (
-                          <span className="text-muted">None specified</span>
-                        )}
-                      </div>
-                    </div>
+                    <p>
+                      <strong>Potential Deal Types:</strong>{" "}
+                      {intel.potential_deal_types &&
+                      intel.potential_deal_types.length > 0 ? (
+                        <span>
+                          {intel.potential_deal_types.map((type, index) => {
+                            const labels: { [key: string]: string } = {
+                              free: "Free Transfer",
+                              permanent: "Permanent",
+                              loan: "Loan",
+                              loan_with_option: "Loan with Option",
+                            };
+                            return (
+                              <span key={type}>
+                                {labels[type] || type}
+                                {index < intel.potential_deal_types.length - 1 ? ", " : ""}
+                              </span>
+                            );
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-muted">None specified</span>
+                      )}
+                    </p>
                   </Col>
                 </Row>
               </Card.Body>
@@ -216,7 +233,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
             {/* Conversation Notes */}
             <Card className="mb-4">
               <Card.Header className="bg-light text-dark">
-                <h6 className="mb-0">💬 Conversation Notes</h6>
+                <h6 className="mb-0">Conversation Notes</h6>
               </Card.Header>
               <Card.Body>
                 <div className="border-start border-secondary border-4 ps-3">
@@ -230,7 +247,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
             {/* Action Required */}
             <Card>
               <Card.Header className="d-flex align-items-center justify-content-between">
-                <h6 className="mb-0">⚡ Action Required</h6>
+                <h6 className="mb-0">Action Required</h6>
                 <span
                   className="badge fs-6"
                   style={{
@@ -241,19 +258,19 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                     fontWeight: "bold",
                   }}
                 >
-                  {intel.action_required}
+                  {formatActionRequired(intel.action_required)}
                 </span>
               </Card.Header>
               <Card.Body>
-                {intel.action_required === "discuss urgently" && (
+                {intel.action_required.toLowerCase() === "discuss urgently" && (
                   <Alert variant="danger">
-                    <strong>Urgent Discussion Required!</strong>
+                    <strong>Urgent Discussion Required</strong>
                     <br />
                     This intelligence requires immediate attention and
                     discussion with the recruitment team.
                   </Alert>
                 )}
-                {intel.action_required === "monitor" && (
+                {intel.action_required.toLowerCase() === "monitor" && (
                   <Alert variant="warning">
                     <strong>Monitor Situation</strong>
                     <br />
@@ -261,7 +278,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                     information as it becomes available.
                   </Alert>
                 )}
-                {intel.action_required === "beyond us" && (
+                {intel.action_required.toLowerCase() === "beyond us" && (
                   <Alert variant="secondary">
                     <strong>Beyond Our Reach</strong>
                     <br />
@@ -269,7 +286,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                     or budget constraints.
                   </Alert>
                 )}
-                {intel.action_required === "no action" && (
+                {intel.action_required.toLowerCase() === "no action" && (
                   <Alert variant="light">
                     <strong>No Action Required</strong>
                     <br />

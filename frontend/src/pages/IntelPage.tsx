@@ -11,6 +11,8 @@ import {
   Collapse,
   Alert,
   Modal,
+  Toast,
+  ToastContainer,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
@@ -77,6 +79,11 @@ const IntelPage: React.FC = () => {
   const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
+
+  // Toast notification state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
   const fetchIntelReports = useCallback(
     async (page: number = 1) => {
@@ -154,9 +161,20 @@ const IntelPage: React.FC = () => {
       await axiosInstance.delete(`/intel_reports/${deleteReportId}`);
       setShowDeleteModal(false);
       setDeleteReportId(null);
+
+      // Show success toast
+      setToastMessage("Intel report deleted successfully!");
+      setToastVariant("success");
+      setShowToast(true);
+
       fetchIntelReports(1);
     } catch (error) {
       console.error("Error deleting intel report:", error);
+
+      // Show error toast
+      setToastMessage("Failed to delete intel report. Please try again.");
+      setToastVariant("danger");
+      setShowToast(true);
     } finally {
       setDeleteLoading(false);
     }
@@ -211,18 +229,55 @@ const IntelPage: React.FC = () => {
     }
   }, [currentPage, token, fetchIntelReports]);
 
+  // Listen for intel report changes from other components (navbar, etc.)
+  useEffect(() => {
+    const handleIntelReportChanged = () => {
+      if (token) {
+        fetchIntelReports(currentPage);
+      }
+    };
+
+    window.addEventListener("intelReportChanged", handleIntelReportChanged);
+
+    return () => {
+      window.removeEventListener("intelReportChanged", handleIntelReportChanged);
+    };
+  }, [token, currentPage, fetchIntelReports]);
+
   const handleViewIntelReport = (intelId: number) => {
     setSelectedIntelId(intelId);
     setShowIntelReportModal(true);
   };
 
+  const formatActionRequired = (action: string) => {
+    const formatted: { [key: string]: string } = {
+      "discuss urgently": "Discuss Urgently",
+      "monitor": "Monitor",
+      "beyond us": "Beyond Us",
+      "no action": "No Action",
+    };
+    return formatted[action.toLowerCase()] || action;
+  };
+
   const getActionRequiredBadge = (action: string) => {
-    return <span className="badge badge-neutral-grey">{action}</span>;
+    return (
+      <span className="badge badge-neutral-grey" style={{ fontSize: "0.875rem" }}>
+        {formatActionRequired(action)}
+      </span>
+    );
   };
 
   const formatDealTypes = (dealTypes: string[]) => {
-    if (!dealTypes || dealTypes.length === 0) return "N/A";
-    return dealTypes.join(", ");
+    if (!dealTypes || dealTypes.length === 0) return "Not specified";
+
+    const labels: { [key: string]: string } = {
+      free: "Free Transfer",
+      permanent: "Permanent",
+      loan: "Loan",
+      loan_with_option: "Loan with Option",
+    };
+
+    return dealTypes.map(type => labels[type] || type).join(", ");
   };
 
   const handlePageChange = (pageNumber: number) => {
@@ -282,7 +337,15 @@ const IntelPage: React.FC = () => {
         show={showIntelModal}
         onHide={handleIntelModalHide}
         selectedPlayer={null}
-        onIntelSubmitSuccess={() => fetchIntelReports(1)}
+        onIntelSubmitSuccess={(message, variant) => {
+          setToastMessage(message);
+          setToastVariant(variant);
+          setShowToast(true);
+          fetchIntelReports(1);
+        }}
+        editMode={editMode}
+        reportId={editReportId}
+        existingReportData={editReportData}
       />
 
       {/* Delete Confirmation Modal */}
@@ -414,7 +477,7 @@ const IntelPage: React.FC = () => {
       <Card className="mb-3">
         <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
           <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0 text-white">🔍 Advanced Filters</h6>
+            <h6 className="mb-0 text-white">Advanced Filters</h6>
             <Button
               variant="outline-secondary"
               size="sm"
@@ -463,7 +526,7 @@ const IntelPage: React.FC = () => {
                     value={actionFilter}
                     onChange={(e) => setActionFilter(e.target.value)}
                   >
-                    <option value="">All Actions</option>
+                    <option value="">All</option>
                     <option value="beyond us">Beyond Us</option>
                     <option value="discuss urgently">Discuss Urgently</option>
                     <option value="monitor">Monitor</option>
@@ -515,7 +578,7 @@ const IntelPage: React.FC = () => {
                     }}
                     className="w-100"
                   >
-                    🔄 Clear All Filters
+                    Clear All Filters
                   </Button>
                 </Form.Group>
               </Col>
@@ -561,7 +624,7 @@ const IntelPage: React.FC = () => {
                     filteredIntelReports.map((report) => (
                     <tr key={report.intel_id}>
                       <td>
-                        {new Date(report.created_at).toLocaleDateString()}
+                        {new Date(report.created_at).toLocaleDateString("en-GB")}
                       </td>
                       <td>
                           <a
@@ -580,13 +643,13 @@ const IntelPage: React.FC = () => {
                         {report.confirmed_contract_expiry
                           ? new Date(
                               report.confirmed_contract_expiry,
-                            ).toLocaleDateString()
-                          : "N/A"}
+                            ).toLocaleDateString("en-GB")
+                          : "Not specified"}
                       </td>
                       <td>
                         {formatDealTypes(report.potential_deal_types)}
                       </td>
-                      <td>{getActionRequiredBadge(report.action_required)}</td>
+                      <td style={{ verticalAlign: "middle" }}>{getActionRequiredBadge(report.action_required)}</td>
                       <td>
                         <div
                           className="btn-group"
@@ -702,8 +765,7 @@ const IntelPage: React.FC = () => {
                               {report.contact_name}
                             </small>
                             <small className="text-muted d-block">
-                              Report Date:{" "}
-                              {new Date(report.created_at).toLocaleDateString()}
+                              {new Date(report.created_at).toLocaleDateString("en-GB")}
                             </small>
                           </div>
                         </Col>
@@ -734,10 +796,10 @@ const IntelPage: React.FC = () => {
                                   lineHeight: "1.2",
                                 }}
                               >
-                                <span className="fw-semibold">Contract:</span>{" "}
+                                <span className="fw-semibold">Expiry:</span>{" "}
                                 {new Date(
                                   report.confirmed_contract_expiry,
-                                ).toLocaleDateString()}
+                                ).toLocaleDateString("en-GB")}
                               </small>
                             )}
                           </div>
@@ -856,6 +918,26 @@ const IntelPage: React.FC = () => {
         onHide={() => setShowIntelReportModal(false)}
         intelId={selectedIntelId}
       />
+
+      {/* Toast Notification */}
+      <ToastContainer position="top-end" className="p-3" style={{ position: "fixed", zIndex: 9999 }}>
+        <Toast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          delay={3000}
+          autohide
+          bg={toastVariant}
+        >
+          <Toast.Header>
+            <strong className="me-auto">
+              {toastVariant === "success" ? "Success" : "Error"}
+            </strong>
+          </Toast.Header>
+          <Toast.Body className={toastVariant === "danger" ? "text-white" : ""}>
+            {toastMessage}
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
     </Container>
   );
 };

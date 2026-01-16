@@ -11,6 +11,8 @@ import {
   ListGroup,
   Card,
   Spinner,
+  Toast,
+  ToastContainer,
 } from "react-bootstrap";
 import { useAuth } from "../App"; // Import useAuth
 import { useTheme } from "../contexts/ThemeContext";
@@ -47,6 +49,11 @@ const AppNavbar: React.FC = () => {
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  // Toast notification state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
   // Draft indicator state
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
@@ -711,7 +718,14 @@ const AppNavbar: React.FC = () => {
         show={showIntelModal}
         onHide={() => setShowIntelModal(false)}
         selectedPlayer={null}
-        onIntelSubmitSuccess={() => setShowIntelModal(false)}
+        onIntelSubmitSuccess={(message, variant) => {
+          setToastMessage(message);
+          setToastVariant(variant);
+          setShowToast(true);
+          setShowIntelModal(false);
+          // Dispatch custom event to notify Intel page to refresh
+          window.dispatchEvent(new CustomEvent('intelReportChanged'));
+        }}
       />
 
       <AddPlayerModal
@@ -827,6 +841,26 @@ const AppNavbar: React.FC = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Toast Notification */}
+      <ToastContainer position="top-end" className="p-3" style={{ position: "fixed", zIndex: 9999 }}>
+        <Toast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          delay={3000}
+          autohide
+          bg={toastVariant}
+        >
+          <Toast.Header>
+            <strong className="me-auto">
+              {toastVariant === "success" ? "Success" : "Error"}
+            </strong>
+          </Toast.Header>
+          <Toast.Body className={toastVariant === "danger" ? "text-white" : ""}>
+            {toastMessage}
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
     </Navbar>
   );
 };

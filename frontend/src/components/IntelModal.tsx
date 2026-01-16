@@ -8,7 +8,10 @@ interface IntelModalProps {
   show: boolean;
   onHide: () => void;
   selectedPlayer: Player | null;
-  onIntelSubmitSuccess: () => void;
+  onIntelSubmitSuccess: (message: string, variant: "success" | "danger") => void;
+  editMode?: boolean;
+  reportId?: number | null;
+  existingReportData?: any;
 }
 
 const IntelModal: React.FC<IntelModalProps> = ({
@@ -16,6 +19,9 @@ const IntelModal: React.FC<IntelModalProps> = ({
   onHide,
   selectedPlayer,
   onIntelSubmitSuccess,
+  editMode = false,
+  reportId = null,
+  existingReportData = null,
 }) => {
   const [formData, setFormData] = useState({
     contactName: "",
@@ -177,6 +183,30 @@ const IntelModal: React.FC<IntelModalProps> = ({
     };
   }, []);
 
+  // Populate form when editing
+  useEffect(() => {
+    if (editMode && existingReportData) {
+      setFormData({
+        contactName: existingReportData.contact_name || "",
+        contactOrganisation: existingReportData.contact_organisation || "",
+        dateOfInformation: existingReportData.date_of_information || "",
+        confirmedContractExpiry: existingReportData.confirmed_contract_expiry || "",
+        contractOptions: existingReportData.contract_options || "",
+        potentialDealTypes: existingReportData.potential_deal_types || [],
+        transferFee: existingReportData.transfer_fee || "",
+        currentWages: existingReportData.current_wages || "",
+        expectedWages: existingReportData.expected_wages || "",
+        conversationNotes: existingReportData.conversation_notes || "",
+        actionRequired: existingReportData.action_required || "monitor",
+      });
+
+      // Set player search if player name exists
+      if (existingReportData.player_name) {
+        setPlayerSearch(existingReportData.player_name);
+      }
+    }
+  }, [editMode, existingReportData]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -215,7 +245,8 @@ const IntelModal: React.FC<IntelModalProps> = ({
         player_id:
           currentPlayer?.universal_id ||
           currentPlayer?.player_id ||
-          currentPlayer?.cafc_player_id,
+          currentPlayer?.cafc_player_id ||
+          existingReportData?.player_id,
         contact_name: formData.contactName,
         contact_organisation: formData.contactOrganisation,
         date_of_information: formData.dateOfInformation,
@@ -229,14 +260,40 @@ const IntelModal: React.FC<IntelModalProps> = ({
         action_required: formData.actionRequired,
       };
 
-      await axiosInstance.post("/intel_reports", payload);
-      onIntelSubmitSuccess();
+      let successMessage = "";
+
+      if (editMode && reportId) {
+        // Update existing report
+        await axiosInstance.put(`/intel_reports/${reportId}`, payload);
+        successMessage = "Intel report updated successfully!";
+      } else {
+        // Create new report
+        await axiosInstance.post("/intel_reports", payload);
+        successMessage = "Intel report created successfully!";
+      }
+
+      onIntelSubmitSuccess(successMessage, "success");
+      onHide();
     } catch (error: any) {
       console.error("Error submitting intel report:", error);
-      setError(
-        error.response?.data?.detail ||
-          "Failed to submit intel report. Please try again.",
-      );
+
+      // Handle different error response formats
+      let errorMessage = `Failed to ${editMode ? "update" : "submit"} intel report. Please try again.`;
+
+      if (error.response?.data) {
+        const data = error.response.data;
+
+        // Check if it's a validation error (array of errors)
+        if (Array.isArray(data.detail)) {
+          errorMessage = data.detail.map((err: any) => err.msg).join(", ");
+        } else if (typeof data.detail === "string") {
+          errorMessage = data.detail;
+        } else if (data.detail && typeof data.detail === "object") {
+          errorMessage = JSON.stringify(data.detail);
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -270,7 +327,9 @@ const IntelModal: React.FC<IntelModalProps> = ({
         style={{ backgroundColor: "#000000", color: "white" }}
         className="modal-header-dark"
       >
-        <Modal.Title>🕵️ Player Intel Report</Modal.Title>
+        <Modal.Title>
+          {editMode ? "Edit Intel Report" : "Player Intel Report"}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form onSubmit={handleSubmit}>
@@ -278,8 +337,8 @@ const IntelModal: React.FC<IntelModalProps> = ({
             <span className="text-danger">*</span> indicates a required field.
           </p>
 
-          {/* Player Search Section - Only show when no player is selected */}
-          {!selectedPlayer && (
+          {/* Player Search Section - Only show when no player is selected and not in edit mode */}
+          {!selectedPlayer && !editMode && (
             <>
               <Form.Group className="mb-3" controlId="playerSearch">
                 <Form.Label>
@@ -370,11 +429,11 @@ const IntelModal: React.FC<IntelModalProps> = ({
             </Alert>
           )}
 
-          {/* Form Section - Greyed out when no player is selected */}
+          {/* Form Section - Greyed out when no player is selected (except in edit mode) */}
           <div
             style={{
-              opacity: selectedPlayer || searchedPlayer ? 1 : 0.5,
-              pointerEvents: selectedPlayer || searchedPlayer ? "auto" : "none",
+              opacity: selectedPlayer || searchedPlayer || editMode ? 1 : 0.5,
+              pointerEvents: selectedPlayer || searchedPlayer || editMode ? "auto" : "none",
             }}
           >
             {/* Row 1: Date of Information, Contact Name, Contact Organisation */}
@@ -548,16 +607,17 @@ const IntelModal: React.FC<IntelModalProps> = ({
                 {isSubmitting ? (
                   <>
                     <Spinner animation="border" size="sm" className="me-2" />
-                    Submitting...
+                    {editMode ? "Updating..." : "Submitting..."}
                   </>
                 ) : (
-                  "Submit Intel Report"
+                  editMode ? "Update Intel Report" : "Submit Intel Report"
                 )}
               </Button>
             </div>
           </div>
         </Form>
       </Modal.Body>
+
       <style>{`
         .modal-header-dark .btn-close {
           filter: invert(1) grayscale(100%) brightness(200%);

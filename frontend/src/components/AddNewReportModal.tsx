@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Button, ListGroup } from "react-bootstrap";
+import { Modal, Button, ListGroup, Toast, ToastContainer } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import AddFixtureModal from "./AddFixtureModal";
 import IntelModal from "./IntelModal";
@@ -20,6 +20,11 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
   const [showFixtureModal, setShowFixtureModal] = useState(false);
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
+  // Toast notification state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
   const handleOptionSelect = (option: string) => {
     onHide(); // Close the selection modal first
@@ -124,9 +129,14 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
         show={showIntelModal}
         onHide={() => setShowIntelModal(false)}
         selectedPlayer={null}
-        onIntelSubmitSuccess={() => {
+        onIntelSubmitSuccess={(message, variant) => {
+          setToastMessage(message);
+          setToastVariant(variant);
+          setShowToast(true);
           setShowIntelModal(false);
           onSuccess();
+          // Dispatch custom event to notify Intel page to refresh
+          window.dispatchEvent(new CustomEvent('intelReportChanged'));
         }}
       />
 
@@ -134,6 +144,26 @@ const AddNewReportModal: React.FC<AddNewReportModalProps> = ({
         show={showFeedbackModal}
         onHide={() => setShowFeedbackModal(false)}
       />
+
+      {/* Toast Notification */}
+      <ToastContainer position="top-end" className="p-3" style={{ position: "fixed", zIndex: 9999 }}>
+        <Toast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          delay={3000}
+          autohide
+          bg={toastVariant}
+        >
+          <Toast.Header>
+            <strong className="me-auto">
+              {toastVariant === "success" ? "Success" : "Error"}
+            </strong>
+          </Toast.Header>
+          <Toast.Body className={toastVariant === "danger" ? "text-white" : ""}>
+            {toastMessage}
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
     </>
   );
 };

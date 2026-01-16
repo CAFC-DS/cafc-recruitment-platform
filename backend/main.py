@@ -6714,6 +6714,175 @@ async def create_intel_report(
             conn.close()
 
 
+@app.put("/intel_reports/{report_id}")
+async def update_intel_report(
+    report_id: int,
+    report: IntelReport,
+    current_user: User = Depends(get_current_user)
+):
+    # Intel reports are only accessible to Admin and Senior Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if the report exists
+        cursor.execute(
+            "SELECT ID, USER_ID FROM PLAYER_INFORMATION WHERE ID = %s",
+            (report_id,)
+        )
+        existing_report = cursor.fetchone()
+
+        if not existing_report:
+            raise HTTPException(status_code=404, detail="Intel report not found")
+
+        # Validate and resolve player_id using universal ID or dual ID lookup
+        if report.player_id:
+            player_data, player_data_source = find_player_by_universal_or_legacy_id(
+                report.player_id, cursor
+            )
+            if not player_data:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Player with ID {report.player_id} not found",
+                )
+            # Use the actual database player ID for the update
+            actual_player_id = (
+                player_data[0] if player_data_source == "external" else player_data[1]
+            )
+        else:
+            actual_player_id = None
+
+        # Check which columns exist (using cached schema)
+        has_player_id = has_column("player_information", "PLAYER_ID")
+        has_data_source = has_column("player_information", "DATA_SOURCE")
+
+        # Convert potential_deal_types list to comma-separated string
+        deal_types_str = (
+            ",".join(report.potential_deal_types)
+            if report.potential_deal_types
+            else None
+        )
+
+        # Prepare dynamic SQL for UPDATE
+        update_fields = []
+        params = []
+
+        # Add player_id if column exists
+        if has_player_id:
+            update_fields.append("PLAYER_ID = %s")
+            params.append(actual_player_id)
+
+        # Add data_source if column exists and player_id was provided
+        if has_data_source and report.player_id:
+            update_fields.append("DATA_SOURCE = %s")
+            params.append(player_data_source)
+
+        # Add all other intel report fields
+        update_fields.extend([
+            "CONTACT_NAME = %s",
+            "CONTACT_ORGANISATION = %s",
+            "DATE_OF_INFORMATION = %s",
+            "CONTRACT_EXPIRY = %s",
+            "CONTRACT_OPTIONS = %s",
+            "POTENTIAL_DEAL_TYPE = %s",
+            "TRANSFER_FEE = %s",
+            "CURRENT_WAGES = %s",
+            "EXPECTED_WAGES = %s",
+            "CONVERSATION_NOTES = %s",
+            "ACTION_REQUIRED = %s",
+        ])
+        params.extend([
+            report.contact_name,
+            report.contact_organisation,
+            report.date_of_information,
+            report.confirmed_contract_expiry,
+            report.contract_options,
+            deal_types_str,
+            report.transfer_fee,
+            report.current_wages,
+            report.expected_wages,
+            report.conversation_notes,
+            report.action_required,
+        ])
+
+        # Add the report_id for the WHERE clause
+        params.append(report_id)
+
+        # Construct the final UPDATE SQL query
+        sql = f"""
+            UPDATE PLAYER_INFORMATION
+            SET {', '.join(update_fields)}
+            WHERE ID = %s
+        """
+
+        cursor.execute(sql, tuple(params))
+        conn.commit()
+        return {"message": "Intel report updated successfully"}
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating intel report: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.delete("/intel_reports/{report_id}")
+async def delete_intel_report(
+    report_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    # Intel reports are only accessible to Admin and Senior Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if report exists
+        cursor.execute(
+            "SELECT ID FROM PLAYER_INFORMATION WHERE ID = %s",
+            (report_id,)
+        )
+        existing_report = cursor.fetchone()
+
+        if not existing_report:
+            raise HTTPException(status_code=404, detail="Intel report not found")
+
+        # Delete the intel report
+        cursor.execute("DELETE FROM PLAYER_INFORMATION WHERE ID = %s", (report_id,))
+
+        conn.commit()
+        return {"message": "Intel report deleted successfully"}
+
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error deleting intel report: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/intel_reports/all")
 async def get_all_intel_reports(
     current_user: User = Depends(get_current_user),
@@ -6904,7 +7073,8 @@ async def get_single_intel_report(
                     pi.CURRENT_WAGES,
                     pi.EXPECTED_WAGES,
                     pi.CONVERSATION_NOTES,
-                    pi.ACTION_REQUIRED
+                    pi.ACTION_REQUIRED,
+                    pi.PLAYER_ID
                 FROM player_information pi
                 LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
                 WHERE pi.ID = %s
@@ -6963,6 +7133,7 @@ async def get_single_intel_report(
                 "expected_wages": str(report_data[11]) if report_data[11] else None,
                 "conversation_notes": report_data[12],
                 "action_required": report_data[13],
+                "player_id": report_data[14],
             }
         else:
             # Without PLAYER_ID column, offset indices by 1
