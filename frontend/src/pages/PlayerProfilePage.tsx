@@ -326,28 +326,30 @@ const PlayerProfilePage: React.FC = () => {
         const mergedAttributes = Array.from(allPositionAttributes);
         setPositionAttributes(mergedAttributes);
 
-        // Fetch filtered attribute scores based on selected positions
-        const params = new URLSearchParams();
-        params.append('position_filter', positions.join(','));
-
-        // Include report filter if reports are selected
+        // If reports are selected, re-fetch data from ALL selected reports (no position filter to backend)
+        // Position selection only determines which attributes to DISPLAY, not which reports to include
         if (selectedReportIds.length > 0) {
-          params.append('report_ids', selectedReportIds.join(','));
+          // Fetch all attributes from selected reports without position filter
+          await fetchFilteredAttributes(selectedReportIds);
+        } else {
+          // No reports selected - fetch position-based aggregation across all reports
+          const params = new URLSearchParams();
+          params.append('position_filter', positions.join(','));
+
+          const attributeResponse = await axiosInstance.get(
+            `/players/${playerId}/attributes?${params.toString()}`
+          );
+
+          // Extract scores from the response
+          const positionScores: { [key: string]: number } = {};
+          if (attributeResponse.data?.attribute_groups) {
+            Object.values(attributeResponse.data.attribute_groups).flat().forEach((attr: any) => {
+              positionScores[attr.name] = attr.average_score;
+            });
+          }
+
+          setPositionAttributeScores(positionScores);
         }
-
-        const attributeResponse = await axiosInstance.get(
-          `/players/${playerId}/attributes?${params.toString()}`
-        );
-
-        // Extract scores from the response
-        const positionScores: { [key: string]: number } = {};
-        if (attributeResponse.data?.attribute_groups) {
-          Object.values(attributeResponse.data.attribute_groups).flat().forEach((attr: any) => {
-            positionScores[attr.name] = attr.average_score;
-          });
-        }
-
-        setPositionAttributeScores(positionScores);
 
         // Update filtered reports based on selected positions
         updateFilteredReports(positions, selectedReportIds);
@@ -359,7 +361,12 @@ const PlayerProfilePage: React.FC = () => {
     } else {
       setPositionAttributes([]);
       setPositionAttributeScores({});
-      setFilteredAttributeScores({});
+      // If reports are still selected, re-fetch with auto-detected positions
+      if (selectedReportIds.length > 0) {
+        fetchFilteredAttributes(selectedReportIds);
+      } else {
+        setFilteredAttributeScores({});
+      }
       // Reset filtered reports when no positions selected
       updateFilteredReports([], selectedReportIds);
     }
@@ -406,10 +413,36 @@ const PlayerProfilePage: React.FC = () => {
       const params = new URLSearchParams();
       params.append('report_ids', reportIds.join(','));
 
-      if (selectedPositions.length > 0) {
-        params.append('position_filter', selectedPositions.join(','));
+      // If no position is manually selected, extract positions from the selected reports
+      // and update positionAttributes for chart display
+      if (selectedPositions.length === 0 && scoutReportsData?.reports) {
+        const selectedReports = scoutReportsData.reports.filter(r => reportIds.includes(r.report_id));
+        const reportPositions = Array.from(new Set(selectedReports.map(r => r.position_played).filter((pos): pos is string => Boolean(pos))));
+
+        // Update position attributes for the chart
+        if (reportPositions.length > 0) {
+          try {
+            const positionAttrs = await Promise.all(
+              reportPositions.map((pos) =>
+                axiosInstance.get(`/attributes/${pos}`)
+              )
+            );
+            const allPositionAttributes = new Set<string>();
+            positionAttrs.forEach((res) => {
+              res.data.forEach((attr: string) =>
+                allPositionAttributes.add(attr)
+              );
+            });
+            setPositionAttributes(Array.from(allPositionAttributes));
+          } catch (error) {
+            console.error("Error fetching position attributes:", error);
+          }
+        }
       }
 
+      // Do NOT send position_filter to backend when fetching report-based data
+      // Position selection only controls which attributes to DISPLAY on frontend
+      // Backend should return ALL attributes from the selected reports
       const response = await axiosInstance.get(
         `/players/${playerId}/attributes?${params.toString()}`
       );
@@ -547,15 +580,27 @@ const PlayerProfilePage: React.FC = () => {
 
   // Get polar area chart data using exact logic from PlayerReportModal
   const getPolarAreaChartData = () => {
-    if (!positionAttributes.length || !positionAttributeScores) return null;
+    // Check if we have attributes and scores (either from position selection or report selection)
+    const hasScores = Object.keys(positionAttributeScores).length > 0 || Object.keys(filteredAttributeScores).length > 0;
+    if (!positionAttributes.length || !hasScores) return null;
 
     // Use filtered scores if reports are selected, otherwise use position-filtered scores
     const scoresToUse = selectedReportIds.length > 0 && Object.keys(filteredAttributeScores).length > 0
       ? filteredAttributeScores
       : positionAttributeScores;
 
+    // When both reports and positions are selected:
+    // - scoresToUse contains ALL attributes from selected reports (no position filter on backend)
+    // - positionAttributes contains only attributes from manually selected positions
+    // - We filter to show only attributes that are BOTH in positionAttributes AND have scores in the selected reports
+
     // Sort attributes by group like PlayerReportModal
     const sortedAttributes = positionAttributes
+      .filter((attr) => {
+        // Only include attributes that exist in the score data
+        // This ensures we only show position-relevant attributes that actually have data in the selected reports
+        return scoresToUse[attr] !== undefined;
+      })
       .map((attr) => {
         // Handle both formats: direct number or object with avg_score
         const score = typeof scoresToUse[attr] === 'object'
@@ -1416,7 +1461,7 @@ const PlayerProfilePage: React.FC = () => {
             </div>
           </div>
 
-          {selectedPositions.length > 0 &&
+          {(selectedPositions.length > 0 || positionAttributes.length > 0) &&
             (() => {
               const chartData = getPolarAreaChartData();
               if (!chartData || !chartData.labels.length) {
