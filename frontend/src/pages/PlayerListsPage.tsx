@@ -97,6 +97,9 @@ const PlayerListsPage: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+  // Show archived filter
+  const [showArchived, setShowArchived] = useState(false);
+
   // Modals
   const [showListModal, setShowListModal] = useState(false);
   const [editingList, setEditingList] = useState<PlayerList | null>(null);
@@ -229,6 +232,14 @@ const PlayerListsPage: React.FC = () => {
       (player) => !pendingRemovals.has(player.item_id)
     );
 
+    // Filter out archived players if showArchived is false
+    if (!showArchived) {
+      result = result.filter((player) => {
+        const currentStage = pendingStageChanges.get(player.item_id) || player.stage;
+        return currentStage !== "Archived";
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       let aVal: any;
@@ -268,7 +279,7 @@ const PlayerListsPage: React.FC = () => {
     });
 
     return result;
-  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals]);
+  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived]);
 
   // Handlers
   const handleSort = (field: SortField) => {
@@ -700,6 +711,18 @@ const PlayerListsPage: React.FC = () => {
                   </Badge>
                 );
               })}
+            </div>
+
+            {/* Show Archived Toggle */}
+            <div className="mt-2">
+              <Form.Check
+                type="checkbox"
+                id="show-archived-checkbox"
+                label="Show Archived Players"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+                style={{ fontSize: "0.85rem", color: colors.gray[700] }}
+              />
             </div>
 
             {/* Action Buttons */}
