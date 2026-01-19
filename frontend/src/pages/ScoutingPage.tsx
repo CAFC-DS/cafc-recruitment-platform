@@ -292,6 +292,7 @@ const ScoutingPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     token,
     recencyFilter,
@@ -305,7 +306,6 @@ const ScoutingPage: React.FC = () => {
     positionFilter,
     dateFromFilter,
     dateToFilter,
-    fetchScoutReports,
   ]);
 
   // Fetch when page changes (no debounce for pagination)
@@ -313,7 +313,8 @@ const ScoutingPage: React.FC = () => {
     if (token) {
       fetchScoutReports(currentPage);
     }
-  }, [currentPage, token, fetchScoutReports]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, token]);
 
 
   const handleOpenReportModal = async (report_id: number) => {

@@ -10098,11 +10098,11 @@ async def add_player_to_list(
 async def remove_player_from_list(
     list_id: int, item_id: int, current_user: User = Depends(get_current_user)
 ):
-    """Remove a player from a list (admin/manager only)"""
-    if current_user.role not in ["admin", "manager"]:
+    """Remove a player from a list (admin/senior manager only)"""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
             status_code=403,
-            detail="Only admins and managers can remove players from lists",
+            detail="Only admins and senior managers can remove players from lists",
         )
 
     conn = None
