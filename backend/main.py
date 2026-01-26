@@ -9491,7 +9491,19 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                 u.LASTNAME
             FROM player_lists pl
             LEFT JOIN users u ON pl.USER_ID = u.ID
-            ORDER BY pl.UPDATED_AT DESC
+            ORDER BY
+                CASE
+                    WHEN pl.LIST_NAME LIKE '%- GK%' THEN 1
+                    WHEN pl.LIST_NAME LIKE '%- CB%' THEN 2
+                    WHEN pl.LIST_NAME LIKE '%- RB/RWB%' THEN 3
+                    WHEN pl.LIST_NAME LIKE '%- LB/LWB%' THEN 4
+                    WHEN pl.LIST_NAME LIKE '%- DM/CM%' THEN 5
+                    WHEN pl.LIST_NAME LIKE '%- AM%' THEN 6
+                    WHEN pl.LIST_NAME LIKE '%- W' OR pl.LIST_NAME LIKE '%- W %' THEN 7
+                    WHEN pl.LIST_NAME LIKE '%- CF%' THEN 8
+                    ELSE 9
+                END,
+                pl.LIST_NAME
             """
         )
 
