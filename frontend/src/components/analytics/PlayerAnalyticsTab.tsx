@@ -9,6 +9,7 @@ import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
 import SimpleBarChart from "./SimpleBarChart";
 import ExportButton from "./ExportButton";
+import AttributeFilterSection from "./AttributeFilterSection";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
 import { getPerformanceScoreColor, getAttributeScoreColor } from "../../utils/colorUtils";
 
@@ -778,6 +779,13 @@ const PlayerAnalyticsTab: React.FC = () => {
               )}
             </Card.Body>
           </Card>
+        </Col>
+      </Row>
+
+      {/* Attribute-Based Player Search Section */}
+      <Row>
+        <Col>
+          <AttributeFilterSection />
         </Col>
       </Row>
 

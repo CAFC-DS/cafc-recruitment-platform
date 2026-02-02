@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getAllListsWithDetails,
   ListWithPlayers,
+  PlayerListFilters,
 } from "../services/playerListsService";
 
 interface UsePlayerListsReturn {
@@ -22,7 +23,7 @@ interface UsePlayerListsReturn {
 /**
  * Hook to fetch and manage all player lists with player details
  */
-export const usePlayerLists = (): UsePlayerListsReturn => {
+export const usePlayerLists = (filters?: PlayerListFilters): UsePlayerListsReturn => {
   const [lists, setLists] = useState<ListWithPlayers[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export const usePlayerLists = (): UsePlayerListsReturn => {
       setLoading(true);
       setError(null);
 
-      const data = await getAllListsWithDetails();
+      const data = await getAllListsWithDetails(filters);
       setLists(data);
     } catch (err: any) {
       console.error("Error fetching player lists:", err);
@@ -43,13 +44,12 @@ export const usePlayerLists = (): UsePlayerListsReturn => {
     } finally {
       setLoading(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters]); // Refetch when filters change
 
-  // Initial fetch
+  // Initial fetch and refetch when filters change
   useEffect(() => {
     fetchLists();
-    // Only run once on mount
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchLists]);
 
   return {
     lists,

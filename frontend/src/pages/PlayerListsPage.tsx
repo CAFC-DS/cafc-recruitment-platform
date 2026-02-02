@@ -10,7 +10,7 @@
  * - Optimized data fetching
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Container,
   Button,
@@ -28,6 +28,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePlayerLists } from "../hooks/usePlayerLists";
 import MultiListBadges from "../components/PlayerLists/MultiListBadges";
 import EmptyState from "../components/PlayerLists/EmptyState";
+import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
 import {
   createPlayerList,
   updatePlayerList,
@@ -39,6 +40,7 @@ import {
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
   PlayerListMembership,
+  PlayerListFilters,
 } from "../services/playerListsService";
 import {
   getPerformanceScoreColor,
@@ -84,8 +86,25 @@ const PlayerListsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
+  // Advanced Filters State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<AdvancedFiltersType>({
+    playerName: "",
+    position: "",
+    performanceScores: [],
+    minAge: "",
+    maxAge: "",
+    minReports: "",
+    maxReports: "",
+    stages: [],
+    recencyMonths: "",
+  });
+
+  // Debounced filters for API
+  const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({});
+
   // Use custom hook for data
-  const { lists, loading, error: fetchError, refetch } = usePlayerLists();
+  const { lists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
 
   // Local error
   const [error, setError] = useState<string | null>(null);
@@ -142,6 +161,56 @@ const PlayerListsPage: React.FC = () => {
       setError(fetchError);
     }
   }, [fetchError]);
+
+  // Debounce filters (500ms delay like scouting page)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const apiFilters: PlayerListFilters = {};
+
+      if (filters.playerName) apiFilters.playerName = filters.playerName;
+      if (filters.position) apiFilters.position = filters.position;
+      if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
+      if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
+      if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
+      if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
+      if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
+
+      // Handle performance scores array
+      if (filters.performanceScores.length > 0) {
+        const scores = filters.performanceScores.sort((a, b) => a - b);
+        apiFilters.minScore = scores[0];
+        apiFilters.maxScore = scores[scores.length - 1];
+      }
+
+      // Handle stages array
+      if (filters.stages.length > 0) {
+        apiFilters.stages = filters.stages.join(",");
+      }
+
+      setDebouncedFilters(apiFilters);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [filters]);
+
+  // Filter handlers
+  const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({
+      playerName: "",
+      position: "",
+      performanceScores: [],
+      minAge: "",
+      maxAge: "",
+      minReports: "",
+      maxReports: "",
+      stages: [],
+      recencyMonths: "",
+    });
+  }, []);
 
   // Toggle list visibility
   const toggleListVisibility = (listId: number) => {
@@ -724,10 +793,28 @@ const PlayerListsPage: React.FC = () => {
                 style={{ fontSize: "0.85rem", color: colors.gray[700] }}
               />
             </div>
+          </div>
 
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+
+          {/* Actions Container */}
+          <div
+            className="mb-3 p-3"
+            style={{
+              backgroundColor: colors.gray[50],
+              borderRadius: borderRadius.md,
+              border: `1px solid ${colors.gray[200]}`,
+            }}
+          >
             {/* Action Buttons */}
-            <div className="mt-3 pt-3 border-top">
-              <div className="d-flex align-items-center gap-2 flex-wrap">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
                 {/* Create New List Pill - Always visible */}
                 <Button
                   size="sm"
@@ -797,8 +884,6 @@ const PlayerListsPage: React.FC = () => {
                   Select a single list to access actions
                 </div>
               )}
-            </div>
-
           </div>
 
           {visibleListIds.size > 0 && (

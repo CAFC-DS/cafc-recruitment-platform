@@ -8987,6 +8987,257 @@ async def get_players_by_score(
             conn.close()
 
 
+@app.get("/analytics/attributes/by-position")
+async def get_attributes_by_position(
+    current_user: User = Depends(get_current_user),
+    position: Optional[str] = None
+):
+    """Get available attributes for a specific position"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        if position:
+            # Get attributes from actual scout reports for this position
+            logging.info(f"Fetching attributes from scout reports for position: {position}")
+            cursor.execute("""
+                SELECT DISTINCT
+                    sras.ATTRIBUTE_NAME
+                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+                JOIN SCOUT_REPORTS sr ON sras.SCOUT_REPORT_ID = sr.ID
+                WHERE sr.POSITION = %s
+                    AND sr.IS_ARCHIVED = FALSE
+                ORDER BY sras.ATTRIBUTE_NAME
+            """, (position,))
+
+            attributes = cursor.fetchall()
+
+            # If no attributes found in reports, try POSITION_ATTRIBUTES table
+            if not attributes:
+                logging.info(f"No attributes in reports, trying POSITION_ATTRIBUTES table")
+                cursor.execute("""
+                    SELECT
+                        ATTRIBUTE_NAME,
+                        ATTRIBUTE_GROUP,
+                        DISPLAY_ORDER
+                    FROM POSITION_ATTRIBUTES
+                    WHERE POSITION = %s
+                    ORDER BY DISPLAY_ORDER
+                """, (position,))
+                attributes = cursor.fetchall()
+        else:
+            # Get all unique attributes from scout reports
+            logging.info("Fetching all unique attributes from scout reports")
+            cursor.execute("""
+                SELECT DISTINCT
+                    ATTRIBUTE_NAME
+                FROM SCOUT_REPORT_ATTRIBUTE_SCORES
+                ORDER BY ATTRIBUTE_NAME
+            """)
+            attributes = cursor.fetchall()
+
+        logging.info(f"Found {len(attributes)} attributes for position: {position}")
+
+        return {
+            "position": position,
+            "attributes": attributes,
+            "count": len(attributes)
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving attributes: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/analytics/players/by-attributes")
+async def get_players_by_attributes(
+    current_user: User = Depends(get_current_user),
+    position: Optional[str] = None,
+    attributes: Optional[str] = None,
+    min_scores: Optional[str] = None,
+    max_scores: Optional[str] = None,
+    months: Optional[int] = None
+):
+    """Get individual scout reports filtered by position and specific attribute scores"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        # Parse comma-separated parameters
+        logging.info(f"Request params - position: {position}, attributes: {attributes}, min_scores: {min_scores}, max_scores: {max_scores}, months: {months}")
+
+        attribute_list = attributes.split(',') if attributes else []
+        min_score_list = [float(s) for s in min_scores.split(',')] if min_scores else []
+        max_score_list = [float(s) for s in max_scores.split(',')] if max_scores else []
+
+        logging.info(f"Parsed - attribute_list: {attribute_list}, min_score_list: {min_score_list}, max_score_list: {max_score_list}")
+
+        # Build base query
+        query = """
+            SELECT
+                sr.ID as report_id,
+                COALESCE(p.PLAYERNAME, 'Unknown') as player_name,
+                COALESCE(p.PLAYERID, sr.PLAYER_ID) as player_id,
+                COALESCE(p.CAFC_PLAYER_ID, sr.CAFC_PLAYER_ID) as cafc_player_id,
+                sr.POSITION as position,
+                sr.PERFORMANCE_SCORE as performance_score,
+                sr.ATTRIBUTE_SCORE as attribute_score,
+                sr.CREATED_AT as report_date,
+                CONCAT(u.FIRSTNAME, ' ', u.LASTNAME) as scout_name,
+                sr.REPORT_TYPE as report_type,
+                sr.SCOUTING_TYPE as scouting_type,
+                sr.PURPOSE as purpose
+            FROM SCOUT_REPORTS sr
+            LEFT JOIN PLAYERS p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN USERS u ON sr.USER_ID = u.ID
+            WHERE sr.IS_ARCHIVED = FALSE
+        """
+
+        params = []
+
+        # Add position filter
+        if position:
+            query += " AND sr.POSITION = %s"
+            params.append(position)
+
+        # Add time filter
+        if months:
+            query += " AND sr.CREATED_AT >= DATEADD(month, %s, CURRENT_DATE())"
+            params.append(-months)
+
+        # Add attribute score filters if attributes are specified
+        if attribute_list:
+            # We need to filter reports that have all specified attributes within score ranges
+            for i, attr in enumerate(attribute_list):
+                min_score = min_score_list[i] if i < len(min_score_list) else None
+                max_score = max_score_list[i] if i < len(max_score_list) else None
+
+                subquery = f"""
+                    EXISTS (
+                        SELECT 1
+                        FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+                        WHERE sras.SCOUT_REPORT_ID = sr.ID
+                        AND sras.ATTRIBUTE_NAME = %s
+                """
+                params.append(attr)
+
+                if min_score is not None:
+                    subquery += " AND sras.ATTRIBUTE_SCORE >= %s"
+                    params.append(min_score)
+
+                if max_score is not None:
+                    subquery += " AND sras.ATTRIBUTE_SCORE <= %s"
+                    params.append(max_score)
+
+                subquery += ")"
+                query += f" AND {subquery}"
+
+        query += " ORDER BY sr.CREATED_AT DESC LIMIT 100"
+
+        logging.info(f"Executing query with {len(params)} parameters")
+        logging.info(f"Query: {query[:500]}...")  # Log first 500 chars
+        logging.info(f"Params: {params}")
+
+        try:
+            cursor.execute(query, params)
+            reports = cursor.fetchall()
+            logging.info(f"Found {len(reports)} reports")
+        except Exception as query_error:
+            logging.error(f"Failed to execute main query: {query_error}")
+            logging.error(f"Query was: {query}")
+            logging.error(f"Params were: {params}")
+            raise
+
+        # For each report, fetch the specific attribute scores
+        result = []
+        for report in reports:
+            report_dict = dict(report)
+
+            # Fetch attribute scores for this report
+            if attribute_list:
+                try:
+                    placeholders = ','.join(['%s'] * len(attribute_list))
+                    query_params = [report['report_id']] + attribute_list
+                    attr_query = f"""
+                        SELECT
+                            ATTRIBUTE_NAME,
+                            ATTRIBUTE_SCORE
+                        FROM SCOUT_REPORT_ATTRIBUTE_SCORES
+                        WHERE SCOUT_REPORT_ID = %s
+                        AND ATTRIBUTE_NAME IN ({placeholders})
+                        ORDER BY ATTRIBUTE_NAME
+                    """
+                    logging.debug(f"Executing attribute query for report {report['report_id']} with {len(attribute_list)} attributes")
+                    cursor.execute(attr_query, query_params)
+                except Exception as attr_error:
+                    logging.error(f"Failed to fetch attributes for report {report.get('report_id', 'UNKNOWN')}: {attr_error}")
+                    logging.error(f"Attribute list: {attribute_list}")
+                    raise
+
+                attr_scores = cursor.fetchall()
+                report_dict['attribute_scores'] = {
+                    attr['ATTRIBUTE_NAME']: attr['ATTRIBUTE_SCORE']
+                    for attr in attr_scores
+                }
+
+                # Calculate average of selected attributes
+                if attr_scores:
+                    avg_score = sum(attr['ATTRIBUTE_SCORE'] for attr in attr_scores) / len(attr_scores)
+                    report_dict['selected_attributes_avg'] = round(avg_score, 2)
+                else:
+                    report_dict['selected_attributes_avg'] = None
+            else:
+                report_dict['attribute_scores'] = {}
+                report_dict['selected_attributes_avg'] = None
+
+            result.append(report_dict)
+
+        return {
+            "total_reports": len(result),
+            "reports": result,
+            "filters": {
+                "position": position,
+                "attributes": attribute_list,
+                "min_scores": min_score_list,
+                "max_scores": max_score_list,
+                "months": months
+            }
+        }
+
+    except Exception as e:
+        error_msg = str(e)
+        logging.exception(f"Error in get_players_by_attributes: {error_msg}")
+        logging.error(f"Failed query params - position: {position}, attributes: {attributes}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving players by attributes: {error_msg}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 # --- AI Chatbot Endpoints ---
 
 
@@ -9460,10 +9711,23 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
 
 
 @app.get("/player-lists/all-with-details")
-async def get_all_lists_with_details(current_user: User = Depends(get_current_user)):
+async def get_all_lists_with_details(
+    player_name: Optional[str] = None,
+    position: Optional[str] = None,
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+    min_score: Optional[int] = None,
+    max_score: Optional[int] = None,
+    min_reports: Optional[int] = None,
+    max_reports: Optional[int] = None,
+    stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
+    recency_months: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
     """
     Get all player lists with complete player details in a single optimized query.
     This reduces round trips from N+1 to 1 query.
+    Supports advanced filtering by player attributes, stages, and report recency.
     (admin/manager only)
     """
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
@@ -9528,9 +9792,36 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
         if not lists_data:
             return {"lists": [], "total": 0}
 
+        # Build filter conditions
+        filter_conditions = []
+
+        # Stage filter
+        if stages:
+            stage_list = [s.strip() for s in stages.split(",")]
+            stage_conditions = " OR ".join([f"pli.STAGE = '{stage}'" for stage in stage_list])
+            filter_conditions.append(f"({stage_conditions})")
+
+        # Position filter
+        if position:
+            filter_conditions.append(f"(UPPER(COALESCE(p.POSITION, ip.POSITION)) LIKE UPPER('%{position}%'))")
+
+        # Age filter
+        if min_age is not None:
+            filter_conditions.append(f"(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) >= {min_age})")
+        if max_age is not None:
+            filter_conditions.append(f"(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) <= {max_age})")
+
+        # Player name filter
+        if player_name:
+            filter_conditions.append(f"(UPPER(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)) LIKE UPPER('%{player_name}%'))")
+
+        where_clause = ""
+        if filter_conditions:
+            where_clause = "WHERE " + " AND ".join(filter_conditions)
+
         # Get all players for all lists in one query
         cursor.execute(
-            """
+            f"""
             SELECT
                 pli.LIST_ID,
                 pli.ID as ITEM_ID,
@@ -9556,6 +9847,7 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
             LEFT JOIN players p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN players ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
             LEFT JOIN users u ON pli.ADDED_BY = u.ID
+            {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
             """
         )
@@ -9586,7 +9878,8 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                     COUNT(*) as report_count,
                     AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as avg_performance_score,
                     COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
-                    COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
+                    COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports,
+                    MAX(sr.CREATED_AT) as last_report_date
                 FROM scout_reports sr
                 WHERE (sr.PLAYER_ID IN ({external_ids_str}) OR sr.CAFC_PLAYER_ID IN ({internal_ids_str}))
                 GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
@@ -9600,6 +9893,7 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                     "avg_performance_score": round(stats_row[3], 1) if stats_row[3] else None,
                     "live_reports": stats_row[4],
                     "video_reports": stats_row[5],
+                    "last_report_date": stats_row[6],
                 }
 
         # Build player data and attach to lists
@@ -9618,7 +9912,30 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                 "avg_performance_score": None,
                 "live_reports": 0,
                 "video_reports": 0,
+                "last_report_date": None,
             })
+
+            # Apply filters based on stats
+            # Performance score filter
+            if min_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] < min_score):
+                continue
+            if max_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] > max_score):
+                continue
+
+            # Report count filter
+            if min_reports is not None and stats["report_count"] < min_reports:
+                continue
+            if max_reports is not None and stats["report_count"] > max_reports:
+                continue
+
+            # Recency filter
+            if recency_months is not None:
+                if stats["last_report_date"] is None:
+                    continue
+                from datetime import datetime, timedelta
+                cutoff_date = datetime.now() - timedelta(days=recency_months * 30)
+                if stats["last_report_date"] < cutoff_date:
+                    continue
 
             # Determine universal_id
             if data_source == "internal" or (cafc_player_id and not player_id):
@@ -10307,9 +10624,9 @@ async def get_player_list_memberships(
     universal_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get all lists that a specific player belongs to (admin/manager only)"""
-    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and senior managers can view player lists"
+            status_code=403, detail="Only admins, senior managers, and managers can view player lists"
         )
 
     conn = None
@@ -10317,16 +10634,15 @@ async def get_player_list_memberships(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Parse universal_id to get player_id and cafc_player_id
-        player_id = None
-        cafc_player_id = None
+        # Use universal ID lookup to handle both legacy and universal ID formats
+        player_data, data_source = find_player_by_universal_or_legacy_id(universal_id, cursor)
 
-        if universal_id.startswith("internal_"):
-            cafc_player_id = int(universal_id.replace("internal_", ""))
-        elif universal_id.startswith("external_"):
-            player_id = int(universal_id.replace("external_", ""))
-        else:
-            raise HTTPException(status_code=400, detail="Invalid universal_id format")
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Extract player_id and cafc_player_id from found player data
+        player_id = player_data[0]  # PLAYERID
+        cafc_player_id = player_data[1]  # CAFC_PLAYER_ID
 
         # Get all lists this player belongs to with stage information
         query = """

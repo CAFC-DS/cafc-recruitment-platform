@@ -10,7 +10,7 @@
  * - Optimized data fetching
  */
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Container,
   Button,
@@ -30,6 +30,7 @@ import { PlayerList } from "../components/Kanban/KanbanColumn";
 import { PlayerInList } from "../components/Kanban/PlayerKanbanCard";
 import LoadingSkeleton from "../components/PlayerLists/LoadingSkeleton";
 import EmptyState from "../components/PlayerLists/EmptyState";
+import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
 import {
   createPlayerList,
   updatePlayerList,
@@ -41,6 +42,7 @@ import {
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
   PlayerListMembership,
+  PlayerListFilters,
 } from "../services/playerListsService";
 import {
   colors,
@@ -63,8 +65,25 @@ const KanbanPage: React.FC = () => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
+  // Advanced Filters State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<AdvancedFiltersType>({
+    playerName: "",
+    position: "",
+    performanceScores: [],
+    minAge: "",
+    maxAge: "",
+    minReports: "",
+    maxReports: "",
+    stages: [],
+    recencyMonths: "",
+  });
+
+  // Debounced filters for API
+  const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({});
+
   // Use the custom hook for data fetching
-  const { lists, loading, error: fetchError, refetch } = usePlayerLists();
+  const { lists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
 
   // Local error state
   const [error, setError] = useState<string | null>(null);
@@ -118,17 +137,71 @@ const KanbanPage: React.FC = () => {
     }
   }, [fetchError]);
 
+  // Debounce filters (500ms delay like scouting page)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const apiFilters: PlayerListFilters = {};
+
+      if (filters.playerName) apiFilters.playerName = filters.playerName;
+      if (filters.position) apiFilters.position = filters.position;
+      if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
+      if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
+      if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
+      if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
+      if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
+
+      // Handle performance scores array
+      if (filters.performanceScores.length > 0) {
+        const scores = filters.performanceScores.sort((a, b) => a - b);
+        apiFilters.minScore = scores[0];
+        apiFilters.maxScore = scores[scores.length - 1];
+      }
+
+      // Handle stages array
+      if (filters.stages.length > 0) {
+        apiFilters.stages = filters.stages.join(",");
+      }
+
+      setDebouncedFilters(apiFilters);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [filters]);
+
+  // Filter handlers
+  const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({
+      playerName: "",
+      position: "",
+      performanceScores: [],
+      minAge: "",
+      maxAge: "",
+      minReports: "",
+      maxReports: "",
+      stages: [],
+      recencyMonths: "",
+    });
+  }, []);
+
   /**
    * Transform lists into stage-based columns
+   * Only show columns for stages selected in the filter (or all if no filter)
    */
   const stageColumns = useMemo(() => {
-    const stages = {
-      "Stage 1": [] as PlayerInList[],
-      "Stage 2": [] as PlayerInList[],
-      "Stage 3": [] as PlayerInList[],
-      "Stage 4": [] as PlayerInList[],
-      ...(showArchived ? { "Archived": [] as PlayerInList[] } : {}),
-    };
+    // Determine which stages to show
+    const stagesToShow = filters.stages.length > 0
+      ? filters.stages
+      : ["Stage 1", "Stage 2", "Stage 3", "Stage 4", ...(showArchived ? ["Archived"] : [])];
+
+    // Initialize stages object with only the stages to show
+    const stages: Record<string, PlayerInList[]> = {};
+    stagesToShow.forEach(stage => {
+      stages[stage] = [];
+    });
 
     lists.forEach((list) => {
       // Skip lists that are not visible
@@ -174,7 +247,7 @@ const KanbanPage: React.FC = () => {
           : null,
       players,
     }));
-  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages]);
 
   /**
    * Fetch batch memberships when stage columns change
@@ -626,7 +699,26 @@ const KanbanPage: React.FC = () => {
                 style={{ fontSize: "0.85rem", color: colors.gray[700] }}
               />
             </div>
+          </div>
 
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+
+          {/* Actions Container */}
+          <div
+            className="mb-3 p-2 px-3"
+            style={{
+              backgroundColor: colors.gray[50],
+              borderRadius: borderRadius.md,
+              border: `1px solid ${colors.gray[200]}`,
+            }}
+          >
             {/* Action Buttons */}
             <div className="mt-3 pt-3 border-top">
               <div className="d-flex align-items-center gap-2 flex-wrap">
