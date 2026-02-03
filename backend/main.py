@@ -5610,8 +5610,12 @@ async def get_player_profile(
         # Get intel reports
         intel_sql = """
             SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
-                   pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE
+                   pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
+                   pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
+                   pi.POTENTIAL_DEAL_TYPE, u.USERNAME, u.FIRSTNAME, u.LASTNAME,
+                   pi.DATE_OF_INFORMATION
             FROM player_information pi
+            LEFT JOIN users u ON pi.USER_ID = u.ID
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
         """
@@ -5723,6 +5727,12 @@ async def get_player_profile(
                         row[5][:100] + "..." if row[5] and len(row[5]) > 100 else row[5]
                     ),
                     "transfer_fee": row[6],
+                    "current_wages": row[7],
+                    "expected_wages": row[8],
+                    "confirmed_contract_expiry": str(row[9]) if row[9] else None,
+                    "potential_deal_types": row[10].split(",") if row[10] else [],
+                    "submitted_by": f"{row[12] or ''} {row[13] or ''}".strip() if (row[12] or row[13]) else (row[11] or "Unknown"),
+                    "date_of_information": str(row[14]) if row[14] else None,
                 }
                 for row in intel_reports
             ],
@@ -6931,9 +6941,10 @@ async def get_all_intel_reports(
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME,
-                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE
+                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE, u.USERNAME, u.FIRSTNAME, u.LASTNAME
             FROM player_information pi
             {join_clause}
+            LEFT JOIN users u ON pi.USER_ID = u.ID
         """
 
         where_clauses = []
@@ -7017,6 +7028,7 @@ async def get_all_intel_reports(
                     "squad_name": row[13],
                     "player_id": player_id,
                     "universal_id": universal_id,
+                    "submitted_by": f"{row[18] or ''} {row[19] or ''}".strip() if (row[18] or row[19]) else (row[17] or "Unknown"),
                 }
             )
 
@@ -9105,14 +9117,19 @@ async def get_players_by_attributes(
                 CONCAT(u.FIRSTNAME, ' ', u.LASTNAME) as scout_name,
                 sr.REPORT_TYPE as report_type,
                 sr.SCOUTING_TYPE as scouting_type,
-                sr.PURPOSE as purpose
+                sr.PURPOSE as purpose,
+                DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()) as age,
+                DATE(m.SCHEDULEDDATE) as fixture_date,
+                CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) as fixture
             FROM SCOUT_REPORTS sr
             LEFT JOIN PLAYERS p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
             LEFT JOIN USERS u ON sr.USER_ID = u.ID
+            LEFT JOIN MATCHES m ON sr.MATCH_ID = m.ID
             WHERE sr.IS_ARCHIVED = FALSE
+            AND sr.REPORT_TYPE = 'Player Assessment'
         """
 
         params = []
@@ -9179,7 +9196,7 @@ async def get_players_by_attributes(
             if attribute_list:
                 try:
                     placeholders = ','.join(['%s'] * len(attribute_list))
-                    query_params = [report['report_id']] + attribute_list
+                    query_params = [report['REPORT_ID']] + attribute_list
                     attr_query = f"""
                         SELECT
                             ATTRIBUTE_NAME,
@@ -9189,10 +9206,10 @@ async def get_players_by_attributes(
                         AND ATTRIBUTE_NAME IN ({placeholders})
                         ORDER BY ATTRIBUTE_NAME
                     """
-                    logging.debug(f"Executing attribute query for report {report['report_id']} with {len(attribute_list)} attributes")
+                    logging.debug(f"Executing attribute query for report {report['REPORT_ID']} with {len(attribute_list)} attributes")
                     cursor.execute(attr_query, query_params)
                 except Exception as attr_error:
-                    logging.error(f"Failed to fetch attributes for report {report.get('report_id', 'UNKNOWN')}: {attr_error}")
+                    logging.error(f"Failed to fetch attributes for report {report.get('REPORT_ID', 'UNKNOWN')}: {attr_error}")
                     logging.error(f"Attribute list: {attribute_list}")
                     raise
 

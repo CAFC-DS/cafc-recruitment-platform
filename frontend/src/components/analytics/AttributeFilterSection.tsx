@@ -7,6 +7,52 @@ import axiosInstance from "../../axiosInstance";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
 import { getAverageAttributeScoreColor, getPerformanceScoreColor } from "../../utils/colorUtils";
 
+// CSS for range sliders
+const rangeSliderStyles = `
+  .range-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #000000;
+    cursor: grab;
+    border: 3px solid white;
+    box-shadow: 0 0 0 1px #000000, 0 2px 4px rgba(0,0,0,0.2);
+    position: relative;
+  }
+
+  .range-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #000000;
+    cursor: grab;
+    border: 3px solid white;
+    box-shadow: 0 0 0 1px #000000, 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .range-slider::-webkit-slider-thumb:hover {
+    background: #333333;
+    transform: scale(1.1);
+  }
+
+  .range-slider::-moz-range-thumb:hover {
+    background: #333333;
+    transform: scale(1.1);
+  }
+
+  .range-slider::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    background: #000000;
+  }
+
+  .range-slider::-moz-range-thumb:active {
+    cursor: grabbing;
+    background: #000000;
+  }
+`;
+
 interface Attribute {
   ATTRIBUTE_NAME: string;
   ATTRIBUTE_GROUP?: string;
@@ -20,20 +66,23 @@ interface AttributeFilter {
 }
 
 interface PlayerReport {
-  report_id: number;
-  player_name: string;
-  player_id: number;
-  cafc_player_id: number;
-  position: string;
-  performance_score: number;
-  attribute_score: number;
-  report_date: string;
-  scout_name: string;
-  report_type: string;
-  scouting_type: string;
-  purpose: string;
+  REPORT_ID: number;
+  PLAYER_NAME: string;
+  PLAYER_ID: number;
+  CAFC_PLAYER_ID: number;
+  POSITION: string;
+  PERFORMANCE_SCORE: number;
+  ATTRIBUTE_SCORE: number;
+  REPORT_DATE: string;
+  SCOUT_NAME: string;
+  REPORT_TYPE: string;
+  SCOUTING_TYPE: string;
+  PURPOSE: string;
   attribute_scores: { [key: string]: number };
   selected_attributes_avg: number | null;
+  AGE: number | null;
+  FIXTURE_DATE: string | null;
+  FIXTURE: string | null;
 }
 
 interface FilterResponse {
@@ -86,6 +135,20 @@ const AttributeFilterSection: React.FC = () => {
       console.log("Attributes response:", response.data);
       const attrs = response.data.attributes || [];
       setAvailableAttributes(attrs);
+
+      // Automatically select all attributes and create filters for them
+      // But DO NOT auto-apply - user must click "Apply Filters"
+      const attrNames = attrs.map((a: Attribute) => a.ATTRIBUTE_NAME);
+      setSelectedAttributes(attrNames);
+      setAttributeFilters(attrNames.map((name: string) => ({
+        name,
+        minScore: "1",
+        maxScore: "10"
+      })));
+
+      // Clear any previous results so user knows to click Apply Filters
+      setReports([]);
+
       if (attrs.length === 0) {
         setAttributeError(`No attributes found for position: ${selectedPosition}`);
       }
@@ -98,18 +161,6 @@ const AttributeFilterSection: React.FC = () => {
     }
   };
 
-  const handleAttributeToggle = (attrName: string) => {
-    if (selectedAttributes.includes(attrName)) {
-      // Remove attribute
-      setSelectedAttributes(selectedAttributes.filter(a => a !== attrName));
-      setAttributeFilters(attributeFilters.filter(f => f.name !== attrName));
-    } else {
-      // Add attribute
-      setSelectedAttributes([...selectedAttributes, attrName]);
-      setAttributeFilters([...attributeFilters, { name: attrName, minScore: "", maxScore: "" }]);
-    }
-  };
-
   const handleScoreChange = (attrName: string, field: 'minScore' | 'maxScore', value: string) => {
     setAttributeFilters(attributeFilters.map(f =>
       f.name === attrName ? { ...f, [field]: value } : f
@@ -117,25 +168,32 @@ const AttributeFilterSection: React.FC = () => {
   };
 
   const handleApplyFilters = async () => {
-    if (!selectedPosition || selectedAttributes.length === 0) {
-      alert("Please select a position and at least one attribute");
+    if (!selectedPosition) {
+      alert("Please select a position");
       return;
     }
 
     try {
       setLoading(true);
+
+      // Only include attributes that have been explicitly filtered (not default 1-10 range)
+      const filteredAttributes = attributeFilters.filter(f => {
+        const minVal = parseInt(f.minScore) || 1;
+        const maxVal = parseInt(f.maxScore) || 10;
+        return minVal !== 1 || maxVal !== 10;
+      });
+
       const params: any = {
         position: selectedPosition,
-        attributes: selectedAttributes.join(','),
         months: monthFilter
       };
 
-      // Build min and max score arrays (attributes are graded 1-10)
-      const minScores = attributeFilters.map(f => f.minScore || '1');
-      const maxScores = attributeFilters.map(f => f.maxScore || '10');
-
-      params.min_scores = minScores.join(',');
-      params.max_scores = maxScores.join(',');
+      // Only add attribute filters if some have been explicitly set
+      if (filteredAttributes.length > 0) {
+        params.attributes = filteredAttributes.map(f => f.name).join(',');
+        params.min_scores = filteredAttributes.map(f => f.minScore || '1').join(',');
+        params.max_scores = filteredAttributes.map(f => f.maxScore || '10').join(',');
+      }
 
       const response = await axiosInstance.get<FilterResponse>("/analytics/players/by-attributes", { params });
       setReports(response.data.reports || []);
@@ -154,11 +212,19 @@ const AttributeFilterSection: React.FC = () => {
     setReports([]);
   };
 
-  const handlePlayerClick = (playerId: number, cafcPlayerId: number) => {
+  const handlePlayerClick = (playerId: number | null, cafcPlayerId: number | null) => {
     const dataSource = cafcPlayerId ? 'internal' : 'external';
     const id = cafcPlayerId || playerId;
-    const path = getPlayerProfilePathFromSource(dataSource, id);
-    navigate(path);
+    if (id) {
+      const path = getPlayerProfilePathFromSource(dataSource, id);
+      navigate(path);
+    }
+  };
+
+  const getScoutingTypeBadge = (scoutingType: string | null) => {
+    if (!scoutingType) return 'N/A';
+    const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
+    return `${icon} ${scoutingType}`;
   };
 
   const handleExportCSV = () => {
@@ -184,13 +250,13 @@ const AttributeFilterSection: React.FC = () => {
       );
 
       return [
-        report.player_name,
-        report.position,
-        new Date(report.report_date).toLocaleDateString(),
-        report.scout_name,
-        report.report_type,
-        report.scouting_type || 'N/A',
-        report.performance_score || 'N/A',
+        report.PLAYER_NAME,
+        report.POSITION,
+        new Date(report.REPORT_DATE).toLocaleDateString(),
+        report.SCOUT_NAME,
+        report.REPORT_TYPE,
+        report.SCOUTING_TYPE || 'N/A',
+        report.PERFORMANCE_SCORE || 'N/A',
         ...attributeScores,
         report.selected_attributes_avg || 'N/A'
       ];
@@ -215,12 +281,21 @@ const AttributeFilterSection: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-sm mt-4">
-      <Card.Header className="bg-dark text-white">
-        <h5 className="mb-0">Attribute-Based Player Search</h5>
-      </Card.Header>
+    <>
+      <style>{rangeSliderStyles}</style>
+      <Card className="shadow-sm mt-4">
+        <Card.Header style={{ backgroundColor: "#000000" }} className="text-white">
+          <div className="d-flex justify-content-between align-items-center">
+            <h6 className="mb-0">🔍 Attribute-Based Player Search</h6>
+            {reports.length > 0 && (
+              <span className="badge bg-light text-dark">
+                {reports.length} {reports.length === 1 ? 'Report' : 'Reports'} Found
+              </span>
+            )}
+          </div>
+        </Card.Header>
       <Card.Body>
-        {/* Filter Controls */}
+        {/* Position and Time Period Selection */}
         <Row className="mb-3">
           <Col md={3}>
             <Form.Group>
@@ -257,93 +332,176 @@ const AttributeFilterSection: React.FC = () => {
           </Col>
         </Row>
 
-        {/* Attribute Selection */}
-        {selectedPosition && (
-          <Row className="mb-3">
-            <Col>
-              <Form.Label className="fw-bold">Select Attributes to Filter</Form.Label>
-              {loadingAttributes ? (
-                <div className="text-center py-3">
-                  <Spinner animation="border" size="sm" />
-                  <span className="ms-2">Loading attributes...</span>
-                </div>
-              ) : attributeError ? (
-                <Alert variant="warning" className="mt-2">
-                  {attributeError}
-                  <br />
-                  <small>This may mean there are no attributes configured for this position in the database.</small>
-                </Alert>
-              ) : availableAttributes.length === 0 ? (
-                <Alert variant="info" className="mt-2">
-                  No attributes available for this position.
-                </Alert>
-              ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
-                  {availableAttributes.map((attr) => (
-                    <Form.Check
-                      key={attr.ATTRIBUTE_NAME}
-                      type="checkbox"
-                      label={attr.ATTRIBUTE_NAME}
-                      checked={selectedAttributes.includes(attr.ATTRIBUTE_NAME)}
-                      onChange={() => handleAttributeToggle(attr.ATTRIBUTE_NAME)}
-                      style={{
-                        padding: "0.5rem",
-                        border: "1px solid #dee2e6",
-                        borderRadius: "4px",
-                        minWidth: "150px",
-                        backgroundColor: selectedAttributes.includes(attr.ATTRIBUTE_NAME) ? "#e7f3ff" : "#fff"
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </Col>
-          </Row>
-        )}
+        {/* Attributes Section */}
+        {!selectedPosition ? (
+          <Alert variant="info">
+            <strong>👆 Select a position</strong> to view available attributes for filtering
+          </Alert>
+        ) : loadingAttributes ? (
+          <div className="text-center py-5">
+            <Spinner animation="border" />
+            <div className="mt-3">Loading attributes for {selectedPosition}...</div>
+          </div>
+        ) : attributeError ? (
+          <Alert variant="warning">
+            {attributeError}
+            <br />
+            <small>This may mean there are no attributes configured for this position in the database.</small>
+          </Alert>
+        ) : availableAttributes.length === 0 ? (
+          <Alert variant="info">
+            No attributes available for this position.
+          </Alert>
+        ) : (
+          <>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h6 className="mb-0">Attributes for {selectedPosition}</h6>
+              <Badge bg="secondary">{availableAttributes.length} attributes</Badge>
+            </div>
 
-        {/* Score Ranges for Selected Attributes */}
-        {selectedAttributes.length > 0 && (
-          <Row className="mb-3">
-            <Col>
-              <Form.Label className="fw-bold">Score Ranges (1-10)</Form.Label>
-              <Row>
-                {attributeFilters.map((filter) => (
-                  <Col md={4} key={filter.name} className="mb-2">
-                    <Card style={{ backgroundColor: "#f8f9fa" }}>
-                      <Card.Body className="p-2">
-                        <div className="fw-bold mb-1" style={{ fontSize: "0.875rem" }}>
-                          {filter.name}
-                        </div>
-                        <div className="d-flex gap-2 align-items-center">
-                          <Form.Control
-                            type="number"
-                            placeholder="Min (1)"
-                            size="sm"
-                            min="1"
-                            max="10"
-                            value={filter.minScore}
-                            onChange={(e) => handleScoreChange(filter.name, 'minScore', e.target.value)}
-                            style={{ width: "90px" }}
-                          />
-                          <span>-</span>
-                          <Form.Control
-                            type="number"
-                            placeholder="Max (10)"
-                            size="sm"
-                            min="1"
-                            max="10"
-                            value={filter.maxScore}
-                            onChange={(e) => handleScoreChange(filter.name, 'maxScore', e.target.value)}
-                            style={{ width: "90px" }}
-                          />
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
+            {/* Attribute Filters - Grid Layout (5 per row) */}
+            <div style={{ maxHeight: "500px", overflowY: "auto", paddingRight: "10px" }}>
+              <Row className="g-2">
+                {attributeFilters.map((filter) => {
+                  const minVal = parseInt(filter.minScore) || 1;
+                  const maxVal = parseInt(filter.maxScore) || 10;
+                  return (
+                    <Col key={filter.name} style={{ flex: "0 0 20%", maxWidth: "20%" }}>
+                      <Card style={{ borderTop: "3px solid #000000", fontSize: "0.8rem" }}>
+                        <Card.Body className="p-2">
+                          <div className="fw-bold mb-1" style={{ fontSize: "0.8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {filter.name}
+                          </div>
+
+                          {/* Number inputs for precise control */}
+                          <div className="d-flex justify-content-between align-items-center mb-2" style={{ gap: "4px" }}>
+                            <Form.Control
+                              type="number"
+                              size="sm"
+                              value={minVal}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (val >= 1 && val <= maxVal) {
+                                  handleScoreChange(filter.name, 'minScore', e.target.value);
+                                }
+                              }}
+                              min={1}
+                              max={10}
+                              style={{ width: "45px", fontSize: "0.7rem", padding: "0.2rem 0.3rem", textAlign: "center" }}
+                            />
+                            <Badge bg="dark" style={{ fontSize: "0.7rem", flex: 1 }}>
+                              {minVal} - {maxVal}
+                            </Badge>
+                            <Form.Control
+                              type="number"
+                              size="sm"
+                              value={maxVal}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                if (val >= minVal && val <= 10) {
+                                  handleScoreChange(filter.name, 'maxScore', e.target.value);
+                                }
+                              }}
+                              min={1}
+                              max={10}
+                              style={{ width: "45px", fontSize: "0.7rem", padding: "0.2rem 0.3rem", textAlign: "center" }}
+                            />
+                          </div>
+
+                          {/* Dual Range Slider Container */}
+                          <div style={{ position: "relative", height: "40px", paddingTop: "10px" }}>
+                            {/* Background Track */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: "0",
+                                right: "0",
+                                height: "4px",
+                                backgroundColor: "#e9ecef",
+                                borderRadius: "2px",
+                                transform: "translateY(-50%)"
+                              }}
+                            />
+                            {/* Active Range Track */}
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: `${((minVal - 1) / 9) * 100}%`,
+                                width: `${((maxVal - minVal) / 9) * 100}%`,
+                                height: "4px",
+                                backgroundColor: "#000000",
+                                borderRadius: "2px",
+                                transform: "translateY(-50%)",
+                                pointerEvents: "none"
+                              }}
+                            />
+                            {/* Max Range Slider - Render first so min can be on top when needed */}
+                            <input
+                              type="range"
+                              className="range-slider"
+                              min={1}
+                              max={10}
+                              value={maxVal}
+                              onChange={(e) => {
+                                const newMax = parseInt(e.target.value);
+                                if (newMax >= minVal) {
+                                  handleScoreChange(filter.name, 'maxScore', e.target.value);
+                                }
+                              }}
+                              style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: "0",
+                                width: "100%",
+                                transform: "translateY(-50%)",
+                                pointerEvents: "auto",
+                                appearance: "none",
+                                WebkitAppearance: "none",
+                                background: "transparent",
+                                height: "4px",
+                                outline: "none",
+                                zIndex: 3
+                              }}
+                            />
+                            {/* Min Range Slider - Render second with higher z-index so it's accessible */}
+                            <input
+                              type="range"
+                              className="range-slider"
+                              min={1}
+                              max={10}
+                              value={minVal}
+                              onChange={(e) => {
+                                const newMin = parseInt(e.target.value);
+                                if (newMin <= maxVal) {
+                                  handleScoreChange(filter.name, 'minScore', e.target.value);
+                                }
+                              }}
+                              style={{
+                                position: "absolute",
+                                top: "50%",
+                                left: "0",
+                                width: "100%",
+                                transform: "translateY(-50%)",
+                                pointerEvents: "auto",
+                                appearance: "none",
+                                WebkitAppearance: "none",
+                                background: "transparent",
+                                height: "4px",
+                                outline: "none",
+                                zIndex: 4
+                              }}
+                            />
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    </Col>
+                  );
+                })}
               </Row>
-            </Col>
-          </Row>
+            </div>
+          </>
         )}
 
         {/* Action Buttons */}
@@ -391,68 +549,72 @@ const AttributeFilterSection: React.FC = () => {
                 Found {reports.length} reports matching your criteria
               </Alert>
               <div className="table-responsive" style={{ maxHeight: "600px", overflowY: "auto" }}>
-                <Table striped bordered hover size="sm">
-                  <thead className="table-dark sticky-top">
+                <Table
+                  responsive
+                  hover
+                  striped
+                  className="table-compact table-sm"
+                  style={{ textAlign: "center" }}
+                >
+                  <thead className="table-dark">
                     <tr>
+                      <th>Report Date</th>
                       <th>Player</th>
+                      <th>Age</th>
                       <th>Position</th>
-                      <th>Date</th>
+                      <th>Fixture Date</th>
+                      <th>Fixture</th>
                       <th>Scout</th>
                       <th>Type</th>
-                      <th>Perf Score</th>
-                      {selectedAttributes.map((attr) => (
-                        <th key={attr}>{attr}</th>
-                      ))}
-                      <th>Avg</th>
+                      <th>Score</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reports.map((report) => (
-                      <tr
-                        key={report.report_id}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => handlePlayerClick(report.player_id, report.cafc_player_id)}
-                      >
-                        <td>{report.player_name}</td>
-                        <td>{report.position}</td>
-                        <td>{new Date(report.report_date).toLocaleDateString()}</td>
-                        <td>{report.scout_name}</td>
+                      <tr key={report.REPORT_ID}>
+                        <td>{new Date(report.REPORT_DATE).toLocaleDateString()}</td>
                         <td>
-                          <Badge bg="secondary" style={{ fontSize: "0.75rem" }}>
-                            {report.report_type}
-                          </Badge>
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePlayerClick(report.PLAYER_ID, report.CAFC_PLAYER_ID);
+                            }}
+                            style={{ textDecoration: "none", color: "#0d6efd" }}
+                          >
+                            {report.PLAYER_NAME}
+                          </a>
                         </td>
                         <td>
-                          <Badge
-                            style={{
-                              backgroundColor: getPerformanceScoreColor(report.performance_score),
-                              fontSize: "0.75rem"
-                            }}
-                          >
-                            {report.performance_score || 'N/A'}
-                          </Badge>
+                          <span className="age-text">{report.AGE || 'N/A'}</span>
                         </td>
-                        {selectedAttributes.map((attr) => (
-                          <td key={attr}>
-                            <Badge
-                              style={{
-                                backgroundColor: getAverageAttributeScoreColor(report.attribute_scores[attr]),
-                                fontSize: "0.75rem"
-                              }}
-                            >
-                              {report.attribute_scores[attr] || 'N/A'}
-                            </Badge>
-                          </td>
-                        ))}
                         <td>
-                          <Badge
+                          <span className="position-text">{report.POSITION || 'N/A'}</span>
+                        </td>
+                        <td>
+                          {report.FIXTURE_DATE
+                            ? new Date(report.FIXTURE_DATE).toLocaleDateString()
+                            : 'N/A'}
+                        </td>
+                        <td>{report.FIXTURE || 'N/A'}</td>
+                        <td>{report.SCOUT_NAME}</td>
+                        <td>
+                          <span style={{ fontSize: "0.85rem" }}>
+                            {getScoutingTypeBadge(report.SCOUTING_TYPE)}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className="badge"
                             style={{
-                              backgroundColor: getAverageAttributeScoreColor(report.selected_attributes_avg || 0),
-                              fontSize: "0.75rem"
+                              backgroundColor: getPerformanceScoreColor(report.PERFORMANCE_SCORE),
+                              color: "white",
+                              fontWeight: "bold",
+                              fontSize: "0.9rem"
                             }}
                           >
-                            {report.selected_attributes_avg?.toFixed(1) || 'N/A'}
-                          </Badge>
+                            {report.PERFORMANCE_SCORE || 'N/A'}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -470,6 +632,7 @@ const AttributeFilterSection: React.FC = () => {
         )}
       </Card.Body>
     </Card>
+    </>
   );
 };
 
