@@ -29,6 +29,7 @@ import { usePlayerLists } from "../hooks/usePlayerLists";
 import MultiListBadges from "../components/PlayerLists/MultiListBadges";
 import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
+import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
 import {
   createPlayerList,
   updatePlayerList,
@@ -118,6 +119,12 @@ const PlayerListsPage: React.FC = () => {
 
   // Show archived filter
   const [showArchived, setShowArchived] = useState(false);
+
+  // Player name filter
+  const [playerNameFilter, setPlayerNameFilter] = useState("");
+
+  // View mode toggle (pitch view vs regular pills)
+  const [usePitchView, setUsePitchView] = useState(false);
 
   // Modals
   const [showListModal, setShowListModal] = useState(false);
@@ -301,6 +308,14 @@ const PlayerListsPage: React.FC = () => {
       (player) => !pendingRemovals.has(player.item_id)
     );
 
+    // Filter by player name if search query provided
+    if (playerNameFilter.trim()) {
+      const query = playerNameFilter.toLowerCase();
+      result = result.filter((player) =>
+        player.player_name.toLowerCase().includes(query)
+      );
+    }
+
     // Filter out archived players if showArchived is false
     if (!showArchived) {
       result = result.filter((player) => {
@@ -348,7 +363,7 @@ const PlayerListsPage: React.FC = () => {
     });
 
     return result;
-  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived]);
+  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived, playerNameFilter]);
 
   // Handlers
   const handleSort = (field: SortField) => {
@@ -713,7 +728,7 @@ const PlayerListsPage: React.FC = () => {
   }
 
   return (
-    <Container fluid className="py-4">
+    <Container className="mt-4">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
@@ -722,12 +737,7 @@ const PlayerListsPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="mb-4">
-        <h3 className="mb-1">Player Lists</h3>
-        <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-          Manage your player recruitment lists
-        </p>
-      </div>
+      <h3>Player Lists</h3>
 
       {lists.length === 0 ? (
         <EmptyState
@@ -739,48 +749,59 @@ const PlayerListsPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* List Selection Pills */}
-          <div
-            className="mb-3 p-3"
-            style={{
-              backgroundColor: colors.gray[50],
-              borderRadius: borderRadius.md,
-              border: `1px solid ${colors.gray[200]}`,
-            }}
-          >
+          {/* List Selection */}
+          <div className="mb-3">
             <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="fw-semibold" style={{ fontSize: "0.85rem", color: colors.gray[700] }}>
+              <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>
                 Lists:
               </span>
-              <Button size="sm" variant="link" onClick={() => toggleAllLists(true)} style={{ fontSize: "0.75rem", padding: "0 0.25rem" }}>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(true)}>
                 All
               </Button>
-              <span style={{ color: colors.gray[400] }}>|</span>
-              <Button size="sm" variant="link" onClick={() => toggleAllLists(false)} style={{ fontSize: "0.75rem", padding: "0 0.25rem" }}>
+              <span>|</span>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(false)}>
                 None
               </Button>
+              <span>|</span>
+              <Button
+                size="sm"
+                variant="link"
+                onClick={() => setUsePitchView(!usePitchView)}
+                style={{ fontWeight: usePitchView ? "bold" : "normal" }}
+              >
+                {usePitchView ? "📋 List View" : "⚽ Pitch View"}
+              </Button>
             </div>
-            <div className="d-flex gap-2 flex-wrap align-items-center">
-              {lists.map((list) => {
-                const isVisible = visibleListIds.has(list.id);
-                return (
-                  <Badge
-                    key={list.id}
-                    bg=""
-                    onClick={() => toggleListVisibility(list.id)}
-                    style={{
-                      ...badgeStyles.pill,
-                      backgroundColor: isVisible ? colors.primary : colors.gray[300],
-                      color: isVisible ? colors.white : colors.gray[600],
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    {list.list_name} ({list.player_count})
-                  </Badge>
-                );
-              })}
-            </div>
+
+            {usePitchView ? (
+              <PitchViewListSelector
+                lists={lists}
+                visibleListIds={visibleListIds}
+                onToggleList={toggleListVisibility}
+              />
+            ) : (
+              <div className="d-flex gap-2 flex-wrap align-items-center">
+                {lists.map((list) => {
+                  const isVisible = visibleListIds.has(list.id);
+                  return (
+                    <Badge
+                      key={list.id}
+                      bg=""
+                      onClick={() => toggleListVisibility(list.id)}
+                      style={{
+                        ...badgeStyles.pill,
+                        backgroundColor: isVisible ? colors.primary : colors.gray[300],
+                        color: isVisible ? colors.white : colors.gray[600],
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {list.list_name} ({list.player_count})
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Show Archived Toggle */}
             <div className="mt-2">
@@ -790,10 +811,25 @@ const PlayerListsPage: React.FC = () => {
                 label="Show Archived Players"
                 checked={showArchived}
                 onChange={(e) => setShowArchived(e.target.checked)}
-                style={{ fontSize: "0.85rem", color: colors.gray[700] }}
               />
             </div>
           </div>
+
+          {/* Search Players */}
+          {visibleListIds.size > 0 && (
+            <div className="mb-3">
+              <Form.Group className="mb-0">
+                <Form.Control
+                  type="text"
+                  placeholder="🔍 Search players by name..."
+                  value={playerNameFilter}
+                  onChange={(e) => setPlayerNameFilter(e.target.value)}
+                  size="sm"
+                  style={{ maxWidth: "300px" }}
+                />
+              </Form.Group>
+            </div>
+          )}
 
           {/* Advanced Filters */}
           <AdvancedFilters
@@ -805,14 +841,7 @@ const PlayerListsPage: React.FC = () => {
           />
 
           {/* Actions Container */}
-          <div
-            className="mb-3 p-3"
-            style={{
-              backgroundColor: colors.gray[50],
-              borderRadius: borderRadius.md,
-              border: `1px solid ${colors.gray[200]}`,
-            }}
-          >
+          <div className="mb-3">
             {/* Action Buttons */}
             <div className="d-flex align-items-center gap-2 flex-wrap">
                 {/* Create New List Pill - Always visible */}
@@ -820,15 +849,6 @@ const PlayerListsPage: React.FC = () => {
                   size="sm"
                   variant="dark"
                   onClick={openCreateModal}
-                  style={{
-                    borderRadius: "50px",
-                    padding: "0.4rem 1rem",
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.25rem",
-                  }}
                 >
                   ➕ New List
                 </Button>
@@ -839,12 +859,6 @@ const PlayerListsPage: React.FC = () => {
                     <Dropdown.Toggle
                       variant="dark"
                       size="sm"
-                      style={{
-                        borderRadius: "50px",
-                        padding: "0.4rem 1rem",
-                        fontSize: "0.85rem",
-                        fontWeight: 500,
-                      }}
                     >
                       ⚙️ List Actions
                     </Dropdown.Toggle>
@@ -873,14 +887,7 @@ const PlayerListsPage: React.FC = () => {
               </div>
 
               {visibleListIds.size > 0 && !currentList && (
-                <div
-                  className="mt-2"
-                  style={{
-                    fontSize: "0.75rem",
-                    color: colors.gray[600],
-                    fontStyle: "italic",
-                  }}
-                >
+                <div className="mt-2 text-muted" style={{ fontSize: "0.875rem" }}>
                   Select a single list to access actions
                 </div>
               )}

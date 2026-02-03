@@ -92,6 +92,11 @@ const KanbanPage: React.FC = () => {
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
 
+  // Sort state
+  type SortField = "name" | "age" | "score" | "reports";
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
   // Batch save mode for stage changes and removals
   const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, { fromStage: string; toStage: string; listId: number }>>(new Map());
   const [pendingRemovals, setPendingRemovals] = useState<Map<number, number>>(new Map()); // itemId -> listId
@@ -228,6 +233,39 @@ const KanbanPage: React.FC = () => {
       });
     });
 
+    // Sort players within each stage
+    const sortPlayers = (players: PlayerInList[]) => {
+      return [...players].sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
+
+        switch (sortField) {
+          case "name":
+            aVal = a.player_name?.toLowerCase() || "";
+            bVal = b.player_name?.toLowerCase() || "";
+            break;
+          case "age":
+            aVal = a.age || 0;
+            bVal = b.age || 0;
+            break;
+          case "score":
+            aVal = a.avg_performance_score || 0;
+            bVal = b.avg_performance_score || 0;
+            break;
+          case "reports":
+            aVal = a.report_count || 0;
+            bVal = b.report_count || 0;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    };
+
     // Convert to array format for KanbanBoard
     return Object.entries(stages).map(([stageName, players]) => ({
       id: stageName,
@@ -245,9 +283,9 @@ const KanbanPage: React.FC = () => {
           ? players.reduce((sum, p) => sum + (p.avg_performance_score || 0), 0) /
             players.filter((p) => p.avg_performance_score).length
           : null,
-      players,
+      players: sortPlayers(players),
     }));
-  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection]);
 
   /**
    * Fetch batch memberships when stage columns change
@@ -709,6 +747,29 @@ const KanbanPage: React.FC = () => {
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
           />
+
+          {/* Sort Controls */}
+          <div className="mb-3 d-flex align-items-center gap-2">
+            <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>Sort by:</span>
+            <Form.Select
+              size="sm"
+              value={sortField}
+              onChange={(e) => setSortField(e.target.value as SortField)}
+              style={{ width: "auto" }}
+            >
+              <option value="name">Name</option>
+              <option value="age">Age</option>
+              <option value="score">Score</option>
+              <option value="reports">Reports</option>
+            </Form.Select>
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+            >
+              {sortDirection === "asc" ? "↑" : "↓"}
+            </Button>
+          </div>
 
           {/* Actions Container */}
           <div
