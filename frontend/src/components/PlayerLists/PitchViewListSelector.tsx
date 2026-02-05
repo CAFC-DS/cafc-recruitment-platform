@@ -120,16 +120,16 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
   });
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "600px", maxWidth: "100%" }}>
       {/* Pitch Grid */}
       <div
         style={{
           background: "linear-gradient(180deg, #1e7e34 0%, #28a745 100%)",
           borderRadius: "8px",
-          padding: "12px",
+          padding: "10px",
           border: "2px solid #155724",
           position: "relative",
-          minHeight: "280px",
+          minHeight: "240px",
         }}
       >
         {/* Pitch lines */}
@@ -161,8 +161,8 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
             position: "absolute",
             top: "50%",
             left: "50%",
-            width: "50px",
-            height: "50px",
+            width: "40px",
+            height: "40px",
             border: "1px solid rgba(255, 255, 255, 0.3)",
             borderRadius: "50%",
             transform: "translate(-50%, -50%)",
@@ -175,7 +175,7 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "6px",
+            gap: "5px",
             position: "relative",
             zIndex: 1,
           }}
@@ -187,8 +187,8 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
                 display: "flex",
                 justifyContent: "space-evenly",
                 alignItems: "center",
-                gap: "5px",
-                minHeight: "32px",
+                gap: "4px",
+                minHeight: "28px",
               }}
             >
               {row.map((list, colIndex) => (
@@ -215,8 +215,8 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
                           : "#fff",
                         cursor: "pointer",
                         transition: "all 0.2s ease",
-                        fontSize: "0.65rem",
-                        padding: "4px 8px",
+                        fontSize: "0.6rem",
+                        padding: "3px 6px",
                         fontWeight: "600",
                         border: visibleListIds.has(list.id)
                           ? `1px solid ${colors.primary}`

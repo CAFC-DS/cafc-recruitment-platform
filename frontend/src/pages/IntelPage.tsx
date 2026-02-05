@@ -42,6 +42,7 @@ interface IntelReport {
   universal_id?: string;
   position?: string;
   squad_name?: string;
+  submitted_by?: string;
 }
 
 const IntelPage: React.FC = () => {
@@ -602,12 +603,12 @@ const IntelPage: React.FC = () => {
               >
                 <thead className="table-dark">
                   <tr>
-                    <th>Date</th>
-                    <th>Player</th>
-                    <th>Contact</th>
+                    <th>Report Date</th>
+                    <th>User</th>
+                    <th>Contact Name</th>
+                    <th>Contact Organisation</th>
                     <th>Contract Expiry</th>
                     <th>Deal Types</th>
-                    <th>Action Required</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -626,19 +627,9 @@ const IntelPage: React.FC = () => {
                       <td>
                         {new Date(report.created_at).toLocaleDateString("en-GB")}
                       </td>
-                      <td>
-                          <a
-                            href={getPlayerProfilePath(report as any)}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              navigate(getPlayerProfilePath(report as any));
-                            }}
-                            style={{ textDecoration: "none", color: "#0d6efd", cursor: "pointer" }}
-                          >
-                            {report.player_name}
-                          </a>
-                      </td>
+                      <td>{report.submitted_by || "Unknown"}</td>
                       <td>{report.contact_name}</td>
+                      <td>{report.contact_organisation}</td>
                       <td>
                         {report.confirmed_contract_expiry
                           ? new Date(
@@ -649,7 +640,6 @@ const IntelPage: React.FC = () => {
                       <td>
                         {formatDealTypes(report.potential_deal_types)}
                       </td>
-                      <td style={{ verticalAlign: "middle" }}>{getActionRequiredBadge(report.action_required)}</td>
                       <td>
                         <div
                           className="btn-group"
