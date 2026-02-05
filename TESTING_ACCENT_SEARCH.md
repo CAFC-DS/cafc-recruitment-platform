@@ -1,7 +1,7 @@
 # Testing Accent-Insensitive Search Implementation
 
 ## Overview
-This document outlines how to test the new accent-insensitive search feature using Snowflake COLLATE 'utf8-ai'.
+This document outlines how to test the new accent-insensitive search feature using Snowflake COLLATE 'en-ci-ai'.
 
 ## Endpoints Updated
 1. `GET /players/search` - Main player search (autocomplete)
