@@ -2805,6 +2805,19 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
+        # Debug: Print current database context
+        cursor.execute("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA()")
+        db_info = cursor.fetchone()
+        print(f"🔍 DEBUG /players/search - Database: {db_info[0]}, Schema: {db_info[1]}")
+
+        # Debug: Check if UDF exists
+        cursor.execute("SHOW USER FUNCTIONS LIKE 'NORMALIZE_TEXT_UDF'")
+        udf_results = cursor.fetchall()
+        print(f"🔍 DEBUG - Found {len(udf_results)} UDFs named NORMALIZE_TEXT_UDF")
+        if udf_results:
+            for udf in udf_results:
+                print(f"    UDF: {udf}")
+
         # Check if CAFC_PLAYER_ID column exists (using cached schema)
         has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
