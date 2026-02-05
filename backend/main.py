@@ -2817,8 +2817,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         normalized_query = normalize_text(query)
         search_pattern = f"%{normalized_query}%"
 
-        # Use Snowflake's accent-insensitive collation for native accent handling
-        # NORMALIZE_TEXT_UDF() removes accents for matching
+        # Use Snowflake's NORMALIZE_TEXT_UDF() for accent-insensitive matching
         # This works for ALL Unicode characters (Róbert=Robert, José=Jose, etc.)
         # Order by relevance: exact matches first, then prefix matches, then any match
         if has_cafc_id:
@@ -2829,7 +2828,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN UPPER(PLAYERNAME COLLATE 'en-ci-ai') = UPPER(%s) THEN 1
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
                         WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
@@ -2846,7 +2845,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN UPPER(PLAYERNAME COLLATE 'en-ci-ai') = UPPER(%s) THEN 1
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
                         WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
