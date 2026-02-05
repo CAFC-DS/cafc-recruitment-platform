@@ -46,12 +46,12 @@ from iteration_mapping import ITERATION_MAPPING
 load_dotenv()
 
 
-# Text normalization utility (DEPRECATED - use Snowflake COLLATE 'en-ci-ai' instead)
+# Text normalization utility for accent-insensitive search
 def normalize_text(text: str) -> str:
     """Remove diacritical marks (accents) from text for accent-insensitive search
 
     DEPRECATED: This function is no longer used for database queries.
-    All player search endpoints now use Snowflake's COLLATE 'en-ci-ai' for
+    All player search endpoints now use Snowflake's NORMALIZE_TEXT_UDF() for
     native accent-insensitive matching, which is more efficient and requires
     no maintenance.
 
@@ -2421,7 +2421,7 @@ async def check_player_duplicates(
             """
             SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, SQUADNAME, DATA_SOURCE
             FROM players
-            WHERE PLAYERNAME ILIKE %s
+            WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
             ORDER BY PLAYERNAME
             """,
             (f"%{name}%",)
@@ -2797,7 +2797,7 @@ async def read_root():
 async def search_players(query: str, current_user: User = Depends(get_current_user)):
     """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching
 
-    Uses Snowflake COLLATE 'en-ci-ai' for native accent-insensitive search.
+    Uses Snowflake NORMALIZE_TEXT_UDF() for accent-insensitive search.
     This automatically handles all Unicode diacritics without hardcoded mappings.
     """
     conn = None
@@ -2808,16 +2808,17 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         # Check if CAFC_PLAYER_ID column exists (using cached schema)
         has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
-        # Clean up the query
+        # Clean up and normalize the query client-side
         query = query.strip()
         if not query:
             return []
 
-        # Simple search pattern - COLLATE handles accent-insensitivity
-        search_pattern = f"%{query}%"
+        # Normalize search term client-side to match UDF behavior
+        normalized_query = normalize_text(query)
+        search_pattern = f"%{normalized_query}%"
 
         # Use Snowflake's accent-insensitive collation for native accent handling
-        # COLLATE 'en-ci-ai' makes the comparison ignore accents automatically
+        # NORMALIZE_TEXT_UDF() removes accents for matching
         # This works for ALL Unicode characters (Róbert=Robert, José=Jose, etc.)
         # Order by relevance: exact matches first, then prefix matches, then any match
         if has_cafc_id:
@@ -2825,34 +2826,34 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 """
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
                 FROM players
-                WHERE PLAYERNAME COLLATE 'en-ci-ai' ILIKE %s
+                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
                         WHEN UPPER(PLAYERNAME COLLATE 'en-ci-ai') = UPPER(%s) THEN 1
-                        WHEN PLAYERNAME COLLATE 'en-ci-ai' ILIKE %s THEN 2
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME
                 LIMIT 100
             """,
-                (search_pattern, query, query + '%'),
+                (search_pattern, normalized_query, normalized_query + '%'),
             )
         else:
             cursor.execute(
                 """
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
                 FROM players
-                WHERE PLAYERNAME COLLATE 'en-ci-ai' ILIKE %s
+                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
                         WHEN UPPER(PLAYERNAME COLLATE 'en-ci-ai') = UPPER(%s) THEN 1
-                        WHEN PLAYERNAME COLLATE 'en-ci-ai' ILIKE %s THEN 2
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME
                 LIMIT 100
             """,
-                (search_pattern, query, query + '%'),
+                (search_pattern, normalized_query, normalized_query + '%'),
             )
 
         players = cursor.fetchall()
@@ -4281,7 +4282,7 @@ async def get_all_scout_reports(
 
         # Player name filter (case-insensitive and accent-insensitive partial match)
         if player_name:
-            where_clauses.append("p.PLAYERNAME COLLATE 'en-ci-ai' ILIKE %s")
+            where_clauses.append("p.PLAYERNAME ILIKE %s")
             sql_params.append(f"%{player_name}%")
 
         # Report types filter (comma-separated)
@@ -6263,7 +6264,7 @@ async def get_all_players(
 
         if search:
             where_conditions.append(
-                "(p.PLAYERNAME COLLATE 'en-ci-ai' ILIKE %s OR p.FIRSTNAME COLLATE 'en-ci-ai' ILIKE %s OR p.LASTNAME COLLATE 'en-ci-ai' ILIKE %s)"
+                "(NORMALIZE_TEXT_UDF(p.PLAYERNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.FIRSTNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.LASTNAME) ILIKE %s)"
             )
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param])
@@ -9782,7 +9783,7 @@ async def get_all_lists_with_details(
 
         # Position filter (with accent-insensitive collation)
         if position:
-            filter_conditions.append("(COALESCE(p.POSITION, ip.POSITION) COLLATE 'en-ci-ai' ILIKE %s)")
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)) ILIKE %s)")
             filter_params.append(f"%{position}%")
 
         # Age filter
@@ -9795,7 +9796,7 @@ async def get_all_lists_with_details(
 
         # Player name filter (with accent-insensitive collation)
         if player_name:
-            filter_conditions.append("(COALESCE(p.PLAYERNAME, ip.PLAYERNAME) COLLATE 'en-ci-ai' ILIKE %s)")
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)) ILIKE %s)")
             filter_params.append(f"%{player_name}%")
 
         where_clause = ""

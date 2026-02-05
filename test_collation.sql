@@ -1,76 +1,87 @@
--- Snowflake COLLATE Testing Script
+-- Snowflake NORMALIZE_TEXT_UDF Testing Script
 -- Run these queries in Snowflake console to verify accent-insensitive behavior
--- Expected: All tests should return TRUE
--- Collation: 'en-ci-ai' = English, Case Insensitive, Accent Insensitive
+-- IMPORTANT: First create the UDF using create_normalize_udf.sql
 
 -- ============================================
--- TEST 1: Basic Accent-Insensitive Equality
+-- TEST 1: Basic UDF Functionality
 -- ============================================
 SELECT
-    'Róbert' COLLATE 'en-ci-ai' = 'Robert' AS test_robert,
-    'Boženík' COLLATE 'en-ci-ai' = 'Bozenik' AS test_bozenik,
-    'José' COLLATE 'en-ci-ai' = 'Jose' AS test_jose,
-    'Óscar' COLLATE 'en-ci-ai' = 'Oscar' AS test_oscar,
-    'Márton' COLLATE 'en-ci-ai' = 'Marton' AS test_marton,
-    'João' COLLATE 'en-ci-ai' = 'Joao' AS test_joao;
+    NORMALIZE_TEXT_UDF('Róbert') AS test_robert,
+    NORMALIZE_TEXT_UDF('Boženík') AS test_bozenik,
+    NORMALIZE_TEXT_UDF('José') AS test_jose,
+    NORMALIZE_TEXT_UDF('Óscar') AS test_oscar,
+    NORMALIZE_TEXT_UDF('Márton') AS test_marton,
+    NORMALIZE_TEXT_UDF('João') AS test_joao;
+
+-- Expected: robert | bozenik | jose | oscar | marton | joao
+
+-- ============================================
+-- TEST 2: Accent-Insensitive Equality
+-- ============================================
+SELECT
+    NORMALIZE_TEXT_UDF('Róbert') = NORMALIZE_TEXT_UDF('Robert') AS test_robert,
+    NORMALIZE_TEXT_UDF('Boženík') = NORMALIZE_TEXT_UDF('Bozenik') AS test_bozenik,
+    NORMALIZE_TEXT_UDF('José') = NORMALIZE_TEXT_UDF('Jose') AS test_jose,
+    NORMALIZE_TEXT_UDF('Óscar') = NORMALIZE_TEXT_UDF('Oscar') AS test_oscar;
 
 -- Expected: All columns should return TRUE
 
 -- ============================================
--- TEST 2: ILIKE Pattern Matching
+-- TEST 3: ILIKE Pattern Matching with UDF
 -- ============================================
 SELECT
-    'Róbert Boženík' COLLATE 'en-ci-ai' ILIKE '%Robert%' AS test1,
-    'Róbert Boženík' COLLATE 'en-ci-ai' ILIKE '%Bozenik%' AS test2,
-    'Róbert Boženík' COLLATE 'en-ci-ai' ILIKE '%robert bozenik%' AS test3,
-    'José Óscar' COLLATE 'en-ci-ai' ILIKE '%Jose Oscar%' AS test4;
+    NORMALIZE_TEXT_UDF('Róbert Boženík') ILIKE '%robert%' AS test1,
+    NORMALIZE_TEXT_UDF('Róbert Boženík') ILIKE '%bozenik%' AS test2,
+    NORMALIZE_TEXT_UDF('Róbert Boženík') ILIKE '%robert bozenik%' AS test3,
+    NORMALIZE_TEXT_UDF('José Óscar') ILIKE '%jose oscar%' AS test4;
 
 -- Expected: All should return TRUE
 
 -- ============================================
--- TEST 3: Real Player Search (if Robert Bozenik exists)
+-- TEST 4: Real Player Search (if Robert Bozenik exists)
 -- ============================================
 SELECT PLAYERNAME, POSITION, SQUADNAME
 FROM players
-WHERE PLAYERNAME COLLATE 'en-ci-ai' ILIKE '%Robert Bozenik%'
+WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE '%robert bozenik%'
 LIMIT 10;
 
 -- Expected: Should find "Róbert Boženík"
 
 -- ============================================
--- TEST 4: Search for Various Accented Names
+-- TEST 5: Search for Various Accented Names
 -- ============================================
 SELECT PLAYERNAME, POSITION, SQUADNAME
 FROM players
-WHERE PLAYERNAME COLLATE 'en-ci-ai' ILIKE '%Oscar%'
+WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE '%oscar%'
 LIMIT 10;
 
 -- Expected: Should find all Oscars including Óscar
 
 SELECT PLAYERNAME, POSITION, SQUADNAME
 FROM players
-WHERE PLAYERNAME COLLATE 'en-ci-ai' ILIKE '%Jose%'
+WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE '%jose%'
 LIMIT 10;
 
 -- Expected: Should find all Joses including José
 
 -- ============================================
--- TEST 5: Performance Check
+-- TEST 6: Performance Check
 -- ============================================
 -- Check explain plan to see if query is efficient
 EXPLAIN
 SELECT * FROM players
-WHERE PLAYERNAME COLLATE 'en-ci-ai' ILIKE '%Robert%';
+WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE '%robert%';
 
--- Review the plan for any full table scans or inefficiencies
+-- Review the plan for full table scans
+-- NOTE: UDF calls prevent index usage - consider adding normalized column for production
 
 -- ============================================
--- TEST 6: Case Insensitivity with Accents
+-- TEST 7: Case Insensitivity with Accents
 -- ============================================
 SELECT
-    'RÓBERT' COLLATE 'en-ci-ai' = 'robert' AS test_upper_to_lower,
-    'róbert' COLLATE 'en-ci-ai' = 'ROBERT' AS test_lower_to_upper,
-    'RóBeRt' COLLATE 'en-ci-ai' = 'robert' AS test_mixed_case;
+    NORMALIZE_TEXT_UDF('RÓBERT') = NORMALIZE_TEXT_UDF('robert') AS test_upper_to_lower,
+    NORMALIZE_TEXT_UDF('róbert') = NORMALIZE_TEXT_UDF('ROBERT') AS test_lower_to_upper,
+    NORMALIZE_TEXT_UDF('RóBeRt') = NORMALIZE_TEXT_UDF('robert') AS test_mixed_case;
 
 -- Expected: All should return TRUE
 

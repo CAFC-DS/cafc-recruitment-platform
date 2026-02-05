@@ -1,7 +1,7 @@
 # Testing Accent-Insensitive Search Implementation
 
 ## Overview
-This document outlines how to test the new accent-insensitive search feature using Snowflake COLLATE 'en-ci-ai'.
+This document outlines how to test the new accent-insensitive search feature using Snowflake NORMALIZE_TEXT_UDF().
 
 ## Endpoints Updated
 1. `GET /players/search` - Main player search (autocomplete)
