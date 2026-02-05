@@ -19,6 +19,8 @@ interface AdvancedFiltersProps {
   filters: PlayerListFilters;
   onFilterChange: (filters: Partial<PlayerListFilters>) => void;
   onClearFilters: () => void;
+  showArchived: boolean;
+  onShowArchivedChange: (show: boolean) => void;
 }
 
 const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
@@ -29,6 +31,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   filters,
   onFilterChange,
   onClearFilters,
+  showArchived,
+  onShowArchivedChange,
 }) => {
   return (
     <Card className="mb-3">
@@ -119,7 +123,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             </Col>
           </Row>
 
-          {/* Row 2: Age Range, Report Count, Stage Filter */}
+          {/* Row 2: Age Range, Last Reported, Stage Filter */}
           <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
@@ -151,28 +155,18 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             </Col>
             <Col md={4}>
               <Form.Group>
-                <Form.Label className="small fw-bold">Report Count</Form.Label>
-                <div className="range-inputs">
-                  <Form.Control
-                    size="sm"
-                    type="number"
-                    placeholder="Min"
-                    value={filters.minReports}
-                    onChange={(e) => onFilterChange({ minReports: e.target.value })}
-                    min="0"
-                    style={{ width: "80px" }}
-                  />
-                  <span className="range-separator">to</span>
-                  <Form.Control
-                    size="sm"
-                    type="number"
-                    placeholder="Max"
-                    value={filters.maxReports}
-                    onChange={(e) => onFilterChange({ maxReports: e.target.value })}
-                    min="0"
-                    style={{ width: "80px" }}
-                  />
-                </div>
+                <Form.Label className="small fw-bold">Last Reported</Form.Label>
+                <Form.Select
+                  size="sm"
+                  value={filters.recencyMonths}
+                  onChange={(e) => onFilterChange({ recencyMonths: e.target.value })}
+                >
+                  <option value="">All Time</option>
+                  <option value="1">Last 1 Month</option>
+                  <option value="3">Last 3 Months</option>
+                  <option value="6">Last 6 Months</option>
+                  <option value="12">Last 12 Months</option>
+                </Form.Select>
               </Form.Group>
             </Col>
             <Col md={4}>
@@ -219,22 +213,44 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             </Col>
           </Row>
 
-          {/* Row 3: Last Reported, Clear Filters */}
+          {/* Row 3: Report Count, Show Archived, Clear Filters */}
           <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
-                <Form.Label className="small fw-bold">Last Reported</Form.Label>
-                <Form.Select
-                  size="sm"
-                  value={filters.recencyMonths}
-                  onChange={(e) => onFilterChange({ recencyMonths: e.target.value })}
-                >
-                  <option value="">All Time</option>
-                  <option value="1">Last 1 Month</option>
-                  <option value="3">Last 3 Months</option>
-                  <option value="6">Last 6 Months</option>
-                  <option value="12">Last 12 Months</option>
-                </Form.Select>
+                <Form.Label className="small fw-bold">Report Count</Form.Label>
+                <div className="range-inputs">
+                  <Form.Control
+                    size="sm"
+                    type="number"
+                    placeholder="Min"
+                    value={filters.minReports}
+                    onChange={(e) => onFilterChange({ minReports: e.target.value })}
+                    min="0"
+                    style={{ width: "80px" }}
+                  />
+                  <span className="range-separator">to</span>
+                  <Form.Control
+                    size="sm"
+                    type="number"
+                    placeholder="Max"
+                    value={filters.maxReports}
+                    onChange={(e) => onFilterChange({ maxReports: e.target.value })}
+                    min="0"
+                    style={{ width: "80px" }}
+                  />
+                </div>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Show Archived</Form.Label>
+                <Form.Check
+                  type="checkbox"
+                  id="show-archived-checkbox"
+                  label="Include archived players"
+                  checked={showArchived}
+                  onChange={(e) => onShowArchivedChange(e.target.checked)}
+                />
               </Form.Group>
             </Col>
             <Col md={4}>

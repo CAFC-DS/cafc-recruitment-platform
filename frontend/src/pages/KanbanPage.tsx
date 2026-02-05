@@ -28,9 +28,11 @@ import { usePlayerLists } from "../hooks/usePlayerLists";
 import KanbanBoard from "../components/Kanban/KanbanBoard";
 import { PlayerList } from "../components/Kanban/KanbanColumn";
 import { PlayerInList } from "../components/Kanban/PlayerKanbanCard";
-import LoadingSkeleton from "../components/PlayerLists/LoadingSkeleton";
 import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
+import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
+import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
+import { getPlayerNotes, setPlayerNotes, isPlayerFavorite, togglePlayerFavorite } from "../utils/playerListPreferences";
 import {
   createPlayerList,
   updatePlayerList,
@@ -92,8 +94,11 @@ const KanbanPage: React.FC = () => {
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
 
+  // Pitch view expanded toggle
+  const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
+
   // Sort state
-  type SortField = "name" | "age" | "score" | "reports";
+  type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites";
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -124,6 +129,14 @@ const KanbanPage: React.FC = () => {
 
   // Remove player state
   const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
+
+  // Notes and favorites state
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedPlayerForNotes, setSelectedPlayerForNotes] = useState<{
+    universalId: string;
+    name: string;
+  } | null>(null);
+  const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
 
   // Permission check - redirect if unauthorized
   useEffect(() => {
@@ -190,7 +203,18 @@ const KanbanPage: React.FC = () => {
       stages: [],
       recencyMonths: "",
     });
+    setShowArchived(false);
   }, []);
+
+  // Get visible lists
+  const visibleLists = useMemo(() => {
+    return lists.filter((list) => visibleListIds.has(list.id));
+  }, [lists, visibleListIds]);
+
+  // For backwards compatibility, use first visible list as "current" for certain operations
+  const currentList = useMemo(() => {
+    return visibleLists.length === 1 ? visibleLists[0] : null;
+  }, [visibleLists]);
 
   /**
    * Transform lists into stage-based columns
@@ -248,6 +272,14 @@ const KanbanPage: React.FC = () => {
             aVal = a.age || 0;
             bVal = b.age || 0;
             break;
+          case "club":
+            aVal = a.squad_name?.toLowerCase() || "";
+            bVal = b.squad_name?.toLowerCase() || "";
+            break;
+          case "stage":
+            aVal = a.stage?.toLowerCase() || "";
+            bVal = b.stage?.toLowerCase() || "";
+            break;
           case "score":
             aVal = a.avg_performance_score || 0;
             bVal = b.avg_performance_score || 0;
@@ -255,6 +287,10 @@ const KanbanPage: React.FC = () => {
           case "reports":
             aVal = a.report_count || 0;
             bVal = b.report_count || 0;
+            break;
+          case "favorites":
+            aVal = playerFavorites.has(a.universal_id) ? 1 : 0;
+            bVal = playerFavorites.has(b.universal_id) ? 1 : 0;
             break;
           default:
             return 0;
@@ -285,7 +321,7 @@ const KanbanPage: React.FC = () => {
           : null,
       players: sortPlayers(players),
     }));
-  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection, playerFavorites]);
 
   /**
    * Fetch batch memberships when stage columns change
@@ -621,6 +657,60 @@ const KanbanPage: React.FC = () => {
   };
 
   /**
+   * Handle opening notes modal
+   */
+  const handleOpenNotesModal = (player: PlayerInList) => {
+    setSelectedPlayerForNotes({
+      universalId: player.universal_id,
+      name: player.player_name,
+    });
+    setShowNotesModal(true);
+  };
+
+  /**
+   * Handle saving notes
+   */
+  const handleSaveNotes = (universalId: string, notes: string) => {
+    setPlayerNotes(universalId, notes);
+    setShowNotesModal(false);
+  };
+
+  /**
+   * Handle toggling favorite status
+   */
+  const handleToggleFavorite = (universalId: string) => {
+    const userId = currentUser?.id?.toString() || "0";
+    const newFavStatus = togglePlayerFavorite(userId, universalId);
+    setPlayerFavorites((prev) => {
+      const newSet = new Set(prev);
+      if (newFavStatus) {
+        newSet.add(universalId);
+      } else {
+        newSet.delete(universalId);
+      }
+      return newSet;
+    });
+  };
+
+  /**
+   * Load favorites from localStorage on mount and when lists change
+   */
+  useEffect(() => {
+    const userId = currentUser?.id?.toString() || "0";
+    if (!userId || lists.length === 0) return;
+
+    const favs = new Set<string>();
+    lists.forEach((list) => {
+      list.players.forEach((player) => {
+        if (isPlayerFavorite(userId, player.universal_id)) {
+          favs.add(player.universal_id);
+        }
+      });
+    });
+    setPlayerFavorites(favs);
+  }, [lists, currentUser]);
+
+  /**
    * Open add player modal
    */
   const openAddPlayerModal = (listId: number | string) => {
@@ -633,17 +723,22 @@ const KanbanPage: React.FC = () => {
   // Loading state
   if (userLoading || loading) {
     return (
-      <Container fluid className="py-4">
-        <div className="mb-4">
+      <Container className="mt-4">
+        <div className="mb-3">
           <h3>Player Lists - Kanban View</h3>
         </div>
-        <LoadingSkeleton variant="column" count={4} />
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+          <div className="text-center">
+            <Spinner animation="border" variant="primary" style={{ width: "3rem", height: "3rem" }} />
+            <p className="mt-3 text-muted">Loading player lists...</p>
+          </div>
+        </div>
       </Container>
     );
   }
 
   return (
-    <Container fluid className="py-3 px-4">
+    <Container className="mt-4">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
@@ -652,12 +747,7 @@ const KanbanPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="mb-3">
-        <h3 className="mb-1" style={{ fontSize: "1.5rem", fontWeight: 700 }}>Player Lists - Kanban View</h3>
-        <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-          Drag players between stages to track recruitment progress
-        </p>
-      </div>
+      <h3>Player Lists - Kanban View</h3>
 
       {lists.length === 0 ? (
         <EmptyState
@@ -669,40 +759,39 @@ const KanbanPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* Filters Section */}
-          <div
-            className="mb-3 p-2 px-3"
-            style={{
-              backgroundColor: colors.gray[50],
-              borderRadius: borderRadius.md,
-              border: `1px solid ${colors.gray[200]}`,
-            }}
-          >
-            {/* List Filter Pills */}
-            <div>
-              <div className="d-flex align-items-center gap-2 mb-2">
-                <span className="fw-semibold" style={{ fontSize: "0.85rem", color: colors.gray[700] }}>
-                  Lists:
-                </span>
-                <Button
-                  size="sm"
-                  variant="link"
-                  onClick={() => toggleAllLists(true)}
-                  style={{ fontSize: "0.75rem", padding: "0 4px" }}
-                >
-                  All
-                </Button>
-                <span style={{ color: colors.gray[400] }}>|</span>
-                <Button
-                  size="sm"
-                  variant="link"
-                  onClick={() => toggleAllLists(false)}
-                  style={{ fontSize: "0.75rem", padding: "0 4px" }}
-                >
-                  None
-                </Button>
-              </div>
-              <div className="d-flex gap-2 flex-wrap">
+          {/* List Selection */}
+          <div className="mb-3">
+            <div className="d-flex align-items-center gap-2 mb-2">
+              <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>
+                Lists:
+              </span>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(true)}>
+                All
+              </Button>
+              <span>|</span>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(false)}>
+                None
+              </Button>
+              <span>|</span>
+              <Button
+                size="sm"
+                variant="link"
+                onClick={() => setPitchViewExpanded(!pitchViewExpanded)}
+                style={{ fontWeight: pitchViewExpanded ? "bold" : "normal" }}
+              >
+                {pitchViewExpanded ? "▼ Hide Pitch" : "⚽ Show Pitch"}
+              </Button>
+            </div>
+
+            {/* Toggle between Pills and Pitch View */}
+            {pitchViewExpanded ? (
+              <PitchViewListSelector
+                lists={lists}
+                visibleListIds={visibleListIds}
+                onToggleList={toggleListVisibility}
+              />
+            ) : (
+              <div className="d-flex gap-2 flex-wrap align-items-center">
                 {lists.map((list) => {
                   const isVisible = visibleListIds.has(list.id);
                   return (
@@ -716,7 +805,6 @@ const KanbanPage: React.FC = () => {
                         color: isVisible ? colors.white : colors.gray[600],
                         cursor: "pointer",
                         transition: "all 0.2s ease",
-                        opacity: isVisible ? 1 : 0.7,
                       }}
                     >
                       {list.list_name} ({list.player_count})
@@ -724,19 +812,7 @@ const KanbanPage: React.FC = () => {
                   );
                 })}
               </div>
-            </div>
-
-            {/* Show Archived Toggle */}
-            <div className="mt-2">
-              <Form.Check
-                type="checkbox"
-                id="show-archived-checkbox"
-                label="Show Archived Players"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-                style={{ fontSize: "0.85rem", color: colors.gray[700] }}
-              />
-            </div>
+            )}
           </div>
 
           {/* Advanced Filters */}
@@ -746,123 +822,87 @@ const KanbanPage: React.FC = () => {
             filters={filters}
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
+            showArchived={showArchived}
+            onShowArchivedChange={setShowArchived}
           />
 
-          {/* Sort Controls */}
-          <div className="mb-3 d-flex align-items-center gap-2">
-            <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>Sort by:</span>
-            <Form.Select
-              size="sm"
-              value={sortField}
-              onChange={(e) => setSortField(e.target.value as SortField)}
-              style={{ width: "auto" }}
-            >
-              <option value="name">Name</option>
-              <option value="age">Age</option>
-              <option value="score">Score</option>
-              <option value="reports">Reports</option>
-            </Form.Select>
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
-            >
-              {sortDirection === "asc" ? "↑" : "↓"}
-            </Button>
-          </div>
-
           {/* Actions Container */}
-          <div
-            className="mb-3 p-2 px-3"
-            style={{
-              backgroundColor: colors.gray[50],
-              borderRadius: borderRadius.md,
-              border: `1px solid ${colors.gray[200]}`,
-            }}
-          >
+          <div className="mb-3">
             {/* Action Buttons */}
-            <div className="mt-3 pt-3 border-top">
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                {/* Create New List Pill - Always visible */}
-                <Button
-                  size="sm"
-                  variant="dark"
-                  onClick={openCreateModal}
-                  style={{
-                    borderRadius: "50px",
-                    padding: "0.4rem 1rem",
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.25rem",
-                  }}
-                >
-                  ➕ New List
-                </Button>
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              {/* Create New List Pill - Always visible */}
+              <Button
+                size="sm"
+                variant="dark"
+                onClick={openCreateModal}
+              >
+                ➕ New List
+              </Button>
 
-                {/* List Actions Dropdown - Only visible when lists are selected */}
-                {visibleListIds.size > 0 && (
-                  <Dropdown>
-                    <Dropdown.Toggle
-                      variant="dark"
-                      size="sm"
-                      style={{
-                        borderRadius: "50px",
-                        padding: "0.4rem 1rem",
-                        fontSize: "0.85rem",
-                        fontWeight: 500,
-                      }}
-                    >
-                      ⚙️ List Actions
-                    </Dropdown.Toggle>
+              {/* List Actions Dropdown - Only visible when lists are selected */}
+              {visibleListIds.size > 0 && (
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="dark"
+                    size="sm"
+                  >
+                    ⚙️ List Actions
+                  </Dropdown.Toggle>
 
-                    <Dropdown.Menu>
-                      <Dropdown.Item onClick={() => navigate("/lists")}>
-                        🔄 Switch to Table View
-                      </Dropdown.Item>
-                      <Dropdown.Divider />
-                      <Dropdown.Item
-                        onClick={() => {
-                          // Can only edit a single list (not stage columns)
-                          const selectedLists = lists.filter((list) => visibleListIds.has(list.id));
-                          if (selectedLists.length === 1) {
-                            openEditModal(selectedLists[0]);
-                          } else {
-                            alert("Please select exactly one list to edit");
-                          }
-                        }}
-                      >
-                        ✏️ Edit List
-                      </Dropdown.Item>
-                      <Dropdown.Item
-                        onClick={() => {
-                          // Can only delete a single list
-                          const selectedLists = lists.filter((list) => visibleListIds.has(list.id));
-                          if (selectedLists.length === 1) {
-                            handleDeleteList(selectedLists[0].id);
-                          } else {
-                            alert("Please select exactly one list to delete");
-                          }
-                        }}
-                      >
-                        🗑️ Delete List
-                      </Dropdown.Item>
-                      <Dropdown.Divider />
-                      <Dropdown.Item onClick={handleExport}>
-                        📊 Export CSV
-                      </Dropdown.Item>
-                    </Dropdown.Menu>
-                  </Dropdown>
-                )}
-              </div>
+                  <Dropdown.Menu>
+                    <Dropdown.Item onClick={() => navigate("/lists")}>
+                      🔄 Switch to Table View
+                    </Dropdown.Item>
+                    <Dropdown.Divider />
+                    <Dropdown.Item onClick={() => currentList && openEditModal(currentList)}>
+                      ✏️ Edit List
+                    </Dropdown.Item>
+                    <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)}>
+                      🗑️ Delete List
+                    </Dropdown.Item>
+                    <Dropdown.Divider />
+                    <Dropdown.Item onClick={handleExport}>
+                      📊 Export CSV
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              )}
 
-              {visibleListIds.size > 0 && lists.filter((list) => visibleListIds.has(list.id)).length !== 1 && (
-                <div className="mt-2" style={{ fontSize: "0.75rem", color: colors.gray[600], fontStyle: "italic" }}>
-                  Select a single list to access Edit and Delete actions
-                </div>
+              {/* Sort Controls */}
+              {visibleListIds.size > 0 && (
+                <>
+                  <span className="text-muted">|</span>
+                  <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>Sort:</span>
+                  <Form.Select
+                    size="sm"
+                    value={sortField}
+                    onChange={(e) => setSortField(e.target.value as SortField)}
+                    style={{ width: "auto" }}
+                  >
+                    <option value="name">Name</option>
+                    <option value="age">Age</option>
+                    <option value="club">Club</option>
+                    <option value="stage">Stage</option>
+                    <option value="score">Score</option>
+                    <option value="reports">Reports</option>
+                    <option value="favorites">Favorites</option>
+                  </Form.Select>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+                  >
+                    {sortDirection === "asc" ? "↑" : "↓"}
+                  </Button>
+                </>
               )}
             </div>
+
+            {visibleListIds.size > 0 && !currentList && (
+              <div className="mt-2 text-muted" style={{ fontSize: "0.875rem" }}>
+                Select a single list to access actions
+              </div>
+            )}
           </div>
 
           {/* Kanban Board */}
@@ -895,6 +935,9 @@ const KanbanPage: React.FC = () => {
             pendingRemovals={pendingRemovals}
             batchMemberships={batchMemberships}
             loadingMemberships={loadingMemberships}
+            onOpenNotes={handleOpenNotesModal}
+            onToggleFavorite={handleToggleFavorite}
+            playerFavorites={playerFavorites}
           />
 
           {/* Floating Save/Discard Changes Button */}
@@ -1090,6 +1133,16 @@ const KanbanPage: React.FC = () => {
           )}
         </Modal.Body>
       </Modal>
+
+      {/* Player Notes Modal */}
+      <PlayerNotesModal
+        show={showNotesModal}
+        onHide={() => setShowNotesModal(false)}
+        playerName={selectedPlayerForNotes?.name || ""}
+        universalId={selectedPlayerForNotes?.universalId || ""}
+        currentNotes={getPlayerNotes(selectedPlayerForNotes?.universalId || "")}
+        onSave={handleSaveNotes}
+      />
     </Container>
   );
 };

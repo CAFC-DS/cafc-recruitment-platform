@@ -1,12 +1,8 @@
 import React, { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Badge, Button } from "react-bootstrap";
-import PlayerKanbanCard, { PlayerInList } from "./PlayerKanbanCard";
-import {
-  getPerformanceScoreColor,
-  getContrastTextColor,
-} from "../../utils/colorUtils";
+import { Button } from "react-bootstrap";
+import CollapsiblePlayerBar, { PlayerInList } from "./CollapsiblePlayerBar";
 import {
   getStageBgColor,
   colors,
@@ -49,6 +45,9 @@ interface KanbanColumnProps {
   pendingRemovals?: Map<number, number>;
   batchMemberships?: Record<string, PlayerListMembership[]>;
   loadingMemberships?: boolean;
+  onOpenNotes?: (player: PlayerInList) => void;
+  onToggleFavorite?: (universalId: string) => void;
+  playerFavorites?: Set<string>;
 }
 
 /**
@@ -86,6 +85,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   pendingRemovals,
   batchMemberships,
   loadingMemberships,
+  onOpenNotes,
+  onToggleFavorite,
+  playerFavorites,
 }) => {
   // Setup droppable area with @dnd-kit
   const { setNodeRef } = useDroppable({
@@ -102,11 +104,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
     [list.players]
   );
 
-  // Get average score color
-  const scoreColor = list.avg_performance_score
-    ? getPerformanceScoreColor(list.avg_performance_score)
-    : "#6b7280";
-  const textColor = getContrastTextColor(scoreColor);
+  // Get average score color (not currently displayed in column header)
+  // const scoreColor = list.avg_performance_score
+  //   ? getPerformanceScoreColor(list.avg_performance_score)
+  //   : "#6b7280";
 
   // Determine if this is a stage column by checking if list_name is a stage
   const isStageColumn = list.list_name.startsWith("Stage ");
@@ -119,8 +120,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
     <div
       style={{
         flex: 1,
-        minWidth: "350px",
-        maxWidth: "500px",
+        minWidth: "280px",
+        maxWidth: "350px",
         backgroundColor: "#f9fafb",
         borderRadius: "10px",
         display: "flex",
@@ -256,9 +257,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
               </div>
             </div>
           ) : (
-            // Player cards
+            // Player bars (collapsible)
             list.players.map((player) => (
-              <PlayerKanbanCard
+              <CollapsiblePlayerBar
                 key={player.item_id}
                 player={player}
                 onRemove={onRemovePlayer}
@@ -267,6 +268,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 isPendingRemoval={pendingRemovals?.has(player.item_id) || false}
                 memberships={batchMemberships?.[player.universal_id]}
                 loadingMemberships={loadingMemberships}
+                onOpenNotes={onOpenNotes}
+                onToggleFavorite={onToggleFavorite}
+                isFavorited={playerFavorites?.has(player.universal_id) || false}
               />
             ))
           )}
