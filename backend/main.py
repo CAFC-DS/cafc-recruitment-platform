@@ -46,9 +46,17 @@ from iteration_mapping import ITERATION_MAPPING
 load_dotenv()
 
 
-# Text normalization utility for accent-insensitive search
+# Text normalization utility (DEPRECATED - use Snowflake COLLATE 'utf8-ai' instead)
 def normalize_text(text: str) -> str:
-    """Remove diacritical marks (accents) from text for accent-insensitive search"""
+    """Remove diacritical marks (accents) from text for accent-insensitive search
+
+    DEPRECATED: This function is no longer used for database queries.
+    All player search endpoints now use Snowflake's COLLATE 'utf8-ai' for
+    native accent-insensitive matching, which is more efficient and requires
+    no maintenance.
+
+    This function is kept for potential future client-side text processing needs.
+    """
     if not text:
         return ""
     # Decompose combined characters and remove diacritical marks
@@ -2787,7 +2795,11 @@ async def read_root():
 
 @app.get("/players/search")
 async def search_players(query: str, current_user: User = Depends(get_current_user)):
-    """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching"""
+    """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching
+
+    Uses Snowflake COLLATE 'utf8-ai' for native accent-insensitive search.
+    This automatically handles all Unicode diacritics without hardcoded mappings.
+    """
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -2796,152 +2808,96 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         # Check if CAFC_PLAYER_ID column exists (using cached schema)
         has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
-        # For accent-insensitive search, we'll search with a broader database query
-        # then apply precise client-side filtering
-        normalized_query = normalize_text(query).strip()
-
-        if not normalized_query:
+        # Clean up the query
+        query = query.strip()
+        if not query:
             return []
 
-        # Create multiple search patterns to catch accent variations
-        # We need to be much more aggressive about catching accent variations
-        # since ILIKE doesn't handle accents automatically
+        # Simple search pattern - COLLATE handles accent-insensitivity
+        search_pattern = f"%{query}%"
 
-        # Strategy: Get a broader set from the database, then filter client-side with proper accent handling
-        # This is more reliable than trying to predict all accent combinations in SQL
-
-        # For single word queries like "Oscar", search for any name containing that pattern
-        # For multi-word queries like "Oscar Gil", search for names containing any of those words
-
-        query_words = query.strip().split()
-        search_patterns = []
-
-        # Add the original query and normalized version
-        search_patterns.append(f"%{query}%")
-        search_patterns.append(f"%{normalized_query}%")
-
-        # For each word in the query, add patterns to catch it
-        for word in query_words:
-            if len(word) >= 2:  # Avoid single character searches
-                normalized_word = normalize_text(word)
-                search_patterns.append(f"%{word}%")
-                search_patterns.append(f"%{normalized_word}%")
-
-                # Add common accent variations for better database matching
-                word_lower = normalized_word.lower()
-
-                if word_lower == "marton":
-                    search_patterns.extend(["%Márton%", "%márton%", "%Marton%"])
-                elif word_lower == "dardai":
-                    search_patterns.extend(["%Dárdai%", "%dárdai%", "%Dardai%"])
-                elif word_lower == "jokubas":
-                    search_patterns.extend(["%Jokūbas%", "%jokūbas%", "%Jokubas%"])
-                elif word_lower == "mazionis":
-                    search_patterns.extend(["%Mažionis%", "%mažionis%", "%Mazionis%"])
-                elif word_lower == "oscar":
-                    search_patterns.extend([
-                        "%Óscar%", "%óscar%", "%Òscar%", "%òscar%",
-                        "%Ôscar%", "%ôscar%", "%Õscar%", "%õscar%"
-                    ])
-                elif word_lower == "jose":
-                    search_patterns.extend(["%José%", "%josé%", "%Josè%", "%josè%"])
-                elif word_lower == "joao":
-                    search_patterns.extend(["%João%", "%joão%", "%Joao%"])
-                elif word_lower == "robert":
-                    search_patterns.extend(["%Róbert%", "%róbert%", "%Robert%"])
-                elif word_lower == "bozenik":
-                    search_patterns.extend(["%Boženík%", "%boženík%", "%Bozenik%"])
-                # Add more as needed
-
-        # Build the WHERE clause with multiple ILIKE conditions
-        where_conditions = " OR ".join(["PLAYERNAME ILIKE %s"] * len(search_patterns))
-
-        # Order by relevance: exact matches first, then alphabetically
-        # Use CASE to prioritize exact/close matches
+        # Use Snowflake's accent-insensitive collation for native accent handling
+        # COLLATE 'utf8-ai' makes the comparison ignore accents automatically
+        # This works for ALL Unicode characters (Róbert=Robert, José=Jose, etc.)
+        # Order by relevance: exact matches first, then prefix matches, then any match
         if has_cafc_id:
             cursor.execute(
-                f"""
+                """
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
                 FROM players
-                WHERE {where_conditions}
+                WHERE PLAYERNAME COLLATE 'utf8-ai' ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN UPPER(PLAYERNAME) = UPPER(%s) THEN 1
-                        WHEN UPPER(PLAYERNAME) LIKE UPPER(%s) THEN 2
+                        WHEN UPPER(PLAYERNAME COLLATE 'utf8-ai') = UPPER(%s) THEN 1
+                        WHEN PLAYERNAME COLLATE 'utf8-ai' ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME
                 LIMIT 100
             """,
-                search_patterns + [query, query + '%'],
+                (search_pattern, query, query + '%'),
             )
         else:
             cursor.execute(
-                f"""
+                """
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
                 FROM players
-                WHERE {where_conditions}
+                WHERE PLAYERNAME COLLATE 'utf8-ai' ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN UPPER(PLAYERNAME) = UPPER(%s) THEN 1
-                        WHEN UPPER(PLAYERNAME) LIKE UPPER(%s) THEN 2
+                        WHEN UPPER(PLAYERNAME COLLATE 'utf8-ai') = UPPER(%s) THEN 1
+                        WHEN PLAYERNAME COLLATE 'utf8-ai' ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME
                 LIMIT 100
             """,
-                search_patterns + [query, query + '%'],
+                (search_pattern, query, query + '%'),
             )
 
         players = cursor.fetchall()
         player_list = []
 
-        # Apply precise accent-insensitive filtering on the results
+        # Process results
         for row in players:
             player_name = row[2]
             if player_name:
-                normalized_player_name = normalize_text(player_name)
-                # Check if the normalized query matches the normalized player name
-                if normalized_query in normalized_player_name:
-                    # Generate universal_id using the helper function
-                    player_row = {
-                        "CAFC_PLAYER_ID": row[0],
-                        "PLAYERID": row[1],
-                        "DATA_SOURCE": row[5],
-                    }
-                    universal_id = get_player_universal_id(player_row)
+                # Generate universal_id using the helper function
+                player_row = {
+                    "CAFC_PLAYER_ID": row[0],
+                    "PLAYERID": row[1],
+                    "DATA_SOURCE": row[5],
+                }
+                universal_id = get_player_universal_id(player_row)
 
-                    # Calculate age from birthdate
-                    age = None
-                    birthdate = row[6]
-                    if birthdate:
-                        from datetime import date
-                        try:
-                            if isinstance(birthdate, str):
-                                birthdate = date.fromisoformat(birthdate.split('T')[0])
-                            today = date.today()
-                            age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-                        except:
-                            age = None
+                # Calculate age from birthdate
+                age = None
+                birthdate = row[6]
+                if birthdate:
+                    from datetime import date
+                    try:
+                        if isinstance(birthdate, str):
+                            birthdate = date.fromisoformat(birthdate.split('T')[0])
+                        today = date.today()
+                        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+                    except:
+                        age = None
 
-                    player_data = {
-                        "player_id": row[
-                            1
-                        ],  # External player ID (backwards compatibility)
-                        "cafc_player_id": row[
-                            0
-                        ],  # Internal stable ID (None if not set up)
-                        "universal_id": universal_id,  # New universal ID format
-                        "player_name": player_name,
-                        "position": row[3],
-                        "squad_name": row[4],
-                        "data_source": row[5],
-                        "age": age,
-                    }
-                    player_list.append(player_data)
-
-        # Sort by normalized name for better accent-insensitive ordering
-        player_list.sort(key=lambda x: normalize_text(x["player_name"]))
+                player_data = {
+                    "player_id": row[
+                        1
+                    ],  # External player ID (backwards compatibility)
+                    "cafc_player_id": row[
+                        0
+                    ],  # Internal stable ID (None if not set up)
+                    "universal_id": universal_id,  # New universal ID format
+                    "player_name": player_name,
+                    "position": row[3],
+                    "squad_name": row[4],
+                    "data_source": row[5],
+                    "age": age,
+                }
+                player_list.append(player_data)
 
         return player_list
 
@@ -4323,9 +4279,9 @@ async def get_all_scout_reports(
             search_pattern = f"%{scout_name}%"
             sql_params.extend([search_pattern, search_pattern, search_pattern])
 
-        # Player name filter (case-insensitive partial match)
+        # Player name filter (case-insensitive and accent-insensitive partial match)
         if player_name:
-            where_clauses.append("UPPER(p.PLAYERNAME) LIKE UPPER(%s)")
+            where_clauses.append("p.PLAYERNAME COLLATE 'utf8-ai' ILIKE %s")
             sql_params.append(f"%{player_name}%")
 
         # Report types filter (comma-separated)
@@ -6307,7 +6263,7 @@ async def get_all_players(
 
         if search:
             where_conditions.append(
-                "(UPPER(p.PLAYERNAME) LIKE UPPER(%s) OR UPPER(p.FIRSTNAME) LIKE UPPER(%s) OR UPPER(p.LASTNAME) LIKE UPPER(%s))"
+                "(p.PLAYERNAME COLLATE 'utf8-ai' ILIKE %s OR p.FIRSTNAME COLLATE 'utf8-ai' ILIKE %s OR p.LASTNAME COLLATE 'utf8-ai' ILIKE %s)"
             )
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param])
@@ -9813,28 +9769,34 @@ async def get_all_lists_with_details(
         if not lists_data:
             return {"lists": [], "total": 0}
 
-        # Build filter conditions
+        # Build filter conditions with parameterized queries to prevent SQL injection
         filter_conditions = []
+        filter_params = []
 
         # Stage filter
         if stages:
             stage_list = [s.strip() for s in stages.split(",")]
-            stage_conditions = " OR ".join([f"pli.STAGE = '{stage}'" for stage in stage_list])
-            filter_conditions.append(f"({stage_conditions})")
+            stage_placeholders = " OR ".join(["pli.STAGE = %s"] * len(stage_list))
+            filter_conditions.append(f"({stage_placeholders})")
+            filter_params.extend(stage_list)
 
-        # Position filter
+        # Position filter (with accent-insensitive collation)
         if position:
-            filter_conditions.append(f"(UPPER(COALESCE(p.POSITION, ip.POSITION)) LIKE UPPER('%{position}%'))")
+            filter_conditions.append("(COALESCE(p.POSITION, ip.POSITION) COLLATE 'utf8-ai' ILIKE %s)")
+            filter_params.append(f"%{position}%")
 
         # Age filter
         if min_age is not None:
-            filter_conditions.append(f"(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) >= {min_age})")
+            filter_conditions.append("(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) >= %s)")
+            filter_params.append(min_age)
         if max_age is not None:
-            filter_conditions.append(f"(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) <= {max_age})")
+            filter_conditions.append("(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) <= %s)")
+            filter_params.append(max_age)
 
-        # Player name filter
+        # Player name filter (with accent-insensitive collation)
         if player_name:
-            filter_conditions.append(f"(UPPER(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)) LIKE UPPER('%{player_name}%'))")
+            filter_conditions.append("(COALESCE(p.PLAYERNAME, ip.PLAYERNAME) COLLATE 'utf8-ai' ILIKE %s)")
+            filter_params.append(f"%{player_name}%")
 
         where_clause = ""
         if filter_conditions:
@@ -9870,7 +9832,8 @@ async def get_all_lists_with_details(
             LEFT JOIN users u ON pli.ADDED_BY = u.ID
             {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
-            """
+            """,
+            filter_params if filter_params else None
         )
 
         # Collect all player IDs for stats query
