@@ -165,6 +165,12 @@ All endpoints now use `NORMALIZE_TEXT_UDF()`:
 **Short-term:** Add `LIMIT` to queries
 **Long-term:** Add normalized column (see Performance section above)
 
+### Error: 500 Internal Server Error
+**Cause:** Mixed COLLATE and UDF usage in same query
+**Symptom:** Backend logs show SQL compilation errors
+**Fix:** Ensure ALL occurrences of COLLATE are removed - use NORMALIZE_TEXT_UDF() exclusively
+**Note:** This was fixed in commit 9d3881b
+
 ## Rollback Plan
 
 If issues arise:
@@ -202,6 +208,7 @@ python backend/main.py
 ## Commit History
 
 ```
+9d3881b fix: Remove COLLATE from ORDER BY clause to fix 500 errors
 4cde41e fix: Switch from COLLATE to NORMALIZE_TEXT_UDF
 5e1f712 fix: Correct collation syntax utf8-ai to en-ci-ai
 d0c3200 feat: Implement scalable accent-insensitive search
