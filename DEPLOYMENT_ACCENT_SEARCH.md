@@ -42,14 +42,37 @@ SELECT NORMALIZE_TEXT_UDF('Róbert Boženík');
 -- Expected output: "robert bozenik"
 ```
 
-### Step 2: Restart the Backend
+### Step 2: Grant Permissions to Application Roles (REQUIRED)
+
+After creating the UDF, you must grant USAGE permission to the roles used by your application:
+
+```sql
+-- Grant to DEV_ROLE (development/local)
+GRANT USAGE ON FUNCTION RECRUITMENT_TEST.PUBLIC.NORMALIZE_TEXT_UDF(VARCHAR) TO ROLE DEV_ROLE;
+
+-- Grant to APP_ROLE (production)
+GRANT USAGE ON FUNCTION RECRUITMENT_TEST.PUBLIC.NORMALIZE_TEXT_UDF(VARCHAR) TO ROLE APP_ROLE;
+
+-- Verify grants
+SHOW GRANTS ON FUNCTION RECRUITMENT_TEST.PUBLIC.NORMALIZE_TEXT_UDF(VARCHAR);
+```
+
+Or use the provided script:
+```bash
+# From project root:
+cat grant_udf_permissions.sql
+```
+
+**⚠️ Important:** Without these grants, the application will get "Unknown function" errors even though the UDF exists.
+
+### Step 3: Restart the Backend
 
 ```bash
 cd backend
 python main.py
 ```
 
-### Step 3: Test the Feature
+### Step 4: Test the Feature
 
 #### Test 1: API Test
 ```bash
@@ -152,8 +175,20 @@ All endpoints now use `NORMALIZE_TEXT_UDF()`:
 ## Troubleshooting
 
 ### Error: "Unknown function NORMALIZE_TEXT_UDF"
-**Cause:** UDF not created in Snowflake
+**Cause 1:** UDF not created in Snowflake
 **Fix:** Run `create_normalize_udf.sql` in Snowflake console
+
+**Cause 2:** UDF exists but roles lack permissions (MOST COMMON)
+**Symptom:** UDF works when you test it manually, but backend gets "Unknown function" error
+**Fix:** Run `grant_udf_permissions.sql` to grant USAGE to DEV_ROLE and APP_ROLE:
+```sql
+GRANT USAGE ON FUNCTION RECRUITMENT_TEST.PUBLIC.NORMALIZE_TEXT_UDF(VARCHAR) TO ROLE DEV_ROLE;
+GRANT USAGE ON FUNCTION RECRUITMENT_TEST.PUBLIC.NORMALIZE_TEXT_UDF(VARCHAR) TO ROLE APP_ROLE;
+```
+
+**Cause 3:** UDF created in wrong database/schema
+**Check:** Run `SELECT CURRENT_DATABASE(), CURRENT_SCHEMA();` in Snowflake
+**Fix:** Create UDF in the same database/schema your backend connects to
 
 ### Search not finding accented names
 **Cause:** UDF not working correctly
