@@ -2847,6 +2847,10 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                     search_patterns.extend(["%José%", "%josé%", "%Josè%", "%josè%"])
                 elif word_lower == "joao":
                     search_patterns.extend(["%João%", "%joão%", "%Joao%"])
+                elif word_lower == "robert":
+                    search_patterns.extend(["%Róbert%", "%róbert%", "%Robert%"])
+                elif word_lower == "bozenik":
+                    search_patterns.extend(["%Boženík%", "%boženík%", "%Bozenik%"])
                 # Add more as needed
 
         # Build the WHERE clause with multiple ILIKE conditions
