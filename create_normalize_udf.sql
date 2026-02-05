@@ -2,6 +2,10 @@
 -- This function removes diacritical marks (accents) from text
 -- Usage: SELECT NORMALIZE_TEXT_UDF('Róbert') -> 'robert'
 
+-- IMPORTANT: Make sure you're in the correct database and schema before running this!
+-- Check your current context with: SELECT CURRENT_DATABASE(), CURRENT_SCHEMA();
+-- If needed, switch context with: USE DATABASE your_db; USE SCHEMA your_schema;
+
 CREATE OR REPLACE FUNCTION NORMALIZE_TEXT_UDF(text VARCHAR)
 RETURNS VARCHAR
 LANGUAGE JAVASCRIPT

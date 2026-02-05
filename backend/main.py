@@ -2902,6 +2902,9 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         return player_list
 
     except Exception as e:
+        print(f"❌ ERROR in /players/search: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error searching players: {e}")
     finally:
