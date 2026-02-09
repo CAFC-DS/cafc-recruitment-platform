@@ -19,9 +19,11 @@ import PlayerReportModal from "../components/PlayerReportModal";
 import AddPlayerModal from "../components/AddPlayerModal";
 import AddFixtureModal from "../components/AddFixtureModal";
 import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
+import AddPlayerToListModal from "../components/AddPlayerToListModal";
 import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
   getPerformanceScoreColor,
   getFlagColor,
@@ -59,6 +61,7 @@ interface ScoutReport {
 const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
+  const { canAccessLists } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -90,6 +93,11 @@ const ScoutingPage: React.FC = () => {
   const [reportTypeFilter, setReportTypeFilter] = useState("");
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
+  const [fixtureFilter, setFixtureFilter] = useState("");
+  const [fixtureQuery, setFixtureQuery] = useState("");
+  const [fixtureOptions, setFixtureOptions] = useState<any[]>([]);
+  const [loadingFixtures, setLoadingFixtures] = useState(false);
+  const [positions, setPositions] = useState<string[]>([]);
 
   // Edit and delete functionality
   const [editMode, setEditMode] = useState(false);
@@ -98,6 +106,14 @@ const ScoutingPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Add to list functionality
+  const [showAddToListModal, setShowAddToListModal] = useState(false);
+  const [selectedPlayerForList, setSelectedPlayerForList] = useState<{
+    id: number;
+    name: string;
+    universalId?: string;
+  } | null>(null);
 
   // Mark all as read functionality
   const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
@@ -142,6 +158,9 @@ const ScoutingPage: React.FC = () => {
         if (positionFilter) {
           params.position = positionFilter;
         }
+        if (fixtureFilter) {
+          params.match_id = fixtureFilter;
+        }
         if (dateFromFilter) {
           params.date_from = dateFromFilter;
         }
@@ -176,6 +195,7 @@ const ScoutingPage: React.FC = () => {
       reportTypeFilter,
       scoutingTypeFilter,
       positionFilter,
+      fixtureFilter,
       dateFromFilter,
       dateToFilter,
     ],
@@ -269,12 +289,64 @@ const ScoutingPage: React.FC = () => {
     }
   };
 
+  const handleAddToList = (report: ScoutReport) => {
+    setSelectedPlayerForList({
+      id: report.player_id,
+      name: report.player_name,
+      universalId: report.universal_id,
+    });
+    setShowAddToListModal(true);
+  };
+
   // Initial fetch on load
   useEffect(() => {
     if (token) {
       fetchUserInfo();
     }
   }, [token, fetchUserInfo]);
+
+  // Fetch available positions for dropdown
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const response = await axiosInstance.get("/positions/distinct");
+        setPositions(response.data);
+      } catch (error) {
+        console.error("Error fetching positions:", error);
+      }
+    };
+
+    if (token) {
+      fetchPositions();
+    }
+  }, [token]);
+
+  // Fetch fixture autocomplete results when user types
+  useEffect(() => {
+    const fetchFixtures = async () => {
+      if (!fixtureQuery || fixtureQuery.length < 2) {
+        setFixtureOptions([]);
+        return;
+      }
+
+      setLoadingFixtures(true);
+      try {
+        const response = await axiosInstance.get("/matches/search", {
+          params: { query: fixtureQuery },
+        });
+        setFixtureOptions(response.data);
+      } catch (error) {
+        console.error("Error fetching fixtures:", error);
+        setFixtureOptions([]);
+      } finally {
+        setLoadingFixtures(false);
+      }
+    };
+
+    // Debounce the API call
+    const timeoutId = setTimeout(fetchFixtures, 300);
+    return () => clearTimeout(timeoutId);
+  }, [fixtureQuery]);
 
   // Debounced fetch when filters change
   useEffect(() => {
@@ -527,6 +599,20 @@ const ScoutingPage: React.FC = () => {
         existingReportData={editReportData}
       />
 
+      {/* Add Player to List Modal */}
+      {selectedPlayerForList && (
+        <AddPlayerToListModal
+          show={showAddToListModal}
+          onHide={() => {
+            setShowAddToListModal(false);
+            setSelectedPlayerForList(null);
+          }}
+          playerId={selectedPlayerForList.id}
+          playerName={selectedPlayerForList.name}
+          universalId={selectedPlayerForList.universalId}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header
@@ -723,13 +809,18 @@ const ScoutingPage: React.FC = () => {
               <Col md={4}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">Position</Form.Label>
-                  <Form.Control
+                  <Form.Select
                     size="sm"
-                    type="text"
-                    placeholder="e.g. GK, CM, ST"
                     value={positionFilter}
                     onChange={(e) => setPositionFilter(e.target.value)}
-                  />
+                  >
+                    <option value="">All positions</option>
+                    {positions.map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                  </Form.Select>
                 </Form.Group>
               </Col>
               <Col md={4}>
@@ -826,6 +917,86 @@ const ScoutingPage: React.FC = () => {
               </Col>
             </Row>
 
+            {/* Row 2.5: Fixture Filter */}
+            <Row className="mb-3">
+              <Col md={12}>
+                <Form.Group className="position-relative">
+                  <Form.Label className="small fw-bold">Fixture</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="Type team name or fixture..."
+                    value={fixtureQuery}
+                    onChange={(e) => {
+                      setFixtureQuery(e.target.value);
+                      if (!e.target.value) {
+                        setFixtureFilter("");
+                      }
+                    }}
+                  />
+                  {fixtureQuery && (
+                    <>
+                      {loadingFixtures && (
+                        <div className="position-absolute" style={{ top: '35px', left: '10px' }}>
+                          <Spinner animation="border" size="sm" />
+                        </div>
+                      )}
+                      {!loadingFixtures && fixtureOptions.length > 0 && (
+                        <div
+                          className="position-absolute w-100 bg-white border rounded shadow-sm"
+                          style={{ top: '100%', left: 0, zIndex: 1050, maxHeight: '300px', overflowY: 'auto' }}
+                        >
+                          {fixtureOptions.map((fixture) => (
+                            <div
+                              key={fixture.universal_id}
+                              className="px-3 py-2 cursor-pointer hover-bg-light"
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => {
+                                setFixtureFilter(fixture.match_id);
+                                setFixtureQuery(fixture.display_label);
+                                setFixtureOptions([]);
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#f8f9fa';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'white';
+                              }}
+                            >
+                              {fixture.display_label}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {!loadingFixtures && fixtureQuery.length >= 2 && fixtureOptions.length === 0 && (
+                        <div
+                          className="position-absolute w-100 bg-white border rounded shadow-sm px-3 py-2 text-muted"
+                          style={{ top: '100%', left: 0, zIndex: 1050 }}
+                        >
+                          No fixtures found
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {fixtureFilter && (
+                    <div className="mt-1">
+                      <Button
+                        size="sm"
+                        variant="link"
+                        className="p-0 text-danger"
+                        onClick={() => {
+                          setFixtureFilter("");
+                          setFixtureQuery("");
+                        }}
+                      >
+                        Clear fixture filter
+                      </Button>
+                    </div>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
+
             {/* Row 3: Age Range, Date Range, Clear Filters & Report Count */}
             <Row className="mb-3">
               <Col md={4}>
@@ -898,6 +1069,8 @@ const ScoutingPage: React.FC = () => {
                       setReportTypeFilter("");
                       setScoutingTypeFilter("");
                       setPositionFilter("");
+                      setFixtureFilter("");
+                      setFixtureQuery("");
                     }}
                     className="w-100"
                   >
@@ -1092,6 +1265,16 @@ const ScoutingPage: React.FC = () => {
                           >
                             🗑️
                           </Button>
+                          {canAccessLists && (
+                            <Button
+                              size="sm"
+                              title="Add to List"
+                              onClick={() => handleAddToList(report)}
+                              className="btn-action-circle btn-action-primary"
+                            >
+                              📋
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1347,6 +1530,16 @@ const ScoutingPage: React.FC = () => {
                             >
                               🗑️
                             </Button>
+                            {canAccessLists && (
+                              <Button
+                                size="sm"
+                                className="btn-action-circle btn-action-primary"
+                                title="Add to List"
+                                onClick={() => handleAddToList(report)}
+                              >
+                                📋
+                              </Button>
+                            )}
                           </div>
                         </Col>
                       </Row>

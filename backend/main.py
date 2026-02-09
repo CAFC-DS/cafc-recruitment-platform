@@ -3938,6 +3938,99 @@ async def optimize_database(current_user: User = Depends(get_current_user)):
             conn.close()
 
 
+@app.get("/matches/search")
+async def search_matches(
+    query: str, current_user: User = Depends(get_current_user)
+):
+    """Search for historic matches by team name (autocomplete for fixture filter)"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Normalize the search query for accent-insensitive matching
+        normalized_query = normalize_text(query)
+        search_pattern = f"%{normalized_query}%"
+
+        # Search both home and away team names, only historic matches (past dates)
+        cursor.execute(
+            """
+            SELECT
+                ID as match_id,
+                HOMESQUADNAME as home_team,
+                AWAYSQUADNAME as away_team,
+                SCHEDULEDDATE as fixture_date,
+                DATA_SOURCE,
+                'external' as id_type
+            FROM matches
+            WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
+                   OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+              AND SCHEDULEDDATE < CURRENT_DATE()
+              AND ID IS NOT NULL
+              AND DATA_SOURCE = 'external'
+
+            UNION ALL
+
+            SELECT
+                CAFC_MATCH_ID as match_id,
+                HOMESQUADNAME as home_team,
+                AWAYSQUADNAME as away_team,
+                SCHEDULEDDATE as fixture_date,
+                DATA_SOURCE,
+                'manual' as id_type
+            FROM matches
+            WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
+                   OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+              AND SCHEDULEDDATE < CURRENT_DATE()
+              AND CAFC_MATCH_ID IS NOT NULL
+              AND DATA_SOURCE = 'internal'
+
+            ORDER BY fixture_date DESC
+            LIMIT 50
+        """,
+            (search_pattern, search_pattern, search_pattern, search_pattern),
+        )
+
+        matches = cursor.fetchall()
+        match_list = []
+        for row in matches:
+            match_id, home_team, away_team, scheduled_date, data_source, id_type = row
+
+            # Format date as DD/MM/YYYY
+            formatted_date = scheduled_date.strftime("%d/%m/%Y") if scheduled_date else ""
+
+            # Create display label: "Team A vs Team B - DD/MM/YYYY"
+            display_label = f"{home_team} vs {away_team} - {formatted_date}"
+
+            universal_id = get_match_universal_id(
+                {
+                    "ID": match_id if id_type == "external" else None,
+                    "CAFC_MATCH_ID": match_id if id_type == "internal" else None,
+                    "DATA_SOURCE": data_source,
+                }
+            )
+
+            match_list.append(
+                {
+                    "match_id": match_id,
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "fixture_date": str(scheduled_date),
+                    "formatted_date": formatted_date,
+                    "display_label": display_label,
+                    "data_source": data_source,
+                    "universal_id": universal_id,
+                }
+            )
+        return match_list
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error searching matches: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/matches/date")
 async def get_matches_by_date(
     fixture_date: str, current_user: User = Depends(get_current_user)
@@ -4079,6 +4172,34 @@ async def get_attributes_by_position(
             conn.close()
 
 
+@app.get("/positions/distinct")
+async def get_distinct_positions(current_user: User = Depends(get_current_user)):
+    """Get list of all available positions for dropdown filters"""
+    # Return the same positions used throughout the application
+    positions = [
+        "GK",
+        "RB",
+        "LB",
+        "RWB",
+        "LWB",
+        "RCB(3)",
+        "LCB(3)",
+        "CCB(3)",
+        "RCB(2)",
+        "LCB(2)",
+        "DM",
+        "CM",
+        "AM",
+        "RAM",
+        "LAM",
+        "RW",
+        "LW",
+        "Target Man CF",
+        "In Behind CF",
+    ]
+    return positions
+
+
 @app.post("/matches")
 async def add_match(match: Match, current_user: User = Depends(get_current_user)):
     """Add a manual match to the database with separate ID system"""
@@ -4198,6 +4319,7 @@ async def get_all_scout_reports(
     report_types: Optional[str] = None,  # Comma-separated: "Player Assessment,Flag"
     scouting_type: Optional[str] = None,  # "Live" or "Video"
     position: Optional[str] = None,
+    match_id: Optional[str] = None,  # Filter by match ID (universal_id format)
     date_from: Optional[str] = None,  # YYYY-MM-DD format
     date_to: Optional[str] = None,  # YYYY-MM-DD format
 ):
@@ -4317,6 +4439,11 @@ async def get_all_scout_reports(
         if position:
             where_clauses.append("UPPER(sr.POSITION) LIKE UPPER(%s)")
             sql_params.append(f"%{position}%")
+
+        # Match ID filter (exact match for fixture filter)
+        if match_id:
+            where_clauses.append("sr.MATCH_ID = %s")
+            sql_params.append(match_id)
 
         # Date range filter
         if date_from:
