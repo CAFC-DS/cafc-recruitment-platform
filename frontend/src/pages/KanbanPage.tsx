@@ -72,6 +72,7 @@ const KanbanPage: React.FC = () => {
   const [filters, setFilters] = useState<AdvancedFiltersType>({
     playerName: "",
     position: "",
+    club: "",
     performanceScores: [],
     minAge: "",
     maxAge: "",
@@ -162,6 +163,7 @@ const KanbanPage: React.FC = () => {
 
       if (filters.playerName) apiFilters.playerName = filters.playerName;
       if (filters.position) apiFilters.position = filters.position;
+      if (filters.club) apiFilters.club = filters.club;
       if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
       if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
@@ -195,6 +197,7 @@ const KanbanPage: React.FC = () => {
     setFilters({
       playerName: "",
       position: "",
+      club: "",
       performanceScores: [],
       minAge: "",
       maxAge: "",
