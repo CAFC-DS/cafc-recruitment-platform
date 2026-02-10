@@ -937,12 +937,7 @@ const ScoutingPage: React.FC = () => {
                   />
                   {fixtureQuery && (
                     <>
-                      {loadingFixtures && (
-                        <div className="position-absolute" style={{ top: '35px', left: '10px' }}>
-                          <Spinner animation="border" size="sm" />
-                        </div>
-                      )}
-                      {!loadingFixtures && fixtureOptions.length > 0 && (
+                      {fixtureOptions.length > 0 && (
                         <div
                           className="position-absolute w-100 bg-white border rounded shadow-sm"
                           style={{ top: '100%', left: 0, zIndex: 1050, maxHeight: '300px', overflowY: 'auto' }}
@@ -969,7 +964,7 @@ const ScoutingPage: React.FC = () => {
                           ))}
                         </div>
                       )}
-                      {!loadingFixtures && fixtureQuery.length >= 2 && fixtureOptions.length === 0 && !fixtureFilter && (
+                      {fixtureQuery.length >= 2 && fixtureOptions.length === 0 && !fixtureFilter && (
                         <div
                           className="position-absolute w-100 bg-white border rounded shadow-sm px-3 py-2 text-muted"
                           style={{ top: '100%', left: 0, zIndex: 1050 }}

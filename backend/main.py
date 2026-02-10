@@ -3938,6 +3938,48 @@ async def optimize_database(current_user: User = Depends(get_current_user)):
             conn.close()
 
 
+def parse_fixture_search_query(query: str) -> dict:
+    """
+    Parse fixture search query to handle various formats:
+    - Single team: "Celtic Glasgow"
+    - Two teams: "Celtic Glasgow vs Rangers" or "Celtic v Rangers"
+    - Incomplete: "Celtic Glasgow vs" (strips incomplete delimiter)
+
+    Returns dict with:
+    - mode: 'both_teams' or 'single_team'
+    - team1, team2: for both_teams mode
+    - query: for single_team mode
+    """
+    normalized = normalize_text(query).strip()
+
+    # Try splitting on common delimiters (order matters - try longer patterns first)
+    delimiters = [' vs ', ' v ', ' - ', ' vs', ' v']
+    for delimiter in delimiters:
+        if delimiter in normalized:
+            parts = [p.strip() for p in normalized.split(delimiter, 1)]
+            parts = [p for p in parts if p]  # Remove empty strings
+
+            if len(parts) == 2:
+                # Full match with both teams
+                return {
+                    'mode': 'both_teams',
+                    'team1': parts[0],
+                    'team2': parts[1]
+                }
+            elif len(parts) == 1:
+                # Incomplete query like "Celtic vs" - search for first team only
+                return {
+                    'mode': 'single_team',
+                    'query': parts[0]
+                }
+
+    # No delimiter found - single team search
+    return {
+        'mode': 'single_team',
+        'query': normalized
+    }
+
+
 @app.get("/matches/search")
 async def search_matches(
     query: str, current_user: User = Depends(get_current_user)
@@ -3948,48 +3990,99 @@ async def search_matches(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Normalize the search query for accent-insensitive matching
-        normalized_query = normalize_text(query)
-        search_pattern = f"%{normalized_query}%"
+        # Parse query to handle different search formats
+        parsed = parse_fixture_search_query(query)
 
-        # Search both home and away team names, only historic matches (past dates)
-        cursor.execute(
-            """
-            SELECT
-                ID as match_id,
-                HOMESQUADNAME as home_team,
-                AWAYSQUADNAME as away_team,
-                SCHEDULEDDATE as fixture_date,
-                DATA_SOURCE,
-                'external' as id_type
-            FROM matches
-            WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                   OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
-              AND SCHEDULEDDATE < CURRENT_DATE()
-              AND ID IS NOT NULL
-              AND DATA_SOURCE = 'external'
+        if parsed['mode'] == 'both_teams':
+            # Search for matches with both specific teams (in either order)
+            team1_pattern = f"%{parsed['team1']}%"
+            team2_pattern = f"%{parsed['team2']}%"
 
-            UNION ALL
+            cursor.execute(
+                """
+                SELECT
+                    ID as match_id,
+                    HOMESQUADNAME as home_team,
+                    AWAYSQUADNAME as away_team,
+                    SCHEDULEDDATE as fixture_date,
+                    DATA_SOURCE,
+                    'external' as id_type
+                FROM matches
+                WHERE (
+                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    OR
+                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                )
+                  AND SCHEDULEDDATE < CURRENT_DATE()
+                  AND ID IS NOT NULL
+                  AND DATA_SOURCE = 'external'
 
-            SELECT
-                CAFC_MATCH_ID as match_id,
-                HOMESQUADNAME as home_team,
-                AWAYSQUADNAME as away_team,
-                SCHEDULEDDATE as fixture_date,
-                DATA_SOURCE,
-                'manual' as id_type
-            FROM matches
-            WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                   OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
-              AND SCHEDULEDDATE < CURRENT_DATE()
-              AND CAFC_MATCH_ID IS NOT NULL
-              AND DATA_SOURCE = 'internal'
+                UNION ALL
 
-            ORDER BY fixture_date DESC
-            LIMIT 50
-        """,
-            (search_pattern, search_pattern, search_pattern, search_pattern),
-        )
+                SELECT
+                    CAFC_MATCH_ID as match_id,
+                    HOMESQUADNAME as home_team,
+                    AWAYSQUADNAME as away_team,
+                    SCHEDULEDDATE as fixture_date,
+                    DATA_SOURCE,
+                    'manual' as id_type
+                FROM matches
+                WHERE (
+                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    OR
+                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                )
+                  AND SCHEDULEDDATE < CURRENT_DATE()
+                  AND CAFC_MATCH_ID IS NOT NULL
+                  AND DATA_SOURCE = 'internal'
+
+                ORDER BY fixture_date DESC
+                LIMIT 50
+            """,
+                (team1_pattern, team2_pattern, team2_pattern, team1_pattern,
+                 team1_pattern, team2_pattern, team2_pattern, team1_pattern),
+            )
+        else:
+            # Single team search (original logic)
+            search_pattern = f"%{parsed['query']}%"
+
+            cursor.execute(
+                """
+                SELECT
+                    ID as match_id,
+                    HOMESQUADNAME as home_team,
+                    AWAYSQUADNAME as away_team,
+                    SCHEDULEDDATE as fixture_date,
+                    DATA_SOURCE,
+                    'external' as id_type
+                FROM matches
+                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
+                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                  AND SCHEDULEDDATE < CURRENT_DATE()
+                  AND ID IS NOT NULL
+                  AND DATA_SOURCE = 'external'
+
+                UNION ALL
+
+                SELECT
+                    CAFC_MATCH_ID as match_id,
+                    HOMESQUADNAME as home_team,
+                    AWAYSQUADNAME as away_team,
+                    SCHEDULEDDATE as fixture_date,
+                    DATA_SOURCE,
+                    'manual' as id_type
+                FROM matches
+                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
+                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                  AND SCHEDULEDDATE < CURRENT_DATE()
+                  AND CAFC_MATCH_ID IS NOT NULL
+                  AND DATA_SOURCE = 'internal'
+
+                ORDER BY fixture_date DESC
+                LIMIT 50
+            """,
+                (search_pattern, search_pattern, search_pattern, search_pattern),
+            )
 
         matches = cursor.fetchall()
         match_list = []
