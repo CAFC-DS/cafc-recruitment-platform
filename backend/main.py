@@ -9927,6 +9927,7 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
 async def get_all_lists_with_details(
     player_name: Optional[str] = None,
     position: Optional[str] = None,
+    club: Optional[str] = None,
     min_age: Optional[int] = None,
     max_age: Optional[int] = None,
     min_score: Optional[int] = None,
@@ -10020,6 +10021,11 @@ async def get_all_lists_with_details(
         if position:
             filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)) ILIKE %s)")
             filter_params.append(f"%{position}%")
+
+        # Club filter (using only players.SQUADNAME)
+        if club:
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(p.SQUADNAME) ILIKE %s)")
+            filter_params.append(f"%{club}%")
 
         # Age filter
         if min_age is not None:

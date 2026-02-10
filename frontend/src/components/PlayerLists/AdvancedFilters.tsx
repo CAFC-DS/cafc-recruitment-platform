@@ -4,6 +4,7 @@ import { Card, Collapse, Button, Row, Col, Form, Dropdown } from "react-bootstra
 export interface PlayerListFilters {
   playerName: string;
   position: string;
+  club: string;
   performanceScores: number[];
   minAge: string;
   maxAge: string;
@@ -51,7 +52,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       </Card.Header>
       <Collapse in={showFilters}>
         <Card.Body className="filter-section-improved">
-          {/* Row 1: Player Name, Position, Performance Score */}
+          {/* Row 1: Player Name, Position, Club */}
           <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
@@ -77,6 +78,22 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 />
               </Form.Group>
             </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Club</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  placeholder="Enter club name"
+                  value={filters.club}
+                  onChange={(e) => onFilterChange({ club: e.target.value })}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          {/* Row 2: Performance Score, Age Range, Last Reported */}
+          <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">
@@ -121,10 +138,6 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 </Dropdown>
               </Form.Group>
             </Col>
-          </Row>
-
-          {/* Row 2: Age Range, Last Reported, Stage Filter */}
-          <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Age Range</Form.Label>
@@ -169,6 +182,10 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 </Form.Select>
               </Form.Group>
             </Col>
+          </Row>
+
+          {/* Row 3: Stage Filter, Report Count, Show Archived */}
+          <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Stage Filter</Form.Label>
@@ -211,10 +228,6 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 </Dropdown>
               </Form.Group>
             </Col>
-          </Row>
-
-          {/* Row 3: Report Count, Show Archived, Clear Filters */}
-          <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Report Count</Form.Label>
@@ -253,6 +266,10 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 />
               </Form.Group>
             </Col>
+          </Row>
+
+          {/* Row 4: Clear Filters */}
+          <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
                 <Form.Label

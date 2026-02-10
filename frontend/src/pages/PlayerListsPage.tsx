@@ -99,6 +99,7 @@ const PlayerListsPage: React.FC = () => {
   const [filters, setFilters] = useState<AdvancedFiltersType>({
     playerName: "",
     position: "",
+    club: "",
     performanceScores: [],
     minAge: "",
     maxAge: "",
@@ -185,6 +186,7 @@ const PlayerListsPage: React.FC = () => {
 
       if (filters.playerName) apiFilters.playerName = filters.playerName;
       if (filters.position) apiFilters.position = filters.position;
+      if (filters.club) apiFilters.club = filters.club;
       if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
       if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
@@ -221,6 +223,7 @@ const PlayerListsPage: React.FC = () => {
     setFilters({
       playerName: "",
       position: "",
+      club: "",
       performanceScores: [],
       minAge: "",
       maxAge: "",
@@ -751,6 +754,17 @@ const PlayerListsPage: React.FC = () => {
                 ➕ New List
               </Button>
 
+              {/* Add Player Button - Only visible when single list is selected */}
+              {currentList && (
+                <Button
+                  size="sm"
+                  variant="dark"
+                  onClick={() => setShowAddPlayerModal(true)}
+                >
+                  + Add Player
+                </Button>
+              )}
+
               {/* List Actions Dropdown - Only visible when lists are selected */}
               {visibleListIds.size > 0 && (
                 <Dropdown>
@@ -773,9 +787,6 @@ const PlayerListsPage: React.FC = () => {
                         🗑️ Delete List
                       </Dropdown.Item>
                       <Dropdown.Divider />
-                      <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
-                        + Add Player
-                      </Dropdown.Item>
                       <Dropdown.Item onClick={handleExport}>
                         📊 Export CSV
                       </Dropdown.Item>
