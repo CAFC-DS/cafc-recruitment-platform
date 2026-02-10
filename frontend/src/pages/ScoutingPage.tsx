@@ -376,6 +376,7 @@ const ScoutingPage: React.FC = () => {
     reportTypeFilter,
     scoutingTypeFilter,
     positionFilter,
+    fixtureFilter,
     dateFromFilter,
     dateToFilter,
   ]);
@@ -968,7 +969,7 @@ const ScoutingPage: React.FC = () => {
                           ))}
                         </div>
                       )}
-                      {!loadingFixtures && fixtureQuery.length >= 2 && fixtureOptions.length === 0 && (
+                      {!loadingFixtures && fixtureQuery.length >= 2 && fixtureOptions.length === 0 && !fixtureFilter && (
                         <div
                           className="position-absolute w-100 bg-white border rounded shadow-sm px-3 py-2 text-muted"
                           style={{ top: '100%', left: 0, zIndex: 1050 }}
