@@ -979,10 +979,10 @@ const PlayerProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Reports Row - Scouting/Intel Stack + Attributes Side by Side */}
-        <Row className="mt-4 mb-4">
-          {/* Left Column - Scouting History and Intel Stacked */}
-          <Col lg={5} className="mb-4 mb-lg-0">
+        {/* Reports Sections - Full Width Stacked Layout */}
+        <div className="mt-4 mb-4">
+          {/* Scouting History Section - Full Width */}
+          <div className="mb-4">
             {/* Recent Scouting History */}
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
@@ -1785,10 +1785,10 @@ const PlayerProfilePage: React.FC = () => {
                 </div>
               </div>
             )}
-          </Col>
+          </div>
 
-          {/* Attribute Analysis Section - Right Column (Wider) */}
-          <Col lg={7}>
+          {/* Attribute Analysis Section - Full Width */}
+          <div>
             <div className="horizontal-timeline-section h-100">
               <div className="radar-charts-section">
           <div className="radar-header mb-3">
@@ -2173,8 +2173,8 @@ const PlayerProfilePage: React.FC = () => {
             })()}
               </div>
             </div>
-          </Col>
-        </Row>
+          </div>
+        </div>
       </Container>
 
       {/* Add Note Modal */}
