@@ -6,10 +6,22 @@ Similarity threshold: 85%
 
 ================================================================================
 
-SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden
-MATCHED WITH: VfL Osnabrück vs SV Wehen Wiesbaden
-DATE: 2025-03-07
-SIMILARITY: 95.45%
+SEARCHED FOR: Mjällby AIF vs Degerfors IF
+MATCHED WITH: Mjällby AIF vs Degerfors IF
+DATE: 2025-04-27
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Hertha BSC vs 1.FC Magdeburg
+MATCHED WITH: Hertha BSC vs 1. FC Magdeburg
+DATE: 2025-04-25
+SIMILARITY: 98.28%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Mjällby AIF vs IF Brommapojkarna
+MATCHED WITH: Mjällby AIF vs IF Brommapojkarna
+DATE: 2025-05-19
+SIMILARITY: 100.00%
 --------------------------------------------------------------------------------
 
 SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden
@@ -18,9 +30,249 @@ DATE: 2025-03-07
 SIMILARITY: 95.45%
 --------------------------------------------------------------------------------
 
-SEARCHED FOR: VfL Osnabruck vs Wehen Wiesbaden
-MATCHED WITH: VfL Osnabrück vs SV Wehen Wiesbaden
-DATE: 2025-03-07
-SIMILARITY: 95.45%
+SEARCHED FOR: Watford U21 vs Cardiff City U21
+MATCHED WITH: Watford FC U23 vs Cardiff City U23
+DATE: 2025-09-19
+SIMILARITY: 86.88%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgardens IF vs Halmstads BK
+MATCHED WITH: Djurgårdens IF vs Halmstads BK
+DATE: 2025-08-03
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Leicester City vs Sheffield Wednsday
+MATCHED WITH: Leicester City vs Sheffield Wednesday
+DATE: 2025-08-10
+SIMILARITY: 98.65%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgardens IF vs Halmstad BK
+MATCHED WITH: Djurgårdens IF vs Halmstads BK
+DATE: 2025-08-03
+SIMILARITY: 97.83%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgardens IF vs Halmstad BK
+MATCHED WITH: Djurgårdens IF vs Halmstads BK
+DATE: 2025-08-03
+SIMILARITY: 97.83%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Leicester City vs Sheffield Wednsday
+MATCHED WITH: Leicester City vs Sheffield Wednesday
+DATE: 2025-08-10
+SIMILARITY: 98.65%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Leicester City vs Sheffield Wednsday
+MATCHED WITH: Leicester City vs Sheffield Wednesday
+DATE: 2025-08-10
+SIMILARITY: 98.65%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Leicester City vs Sheffield Wednsday
+MATCHED WITH: Leicester City vs Sheffield Wednesday
+DATE: 2025-08-10
+SIMILARITY: 98.65%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgardens IF vs Halmstads BK
+MATCHED WITH: Djurgårdens IF vs Halmstads BK
+DATE: 2025-08-03
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Djurgardens IF vs Halmstad BK
+MATCHED WITH: Djurgårdens IF vs Halmstads BK
+DATE: 2025-08-03
+SIMILARITY: 97.83%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sporting Gijon vs Burgos
+MATCHED WITH: Sporting Gijón vs Burgos CF
+DATE: 2025-09-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sporting Gijon vs Burgos
+MATCHED WITH: Sporting Gijón vs Burgos CF
+DATE: 2025-09-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sporting Gijon vs Burgos
+MATCHED WITH: Sporting Gijón vs Burgos CF
+DATE: 2025-09-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Shalke 04 vs Hannover 96
+MATCHED WITH: FC Schalke 04 vs Hannover 96
+DATE: 2025-03-14
+SIMILARITY: 90.91%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sporting Gijon vs Burgos
+MATCHED WITH: Sporting Gijón vs Burgos CF
+DATE: 2025-09-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Sporting Gijon vs Burgos
+MATCHED WITH: Sporting Gijón vs Burgos CF
+DATE: 2025-09-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Newcastle Jets vs Western United
+MATCHED WITH: Newcastle United Jets vs Western United FC
+DATE: 2025-03-16
+SIMILARITY: 85.16%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Standard Liege vs FCV Dender EH
+MATCHED WITH: Standard Lüttich vs FCV Dender EH
+DATE: 2025-08-02
+SIMILARITY: 86.67%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: BK Hacken vs Mjallby AIF
+MATCHED WITH: BK Häcken vs Mjällby AIF
+DATE: 2025-04-12
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: BK Hacken vs Mjallby AIF
+MATCHED WITH: BK Häcken vs Mjällby AIF
+DATE: 2025-04-12
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: BK Hacken vs Mjallby AIF
+MATCHED WITH: BK Häcken vs Mjällby AIF
+DATE: 2025-04-12
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Halmstad vs Osters IF
+MATCHED WITH: Halmstads BK vs Östers IF
+DATE: 2025-04-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: BK Hacken vs Mjallby AIF
+MATCHED WITH: BK Häcken vs Mjällby AIF
+DATE: 2025-04-12
+SIMILARITY: 100.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Halmstad vs Osters IF
+MATCHED WITH: Halmstads BK vs Östers IF
+DATE: 2025-04-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Halmstad vs Osters IF
+MATCHED WITH: Halmstads BK vs Östers IF
+DATE: 2025-04-14
+SIMILARITY: 90.00%
+--------------------------------------------------------------------------------
+
+SEARCHED FOR: Halmstad vs Osters IF
+MATCHED WITH: Halmstads BK vs Östers IF
+DATE: 2025-04-14
+SIMILARITY: 90.00%
 --------------------------------------------------------------------------------
 

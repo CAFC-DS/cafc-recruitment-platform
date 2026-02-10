@@ -12,6 +12,7 @@ import {
   Modal,
   Table,
   Dropdown,
+  Collapse,
 } from "react-bootstrap";
 import { PolarArea } from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -233,6 +234,17 @@ const PlayerProfilePage: React.FC = () => {
 
   // Report carousel controls
   const [currentReportPage, setCurrentReportPage] = useState(0);
+
+  // Collapsible sections
+  const [scoutingHistoryExpanded, setScoutingHistoryExpanded] = useState(false);
+  const [intelExpanded, setIntelExpanded] = useState(false);
+  const [attributeBreakdownExpanded, setAttributeBreakdownExpanded] = useState(true);
+
+  // View mode for Intel section
+  const [intelViewMode, setIntelViewMode] = useState<"cards" | "table">("cards");
+
+  // Player stages from lists
+  const [playerStages, setPlayerStages] = useState<Array<{ list_name: string; stage: string }>>([]);
 
   // Red-green gradient color functions for scoring (now using utility)
 
@@ -689,6 +701,7 @@ const PlayerProfilePage: React.FC = () => {
       fetchPlayerAttributes();
       fetchScoutReports();
       fetchPositionCounts();
+      fetchPlayerStages();
     }
   }, [actualPlayerId]);
 
@@ -771,6 +784,32 @@ const PlayerProfilePage: React.FC = () => {
       setPositionCounts(response.data.position_counts || []);
     } catch (error: any) {
       console.error("Error fetching position counts:", error);
+    }
+  };
+
+  const fetchPlayerStages = async () => {
+    if (!actualPlayerId) {
+      console.log("fetchPlayerStages: No actualPlayerId");
+      return;
+    }
+
+    try {
+      console.log(`fetchPlayerStages: Fetching stages for player ${actualPlayerId}`);
+      const response = await axiosInstance.get(
+        `/players/${actualPlayerId}/lists`,
+      );
+      console.log("fetchPlayerStages: Response received:", response.data);
+      // Extract list name and stage from each list membership
+      const listData = response.data.lists || response.data; // Handle both formats
+      const stages = listData.map((item: any) => ({
+        list_name: item.list_name,
+        stage: item.stage,
+      }));
+      console.log("fetchPlayerStages: Extracted stages:", stages);
+      setPlayerStages(stages);
+    } catch (error: any) {
+      console.error("Error fetching player stages:", error);
+      console.error("Error details:", error.response?.data);
     }
   };
 
@@ -889,6 +928,41 @@ const PlayerProfilePage: React.FC = () => {
                     )
                   );
                 })()}
+                {/* Player Stages from Lists */}
+                {playerStages.length > 0 && (
+                  <div className="player-stages mt-2">
+                    <span className="score-label">Stage:</span>
+                    {playerStages.map((stageInfo, index) => {
+                      // Color code stages
+                      const getStageColor = (stage: string) => {
+                        switch (stage) {
+                          case "Stage 1": return "#6c757d";
+                          case "Stage 2": return "#0dcaf0";
+                          case "Stage 3": return "#ffc107";
+                          case "Stage 4": return "#198754";
+                          case "Archived": return "#dc3545";
+                          default: return "#6c757d";
+                        }
+                      };
+
+                      return (
+                        <span
+                          key={index}
+                          className="badge stage-badge ms-2 me-2 mb-1"
+                          style={{
+                            backgroundColor: getStageColor(stageInfo.stage),
+                            color: "white",
+                            fontWeight: "500",
+                            fontSize: "0.85rem",
+                            padding: "0.3rem 0.6rem",
+                          }}
+                        >
+                          {stageInfo.stage}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -905,45 +979,67 @@ const PlayerProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Horizontal Scout Reports Timeline */}
-        <div className="horizontal-timeline-section mt-4 mb-4">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h4 className="section-title mb-0">📅 Recent Scouting History</h4>
-            <div className="btn-group">
-              <Button
-                variant={viewMode === "cards" ? "secondary" : "outline-secondary"}
-                size="sm"
-                onClick={() => setViewMode("cards")}
-                style={
-                  viewMode === "cards"
-                    ? {
-                        backgroundColor: "#000000",
-                        borderColor: "#000000",
-                        color: "white",
+        {/* Reports Row - Scouting/Intel Stack + Attributes Side by Side */}
+        <Row className="mt-4 mb-4">
+          {/* Left Column - Scouting History and Intel Stacked */}
+          <Col lg={5} className="mb-4 mb-lg-0">
+            {/* Recent Scouting History */}
+            <div className="horizontal-timeline-section mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="d-flex align-items-center gap-2">
+                  <h4 className="section-title mb-0">📅 Scouting History</h4>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setScoutingHistoryExpanded(!scoutingHistoryExpanded)}
+                    style={{
+                      textDecoration: "none",
+                      color: "#666",
+                      fontSize: "1.2rem",
+                      padding: "0",
+                    }}
+                    title={scoutingHistoryExpanded ? "Collapse" : "Expand"}
+                  >
+                    {scoutingHistoryExpanded ? "▲" : "▼"}
+                  </Button>
+                </div>
+                {scoutingHistoryExpanded && (
+                  <div className="btn-group">
+                    <Button
+                      variant={viewMode === "cards" ? "secondary" : "outline-secondary"}
+                      size="sm"
+                      onClick={() => setViewMode("cards")}
+                      style={
+                        viewMode === "cards"
+                          ? {
+                              backgroundColor: "#000000",
+                              borderColor: "#000000",
+                              color: "white",
+                            }
+                          : { color: "#000000", borderColor: "#000000" }
                       }
-                    : { color: "#000000", borderColor: "#000000" }
-                }
-              >
-                Cards
-              </Button>
-              <Button
-                variant={viewMode === "table" ? "secondary" : "outline-secondary"}
-                size="sm"
-                onClick={() => setViewMode("table")}
-                style={
-                  viewMode === "table"
-                    ? {
-                        backgroundColor: "#000000",
-                        borderColor: "#000000",
-                        color: "white",
+                    >
+                      Cards
+                    </Button>
+                    <Button
+                      variant={viewMode === "table" ? "secondary" : "outline-secondary"}
+                      size="sm"
+                      onClick={() => setViewMode("table")}
+                      style={
+                        viewMode === "table"
+                          ? {
+                              backgroundColor: "#000000",
+                              borderColor: "#000000",
+                              color: "white",
+                            }
+                          : { color: "#000000", borderColor: "#000000" }
                       }
-                    : { color: "#000000", borderColor: "#000000" }
-                }
-              >
-                Table
-              </Button>
-            </div>
-          </div>
+                    >
+                      Table
+                    </Button>
+                  </div>
+                )}
+              </div>
 
           {scoutReportsLoading ? (
             <div className="text-center py-3">
@@ -952,34 +1048,91 @@ const PlayerProfilePage: React.FC = () => {
             </div>
           ) : scoutReportsData && scoutReportsData.reports.length > 0 ? (
             <>
-              {/* Summary Stats */}
-              <div className="timeline-summary-compact mb-3">
-                <span className="summary-stat">
-                  <strong>{scoutReportsData.total_reports}</strong> reports
-                </span>
-                <span className="summary-stat">
-                  <strong>
-                    {
-                      scoutReportsData.reports.filter(
-                        (r) => r.overall_rating && r.overall_rating >= 7,
-                      ).length
-                    }
-                  </strong>{" "}
-                  high ratings (7+)
-                </span>
-                <span className="summary-stat">
-                  <strong>
-                    {
-                      new Set(scoutReportsData.reports.map((r) => r.scout_name))
-                        .size
-                    }
-                  </strong>{" "}
-                  different scouts
-                </span>
+              {/* Summary Stats - Always Visible */}
+              <div className="timeline-summary-compact mb-3" style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4rem",
+                fontSize: "0.85rem",
+                backgroundColor: "#ffffff",
+                padding: "0.75rem",
+                borderRadius: "6px",
+                border: "1px solid #e5e7eb",
+                textAlign: "center"
+              }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "center" }}>
+                  <span className="summary-stat">
+                    <strong>{scoutReportsData.total_reports}</strong> reports
+                  </span>
+                  <span className="summary-stat">
+                    <strong>
+                      {
+                        scoutReportsData.reports.filter(
+                          (r) => r.overall_rating && r.overall_rating >= 7,
+                        ).length
+                      }
+                    </strong>{" "}
+                    high ratings (7+)
+                  </span>
+                  <span className="summary-stat">
+                    <strong>
+                      {
+                        new Set(scoutReportsData.reports.map((r) => r.scout_name))
+                          .size
+                      }
+                    </strong>{" "}
+                    different scouts
+                  </span>
+                </div>
+
+                {scoutReportsData.reports.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "center" }}>
+                    <span className="summary-stat">
+                      Latest Assessment: <strong>{new Date(scoutReportsData.reports[0].report_date).toLocaleDateString()}</strong>
+                    </span>
+                    {scoutReportsData.reports[0].overall_rating && (
+                      <span className="summary-stat">
+                        Latest Score:
+                        <span
+                          className="badge ms-1"
+                          style={{
+                            backgroundColor: getPerformanceScoreColor(scoutReportsData.reports[0].overall_rating),
+                            color: "white",
+                            fontSize: "0.7rem",
+                            padding: "2px 6px",
+                          }}
+                        >
+                          {scoutReportsData.reports[0].overall_rating}
+                        </span>
+                      </span>
+                    )}
+                    {(() => {
+                      const positionCounts = scoutReportsData.reports
+                        .filter(r => r.position_played)
+                        .reduce((acc: { [key: string]: number }, r) => {
+                          acc[r.position_played!] = (acc[r.position_played!] || 0) + 1;
+                          return acc;
+                        }, {});
+                      const topPositions = Object.entries(positionCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 3)
+                        .map(([pos, count]) => `${count} ${pos}`)
+                        .join(", ");
+                      return topPositions && (
+                        <span className="summary-stat">
+                          Positions: <strong>{topPositions}</strong>
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
-              {/* Conditional Rendering: Table View or Cards View */}
-              {viewMode === "table" ? (
+              {/* Collapsible Details Section */}
+              <Collapse in={scoutingHistoryExpanded}>
+                <div>
+                  {/* Conditional Rendering: Table View or Cards View */}
+                  {viewMode === "table" ? (
                 /* TABLE VIEW */
                 <div className="table-responsive">
                   <Table
@@ -1126,22 +1279,22 @@ const PlayerProfilePage: React.FC = () => {
                     </tbody>
                   </Table>
                 </div>
-              ) : (
-                /* Report Cards - Fixed Height Scrollable Container */
-                <div style={{
-                maxHeight: "600px",
-                overflowY: "auto",
-                overflowX: "hidden",
-                paddingRight: "10px",
-                marginBottom: "1rem"
-              }}>
-              <Row>
-                {scoutReportsData.reports.map((report, index) => (
-                  <Col key={report.report_id} className="mb-4" style={{ flex: "0 0 20%", maxWidth: "20%" }}>
-                    <Card
-                      className={`h-100 shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
-                      style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
-                    >
+                  ) : (
+                    /* Report Cards - Fixed Height Scrollable Container */
+                    <div style={{
+                      maxHeight: "400px",
+                      overflowY: "auto",
+                      overflowX: "hidden",
+                      paddingRight: "10px",
+                      marginBottom: "1rem"
+                    }}>
+                      <Row>
+                        {scoutReportsData.reports.map((report, index) => (
+                          <Col key={report.report_id} className="mb-3" xs={12} md={6}>
+                            <Card
+                              className={`shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
+                              style={{ borderRadius: "8px", border: "1px solid #dee2e6", height: "100%" }}
+                            >
                       <Card.Body className="p-3">
                         {/* Top Row - 2 columns */}
                         <Row className="mb-3 pb-2 border-bottom">
@@ -1342,289 +1495,596 @@ const PlayerProfilePage: React.FC = () => {
                     </Card>
                   </Col>
                 ))}
-              </Row>
-              </div>
-              )}
+                    </Row>
+                    </div>
+                  )}
+                </div>
+              </Collapse>
             </>
           ) : (
-            <div className="empty-state-compact">
-              <p>No scout reports available yet.</p>
+              <div className="empty-state-compact">
+                <p>No scout reports available yet.</p>
+              </div>
+            )}
             </div>
-          )}
-        </div>
 
-        {/* Attribute Analysis Section - Full Width */}
-        <div className="mt-4 mb-4">
-            <div className="radar-charts-section">
-          <div className="radar-header mb-3">
-            <h4>📊 Attribute Analysis</h4>
-            <div className="position-disclaimer mb-3 p-3" style={{
-              backgroundColor: "#fff3cd",
-              border: "1px solid #ffc107",
-              borderRadius: "8px",
-              fontSize: "0.9rem"
-            }}>
-              <strong>⚠️ Note:</strong> Players may not have been assessed in all positions.
-              Attribute scores shown are averages across all reports and may not be representative
-              of the player's ability in specific positions where they have limited or no assessments.
-            </div>
-            <div className="d-flex align-items-center gap-3 flex-wrap">
-              {/* Multi-select Position Dropdown */}
-              <Dropdown>
-                <Dropdown.Toggle variant="outline-secondary" id="position-filter-dropdown" style={{ minWidth: "200px" }}>
-                  {selectedPositions.length === 0
-                    ? "Select Positions"
-                    : `${selectedPositions.join(", ")} (${selectedPositions.length} selected)`}
-                </Dropdown.Toggle>
-                <Dropdown.Menu style={{ maxHeight: "400px", overflowY: "auto" }}>
-                  {positionCounts.map((posCount) => (
-                    <Dropdown.Item
-                      key={posCount.position}
-                      as="div"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const newSelection = selectedPositions.includes(posCount.position)
-                          ? selectedPositions.filter(p => p !== posCount.position)
-                          : [...selectedPositions, posCount.position];
-                        handlePositionChange(newSelection);
+            {/* Player Intel Section */}
+            {profile.intel_reports && profile.intel_reports.length > 0 ? (
+              <div className="horizontal-timeline-section">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <h4 className="section-title mb-0">📋 Intel History</h4>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => setIntelExpanded(!intelExpanded)}
+                      style={{
+                        textDecoration: "none",
+                        color: "#666",
+                        fontSize: "1.2rem",
+                        padding: "0",
                       }}
-                      style={{ cursor: "pointer" }}
+                      title={intelExpanded ? "Collapse" : "Expand"}
                     >
-                      <Form.Check
-                        type="checkbox"
-                        label={`${posCount.position} (${posCount.report_count})`}
-                        checked={selectedPositions.includes(posCount.position)}
-                        onChange={() => {}} // Handled by parent onClick
-                        style={{ pointerEvents: "none" }}
-                      />
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown>
-
-              {/* Multi-select Reports Dropdown */}
-              <Dropdown>
-                <Dropdown.Toggle
-                  variant="outline-secondary"
-                  id="reports-filter-dropdown"
-                  style={{ minWidth: "200px" }}
-                  disabled={filteredReports.length === 0 && selectedPositions.length > 0}
-                >
-                  {selectedReportIds.length === 0
-                    ? "Select Reports"
-                    : `${selectedReportIds.length} report(s) selected`}
-                </Dropdown.Toggle>
-                <Dropdown.Menu style={{ maxHeight: "400px", overflowY: "auto", minWidth: "350px" }}>
-                  {(selectedPositions.length > 0 ? filteredReports : scoutReportsData?.reports || []).map((report) => (
-                    <Dropdown.Item
-                      key={report.report_id}
-                      as="div"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        const newSelection = selectedReportIds.includes(report.report_id)
-                          ? selectedReportIds.filter(id => id !== report.report_id)
-                          : [...selectedReportIds, report.report_id];
-                        handleReportSelection(newSelection);
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <Form.Check
-                        type="checkbox"
-                        label={
-                          <span style={{ fontSize: "0.9rem" }}>
-                            {report.report_date} - {report.scout_name} - {report.position_played}
-                            {report.overall_rating && ` (${report.overall_rating}/10)`}
-                          </span>
+                      {intelExpanded ? "▲" : "▼"}
+                    </Button>
+                  </div>
+                  {intelExpanded && (
+                    <div className="btn-group">
+                      <Button
+                        variant={intelViewMode === "cards" ? "secondary" : "outline-secondary"}
+                        size="sm"
+                        onClick={() => setIntelViewMode("cards")}
+                        style={
+                          intelViewMode === "cards"
+                            ? {
+                                backgroundColor: "#000000",
+                                borderColor: "#000000",
+                                color: "white",
+                              }
+                            : { color: "#000000", borderColor: "#000000" }
                         }
-                        checked={selectedReportIds.includes(report.report_id)}
-                        onChange={() => {}} // Handled by parent onClick
-                        style={{ pointerEvents: "none" }}
-                      />
-                    </Dropdown.Item>
-                  ))}
-                  {(selectedPositions.length > 0 ? filteredReports : scoutReportsData?.reports || []).length === 0 && (
-                    <Dropdown.Item disabled>No reports available</Dropdown.Item>
+                      >
+                        Cards
+                      </Button>
+                      <Button
+                        variant={intelViewMode === "table" ? "secondary" : "outline-secondary"}
+                        size="sm"
+                        onClick={() => setIntelViewMode("table")}
+                        style={
+                          intelViewMode === "table"
+                            ? {
+                                backgroundColor: "#000000",
+                                borderColor: "#000000",
+                                color: "white",
+                              }
+                            : { color: "#000000", borderColor: "#000000" }
+                        }
+                      >
+                        Table
+                      </Button>
+                    </div>
                   )}
-                </Dropdown.Menu>
-              </Dropdown>
+                </div>
 
-              {/* Clear Filters Button */}
-              {(selectedPositions.length > 0 || selectedReportIds.length > 0) && (
-                <Button
-                  variant="outline-danger"
-                  size="sm"
-                  onClick={clearFilters}
-                >
-                  Clear Filters
-                </Button>
-              )}
+            {/* Summary Stats - Always Visible */}
+            <div className="timeline-summary-compact mb-3" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.85rem" }}>
+              <span className="summary-stat">
+                <strong>{profile.intel_reports.length}</strong> intel report{profile.intel_reports.length !== 1 ? 's' : ''}
+              </span>
+              <span className="summary-stat">
+                <strong>
+                  {profile.intel_reports.filter((intel) => intel.action_required === "Discuss Urgently").length}
+                </strong>{" "}
+                urgent
+              </span>
+              <span className="summary-stat">
+                <strong>
+                  {new Set(profile.intel_reports.map((intel) => intel.contact_name)).size}
+                </strong>{" "}
+                different contacts
+              </span>
             </div>
+
+            {/* Collapsible Details Section */}
+            <Collapse in={intelExpanded}>
+              <div>
+                {/* Conditional Rendering: Table View or Cards View */}
+                {intelViewMode === "table" ? (
+                  /* TABLE VIEW */
+                  <div className="table-responsive">
+                    <Table
+                      responsive
+                      hover
+                      striped
+                      className="table-compact table-sm"
+                      style={{ textAlign: "center" }}
+                    >
+                      <thead className="table-dark">
+                        <tr>
+                          <th>Date</th>
+                          <th>Contact</th>
+                          <th>Organisation</th>
+                          <th>Action Required</th>
+                          <th>Transfer Fee</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {profile.intel_reports.map((intel) => {
+                          const getActionColor = (action: string) => {
+                            switch (action) {
+                              case "Discuss Urgently": return "#dc3545";
+                              case "Monitor": return "#ffc107";
+                              case "Beyond Us": return "#6c757d";
+                              case "No Action": return "#6c757d";
+                              default: return "#6c757d";
+                            }
+                          };
+
+                          return (
+                            <tr key={intel.intel_id}>
+                              <td>
+                                {intel.created_at
+                                  ? new Date(intel.created_at).toLocaleDateString()
+                                  : "N/A"}
+                              </td>
+                              <td>{intel.contact_name || "N/A"}</td>
+                              <td>{intel.contact_organisation || "N/A"}</td>
+                              <td>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    backgroundColor: getActionColor(intel.action_required),
+                                    color: "white",
+                                    fontWeight: "500",
+                                    fontSize: "0.75rem",
+                                  }}
+                                >
+                                  {intel.action_required || "N/A"}
+                                </span>
+                              </td>
+                              <td>{intel.transfer_fee || "N/A"}</td>
+                              <td>
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedIntelId(intel.intel_id);
+                                    setShowIntelModal(true);
+                                  }}
+                                  title="View Intel Report"
+                                  className="btn-action-circle btn-action-view"
+                                >
+                                  👁️
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </Table>
+                  </div>
+                ) : (
+                  /* CARDS VIEW - Fixed Height Scrollable Container */
+                  <div style={{
+                    maxHeight: "400px",
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    paddingRight: "10px",
+                    marginBottom: "1rem"
+                  }}>
+                      <Row>
+                        {profile.intel_reports.map((intel) => {
+                          const getActionColor = (action: string) => {
+                            switch (action) {
+                              case "Discuss Urgently": return "#dc3545";
+                              case "Monitor": return "#ffc107";
+                              case "Beyond Us": return "#6c757d";
+                              case "No Action": return "#6c757d";
+                              default: return "#6c757d";
+                            }
+                          };
+
+                          return (
+                            <Col key={intel.intel_id} className="mb-3" xs={12} md={6}>
+                              <Card
+                                className="shadow-sm hover-card"
+                                style={{ borderRadius: "8px", border: "1px solid #dee2e6", height: "100%" }}
+                              >
+                              <Card.Body className="p-3">
+                                {/* Top Row - Contact Info */}
+                                <Row className="mb-3 pb-2 border-bottom">
+                                  <Col xs={12}>
+                                    <div className="fw-bold d-block mb-1" style={{ color: "#212529", fontSize: "0.95rem" }}>
+                                      {intel.contact_name || "Unknown Contact"}
+                                    </div>
+                                    <small className="text-muted d-block" style={{ fontSize: "0.8rem" }}>
+                                      {intel.contact_organisation || "No Organisation"}
+                                    </small>
+                                    <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
+                                      {intel.created_at
+                                        ? new Date(intel.created_at).toLocaleDateString()
+                                        : "N/A"}
+                                    </small>
+                                  </Col>
+                                </Row>
+
+                                {/* Middle Row - Action Required */}
+                                <Row className="mb-3 pb-2 border-bottom">
+                                  <Col xs={12}>
+                                    <small className="text-muted fw-semibold d-block mb-1">Action Required</small>
+                                    <span
+                                      className="badge"
+                                      style={{
+                                        backgroundColor: getActionColor(intel.action_required),
+                                        color: "white",
+                                        fontWeight: "500",
+                                        fontSize: "0.75rem",
+                                      }}
+                                    >
+                                      {intel.action_required || "N/A"}
+                                    </span>
+                                  </Col>
+                                </Row>
+
+                                {/* Transfer Fee & Notes */}
+                                <Row className="mb-3 pb-2 border-bottom">
+                                  <Col xs={12}>
+                                    {intel.transfer_fee && (
+                                      <>
+                                        <small className="text-muted fw-semibold d-block mb-1">Transfer Fee</small>
+                                        <div className="text-dark" style={{ fontSize: "0.85rem" }}>
+                                          {intel.transfer_fee}
+                                        </div>
+                                      </>
+                                    )}
+                                    {intel.conversation_notes && (
+                                      <>
+                                        <small className="text-muted fw-semibold d-block mb-1 mt-2">Notes</small>
+                                        <div className="text-muted" style={{ fontSize: "0.75rem", lineHeight: "1.3" }}>
+                                          {intel.conversation_notes.substring(0, 100)}
+                                          {intel.conversation_notes.length > 100 && "..."}
+                                        </div>
+                                      </>
+                                    )}
+                                  </Col>
+                                </Row>
+
+                                {/* Bottom Row - Actions */}
+                                <Row>
+                                  <Col xs={12} className="text-end">
+                                    <Button
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedIntelId(intel.intel_id);
+                                        setShowIntelModal(true);
+                                      }}
+                                      title="View Intel Report"
+                                      className="btn-action-circle btn-action-view"
+                                    >
+                                      👁️
+                                    </Button>
+                                  </Col>
+                                </Row>
+                              </Card.Body>
+                            </Card>
+                          </Col>
+                        );
+                      })}
+                    </Row>
+                  </div>
+                  )}
+                </div>
+              </Collapse>
+              </div>
+            ) : (
+              <div className="horizontal-timeline-section h-100">
+                <h4 className="section-title mb-3">📋 Intel History</h4>
+                <div className="empty-state-compact">
+                  <p>No intel reports available yet.</p>
+                </div>
+              </div>
+            )}
+          </Col>
+
+          {/* Attribute Analysis Section - Right Column (Wider) */}
+          <Col lg={7}>
+            <div className="horizontal-timeline-section h-100">
+              <div className="radar-charts-section">
+          <div className="radar-header mb-3">
+            <h4 className="section-title mb-0" style={{ display: "inline-block", borderBottom: "2px solid #e5e7eb", paddingBottom: "0.5rem" }}>📊 Attribute Analysis</h4>
           </div>
 
-          {(selectedPositions.length > 0 || positionAttributes.length > 0) &&
-            (() => {
+          {(() => {
               const chartData = getPolarAreaChartData();
-              if (!chartData || !chartData.labels.length) {
-                return (
-                  <div className="text-center py-4">
-                    <p className="text-muted">
-                      No attribute data available for the selected position(s).
-                    </p>
-                  </div>
-                );
-              }
-
-              // Exact polar area chart options from PlayerReportModal
-              const polarAreaChartOptions: any = {
-                responsive: true,
-                maintainAspectRatio: false,
-                // Configure for better label alignment
-                rotation: 0, // Start at 3 o'clock position
-                circumference: 360, // Full circle
-                scales: {
-                  r: {
-                    display: true,
-                    min: 0,
-                    max: 10,
-                    ticks: {
-                      display: true, // Show the radial axis numbers
-                      stepSize: 2,
-                      font: {
-                        size: 10,
-                      },
-                    },
-                    grid: {
-                      display: true, // Show the grid lines
-                    },
-                    angleLines: {
-                      display: true, // Show the angle lines radiating from center
-                    },
-                    pointLabels: {
-                      display: true,
-                      font: {
-                        size: 12, // Larger font for better readability
-                        weight: "bold",
-                      },
-                      color: "#212529",
-                      padding: 15, // Reduced padding for compact A4 layout
-                      centerPointLabels: true, // Center labels on their segments
-                      callback: function (value: any, index: number) {
-                        // Handle line wrapping for long labels
-                        if (Array.isArray(chartData.labels[index])) {
-                          return chartData.labels[index];
-                        }
-                        // Split long labels that are still strings
-                        if (
-                          typeof chartData.labels[index] === "string" &&
-                          chartData.labels[index].length > 12
-                        ) {
-                          const label = chartData.labels[index] as string;
-                          const words = label.split(" ");
-                          if (words.length > 2) {
-                            const midPoint = Math.ceil(words.length / 2);
-                            return [
-                              words.slice(0, midPoint).join(" "),
-                              words.slice(midPoint).join(" "),
-                            ];
-                          } else if (words.length === 2) {
-                            return words; // Return each word on separate line
-                          }
-                        }
-                        return chartData.labels[index];
-                      },
-                    },
-                  },
-                },
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    labels: {
-                      generateLabels: () => {
-                        return [
-                          {
-                            text: "Physical/Psychological",
-                            fillStyle: "#009FB7",
-                            strokeStyle: "#009FB7",
-                            lineWidth: 2,
-                          },
-                          {
-                            text: "Attacking",
-                            fillStyle: "#9370DB",
-                            strokeStyle: "#9370DB",
-                            lineWidth: 2,
-                          },
-                          {
-                            text: "Defending",
-                            fillStyle: "#7FC8F8",
-                            strokeStyle: "#7FC8F8",
-                            lineWidth: 2,
-                          },
-                          {
-                            text: "Attribute not scored",
-                            fillStyle: "rgba(224, 224, 224, 0.5)",
-                            strokeStyle: "rgba(192, 192, 192, 0.8)",
-                            lineWidth: 2,
-                          },
-                        ];
-                      },
-                    },
-                  },
-                  datalabels: {
-                    color: "#ffffff",
-                    font: {
-                      weight: "bold",
-                      size: 12,
-                    },
-                    formatter: (value: any, context: any) => {
-                      // Show actual score (0) for zero-scored attributes, not display value (10)
-                      const actualValue =
-                        chartData.actualValues[context.dataIndex];
-                      return actualValue === 0 ? "N/A" : actualValue;
-                    },
-                  },
-                  tooltip: {
-                    callbacks: {
-                      label: (context: any) => {
-                        // Show actual score (0) for zero-scored attributes, not display value (10)
-                        const actualValue =
-                          chartData.actualValues[context.dataIndex];
-                        const levelDescription = getScoreLevel(actualValue);
-                        return actualValue === 0
-                          ? "N/A"
-                          : `${actualValue}: ${levelDescription}`;
-                      },
-                    },
-                  },
-                },
-              };
+              const hasChartData = chartData && chartData.labels.length > 0;
 
               return (
                 <>
-                  {/* Polar Chart - Full Width Above */}
-                  <div className="mb-4">
-                    <div
-                      style={{
-                        height: "800px",
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <div style={{ width: "750px", height: "750px" }}>
-                        <PolarArea
-                          data={chartData}
-                          options={polarAreaChartOptions}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Two Cards Side by Side Below */}
+                  {/* Chart and Tables Side by Side */}
                   <Row>
-                    <Col lg={6}>
+                    {/* Polar Chart - Left Side */}
+                    <Col lg={attributeBreakdownExpanded ? 7 : 12} className="mb-4" style={{ position: "relative" }}>
+                      <div
+                        style={{
+                          height: "800px",
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {hasChartData ? (
+                          (() => {
+                            // Exact polar area chart options from PlayerReportModal
+                            const polarAreaChartOptions: any = {
+                              responsive: true,
+                              maintainAspectRatio: false,
+                              // Configure for better label alignment
+                              rotation: 0, // Start at 3 o'clock position
+                              circumference: 360, // Full circle
+                              scales: {
+                                r: {
+                                  display: true,
+                                  min: 0,
+                                  max: 10,
+                                  ticks: {
+                                    display: true, // Show the radial axis numbers
+                                    stepSize: 2,
+                                    font: {
+                                      size: 10,
+                                    },
+                                  },
+                                  grid: {
+                                    display: true, // Show the grid lines
+                                  },
+                                  angleLines: {
+                                    display: true, // Show the angle lines radiating from center
+                                  },
+                                  pointLabels: {
+                                    display: true,
+                                    font: {
+                                      size: 12, // Larger font for better readability
+                                      weight: "bold",
+                                    },
+                                    color: "#212529",
+                                    padding: 15, // Reduced padding for compact A4 layout
+                                    centerPointLabels: true, // Center labels on their segments
+                                    callback: function (value: any, index: number) {
+                                      // Handle line wrapping for long labels
+                                      if (Array.isArray(chartData.labels[index])) {
+                                        return chartData.labels[index];
+                                      }
+                                      // Split long labels that are still strings
+                                      if (
+                                        typeof chartData.labels[index] === "string" &&
+                                        chartData.labels[index].length > 12
+                                      ) {
+                                        const label = chartData.labels[index] as string;
+                                        const words = label.split(" ");
+                                        if (words.length > 2) {
+                                          const midPoint = Math.ceil(words.length / 2);
+                                          return [
+                                            words.slice(0, midPoint).join(" "),
+                                            words.slice(midPoint).join(" "),
+                                          ];
+                                        } else if (words.length === 2) {
+                                          return words; // Return each word on separate line
+                                        }
+                                      }
+                                      return chartData.labels[index];
+                                    },
+                                  },
+                                },
+                              },
+                              plugins: {
+                                legend: {
+                                  position: "bottom",
+                                  labels: {
+                                    generateLabels: () => {
+                                      return [
+                                        {
+                                          text: "Physical/Psychological",
+                                          fillStyle: "#009FB7",
+                                          strokeStyle: "#009FB7",
+                                          lineWidth: 2,
+                                        },
+                                        {
+                                          text: "Attacking",
+                                          fillStyle: "#9370DB",
+                                          strokeStyle: "#9370DB",
+                                          lineWidth: 2,
+                                        },
+                                        {
+                                          text: "Defending",
+                                          fillStyle: "#7FC8F8",
+                                          strokeStyle: "#7FC8F8",
+                                          lineWidth: 2,
+                                        },
+                                        {
+                                          text: "Attribute not scored",
+                                          fillStyle: "rgba(224, 224, 224, 0.5)",
+                                          strokeStyle: "rgba(192, 192, 192, 0.8)",
+                                          lineWidth: 2,
+                                        },
+                                      ];
+                                    },
+                                  },
+                                },
+                                datalabels: {
+                                  color: "#ffffff",
+                                  font: {
+                                    weight: "bold",
+                                    size: 12,
+                                  },
+                                  formatter: (value: any, context: any) => {
+                                    // Show actual score (0) for zero-scored attributes, not display value (10)
+                                    const actualValue =
+                                      chartData.actualValues[context.dataIndex];
+                                    return actualValue === 0 ? "N/A" : actualValue;
+                                  },
+                                },
+                                tooltip: {
+                                  callbacks: {
+                                    label: (context: any) => {
+                                      // Show actual score (0) for zero-scored attributes, not display value (10)
+                                      const actualValue =
+                                        chartData.actualValues[context.dataIndex];
+                                      const levelDescription = getScoreLevel(actualValue);
+                                      return actualValue === 0
+                                        ? "N/A"
+                                        : `${actualValue}: ${levelDescription}`;
+                                    },
+                                  },
+                                },
+                              },
+                            };
+
+                            return (
+                              <div style={{ width: "750px", height: "750px" }}>
+                                <PolarArea
+                                  data={chartData}
+                                  options={polarAreaChartOptions}
+                                />
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <div className="text-center py-4">
+                            <p className="text-muted">
+                              No attribute data available for the selected position(s).
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Toggle Button for Attribute Breakdown */}
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => setAttributeBreakdownExpanded(!attributeBreakdownExpanded)}
+                        style={{
+                          position: "absolute",
+                          top: "10px",
+                          right: "10px",
+                          zIndex: 10,
+                          borderRadius: "50%",
+                          width: "40px",
+                          height: "40px",
+                          padding: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}
+                        title={attributeBreakdownExpanded ? "Hide Breakdown" : "Show Breakdown"}
+                      >
+                        {attributeBreakdownExpanded ? "▶" : "◀"}
+                      </Button>
+                    </Col>
+
+                    {/* Tables - Right Side */}
+                    {attributeBreakdownExpanded && (
+                      <Col lg={5}>
+                      {/* Filters Section */}
+                      <div className="mb-3">
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          {/* Multi-select Position Dropdown */}
+                          <Dropdown>
+                            <Dropdown.Toggle variant="outline-secondary" id="position-filter-dropdown" size="sm" style={{ minWidth: "150px", fontSize: "0.85rem" }}>
+                              {selectedPositions.length === 0
+                                ? "Positions"
+                                : `${selectedPositions.length} selected`}
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu style={{ maxHeight: "400px", overflowY: "auto" }}>
+                              {positionCounts.map((posCount) => (
+                                <Dropdown.Item
+                                  key={posCount.position}
+                                  as="div"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    const newSelection = selectedPositions.includes(posCount.position)
+                                      ? selectedPositions.filter(p => p !== posCount.position)
+                                      : [...selectedPositions, posCount.position];
+                                    handlePositionChange(newSelection);
+                                  }}
+                                  style={{ cursor: "pointer" }}
+                                >
+                                  <Form.Check
+                                    type="checkbox"
+                                    label={`${posCount.position} (${posCount.report_count})`}
+                                    checked={selectedPositions.includes(posCount.position)}
+                                    onChange={() => {}} // Handled by parent onClick
+                                    style={{ pointerEvents: "none" }}
+                                  />
+                                </Dropdown.Item>
+                              ))}
+                            </Dropdown.Menu>
+                          </Dropdown>
+
+                          {/* Multi-select Reports Dropdown */}
+                          <Dropdown>
+                            <Dropdown.Toggle
+                              variant="outline-secondary"
+                              id="reports-filter-dropdown"
+                              size="sm"
+                              style={{ minWidth: "150px", fontSize: "0.85rem" }}
+                              disabled={filteredReports.length === 0 && selectedPositions.length > 0}
+                            >
+                              {selectedReportIds.length === 0
+                                ? "Reports"
+                                : `${selectedReportIds.length} selected`}
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu style={{ maxHeight: "400px", overflowY: "auto", minWidth: "300px" }}>
+                              {(selectedPositions.length > 0 ? filteredReports : scoutReportsData?.reports || []).map((report) => (
+                                <Dropdown.Item
+                                  key={report.report_id}
+                                  as="div"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    const newSelection = selectedReportIds.includes(report.report_id)
+                                      ? selectedReportIds.filter(id => id !== report.report_id)
+                                      : [...selectedReportIds, report.report_id];
+                                    handleReportSelection(newSelection);
+                                  }}
+                                  style={{ cursor: "pointer" }}
+                                >
+                                  <Form.Check
+                                    type="checkbox"
+                                    label={
+                                      <span style={{ fontSize: "0.85rem" }}>
+                                        {report.report_date} - {report.scout_name} - {report.position_played}
+                                        {report.overall_rating && ` (${report.overall_rating}/10)`}
+                                      </span>
+                                    }
+                                    checked={selectedReportIds.includes(report.report_id)}
+                                    onChange={() => {}} // Handled by parent onClick
+                                    style={{ pointerEvents: "none" }}
+                                  />
+                                </Dropdown.Item>
+                              ))}
+                              {(selectedPositions.length > 0 ? filteredReports : scoutReportsData?.reports || []).length === 0 && (
+                                <Dropdown.Item disabled>No reports available</Dropdown.Item>
+                              )}
+                            </Dropdown.Menu>
+                          </Dropdown>
+
+                          {/* Clear Filters Button */}
+                          {(selectedPositions.length > 0 || selectedReportIds.length > 0) && (
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={clearFilters}
+                              style={{ fontSize: "0.85rem" }}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Attribute Breakdown Card */}
                       <Card
-                        className="shadow-sm h-100"
+                        className="shadow-sm mb-4"
                         style={{ borderRadius: "12px" }}
                       >
                         <Card.Header
@@ -1633,127 +2093,88 @@ const PlayerProfilePage: React.FC = () => {
                           <h6 className="mb-0">📋 Attribute Breakdown</h6>
                         </Card.Header>
                         <Card.Body>
-                          {selectedReportIds.length > 0 && (
-                            <div className="alert alert-info mb-3" style={{ fontSize: "0.85rem", padding: "0.5rem" }}>
-                              <strong>Filtered View:</strong> Showing averages from {selectedReportIds.length} selected report(s)
-                            </div>
-                          )}
-                          <div className="attribute-breakdown">
-                            {chartData.labels.map((label, index) => {
-                              const filteredValue = chartData.actualValues[index];
-                              // Get overall average if we're showing filtered data
-                              const overallValue = selectedReportIds.length > 0 && positionAttributeScores[label]
-                                ? positionAttributeScores[label]
-                                : null;
-
-                              return (
-                                <div
-                                  key={label}
-                                  className="attribute-breakdown-item mb-2"
-                                >
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <span
-                                      className="attribute-name"
-                                      style={{ fontSize: "0.85rem", flex: 1 }}
-                                    >
-                                      {label}
-                                    </span>
-                                    <div className="d-flex gap-2 align-items-center">
-                                      {selectedReportIds.length > 0 && overallValue !== null && (
-                                        <span
-                                          className="badge bg-secondary"
-                                          style={{
-                                            fontSize: "0.7rem",
-                                            fontWeight: "normal",
-                                          }}
-                                          title="Overall average across all reports"
-                                        >
-                                          All: {overallValue === 0 ? "N/A" : `${overallValue.toFixed(2)}`}
-                                        </span>
-                                      )}
-                                      <span
-                                        className="badge"
-                                        style={{
-                                          backgroundColor:
-                                            chartData.datasets[0].backgroundColor[
-                                              index
-                                            ],
-                                          color: "white !important",
-                                          fontWeight: "bold",
-                                          fontSize: "0.75rem",
-                                          border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
-                                        }}
-                                        title={selectedReportIds.length > 0 ? "Filtered average" : "Overall average"}
-                                      >
-                                        {filteredValue === 0
-                                          ? "N/A"
-                                          : `${filteredValue.toFixed(2)}/10`}
-                                      </span>
-                                    </div>
+                            {hasChartData ? (
+                              <>
+                                {selectedReportIds.length > 0 && (
+                                  <div className="alert alert-info mb-3" style={{ fontSize: "0.85rem", padding: "0.5rem" }}>
+                                    <strong>Filtered View:</strong> Showing averages from {selectedReportIds.length} selected report(s)
                                   </div>
+                                )}
+                                <div className="attribute-breakdown">
+                                  {chartData.labels.map((label, index) => {
+                                    const filteredValue = chartData.actualValues[index];
+                                    // Get overall average if we're showing filtered data
+                                    const overallValue = selectedReportIds.length > 0 && positionAttributeScores[label]
+                                      ? positionAttributeScores[label]
+                                      : null;
+
+                                    return (
+                                      <div
+                                        key={label}
+                                        className="attribute-breakdown-item mb-2"
+                                      >
+                                        <div className="d-flex justify-content-between align-items-center">
+                                          <span
+                                            className="attribute-name"
+                                            style={{ fontSize: "0.85rem", flex: 1 }}
+                                          >
+                                            {label}
+                                          </span>
+                                          <div className="d-flex gap-2 align-items-center">
+                                            {selectedReportIds.length > 0 && overallValue !== null && (
+                                              <span
+                                                className="badge bg-secondary"
+                                                style={{
+                                                  fontSize: "0.7rem",
+                                                  fontWeight: "normal",
+                                                }}
+                                                title="Overall average across all reports"
+                                              >
+                                                All: {overallValue === 0 ? "N/A" : `${overallValue.toFixed(2)}`}
+                                              </span>
+                                            )}
+                                            <span
+                                              className="badge"
+                                              style={{
+                                                backgroundColor:
+                                                  chartData.datasets[0].backgroundColor[
+                                                    index
+                                                  ],
+                                                color: "white !important",
+                                                fontWeight: "bold",
+                                                fontSize: "0.75rem",
+                                                border: `2px solid ${chartData.datasets[0].borderColor[index]}`,
+                                              }}
+                                              title={selectedReportIds.length > 0 ? "Filtered average" : "Overall average"}
+                                            >
+                                              {filteredValue === 0
+                                                ? "N/A"
+                                                : `${filteredValue.toFixed(2)}/10`}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </Card.Body>
+                              </>
+                            ) : (
+                              <div className="text-center text-muted py-3">
+                                No attribute data available for the selected position(s).
+                              </div>
+                            )}
+                          </Card.Body>
                       </Card>
                     </Col>
-
-                    <Col lg={6}>
-                      {/* Position Report Counts Table */}
-                      {positionCounts.length > 0 && (
-                        <Card
-                          className="shadow-sm h-100"
-                          style={{ borderRadius: "12px" }}
-                        >
-                          <Card.Header
-                            style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
-                          >
-                            <h6 className="mb-0">📍 Reports by Position</h6>
-                          </Card.Header>
-                          <Card.Body>
-                            <div className="position-counts-table">
-                              {positionCounts.map((posCount) => (
-                                <div
-                                  key={posCount.position}
-                                  className="position-count-row mb-2 pb-2"
-                                  style={{ borderBottom: "1px solid #f0f0f0" }}
-                                >
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <span
-                                      className="position-name"
-                                      style={{
-                                        fontSize: "0.85rem",
-                                        fontWeight: "500",
-                                      }}
-                                    >
-                                      {posCount.position}
-                                    </span>
-                                    <span
-                                      className="badge bg-secondary"
-                                      style={{
-                                        fontSize: "0.75rem",
-                                      }}
-                                    >
-                                      {posCount.report_count}{" "}
-                                      {posCount.report_count === 1
-                                        ? "report"
-                                        : "reports"}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </Card.Body>
-                        </Card>
-                      )}
-                    </Col>
+                    )}
                   </Row>
                 </>
               );
             })()}
+              </div>
             </div>
-        </div>
+          </Col>
+        </Row>
       </Container>
 
       {/* Add Note Modal */}

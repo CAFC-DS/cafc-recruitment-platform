@@ -98,3 +98,53 @@ h4 {
 .bg-secondary {
   background-color: #333333 !important;
 }
+
+/* Action Button Styles - for player list actions (notes, favorites, remove) */
+.btn-action-circle {
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  color: #6b7280;
+}
+
+.btn-action-circle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-action-circle:active {
+  transform: scale(0.95);
+}
+
+/* Edit button (notes) */
+.btn-action-circle.btn-action-edit:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #3b82f6;
+}
+
+/* Delete button (remove) */
+.btn-action-circle.btn-action-delete {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.btn-action-circle.btn-action-delete:hover {
+  background-color: #fee2e2;
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.btn-action-circle.btn-action-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

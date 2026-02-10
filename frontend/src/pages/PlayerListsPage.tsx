@@ -10,7 +10,7 @@
  * - Optimized data fetching
  */
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Container,
   Button,
@@ -28,6 +28,15 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePlayerLists } from "../hooks/usePlayerLists";
 import MultiListBadges from "../components/PlayerLists/MultiListBadges";
 import EmptyState from "../components/PlayerLists/EmptyState";
+import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
+import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
+import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
+import {
+  getPlayerNotes,
+  setPlayerNotes,
+  isPlayerFavorite,
+  togglePlayerFavorite,
+} from "../utils/playerListPreferences";
 import {
   createPlayerList,
   updatePlayerList,
@@ -39,6 +48,7 @@ import {
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
   PlayerListMembership,
+  PlayerListFilters,
 } from "../services/playerListsService";
 import {
   getPerformanceScoreColor,
@@ -77,15 +87,32 @@ interface PlayerList {
   avg_performance_score: number | null;
 }
 
-type SortField = "name" | "age" | "club" | "stage" | "score" | "reports";
+type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites";
 type SortDirection = "asc" | "desc";
 
 const PlayerListsPage: React.FC = () => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
+  // Advanced Filters State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<AdvancedFiltersType>({
+    playerName: "",
+    position: "",
+    performanceScores: [],
+    minAge: "",
+    maxAge: "",
+    minReports: "",
+    maxReports: "",
+    stages: [],
+    recencyMonths: "",
+  });
+
+  // Debounced filters for API
+  const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({});
+
   // Use custom hook for data
-  const { lists, loading, error: fetchError, refetch } = usePlayerLists();
+  const { lists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
 
   // Local error
   const [error, setError] = useState<string | null>(null);
@@ -97,8 +124,8 @@ const PlayerListsPage: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  // Show archived filter
-  const [showArchived, setShowArchived] = useState(false);
+  // Pitch view expanded toggle
+  const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
 
   // Modals
   const [showListModal, setShowListModal] = useState(false);
@@ -113,6 +140,14 @@ const PlayerListsPage: React.FC = () => {
   const [playerSearchResults, setPlayerSearchResults] = useState<PlayerSearchResult[]>([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
+
+  // Player notes and favorites
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedPlayerForNotes, setSelectedPlayerForNotes] = useState<{
+    universalId: string;
+    name: string;
+  } | null>(null);
+  const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
 
   // Remove player (currently using batch removal with pending state)
   // const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
@@ -142,6 +177,60 @@ const PlayerListsPage: React.FC = () => {
       setError(fetchError);
     }
   }, [fetchError]);
+
+  // Debounce filters (800ms delay to reduce frequent reloads)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const apiFilters: PlayerListFilters = {};
+
+      if (filters.playerName) apiFilters.playerName = filters.playerName;
+      if (filters.position) apiFilters.position = filters.position;
+      if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
+      if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
+      if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
+      if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
+      if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
+
+      // Handle performance scores array
+      if (filters.performanceScores.length > 0) {
+        const scores = filters.performanceScores.sort((a, b) => a - b);
+        apiFilters.minScore = scores[0];
+        apiFilters.maxScore = scores[scores.length - 1];
+      }
+
+      // Handle stages array
+      if (filters.stages.length > 0) {
+        apiFilters.stages = filters.stages.join(",");
+      }
+
+      setDebouncedFilters(apiFilters);
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [filters]);
+
+  // Show archived state (not part of API filters)
+  const [showArchived, setShowArchived] = useState(false);
+
+  // Filter handlers
+  const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
+    setFilters((prev) => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters({
+      playerName: "",
+      position: "",
+      performanceScores: [],
+      minAge: "",
+      maxAge: "",
+      minReports: "",
+      maxReports: "",
+      stages: [],
+      recencyMonths: "",
+    });
+    setShowArchived(false);
+  }, []);
 
   // Toggle list visibility
   const toggleListVisibility = (listId: number) => {
@@ -271,6 +360,10 @@ const PlayerListsPage: React.FC = () => {
           aVal = a.report_count;
           bVal = b.report_count;
           break;
+        case "favorites":
+          aVal = playerFavorites.has(a.universal_id) ? 1 : 0;
+          bVal = playerFavorites.has(b.universal_id) ? 1 : 0;
+          break;
       }
 
       if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
@@ -279,7 +372,7 @@ const PlayerListsPage: React.FC = () => {
     });
 
     return result;
-  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived]);
+  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived, playerFavorites]);
 
   // Handlers
   const handleSort = (field: SortField) => {
@@ -409,6 +502,50 @@ const PlayerListsPage: React.FC = () => {
     });
   };
 
+  // Notes and favorites handlers
+  const userId = currentUser?.id?.toString() || "0";
+
+  const handleOpenNotesModal = (player: any) => {
+    setSelectedPlayerForNotes({
+      universalId: player.universal_id,
+      name: player.player_name,
+    });
+    setShowNotesModal(true);
+  };
+
+  const handleSaveNotes = (universalId: string, notes: string) => {
+    setPlayerNotes(universalId, notes);
+    setShowNotesModal(false);
+  };
+
+  const handleToggleFavorite = (universalId: string) => {
+    const newFavStatus = togglePlayerFavorite(userId, universalId);
+    setPlayerFavorites((prev) => {
+      const newSet = new Set(prev);
+      if (newFavStatus) {
+        newSet.add(universalId);
+      } else {
+        newSet.delete(universalId);
+      }
+      return newSet;
+    });
+  };
+
+  // Load user-specific favorites on mount or when lists change
+  useEffect(() => {
+    if (!userId || lists.length === 0) return;
+
+    const favs = new Set<string>();
+    lists.forEach((list) => {
+      list.players.forEach((player) => {
+        if (isPlayerFavorite(userId, player.universal_id)) {
+          favs.add(player.universal_id);
+        }
+      });
+    });
+    setPlayerFavorites(favs);
+  }, [lists, userId]);
+
   const handleStageChange = (itemId: number, newStage: string) => {
     // Add to pending changes instead of saving immediately (batch mode)
     setPendingStageChanges((prev) => {
@@ -498,153 +635,22 @@ const PlayerListsPage: React.FC = () => {
   // Loading state
   if (userLoading || loading) {
     return (
-      <Container fluid className="py-4">
-        <div className="mb-4">
+      <Container className="mt-4">
+        <div className="mb-3">
           <h3>Player Lists</h3>
-          <p className="text-muted">Loading your player lists...</p>
         </div>
-        <div className="table-responsive">
-          <Table responsive hover striped className="table-compact table-sm">
-            <thead className="table-dark">
-              <tr>
-                <th>Player</th>
-                <th>Age</th>
-                <th>Club</th>
-                <th>Stage</th>
-                <th>Lists</th>
-                <th>Score</th>
-                <th>Reports</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...Array(10)].map((_, index) => (
-                <tr key={index}>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "120px",
-                        height: "20px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "40px",
-                        height: "20px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "100px",
-                        height: "20px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "80px",
-                        height: "24px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "90px",
-                        height: "20px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "50px",
-                        height: "24px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "12px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "60px",
-                        height: "20px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                  <td>
-                    <div
-                      className="skeleton-box"
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
-                        backgroundSize: "200% 100%",
-                        animation: "shimmer 1.5s infinite",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+          <div className="text-center">
+            <Spinner animation="border" variant="primary" style={{ width: "3rem", height: "3rem" }} />
+            <p className="mt-3 text-muted">Loading player lists...</p>
+          </div>
         </div>
-        <style>{`
-          @keyframes shimmer {
-            0% {
-              background-position: -200% 0;
-            }
-            100% {
-              background-position: 200% 0;
-            }
-          }
-        `}</style>
       </Container>
     );
   }
 
   return (
-    <Container fluid className="py-4">
+    <Container className="mt-4">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
@@ -653,12 +659,7 @@ const PlayerListsPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="mb-4">
-        <h3 className="mb-1">Player Lists</h3>
-        <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-          Manage your player recruitment lists
-        </p>
-      </div>
+      <h3>Player Lists</h3>
 
       {lists.length === 0 ? (
         <EmptyState
@@ -670,97 +671,95 @@ const PlayerListsPage: React.FC = () => {
         />
       ) : (
         <>
-          {/* List Selection Pills */}
-          <div
-            className="mb-3 p-3"
-            style={{
-              backgroundColor: colors.gray[50],
-              borderRadius: borderRadius.md,
-              border: `1px solid ${colors.gray[200]}`,
-            }}
-          >
+          {/* List Selection */}
+          <div className="mb-3">
             <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="fw-semibold" style={{ fontSize: "0.85rem", color: colors.gray[700] }}>
+              <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>
                 Lists:
               </span>
-              <Button size="sm" variant="link" onClick={() => toggleAllLists(true)} style={{ fontSize: "0.75rem", padding: "0 0.25rem" }}>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(true)}>
                 All
               </Button>
-              <span style={{ color: colors.gray[400] }}>|</span>
-              <Button size="sm" variant="link" onClick={() => toggleAllLists(false)} style={{ fontSize: "0.75rem", padding: "0 0.25rem" }}>
+              <span>|</span>
+              <Button size="sm" variant="link" onClick={() => toggleAllLists(false)}>
                 None
               </Button>
-            </div>
-            <div className="d-flex gap-2 flex-wrap align-items-center">
-              {lists.map((list) => {
-                const isVisible = visibleListIds.has(list.id);
-                return (
-                  <Badge
-                    key={list.id}
-                    bg=""
-                    onClick={() => toggleListVisibility(list.id)}
-                    style={{
-                      ...badgeStyles.pill,
-                      backgroundColor: isVisible ? colors.primary : colors.gray[300],
-                      color: isVisible ? colors.white : colors.gray[600],
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                    }}
-                  >
-                    {list.list_name} ({list.player_count})
-                  </Badge>
-                );
-              })}
+              <span>|</span>
+              <Button
+                size="sm"
+                variant="link"
+                onClick={() => setPitchViewExpanded(!pitchViewExpanded)}
+                style={{ fontWeight: pitchViewExpanded ? "bold" : "normal" }}
+              >
+                {pitchViewExpanded ? "▼ Hide Pitch" : "⚽ Show Pitch"}
+              </Button>
             </div>
 
-            {/* Show Archived Toggle */}
-            <div className="mt-2">
-              <Form.Check
-                type="checkbox"
-                id="show-archived-checkbox"
-                label="Show Archived Players"
-                checked={showArchived}
-                onChange={(e) => setShowArchived(e.target.checked)}
-                style={{ fontSize: "0.85rem", color: colors.gray[700] }}
+            {/* Toggle between Pills and Pitch View */}
+            {pitchViewExpanded ? (
+              <PitchViewListSelector
+                lists={lists}
+                visibleListIds={visibleListIds}
+                onToggleList={toggleListVisibility}
               />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-3 pt-3 border-top">
-              <div className="d-flex align-items-center gap-2 flex-wrap">
-                {/* Create New List Pill - Always visible */}
-                <Button
-                  size="sm"
-                  variant="dark"
-                  onClick={openCreateModal}
-                  style={{
-                    borderRadius: "50px",
-                    padding: "0.4rem 1rem",
-                    fontSize: "0.85rem",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.25rem",
-                  }}
-                >
-                  ➕ New List
-                </Button>
-
-                {/* List Actions Dropdown - Only visible when lists are selected */}
-                {visibleListIds.size > 0 && (
-                  <Dropdown>
-                    <Dropdown.Toggle
-                      variant="dark"
-                      size="sm"
+            ) : (
+              <div className="d-flex gap-2 flex-wrap align-items-center">
+                {lists.map((list) => {
+                  const isVisible = visibleListIds.has(list.id);
+                  return (
+                    <Badge
+                      key={list.id}
+                      bg=""
+                      onClick={() => toggleListVisibility(list.id)}
                       style={{
-                        borderRadius: "50px",
-                        padding: "0.4rem 1rem",
-                        fontSize: "0.85rem",
-                        fontWeight: 500,
+                        ...badgeStyles.pill,
+                        backgroundColor: isVisible ? colors.primary : colors.gray[300],
+                        color: isVisible ? colors.white : colors.gray[600],
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
                       }}
                     >
-                      ⚙️ List Actions
-                    </Dropdown.Toggle>
+                      {list.list_name} ({list.player_count})
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            showArchived={showArchived}
+            onShowArchivedChange={setShowArchived}
+          />
+
+          {/* Actions Container */}
+          <div className="mb-3">
+            {/* Action Buttons */}
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              {/* Create New List Pill - Always visible */}
+              <Button
+                size="sm"
+                variant="dark"
+                onClick={openCreateModal}
+              >
+                ➕ New List
+              </Button>
+
+              {/* List Actions Dropdown - Only visible when lists are selected */}
+              {visibleListIds.size > 0 && (
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="dark"
+                    size="sm"
+                  >
+                    ⚙️ List Actions
+                  </Dropdown.Toggle>
 
                     <Dropdown.Menu>
                       <Dropdown.Item onClick={() => navigate("/lists/kanban")}>
@@ -783,22 +782,42 @@ const PlayerListsPage: React.FC = () => {
                     </Dropdown.Menu>
                   </Dropdown>
                 )}
-              </div>
 
-              {visibleListIds.size > 0 && !currentList && (
-                <div
-                  className="mt-2"
-                  style={{
-                    fontSize: "0.75rem",
-                    color: colors.gray[600],
-                    fontStyle: "italic",
-                  }}
-                >
-                  Select a single list to access actions
-                </div>
+              {/* Sort Controls */}
+              {visibleListIds.size > 0 && (
+                <>
+                  <span className="text-muted">|</span>
+                  <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>Sort:</span>
+                  <Form.Select
+                    size="sm"
+                    value={sortField}
+                    onChange={(e) => setSortField(e.target.value as SortField)}
+                    style={{ width: "auto" }}
+                  >
+                    <option value="name">Name</option>
+                    <option value="age">Age</option>
+                    <option value="club">Club</option>
+                    <option value="stage">Stage</option>
+                    <option value="score">Score</option>
+                    <option value="reports">Reports</option>
+                    <option value="favorites">Favorites</option>
+                  </Form.Select>
+                  <Button
+                    size="sm"
+                    variant="outline-secondary"
+                    onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+                  >
+                    {sortDirection === "asc" ? "↑" : "↓"}
+                  </Button>
+                </>
               )}
             </div>
 
+            {visibleListIds.size > 0 && !currentList && (
+              <div className="mt-2 text-muted" style={{ fontSize: "0.875rem" }}>
+                Select a single list to access actions
+              </div>
+            )}
           </div>
 
           {visibleListIds.size > 0 && (
@@ -881,6 +900,18 @@ const PlayerListsPage: React.FC = () => {
                                 style={{ textDecoration: "none", color: colors.primary }}
                               >
                                 <strong>{player.player_name}</strong>
+                                {getPlayerNotes(player.universal_id) && (
+                                  <span
+                                    className="ms-2"
+                                    style={{
+                                      fontSize: "0.85rem",
+                                      opacity: 0.7,
+                                    }}
+                                    title="Has notes"
+                                  >
+                                    📝
+                                  </span>
+                                )}
                                 {hasPendingStageChange && (
                                   <Badge
                                     bg=""
@@ -1015,15 +1046,34 @@ const PlayerListsPage: React.FC = () => {
                               )}
                             </td>
                             <td>
-                              <Button
-                                size="sm"
-                                variant="outline-danger"
-                                onClick={() => handleRemovePlayer(player.item_id)}
-                                disabled={!currentList || pendingRemoval}
-                                title={!currentList ? "Select a single list to remove players" : pendingRemoval ? "Pending removal" : "Remove from list"}
-                              >
-                                {pendingRemoval ? "..." : "×"}
-                              </Button>
+                              <div className="btn-group" style={{ justifyContent: "center" }}>
+                                <Button
+                                  size="sm"
+                                  title="Add/Edit Notes"
+                                  onClick={() => handleOpenNotesModal(player)}
+                                  className="btn-action-circle btn-action-edit"
+                                >
+                                  📝
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  title={playerFavorites.has(player.universal_id) ? "Remove from favorites" : "Add to favorites"}
+                                  onClick={() => handleToggleFavorite(player.universal_id)}
+                                  className="btn-action-circle"
+                                  style={{ color: playerFavorites.has(player.universal_id) ? "#FFD700" : "#6b7280" }}
+                                >
+                                  {playerFavorites.has(player.universal_id) ? "⭐" : "☆"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  title={!currentList ? "Select a single list to remove players" : pendingRemoval ? "Pending removal" : "Remove from list"}
+                                  onClick={() => handleRemovePlayer(player.item_id)}
+                                  className="btn-action-circle btn-action-delete"
+                                  disabled={!currentList || pendingRemoval}
+                                >
+                                  {pendingRemoval ? "..." : "🗑️"}
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1164,6 +1214,16 @@ const PlayerListsPage: React.FC = () => {
           )}
         </Modal.Body>
       </Modal>
+
+      {/* Player Notes Modal */}
+      <PlayerNotesModal
+        show={showNotesModal}
+        onHide={() => setShowNotesModal(false)}
+        playerName={selectedPlayerForNotes?.name || ""}
+        universalId={selectedPlayerForNotes?.universalId || ""}
+        currentNotes={getPlayerNotes(selectedPlayerForNotes?.universalId || "")}
+        onSave={handleSaveNotes}
+      />
 
       {/* Floating Save/Discard Changes Button */}
       {currentList && (pendingStageChanges.size > 0 || pendingRemovals.size > 0) && (

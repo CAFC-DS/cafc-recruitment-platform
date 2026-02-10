@@ -71,11 +71,45 @@ export const getAllPlayerLists = async (): Promise<PlayerList[]> => {
   return response.data.lists;
 };
 
+export interface PlayerListFilters {
+  playerName?: string;
+  position?: string;
+  minAge?: number;
+  maxAge?: number;
+  minScore?: number;
+  maxScore?: number;
+  minReports?: number;
+  maxReports?: number;
+  stages?: string; // Comma-separated
+  recencyMonths?: number;
+}
+
 /**
  * Get all player lists with complete player details (optimized single query)
  */
-export const getAllListsWithDetails = async (): Promise<ListWithPlayers[]> => {
-  const response = await axiosInstance.get("/player-lists/all-with-details");
+export const getAllListsWithDetails = async (
+  filters?: PlayerListFilters
+): Promise<ListWithPlayers[]> => {
+  const params = new URLSearchParams();
+
+  if (filters) {
+    if (filters.playerName) params.append("player_name", filters.playerName);
+    if (filters.position) params.append("position", filters.position);
+    if (filters.minAge !== undefined) params.append("min_age", filters.minAge.toString());
+    if (filters.maxAge !== undefined) params.append("max_age", filters.maxAge.toString());
+    if (filters.minScore !== undefined) params.append("min_score", filters.minScore.toString());
+    if (filters.maxScore !== undefined) params.append("max_score", filters.maxScore.toString());
+    if (filters.minReports !== undefined) params.append("min_reports", filters.minReports.toString());
+    if (filters.maxReports !== undefined) params.append("max_reports", filters.maxReports.toString());
+    if (filters.stages) params.append("stages", filters.stages);
+    if (filters.recencyMonths !== undefined) params.append("recency_months", filters.recencyMonths.toString());
+  }
+
+  const url = params.toString()
+    ? `/player-lists/all-with-details?${params.toString()}`
+    : "/player-lists/all-with-details";
+
+  const response = await axiosInstance.get(url);
   return response.data.lists;
 };
 

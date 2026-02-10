@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import KanbanColumn, { ListWithPlayers, PlayerList } from "./KanbanColumn";
-import PlayerKanbanCard, { PlayerInList } from "./PlayerKanbanCard";
+import CollapsiblePlayerBar, { PlayerInList } from "./CollapsiblePlayerBar";
 import { PlayerListMembership } from "../../services/playerListsService";
 
 interface KanbanBoardProps {
@@ -41,6 +41,9 @@ interface KanbanBoardProps {
   pendingRemovals?: Map<number, number>;
   batchMemberships?: Record<string, PlayerListMembership[]>;
   loadingMemberships?: boolean;
+  onOpenNotes?: (player: PlayerInList) => void;
+  onToggleFavorite?: (universalId: string) => void;
+  playerFavorites?: Set<string>;
 }
 
 /**
@@ -81,6 +84,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   pendingRemovals,
   batchMemberships,
   loadingMemberships,
+  onOpenNotes,
+  onToggleFavorite,
+  playerFavorites,
 }) => {
   // Track the active player being dragged for the DragOverlay
   const [activePlayer, setActivePlayer] = useState<PlayerInList | null>(null);
@@ -353,6 +359,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             pendingRemovals={pendingRemovals}
             batchMemberships={batchMemberships}
             loadingMemberships={loadingMemberships}
+            onOpenNotes={onOpenNotes}
+            onToggleFavorite={onToggleFavorite}
+            playerFavorites={playerFavorites}
           />
         ))}
 
@@ -380,7 +389,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       <DragOverlay>
         {activePlayer && (
           <div style={{ opacity: 0.95, cursor: "grabbing", transform: "rotate(2deg)" }}>
-            <PlayerKanbanCard
+            <CollapsiblePlayerBar
               player={activePlayer}
               onRemove={() => {}}
               isRemoving={false}

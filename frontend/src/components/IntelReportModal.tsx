@@ -105,7 +105,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
         style={{ backgroundColor: "#000000", color: "white" }}
         className="modal-header-dark"
       >
-        <Modal.Title>Intel Report</Modal.Title>
+        <Modal.Title>{intel ? `${intel.player_name} - Intel Report` : "Intel Report"}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {loading && (
@@ -121,8 +121,8 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
           <>
             {/* Header Information */}
             <Card className="mb-4">
-              <Card.Header className="bg-light">
-                <h5 className="mb-0">Report Overview</h5>
+              <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
+                <h6 className="mb-0">Report Overview</h6>
               </Card.Header>
               <Card.Body>
                 <Row>

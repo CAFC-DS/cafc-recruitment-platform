@@ -48,7 +48,15 @@ load_dotenv()
 
 # Text normalization utility for accent-insensitive search
 def normalize_text(text: str) -> str:
-    """Remove diacritical marks (accents) from text for accent-insensitive search"""
+    """Remove diacritical marks (accents) from text for accent-insensitive search
+
+    DEPRECATED: This function is no longer used for database queries.
+    All player search endpoints now use Snowflake's NORMALIZE_TEXT_UDF() for
+    native accent-insensitive matching, which is more efficient and requires
+    no maintenance.
+
+    This function is kept for potential future client-side text processing needs.
+    """
     if not text:
         return ""
     # Decompose combined characters and remove diacritical marks
@@ -2413,7 +2421,7 @@ async def check_player_duplicates(
             """
             SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, SQUADNAME, DATA_SOURCE
             FROM players
-            WHERE PLAYERNAME ILIKE %s
+            WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
             ORDER BY PLAYERNAME
             """,
             (f"%{name}%",)
@@ -2787,161 +2795,129 @@ async def read_root():
 
 @app.get("/players/search")
 async def search_players(query: str, current_user: User = Depends(get_current_user)):
-    """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching"""
+    """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching
+
+    Uses Snowflake NORMALIZE_TEXT_UDF() for accent-insensitive search.
+    This automatically handles all Unicode diacritics without hardcoded mappings.
+    """
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
+        # Debug: Print current database context
+        cursor.execute("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA()")
+        db_info = cursor.fetchone()
+        print(f"🔍 DEBUG /players/search - Database: {db_info[0]}, Schema: {db_info[1]}")
+
+        # Debug: Check if UDF exists
+        cursor.execute("SHOW USER FUNCTIONS LIKE 'NORMALIZE_TEXT_UDF'")
+        udf_results = cursor.fetchall()
+        print(f"🔍 DEBUG - Found {len(udf_results)} UDFs named NORMALIZE_TEXT_UDF")
+        if udf_results:
+            for udf in udf_results:
+                print(f"    UDF: {udf}")
+
         # Check if CAFC_PLAYER_ID column exists (using cached schema)
         has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
-        # For accent-insensitive search, we'll search with a broader database query
-        # then apply precise client-side filtering
-        normalized_query = normalize_text(query).strip()
-
-        if not normalized_query:
+        # Clean up and normalize the query client-side
+        query = query.strip()
+        if not query:
             return []
 
-        # Create multiple search patterns to catch accent variations
-        # We need to be much more aggressive about catching accent variations
-        # since ILIKE doesn't handle accents automatically
+        # Normalize search term client-side to match UDF behavior
+        normalized_query = normalize_text(query)
+        search_pattern = f"%{normalized_query}%"
 
-        # Strategy: Get a broader set from the database, then filter client-side with proper accent handling
-        # This is more reliable than trying to predict all accent combinations in SQL
-
-        # For single word queries like "Oscar", search for any name containing that pattern
-        # For multi-word queries like "Oscar Gil", search for names containing any of those words
-
-        query_words = query.strip().split()
-        search_patterns = []
-
-        # Add the original query and normalized version
-        search_patterns.append(f"%{query}%")
-        search_patterns.append(f"%{normalized_query}%")
-
-        # For each word in the query, add patterns to catch it
-        for word in query_words:
-            if len(word) >= 2:  # Avoid single character searches
-                normalized_word = normalize_text(word)
-                search_patterns.append(f"%{word}%")
-                search_patterns.append(f"%{normalized_word}%")
-
-                # Add common accent variations for better database matching
-                word_lower = normalized_word.lower()
-
-                if word_lower == "marton":
-                    search_patterns.extend(["%Márton%", "%márton%", "%Marton%"])
-                elif word_lower == "dardai":
-                    search_patterns.extend(["%Dárdai%", "%dárdai%", "%Dardai%"])
-                elif word_lower == "jokubas":
-                    search_patterns.extend(["%Jokūbas%", "%jokūbas%", "%Jokubas%"])
-                elif word_lower == "mazionis":
-                    search_patterns.extend(["%Mažionis%", "%mažionis%", "%Mazionis%"])
-                elif word_lower == "oscar":
-                    search_patterns.extend([
-                        "%Óscar%", "%óscar%", "%Òscar%", "%òscar%",
-                        "%Ôscar%", "%ôscar%", "%Õscar%", "%õscar%"
-                    ])
-                elif word_lower == "jose":
-                    search_patterns.extend(["%José%", "%josé%", "%Josè%", "%josè%"])
-                elif word_lower == "joao":
-                    search_patterns.extend(["%João%", "%joão%", "%Joao%"])
-                # Add more as needed
-
-        # Build the WHERE clause with multiple ILIKE conditions
-        where_conditions = " OR ".join(["PLAYERNAME ILIKE %s"] * len(search_patterns))
-
-        # Order by relevance: exact matches first, then alphabetically
-        # Use CASE to prioritize exact/close matches
+        # Use Snowflake's NORMALIZE_TEXT_UDF() for accent-insensitive matching
+        # This works for ALL Unicode characters (Róbert=Robert, José=Jose, etc.)
+        # Order by relevance: exact matches first, then prefix matches, then any match
         if has_cafc_id:
             cursor.execute(
-                f"""
+                """
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
                 FROM players
-                WHERE {where_conditions}
+                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN UPPER(PLAYERNAME) = UPPER(%s) THEN 1
-                        WHEN UPPER(PLAYERNAME) LIKE UPPER(%s) THEN 2
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME
                 LIMIT 100
             """,
-                search_patterns + [query, query + '%'],
+                (search_pattern, normalized_query, normalized_query + '%'),
             )
         else:
             cursor.execute(
-                f"""
+                """
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
                 FROM players
-                WHERE {where_conditions}
+                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN UPPER(PLAYERNAME) = UPPER(%s) THEN 1
-                        WHEN UPPER(PLAYERNAME) LIKE UPPER(%s) THEN 2
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
+                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME
                 LIMIT 100
             """,
-                search_patterns + [query, query + '%'],
+                (search_pattern, normalized_query, normalized_query + '%'),
             )
 
         players = cursor.fetchall()
         player_list = []
 
-        # Apply precise accent-insensitive filtering on the results
+        # Process results
         for row in players:
             player_name = row[2]
             if player_name:
-                normalized_player_name = normalize_text(player_name)
-                # Check if the normalized query matches the normalized player name
-                if normalized_query in normalized_player_name:
-                    # Generate universal_id using the helper function
-                    player_row = {
-                        "CAFC_PLAYER_ID": row[0],
-                        "PLAYERID": row[1],
-                        "DATA_SOURCE": row[5],
-                    }
-                    universal_id = get_player_universal_id(player_row)
+                # Generate universal_id using the helper function
+                player_row = {
+                    "CAFC_PLAYER_ID": row[0],
+                    "PLAYERID": row[1],
+                    "DATA_SOURCE": row[5],
+                }
+                universal_id = get_player_universal_id(player_row)
 
-                    # Calculate age from birthdate
-                    age = None
-                    birthdate = row[6]
-                    if birthdate:
-                        from datetime import date
-                        try:
-                            if isinstance(birthdate, str):
-                                birthdate = date.fromisoformat(birthdate.split('T')[0])
-                            today = date.today()
-                            age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-                        except:
-                            age = None
+                # Calculate age from birthdate
+                age = None
+                birthdate = row[6]
+                if birthdate:
+                    from datetime import date
+                    try:
+                        if isinstance(birthdate, str):
+                            birthdate = date.fromisoformat(birthdate.split('T')[0])
+                        today = date.today()
+                        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+                    except:
+                        age = None
 
-                    player_data = {
-                        "player_id": row[
-                            1
-                        ],  # External player ID (backwards compatibility)
-                        "cafc_player_id": row[
-                            0
-                        ],  # Internal stable ID (None if not set up)
-                        "universal_id": universal_id,  # New universal ID format
-                        "player_name": player_name,
-                        "position": row[3],
-                        "squad_name": row[4],
-                        "data_source": row[5],
-                        "age": age,
-                    }
-                    player_list.append(player_data)
-
-        # Sort by normalized name for better accent-insensitive ordering
-        player_list.sort(key=lambda x: normalize_text(x["player_name"]))
+                player_data = {
+                    "player_id": row[
+                        1
+                    ],  # External player ID (backwards compatibility)
+                    "cafc_player_id": row[
+                        0
+                    ],  # Internal stable ID (None if not set up)
+                    "universal_id": universal_id,  # New universal ID format
+                    "player_name": player_name,
+                    "position": row[3],
+                    "squad_name": row[4],
+                    "data_source": row[5],
+                    "age": age,
+                }
+                player_list.append(player_data)
 
         return player_list
 
     except Exception as e:
+        print(f"❌ ERROR in /players/search: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error searching players: {e}")
     finally:
@@ -3962,6 +3938,99 @@ async def optimize_database(current_user: User = Depends(get_current_user)):
             conn.close()
 
 
+@app.get("/matches/search")
+async def search_matches(
+    query: str, current_user: User = Depends(get_current_user)
+):
+    """Search for historic matches by team name (autocomplete for fixture filter)"""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Normalize the search query for accent-insensitive matching
+        normalized_query = normalize_text(query)
+        search_pattern = f"%{normalized_query}%"
+
+        # Search both home and away team names, only historic matches (past dates)
+        cursor.execute(
+            """
+            SELECT
+                ID as match_id,
+                HOMESQUADNAME as home_team,
+                AWAYSQUADNAME as away_team,
+                SCHEDULEDDATE as fixture_date,
+                DATA_SOURCE,
+                'external' as id_type
+            FROM matches
+            WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
+                   OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+              AND SCHEDULEDDATE < CURRENT_DATE()
+              AND ID IS NOT NULL
+              AND DATA_SOURCE = 'external'
+
+            UNION ALL
+
+            SELECT
+                CAFC_MATCH_ID as match_id,
+                HOMESQUADNAME as home_team,
+                AWAYSQUADNAME as away_team,
+                SCHEDULEDDATE as fixture_date,
+                DATA_SOURCE,
+                'manual' as id_type
+            FROM matches
+            WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
+                   OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+              AND SCHEDULEDDATE < CURRENT_DATE()
+              AND CAFC_MATCH_ID IS NOT NULL
+              AND DATA_SOURCE = 'internal'
+
+            ORDER BY fixture_date DESC
+            LIMIT 50
+        """,
+            (search_pattern, search_pattern, search_pattern, search_pattern),
+        )
+
+        matches = cursor.fetchall()
+        match_list = []
+        for row in matches:
+            match_id, home_team, away_team, scheduled_date, data_source, id_type = row
+
+            # Format date as DD/MM/YYYY
+            formatted_date = scheduled_date.strftime("%d/%m/%Y") if scheduled_date else ""
+
+            # Create display label: "Team A vs Team B - DD/MM/YYYY"
+            display_label = f"{home_team} vs {away_team} - {formatted_date}"
+
+            universal_id = get_match_universal_id(
+                {
+                    "ID": match_id if id_type == "external" else None,
+                    "CAFC_MATCH_ID": match_id if id_type == "internal" else None,
+                    "DATA_SOURCE": data_source,
+                }
+            )
+
+            match_list.append(
+                {
+                    "match_id": match_id,
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "fixture_date": str(scheduled_date),
+                    "formatted_date": formatted_date,
+                    "display_label": display_label,
+                    "data_source": data_source,
+                    "universal_id": universal_id,
+                }
+            )
+        return match_list
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error searching matches: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/matches/date")
 async def get_matches_by_date(
     fixture_date: str, current_user: User = Depends(get_current_user)
@@ -4103,6 +4172,34 @@ async def get_attributes_by_position(
             conn.close()
 
 
+@app.get("/positions/distinct")
+async def get_distinct_positions(current_user: User = Depends(get_current_user)):
+    """Get list of all available positions for dropdown filters"""
+    # Return the same positions used throughout the application
+    positions = [
+        "GK",
+        "RB",
+        "LB",
+        "RWB",
+        "LWB",
+        "RCB(3)",
+        "LCB(3)",
+        "CCB(3)",
+        "RCB(2)",
+        "LCB(2)",
+        "DM",
+        "CM",
+        "AM",
+        "RAM",
+        "LAM",
+        "RW",
+        "LW",
+        "Target Man CF",
+        "In Behind CF",
+    ]
+    return positions
+
+
 @app.post("/matches")
 async def add_match(match: Match, current_user: User = Depends(get_current_user)):
     """Add a manual match to the database with separate ID system"""
@@ -4222,6 +4319,7 @@ async def get_all_scout_reports(
     report_types: Optional[str] = None,  # Comma-separated: "Player Assessment,Flag"
     scouting_type: Optional[str] = None,  # "Live" or "Video"
     position: Optional[str] = None,
+    match_id: Optional[str] = None,  # Filter by match ID (universal_id format)
     date_from: Optional[str] = None,  # YYYY-MM-DD format
     date_to: Optional[str] = None,  # YYYY-MM-DD format
 ):
@@ -4319,9 +4417,9 @@ async def get_all_scout_reports(
             search_pattern = f"%{scout_name}%"
             sql_params.extend([search_pattern, search_pattern, search_pattern])
 
-        # Player name filter (case-insensitive partial match)
+        # Player name filter (case-insensitive and accent-insensitive partial match)
         if player_name:
-            where_clauses.append("UPPER(p.PLAYERNAME) LIKE UPPER(%s)")
+            where_clauses.append("p.PLAYERNAME ILIKE %s")
             sql_params.append(f"%{player_name}%")
 
         # Report types filter (comma-separated)
@@ -4341,6 +4439,11 @@ async def get_all_scout_reports(
         if position:
             where_clauses.append("UPPER(sr.POSITION) LIKE UPPER(%s)")
             sql_params.append(f"%{position}%")
+
+        # Match ID filter (exact match for fixture filter)
+        if match_id:
+            where_clauses.append("sr.MATCH_ID = %s")
+            sql_params.append(match_id)
 
         # Date range filter
         if date_from:
@@ -5610,8 +5713,12 @@ async def get_player_profile(
         # Get intel reports
         intel_sql = """
             SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
-                   pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE
+                   pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
+                   pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
+                   pi.POTENTIAL_DEAL_TYPE, u.USERNAME, u.FIRSTNAME, u.LASTNAME,
+                   pi.DATE_OF_INFORMATION
             FROM player_information pi
+            LEFT JOIN users u ON pi.USER_ID = u.ID
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
         """
@@ -5723,6 +5830,12 @@ async def get_player_profile(
                         row[5][:100] + "..." if row[5] and len(row[5]) > 100 else row[5]
                     ),
                     "transfer_fee": row[6],
+                    "current_wages": row[7],
+                    "expected_wages": row[8],
+                    "confirmed_contract_expiry": str(row[9]) if row[9] else None,
+                    "potential_deal_types": row[10].split(",") if row[10] else [],
+                    "submitted_by": f"{row[12] or ''} {row[13] or ''}".strip() if (row[12] or row[13]) else (row[11] or "Unknown"),
+                    "date_of_information": str(row[14]) if row[14] else None,
                 }
                 for row in intel_reports
             ],
@@ -6293,7 +6406,7 @@ async def get_all_players(
 
         if search:
             where_conditions.append(
-                "(UPPER(p.PLAYERNAME) LIKE UPPER(%s) OR UPPER(p.FIRSTNAME) LIKE UPPER(%s) OR UPPER(p.LASTNAME) LIKE UPPER(%s))"
+                "(NORMALIZE_TEXT_UDF(p.PLAYERNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.FIRSTNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.LASTNAME) ILIKE %s)"
             )
             search_param = f"%{search}%"
             params.extend([search_param, search_param, search_param])
@@ -6931,9 +7044,10 @@ async def get_all_intel_reports(
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME,
-                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE
+                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE, u.USERNAME, u.FIRSTNAME, u.LASTNAME
             FROM player_information pi
             {join_clause}
+            LEFT JOIN users u ON pi.USER_ID = u.ID
         """
 
         where_clauses = []
@@ -7017,6 +7131,7 @@ async def get_all_intel_reports(
                     "squad_name": row[13],
                     "player_id": player_id,
                     "universal_id": universal_id,
+                    "submitted_by": f"{row[18] or ''} {row[19] or ''}".strip() if (row[18] or row[19]) else (row[17] or "Unknown"),
                 }
             )
 
@@ -8987,6 +9102,262 @@ async def get_players_by_score(
             conn.close()
 
 
+@app.get("/analytics/attributes/by-position")
+async def get_attributes_by_position(
+    current_user: User = Depends(get_current_user),
+    position: Optional[str] = None
+):
+    """Get available attributes for a specific position"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        if position:
+            # Get attributes from actual scout reports for this position
+            logging.info(f"Fetching attributes from scout reports for position: {position}")
+            cursor.execute("""
+                SELECT DISTINCT
+                    sras.ATTRIBUTE_NAME
+                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+                JOIN SCOUT_REPORTS sr ON sras.SCOUT_REPORT_ID = sr.ID
+                WHERE sr.POSITION = %s
+                    AND sr.IS_ARCHIVED = FALSE
+                ORDER BY sras.ATTRIBUTE_NAME
+            """, (position,))
+
+            attributes = cursor.fetchall()
+
+            # If no attributes found in reports, try POSITION_ATTRIBUTES table
+            if not attributes:
+                logging.info(f"No attributes in reports, trying POSITION_ATTRIBUTES table")
+                cursor.execute("""
+                    SELECT
+                        ATTRIBUTE_NAME,
+                        ATTRIBUTE_GROUP,
+                        DISPLAY_ORDER
+                    FROM POSITION_ATTRIBUTES
+                    WHERE POSITION = %s
+                    ORDER BY DISPLAY_ORDER
+                """, (position,))
+                attributes = cursor.fetchall()
+        else:
+            # Get all unique attributes from scout reports
+            logging.info("Fetching all unique attributes from scout reports")
+            cursor.execute("""
+                SELECT DISTINCT
+                    ATTRIBUTE_NAME
+                FROM SCOUT_REPORT_ATTRIBUTE_SCORES
+                ORDER BY ATTRIBUTE_NAME
+            """)
+            attributes = cursor.fetchall()
+
+        logging.info(f"Found {len(attributes)} attributes for position: {position}")
+
+        return {
+            "position": position,
+            "attributes": attributes,
+            "count": len(attributes)
+        }
+
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving attributes: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/analytics/players/by-attributes")
+async def get_players_by_attributes(
+    current_user: User = Depends(get_current_user),
+    position: Optional[str] = None,
+    attributes: Optional[str] = None,
+    min_scores: Optional[str] = None,
+    max_scores: Optional[str] = None,
+    months: Optional[int] = None
+):
+    """Get individual scout reports filtered by position and specific attribute scores"""
+    # Analytics access restricted to Admin, Senior Manager, and Manager
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Admin, Senior Manager, or Manager role required."
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        # Parse comma-separated parameters
+        logging.info(f"Request params - position: {position}, attributes: {attributes}, min_scores: {min_scores}, max_scores: {max_scores}, months: {months}")
+
+        attribute_list = attributes.split(',') if attributes else []
+        min_score_list = [float(s) for s in min_scores.split(',')] if min_scores else []
+        max_score_list = [float(s) for s in max_scores.split(',')] if max_scores else []
+
+        logging.info(f"Parsed - attribute_list: {attribute_list}, min_score_list: {min_score_list}, max_score_list: {max_score_list}")
+
+        # Build base query
+        query = """
+            SELECT
+                sr.ID as report_id,
+                COALESCE(p.PLAYERNAME, 'Unknown') as player_name,
+                COALESCE(p.PLAYERID, sr.PLAYER_ID) as player_id,
+                COALESCE(p.CAFC_PLAYER_ID, sr.CAFC_PLAYER_ID) as cafc_player_id,
+                sr.POSITION as position,
+                sr.PERFORMANCE_SCORE as performance_score,
+                sr.ATTRIBUTE_SCORE as attribute_score,
+                sr.CREATED_AT as report_date,
+                CONCAT(u.FIRSTNAME, ' ', u.LASTNAME) as scout_name,
+                sr.REPORT_TYPE as report_type,
+                sr.SCOUTING_TYPE as scouting_type,
+                sr.PURPOSE as purpose,
+                DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()) as age,
+                DATE(m.SCHEDULEDDATE) as fixture_date,
+                CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) as fixture
+            FROM SCOUT_REPORTS sr
+            LEFT JOIN PLAYERS p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN USERS u ON sr.USER_ID = u.ID
+            LEFT JOIN MATCHES m ON sr.MATCH_ID = m.ID
+            WHERE sr.IS_ARCHIVED = FALSE
+            AND sr.REPORT_TYPE = 'Player Assessment'
+        """
+
+        params = []
+
+        # Add position filter
+        if position:
+            query += " AND sr.POSITION = %s"
+            params.append(position)
+
+        # Add time filter
+        if months:
+            query += " AND sr.CREATED_AT >= DATEADD(month, %s, CURRENT_DATE())"
+            params.append(-months)
+
+        # Add attribute score filters if attributes are specified
+        if attribute_list:
+            # We need to filter reports that have all specified attributes within score ranges
+            for i, attr in enumerate(attribute_list):
+                min_score = min_score_list[i] if i < len(min_score_list) else None
+                max_score = max_score_list[i] if i < len(max_score_list) else None
+
+                subquery = f"""
+                    EXISTS (
+                        SELECT 1
+                        FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
+                        WHERE sras.SCOUT_REPORT_ID = sr.ID
+                        AND sras.ATTRIBUTE_NAME = %s
+                """
+                params.append(attr)
+
+                if min_score is not None:
+                    subquery += " AND sras.ATTRIBUTE_SCORE >= %s"
+                    params.append(min_score)
+
+                if max_score is not None:
+                    subquery += " AND sras.ATTRIBUTE_SCORE <= %s"
+                    params.append(max_score)
+
+                subquery += ")"
+                query += f" AND {subquery}"
+
+        query += " ORDER BY sr.CREATED_AT DESC LIMIT 100"
+
+        logging.info(f"Executing query with {len(params)} parameters")
+        logging.info(f"Query: {query[:500]}...")  # Log first 500 chars
+        logging.info(f"Params: {params}")
+
+        try:
+            cursor.execute(query, params)
+            reports = cursor.fetchall()
+            logging.info(f"Found {len(reports)} reports")
+        except Exception as query_error:
+            logging.error(f"Failed to execute main query: {query_error}")
+            logging.error(f"Query was: {query}")
+            logging.error(f"Params were: {params}")
+            raise
+
+        # For each report, fetch the specific attribute scores
+        result = []
+        for report in reports:
+            report_dict = dict(report)
+
+            # Fetch attribute scores for this report
+            if attribute_list:
+                try:
+                    placeholders = ','.join(['%s'] * len(attribute_list))
+                    query_params = [report['REPORT_ID']] + attribute_list
+                    attr_query = f"""
+                        SELECT
+                            ATTRIBUTE_NAME,
+                            ATTRIBUTE_SCORE
+                        FROM SCOUT_REPORT_ATTRIBUTE_SCORES
+                        WHERE SCOUT_REPORT_ID = %s
+                        AND ATTRIBUTE_NAME IN ({placeholders})
+                        ORDER BY ATTRIBUTE_NAME
+                    """
+                    logging.debug(f"Executing attribute query for report {report['REPORT_ID']} with {len(attribute_list)} attributes")
+                    cursor.execute(attr_query, query_params)
+                except Exception as attr_error:
+                    logging.error(f"Failed to fetch attributes for report {report.get('REPORT_ID', 'UNKNOWN')}: {attr_error}")
+                    logging.error(f"Attribute list: {attribute_list}")
+                    raise
+
+                attr_scores = cursor.fetchall()
+                report_dict['attribute_scores'] = {
+                    attr['ATTRIBUTE_NAME']: attr['ATTRIBUTE_SCORE']
+                    for attr in attr_scores
+                }
+
+                # Calculate average of selected attributes
+                if attr_scores:
+                    avg_score = sum(attr['ATTRIBUTE_SCORE'] for attr in attr_scores) / len(attr_scores)
+                    report_dict['selected_attributes_avg'] = round(avg_score, 2)
+                else:
+                    report_dict['selected_attributes_avg'] = None
+            else:
+                report_dict['attribute_scores'] = {}
+                report_dict['selected_attributes_avg'] = None
+
+            result.append(report_dict)
+
+        return {
+            "total_reports": len(result),
+            "reports": result,
+            "filters": {
+                "position": position,
+                "attributes": attribute_list,
+                "min_scores": min_score_list,
+                "max_scores": max_score_list,
+                "months": months
+            }
+        }
+
+    except Exception as e:
+        error_msg = str(e)
+        logging.exception(f"Error in get_players_by_attributes: {error_msg}")
+        logging.error(f"Failed query params - position: {position}, attributes: {attributes}")
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving players by attributes: {error_msg}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 # --- AI Chatbot Endpoints ---
 
 
@@ -9460,10 +9831,23 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
 
 
 @app.get("/player-lists/all-with-details")
-async def get_all_lists_with_details(current_user: User = Depends(get_current_user)):
+async def get_all_lists_with_details(
+    player_name: Optional[str] = None,
+    position: Optional[str] = None,
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+    min_score: Optional[int] = None,
+    max_score: Optional[int] = None,
+    min_reports: Optional[int] = None,
+    max_reports: Optional[int] = None,
+    stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
+    recency_months: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
     """
     Get all player lists with complete player details in a single optimized query.
     This reduces round trips from N+1 to 1 query.
+    Supports advanced filtering by player attributes, stages, and report recency.
     (admin/manager only)
     """
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
@@ -9528,9 +9912,42 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
         if not lists_data:
             return {"lists": [], "total": 0}
 
+        # Build filter conditions with parameterized queries to prevent SQL injection
+        filter_conditions = []
+        filter_params = []
+
+        # Stage filter
+        if stages:
+            stage_list = [s.strip() for s in stages.split(",")]
+            stage_placeholders = " OR ".join(["pli.STAGE = %s"] * len(stage_list))
+            filter_conditions.append(f"({stage_placeholders})")
+            filter_params.extend(stage_list)
+
+        # Position filter (with accent-insensitive collation)
+        if position:
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)) ILIKE %s)")
+            filter_params.append(f"%{position}%")
+
+        # Age filter
+        if min_age is not None:
+            filter_conditions.append("(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) >= %s)")
+            filter_params.append(min_age)
+        if max_age is not None:
+            filter_conditions.append("(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) <= %s)")
+            filter_params.append(max_age)
+
+        # Player name filter (with accent-insensitive collation)
+        if player_name:
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)) ILIKE %s)")
+            filter_params.append(f"%{player_name}%")
+
+        where_clause = ""
+        if filter_conditions:
+            where_clause = "WHERE " + " AND ".join(filter_conditions)
+
         # Get all players for all lists in one query
         cursor.execute(
-            """
+            f"""
             SELECT
                 pli.LIST_ID,
                 pli.ID as ITEM_ID,
@@ -9556,8 +9973,10 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
             LEFT JOIN players p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN players ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
             LEFT JOIN users u ON pli.ADDED_BY = u.ID
+            {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
-            """
+            """,
+            filter_params if filter_params else None
         )
 
         # Collect all player IDs for stats query
@@ -9586,7 +10005,8 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                     COUNT(*) as report_count,
                     AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as avg_performance_score,
                     COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
-                    COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
+                    COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports,
+                    MAX(sr.CREATED_AT) as last_report_date
                 FROM scout_reports sr
                 WHERE (sr.PLAYER_ID IN ({external_ids_str}) OR sr.CAFC_PLAYER_ID IN ({internal_ids_str}))
                 GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
@@ -9600,6 +10020,7 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                     "avg_performance_score": round(stats_row[3], 1) if stats_row[3] else None,
                     "live_reports": stats_row[4],
                     "video_reports": stats_row[5],
+                    "last_report_date": stats_row[6],
                 }
 
         # Build player data and attach to lists
@@ -9618,7 +10039,30 @@ async def get_all_lists_with_details(current_user: User = Depends(get_current_us
                 "avg_performance_score": None,
                 "live_reports": 0,
                 "video_reports": 0,
+                "last_report_date": None,
             })
+
+            # Apply filters based on stats
+            # Performance score filter
+            if min_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] < min_score):
+                continue
+            if max_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] > max_score):
+                continue
+
+            # Report count filter
+            if min_reports is not None and stats["report_count"] < min_reports:
+                continue
+            if max_reports is not None and stats["report_count"] > max_reports:
+                continue
+
+            # Recency filter
+            if recency_months is not None:
+                if stats["last_report_date"] is None:
+                    continue
+                from datetime import datetime, timedelta
+                cutoff_date = datetime.now() - timedelta(days=recency_months * 30)
+                if stats["last_report_date"] < cutoff_date:
+                    continue
 
             # Determine universal_id
             if data_source == "internal" or (cafc_player_id and not player_id):
@@ -10307,9 +10751,9 @@ async def get_player_list_memberships(
     universal_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get all lists that a specific player belongs to (admin/manager only)"""
-    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
         raise HTTPException(
-            status_code=403, detail="Only admins and senior managers can view player lists"
+            status_code=403, detail="Only admins, senior managers, and managers can view player lists"
         )
 
     conn = None
@@ -10317,16 +10761,15 @@ async def get_player_list_memberships(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Parse universal_id to get player_id and cafc_player_id
-        player_id = None
-        cafc_player_id = None
+        # Use universal ID lookup to handle both legacy and universal ID formats
+        player_data, data_source = find_player_by_universal_or_legacy_id(universal_id, cursor)
 
-        if universal_id.startswith("internal_"):
-            cafc_player_id = int(universal_id.replace("internal_", ""))
-        elif universal_id.startswith("external_"):
-            player_id = int(universal_id.replace("external_", ""))
-        else:
-            raise HTTPException(status_code=400, detail="Invalid universal_id format")
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        # Extract player_id and cafc_player_id from found player data
+        player_id = player_data[0]  # PLAYERID
+        cafc_player_id = player_data[1]  # CAFC_PLAYER_ID
 
         # Get all lists this player belongs to with stage information
         query = """
