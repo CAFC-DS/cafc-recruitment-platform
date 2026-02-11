@@ -604,6 +604,7 @@ const IntelPage: React.FC = () => {
                 <thead className="table-dark">
                   <tr>
                     <th>Report Date</th>
+                    <th>Player</th>
                     <th>User</th>
                     <th>Contact Name</th>
                     <th>Contact Organisation</th>
@@ -617,7 +618,7 @@ const IntelPage: React.FC = () => {
                     <ShimmerLoading variant="table" count={10} />
                   ) : intelReports.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center text-muted py-4">
+                      <td colSpan={8} className="text-center text-muted py-4">
                         No reports found
                       </td>
                     </tr>
@@ -626,6 +627,22 @@ const IntelPage: React.FC = () => {
                     <tr key={report.intel_id}>
                       <td>
                         {new Date(report.created_at).toLocaleDateString("en-GB")}
+                      </td>
+                      <td>
+                        {report.player_id ? (
+                          <a
+                            href={getPlayerProfilePath(report as any)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(getPlayerProfilePath(report as any));
+                            }}
+                            style={{ textDecoration: "none", color: "#0d6efd", cursor: "pointer" }}
+                          >
+                            {report.player_name}
+                          </a>
+                        ) : (
+                          <span>{report.player_name || "N/A"}</span>
+                        )}
                       </td>
                       <td>{report.submitted_by || "Unknown"}</td>
                       <td>{report.contact_name}</td>
