@@ -29,6 +29,7 @@ import {
 import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
+import IntelModal from "../components/IntelModal";
 import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -207,6 +208,13 @@ const PlayerProfilePage: React.FC = () => {
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [selectedIntelId, setSelectedIntelId] = useState<number | null>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
+  const [showEditIntelModal, setShowEditIntelModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editReportData, setEditReportData] = useState<any>(null);
+  const [editReportId, setEditReportId] = useState<number | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteReportId, setDeleteReportId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareReportId, setShareReportId] = useState<number | null>(null);
 
@@ -315,6 +323,84 @@ const PlayerProfilePage: React.FC = () => {
       .filter((pos) => pos && pos.trim() !== "")
       .filter((pos, index, arr) => arr.indexOf(pos) === index);
     return positions;
+  };
+
+  // Helper functions for intel cards
+  const formatActionRequired = (action: string) => {
+    const formatted: { [key: string]: string } = {
+      "discuss urgently": "Discuss Urgently",
+      "monitor": "Monitor",
+      "beyond us": "Beyond Us",
+      "no action": "No Action",
+    };
+    return formatted[action.toLowerCase()] || action;
+  };
+
+  const getActionRequiredBadge = (action: string) => {
+    return (
+      <span className="badge badge-neutral-grey" style={{ fontSize: "0.875rem" }}>
+        {formatActionRequired(action)}
+      </span>
+    );
+  };
+
+  const formatDealTypes = (dealTypes: string[]) => {
+    if (!dealTypes || dealTypes.length === 0) return "Not specified";
+
+    const labels: { [key: string]: string } = {
+      free: "Free Transfer",
+      permanent: "Permanent",
+      loan: "Loan",
+      loan_with_option: "Loan with Option",
+    };
+
+    return dealTypes.map(type => labels[type] || type).join(", ");
+  };
+
+  // Intel report handlers
+  const handleEditIntelReport = async (reportId: number) => {
+    try {
+      setLoadingReportId(reportId);
+      const response = await axiosInstance.get(`/intel_reports/${reportId}`);
+      setEditReportData(response.data);
+      setEditReportId(reportId);
+      setEditMode(true);
+      setShowEditIntelModal(true);
+    } catch (error) {
+      console.error("Error fetching report for edit:", error);
+    } finally {
+      setLoadingReportId(null);
+    }
+  };
+
+  const handleDeleteIntelReport = (reportId: number) => {
+    setDeleteReportId(reportId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteIntelReport = async () => {
+    if (!deleteReportId) return;
+
+    try {
+      setDeleteLoading(true);
+      await axiosInstance.delete(`/intel_reports/${deleteReportId}`);
+      setShowDeleteModal(false);
+      setDeleteReportId(null);
+
+      // Refresh the profile data to update the intel reports list
+      fetchPlayerProfile();
+    } catch (error) {
+      console.error("Error deleting intel report:", error);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleEditIntelModalHide = () => {
+    setShowEditIntelModal(false);
+    setEditMode(false);
+    setEditReportData(null);
+    setEditReportId(null);
   };
 
   // Handle position change - updated to support multiple positions
@@ -1290,7 +1376,19 @@ const PlayerProfilePage: React.FC = () => {
                     }}>
                       <Row>
                         {scoutReportsData.reports.map((report, index) => (
-                          <Col key={report.report_id} className="mb-3" xs={12} md={6}>
+                          <Col
+                            key={report.report_id}
+                            className="mb-3"
+                            xs={12}
+                            sm={6}
+                            md={4}
+                            lg={3}
+                            xl={2}
+                            style={{
+                              flex: window.innerWidth >= 1400 ? '0 0 20%' : undefined,
+                              maxWidth: window.innerWidth >= 1400 ? '20%' : undefined
+                            }}
+                          >
                             <Card
                               className={`shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
                               style={{ borderRadius: "8px", border: "1px solid #dee2e6", height: "100%" }}
@@ -1602,61 +1700,75 @@ const PlayerProfilePage: React.FC = () => {
                     >
                       <thead className="table-dark">
                         <tr>
-                          <th>Date</th>
-                          <th>Contact</th>
-                          <th>Organisation</th>
-                          <th>Action Required</th>
-                          <th>Transfer Fee</th>
+                          <th>Report Date</th>
+                          <th>User</th>
+                          <th>Contact Name</th>
+                          <th>Contact Organisation</th>
+                          <th>Contract Expiry</th>
+                          <th>Deal Types</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {profile.intel_reports.map((intel) => {
-                          const getActionColor = (action: string) => {
-                            switch (action) {
-                              case "Discuss Urgently": return "#dc3545";
-                              case "Monitor": return "#ffc107";
-                              case "Beyond Us": return "#6c757d";
-                              case "No Action": return "#6c757d";
-                              default: return "#6c757d";
-                            }
-                          };
-
                           return (
                             <tr key={intel.intel_id}>
                               <td>
                                 {intel.created_at
-                                  ? new Date(intel.created_at).toLocaleDateString()
+                                  ? new Date(intel.created_at).toLocaleDateString("en-GB")
                                   : "N/A"}
                               </td>
+                              <td>{intel.submitted_by || "Unknown"}</td>
                               <td>{intel.contact_name || "N/A"}</td>
                               <td>{intel.contact_organisation || "N/A"}</td>
                               <td>
-                                <span
-                                  className="badge"
-                                  style={{
-                                    backgroundColor: getActionColor(intel.action_required),
-                                    color: "white",
-                                    fontWeight: "500",
-                                    fontSize: "0.75rem",
-                                  }}
-                                >
-                                  {intel.action_required || "N/A"}
-                                </span>
+                                {intel.confirmed_contract_expiry
+                                  ? new Date(
+                                      intel.confirmed_contract_expiry,
+                                    ).toLocaleDateString("en-GB")
+                                  : "Not specified"}
                               </td>
-                              <td>{intel.transfer_fee || "N/A"}</td>
                               <td>
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedIntelId(intel.intel_id);
-                                    setShowIntelModal(true);
-                                  }}
-                                  title="View Intel Report"
-                                  className="btn-action-circle btn-action-view"
+                                {formatDealTypes(intel.potential_deal_types)}
+                              </td>
+                              <td>
+                                <div
+                                  className="btn-group"
+                                  style={{ justifyContent: "center" }}
                                 >
-                                  👁️
-                                </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedIntelId(intel.intel_id);
+                                      setShowIntelModal(true);
+                                    }}
+                                    title="View Intel Report"
+                                    className="btn-action-circle btn-action-view"
+                                  >
+                                    👁️
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleEditIntelReport(intel.intel_id)}
+                                    disabled={loadingReportId === intel.intel_id}
+                                    title="Edit"
+                                    className="btn-action-circle btn-action-edit"
+                                  >
+                                    {loadingReportId === intel.intel_id ? (
+                                      <Spinner as="span" animation="border" size="sm" />
+                                    ) : (
+                                      "✏️"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleDeleteIntelReport(intel.intel_id)}
+                                    title="Delete"
+                                    className="btn-action-circle btn-action-delete"
+                                  >
+                                    🗑️
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1675,102 +1787,175 @@ const PlayerProfilePage: React.FC = () => {
                   }}>
                       <Row>
                         {profile.intel_reports.map((intel) => {
-                          const getActionColor = (action: string) => {
-                            switch (action) {
-                              case "Discuss Urgently": return "#dc3545";
-                              case "Monitor": return "#ffc107";
-                              case "Beyond Us": return "#6c757d";
-                              case "No Action": return "#6c757d";
-                              default: return "#6c757d";
-                            }
-                          };
-
                           return (
-                            <Col key={intel.intel_id} className="mb-3" xs={12} md={6}>
+                            <Col
+                              key={intel.intel_id}
+                              className="mb-4"
+                              xs={12}
+                              sm={6}
+                              md={4}
+                              lg={3}
+                              xl={2}
+                              style={{
+                                flex: window.innerWidth >= 1400 ? '0 0 20%' : undefined,
+                                maxWidth: window.innerWidth >= 1400 ? '20%' : undefined
+                              }}
+                            >
                               <Card
-                                className="shadow-sm hover-card"
-                                style={{ borderRadius: "8px", border: "1px solid #dee2e6", height: "100%" }}
+                                className="h-100 shadow-sm hover-card"
+                                style={{
+                                  borderRadius: "8px",
+                                  border: "1px solid #dee2e6",
+                                  position: "relative",
+                                }}
                               >
-                              <Card.Body className="p-3">
-                                {/* Top Row - Contact Info */}
-                                <Row className="mb-3 pb-2 border-bottom">
-                                  <Col xs={12}>
-                                    <div className="fw-bold d-block mb-1" style={{ color: "#212529", fontSize: "0.95rem" }}>
-                                      {intel.contact_name || "Unknown Contact"}
-                                    </div>
-                                    <small className="text-muted d-block" style={{ fontSize: "0.8rem" }}>
-                                      {intel.contact_organisation || "No Organisation"}
-                                    </small>
-                                    <small className="text-muted d-block" style={{ fontSize: "0.75rem" }}>
-                                      {intel.created_at
-                                        ? new Date(intel.created_at).toLocaleDateString()
-                                        : "N/A"}
-                                    </small>
-                                  </Col>
-                                </Row>
-
-                                {/* Middle Row - Action Required */}
-                                <Row className="mb-3 pb-2 border-bottom">
-                                  <Col xs={12}>
-                                    <small className="text-muted fw-semibold d-block mb-1">Action Required</small>
-                                    <span
-                                      className="badge"
-                                      style={{
-                                        backgroundColor: getActionColor(intel.action_required),
-                                        color: "white",
-                                        fontWeight: "500",
-                                        fontSize: "0.75rem",
-                                      }}
-                                    >
-                                      {intel.action_required || "N/A"}
-                                    </span>
-                                  </Col>
-                                </Row>
-
-                                {/* Transfer Fee & Notes */}
-                                <Row className="mb-3 pb-2 border-bottom">
-                                  <Col xs={12}>
-                                    {intel.transfer_fee && (
-                                      <>
-                                        <small className="text-muted fw-semibold d-block mb-1">Transfer Fee</small>
-                                        <div className="text-dark" style={{ fontSize: "0.85rem" }}>
-                                          {intel.transfer_fee}
+                                <Card.Body className="p-3">
+                                  {/* Top Row - 2 columns */}
+                                  <Row className="mb-3 pb-2 border-bottom">
+                                    {/* Left: Contact Info */}
+                                    <Col xs={6}>
+                                      <div>
+                                        <div
+                                          className="fw-bold d-block mb-1"
+                                          style={{
+                                            color: "#212529",
+                                            fontSize: "1rem",
+                                            textAlign: "left",
+                                          }}
+                                        >
+                                          {intel.contact_name || "Unknown Contact"}
                                         </div>
-                                      </>
-                                    )}
-                                    {intel.conversation_notes && (
-                                      <>
-                                        <small className="text-muted fw-semibold d-block mb-1 mt-2">Notes</small>
-                                        <div className="text-muted" style={{ fontSize: "0.75rem", lineHeight: "1.3" }}>
-                                          {intel.conversation_notes.substring(0, 100)}
-                                          {intel.conversation_notes.length > 100 && "..."}
-                                        </div>
-                                      </>
-                                    )}
-                                  </Col>
-                                </Row>
+                                        <small className="text-muted d-block">
+                                          Intel Report
+                                        </small>
+                                      </div>
+                                    </Col>
 
-                                {/* Bottom Row - Actions */}
-                                <Row>
-                                  <Col xs={12} className="text-end">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedIntelId(intel.intel_id);
-                                        setShowIntelModal(true);
-                                      }}
-                                      title="View Intel Report"
-                                      className="btn-action-circle btn-action-view"
-                                    >
-                                      👁️
-                                    </Button>
-                                  </Col>
-                                </Row>
-                              </Card.Body>
-                            </Card>
-                          </Col>
-                        );
-                      })}
+                                    {/* Right: Date Info */}
+                                    <Col xs={6} className="text-end">
+                                      <div>
+                                        <small className="text-muted d-block">
+                                          {intel.contact_organisation || "N/A"}
+                                        </small>
+                                        <small className="text-muted d-block">
+                                          {intel.created_at
+                                            ? new Date(intel.created_at).toLocaleDateString("en-GB")
+                                            : "N/A"}
+                                        </small>
+                                      </div>
+                                    </Col>
+                                  </Row>
+
+                                  {/* Middle Row - 2 columns */}
+                                  <Row className="mb-3 pb-2 border-bottom">
+                                    {/* Left: Organisation & Contract Info */}
+                                    <Col xs={6}>
+                                      <div>
+                                        {intel.transfer_fee && (
+                                          <small
+                                            className="text-muted d-block mb-1"
+                                            style={{
+                                              fontSize: "0.75rem",
+                                              lineHeight: "1.2",
+                                            }}
+                                          >
+                                            <span className="fw-semibold">
+                                              Transfer Fee:
+                                            </span>{" "}
+                                            {intel.transfer_fee}
+                                          </small>
+                                        )}
+                                        {intel.confirmed_contract_expiry && (
+                                          <small
+                                            className="text-muted d-block"
+                                            style={{
+                                              fontSize: "0.75rem",
+                                              lineHeight: "1.2",
+                                            }}
+                                          >
+                                            <span className="fw-semibold">Expiry:</span>{" "}
+                                            {new Date(
+                                              intel.confirmed_contract_expiry,
+                                            ).toLocaleDateString("en-GB")}
+                                          </small>
+                                        )}
+                                      </div>
+                                    </Col>
+
+                                    {/* Right: Action Required */}
+                                    <Col xs={6} className="text-end">
+                                      <div>
+                                        <small className="text-muted fw-semibold d-block">
+                                          Action
+                                        </small>
+                                        {getActionRequiredBadge(intel.action_required)}
+                                      </div>
+                                    </Col>
+                                  </Row>
+
+                                  {/* Bottom Row - Tags and Actions */}
+                                  <Row className="align-items-center">
+                                    {/* Left: Deal Info */}
+                                    <Col xs={6}>
+                                      <div className="d-flex align-items-center gap-1">
+                                        {intel.potential_deal_types &&
+                                          intel.potential_deal_types.length > 0 && (
+                                            <small className="text-muted fw-semibold me-1">
+                                              {formatDealTypes(intel.potential_deal_types)}
+                                            </small>
+                                          )}
+                                      </div>
+                                    </Col>
+
+                                    {/* Right: Actions */}
+                                    <Col xs={6} className="text-end">
+                                      <div className="d-flex justify-content-end gap-1">
+                                        <Button
+                                          size="sm"
+                                          className="btn-action-circle btn-action-view"
+                                          onClick={() => {
+                                            setSelectedIntelId(intel.intel_id);
+                                            setShowIntelModal(true);
+                                          }}
+                                          title="View Report"
+                                        >
+                                          👁️
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="btn-action-circle btn-action-edit"
+                                          title="Edit"
+                                          onClick={() => handleEditIntelReport(intel.intel_id)}
+                                          disabled={loadingReportId === intel.intel_id}
+                                        >
+                                          {loadingReportId === intel.intel_id ? (
+                                            <Spinner
+                                              as="span"
+                                              animation="border"
+                                              size="sm"
+                                            />
+                                          ) : (
+                                            "✏️"
+                                          )}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          className="btn-action-circle btn-action-delete"
+                                          title="Delete"
+                                          onClick={() =>
+                                            handleDeleteIntelReport(intel.intel_id)
+                                          }
+                                        >
+                                          🗑️
+                                        </Button>
+                                      </div>
+                                    </Col>
+                                  </Row>
+                                </Card.Body>
+                              </Card>
+                            </Col>
+                          );
+                        })}
                     </Row>
                   </div>
                   )}
@@ -2233,12 +2418,55 @@ const PlayerProfilePage: React.FC = () => {
         report={selectedReport}
       />
 
-      {/* Intel Modal */}
+      {/* Intel View Modal */}
       <IntelReportModal
         show={showIntelModal}
         onHide={() => setShowIntelModal(false)}
         intelId={selectedIntelId}
       />
+
+      {/* Intel Edit Modal */}
+      <IntelModal
+        show={showEditIntelModal}
+        onHide={handleEditIntelModalHide}
+        selectedPlayer={profile ? { player_id: profile.player_id, player_name: profile.player_name } : null}
+        onIntelSubmitSuccess={() => {
+          fetchPlayerProfile();
+        }}
+        editMode={editMode}
+        reportId={editReportId}
+        existingReportData={editReportData}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header
+          closeButton
+          style={{ backgroundColor: "#000000", color: "white" }}
+        >
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this intel report? This action cannot
+          be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmDeleteIntelReport}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? (
+              <Spinner animation="border" size="sm" />
+            ) : (
+              "Delete"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Share Link Modal */}
       {shareReportId && (
