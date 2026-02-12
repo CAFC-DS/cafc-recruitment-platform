@@ -32,6 +32,8 @@ import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
 import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
 import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
+import StageChangeReasonModal from "../components/PlayerLists/StageChangeReasonModal";
+import StageHistoryModal from "../components/PlayerLists/StageHistoryModal";
 import { getPlayerNotes, setPlayerNotes, isPlayerFavorite, togglePlayerFavorite } from "../utils/playerListPreferences";
 import {
   createPlayerList,
@@ -43,6 +45,7 @@ import {
   searchPlayers,
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
+  getStageChangeReasons,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -139,12 +142,53 @@ const KanbanPage: React.FC = () => {
   } | null>(null);
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
 
+  // Stage change reason modal state
+  const [showStageReasonModal, setShowStageReasonModal] = useState(false);
+  const [stageReasonModalData, setStageReasonModalData] = useState<{
+    playerName: string;
+    targetStage: "Stage 1" | "Archived";
+    itemId: number;
+    oldStage: string;
+    listId: number;
+  } | null>(null);
+  const [stage1Reasons, setStage1Reasons] = useState<string[]>([]);
+  const [archivedReasons, setArchivedReasons] = useState<string[]>([]);
+  const [loadingReasons, setLoadingReasons] = useState(false);
+
+  // Stage history modal state
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyModalData, setHistoryModalData] = useState<{
+    listId: number;
+    itemId: number;
+    playerName: string;
+  } | null>(null);
+
   // Permission check - redirect if unauthorized
   useEffect(() => {
     if (!userLoading && !canAccessLists) {
       navigate("/");
     }
   }, [userLoading, canAccessLists, navigate]);
+
+  // Fetch stage change reasons on mount
+  useEffect(() => {
+    const fetchReasons = async () => {
+      setLoadingReasons(true);
+      try {
+        const [stage1, archived] = await Promise.all([
+          getStageChangeReasons("stage1"),
+          getStageChangeReasons("archived"),
+        ]);
+        setStage1Reasons(stage1);
+        setArchivedReasons(archived);
+      } catch (err) {
+        console.error("Error fetching stage change reasons:", err);
+      } finally {
+        setLoadingReasons(false);
+      }
+    };
+    fetchReasons();
+  }, []);
 
   // Don't auto-select lists - let user choose
   // useEffect removed - lists start deselected
@@ -583,31 +627,88 @@ const KanbanPage: React.FC = () => {
     itemId: number,
     fromStage: string,
     toStage: string,
-    listId: number | string
+    listId: number | string,
+    player?: PlayerInList
   ) => {
-    // Add or update pending change
-    setPendingStageChanges((prev) => {
-      const newMap = new Map(prev);
-
-      // If there's already a pending change for this item, update the toStage
-      // but keep the original fromStage
-      const existing = newMap.get(itemId);
-      if (existing) {
-        newMap.set(itemId, {
-          fromStage: existing.fromStage, // Keep original fromStage
-          toStage,
-          listId: Number(listId),
-        });
-      } else {
-        newMap.set(itemId, {
-          fromStage,
-          toStage,
-          listId: Number(listId),
-        });
+    // Stage 1 and Archived require reason modal
+    if (toStage === "Stage 1" || toStage === "Archived") {
+      if (!player) {
+        console.error("Player data required for Stage 1/Archived change");
+        return;
       }
 
-      return newMap;
+      setStageReasonModalData({
+        playerName: player.player_name,
+        targetStage: toStage as "Stage 1" | "Archived",
+        itemId: itemId,
+        oldStage: fromStage,
+        listId: Number(listId),
+      });
+      setShowStageReasonModal(true);
+    } else {
+      // Stage 2, 3, 4 use batch mode as before
+      setPendingStageChanges((prev) => {
+        const newMap = new Map(prev);
+
+        // If there's already a pending change for this item, update the toStage
+        // but keep the original fromStage
+        const existing = newMap.get(itemId);
+        if (existing) {
+          newMap.set(itemId, {
+            fromStage: existing.fromStage, // Keep original fromStage
+            toStage,
+            listId: Number(listId),
+          });
+        } else {
+          newMap.set(itemId, {
+            fromStage,
+            toStage,
+            listId: Number(listId),
+          });
+        }
+
+        return newMap;
+      });
+    }
+  };
+
+  // Confirm stage change with reason
+  const confirmStageChange = async (reason: string, description?: string) => {
+    if (!stageReasonModalData) return;
+
+    try {
+      setSavingChanges(true);
+      setError(null);
+
+      await updatePlayerStage(
+        stageReasonModalData.listId,
+        stageReasonModalData.itemId,
+        stageReasonModalData.targetStage,
+        reason,
+        description
+      );
+      await refetch();
+
+      setShowStageReasonModal(false);
+      setStageReasonModalData(null);
+    } catch (err: any) {
+      console.error("Error updating stage:", err);
+      setError(err.response?.data?.detail || "Failed to update player stage.");
+    } finally {
+      setSavingChanges(false);
+    }
+  };
+
+  // Open stage history modal
+  const openStageHistory = (player: PlayerInList) => {
+    if (!player.list_id) return;
+
+    setHistoryModalData({
+      listId: Number(player.list_id),
+      itemId: player.item_id,
+      playerName: player.player_name,
     });
+    setShowHistoryModal(true);
   };
 
   /**
@@ -927,7 +1028,7 @@ const KanbanPage: React.FC = () => {
                 const fromStage = typeof fromStageId === "string" ? fromStageId : "";
                 const toStage = typeof toStageId === "string" ? toStageId : "";
                 console.log("Calling handleStageChange:", { itemId, fromStage, toStage, listId: player.list_id });
-                handleStageChange(itemId, fromStage, toStage, player.list_id);
+                handleStageChange(itemId, fromStage, toStage, player.list_id, player);
               } else {
                 console.warn("Player not found or list_id is undefined:", { player, itemId, toStageId });
               }
@@ -1145,6 +1246,36 @@ const KanbanPage: React.FC = () => {
         universalId={selectedPlayerForNotes?.universalId || ""}
         currentNotes={getPlayerNotes(selectedPlayerForNotes?.universalId || "")}
         onSave={handleSaveNotes}
+      />
+
+      {/* Stage Change Reason Modal */}
+      <StageChangeReasonModal
+        show={showStageReasonModal}
+        onHide={() => {
+          setShowStageReasonModal(false);
+          setStageReasonModalData(null);
+        }}
+        playerName={stageReasonModalData?.playerName || ""}
+        targetStage={stageReasonModalData?.targetStage || "Stage 1"}
+        reasons={
+          stageReasonModalData?.targetStage === "Stage 1"
+            ? stage1Reasons
+            : archivedReasons
+        }
+        onConfirm={confirmStageChange}
+        loading={savingChanges}
+      />
+
+      {/* Stage History Modal */}
+      <StageHistoryModal
+        show={showHistoryModal}
+        onHide={() => {
+          setShowHistoryModal(false);
+          setHistoryModalData(null);
+        }}
+        listId={historyModalData?.listId || 0}
+        itemId={historyModalData?.itemId || 0}
+        playerName={historyModalData?.playerName || ""}
       />
     </Container>
   );

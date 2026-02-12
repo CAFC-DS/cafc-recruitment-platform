@@ -166,6 +166,8 @@ export const deletePlayerList = async (listId: number): Promise<{ message: strin
 export const addPlayerToList = async (
   listId: number,
   universalId: string,
+  reason: string,
+  description?: string,
   stage: string = "Stage 1"
 ): Promise<{ message: string; item_id: number }> => {
   // Parse universal_id to get player_id or cafc_player_id
@@ -182,6 +184,8 @@ export const addPlayerToList = async (
     player_id,
     cafc_player_id,
     stage,
+    reason,
+    description,
   });
   return response.data;
 };
@@ -203,10 +207,14 @@ export const removePlayerFromList = async (
 export const updatePlayerStage = async (
   listId: number,
   itemId: number,
-  stage: string
+  stage: string,
+  reason?: string,
+  description?: string
 ): Promise<{ message: string; stage: string }> => {
   const response = await axiosInstance.put(`/player-lists/${listId}/players/${itemId}/stage`, {
     stage,
+    reason,
+    description,
   });
   return response.data;
 };
@@ -284,6 +292,27 @@ export const searchPlayers = async (query: string): Promise<any[]> => {
   const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(query)}`);
   // Backend returns the array directly, not wrapped in a 'players' key
   return response.data || [];
+};
+
+/**
+ * Get valid reasons for stage changes
+ */
+export const getStageChangeReasons = async (
+  stage: "stage1" | "archived"
+): Promise<string[]> => {
+  const response = await axiosInstance.get(`/stage-change-reasons?stage=${stage}`);
+  return response.data.reasons;
+};
+
+/**
+ * Get stage change history for a player in a list
+ */
+export const getPlayerStageHistory = async (
+  listId: number,
+  itemId: number
+): Promise<any[]> => {
+  const response = await axiosInstance.get(`/player-lists/${listId}/players/${itemId}/stage-history`);
+  return response.data.history;
 };
 
 // ========== Export Utilities ==========

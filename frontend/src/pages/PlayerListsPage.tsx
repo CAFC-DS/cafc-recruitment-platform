@@ -31,6 +31,8 @@ import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
 import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
 import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
+import StageChangeReasonModal from "../components/PlayerLists/StageChangeReasonModal";
+import StageHistoryModal from "../components/PlayerLists/StageHistoryModal";
 import {
   getPlayerNotes,
   setPlayerNotes,
@@ -47,6 +49,7 @@ import {
   updatePlayerStage,
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
+  getStageChangeReasons,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -162,12 +165,56 @@ const PlayerListsPage: React.FC = () => {
   const [pendingRemovals, setPendingRemovals] = useState<Set<number>>(new Set());
   const [savingChanges, setSavingChanges] = useState(false);
 
+  // Stage change reason modal state
+  const [showStageReasonModal, setShowStageReasonModal] = useState(false);
+  const [stageReasonModalData, setStageReasonModalData] = useState<{
+    playerName: string;
+    targetStage: "Stage 1" | "Archived";
+    itemId: number;
+    oldStage: string;
+    universalId?: string;
+  } | null>(null);
+  const [stage1Reasons, setStage1Reasons] = useState<string[]>([]);
+  const [archivedReasons, setArchivedReasons] = useState<string[]>([]);
+  const [loadingReasons, setLoadingReasons] = useState(false);
+
+  // Stage history modal state
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyModalData, setHistoryModalData] = useState<{
+    listId: number;
+    itemId: number;
+    playerName: string;
+  } | null>(null);
+
+  // Temporary player selection for add modal
+  const [tempSelectedPlayer, setTempSelectedPlayer] = useState<PlayerSearchResult | null>(null);
+
   // Permission check
   useEffect(() => {
     if (!userLoading && !canAccessLists) {
       navigate("/");
     }
   }, [userLoading, canAccessLists, navigate]);
+
+  // Fetch stage change reasons on mount
+  useEffect(() => {
+    const fetchReasons = async () => {
+      setLoadingReasons(true);
+      try {
+        const [stage1, archived] = await Promise.all([
+          getStageChangeReasons("stage1"),
+          getStageChangeReasons("archived"),
+        ]);
+        setStage1Reasons(stage1);
+        setArchivedReasons(archived);
+      } catch (err) {
+        console.error("Error fetching stage change reasons:", err);
+      } finally {
+        setLoadingReasons(false);
+      }
+    };
+    fetchReasons();
+  }, []);
 
   // Don't auto-select lists - let user choose
   // useEffect removed - lists start deselected
@@ -478,14 +525,38 @@ const PlayerListsPage: React.FC = () => {
     // Only allow adding when exactly 1 list is selected
     if (!currentList) return; // Only works with single list selected
 
+    // Store selected player and open reason modal
+    setTempSelectedPlayer(player);
+    setStageReasonModalData({
+      playerName: player.player_name,
+      targetStage: "Stage 1",
+      itemId: -1, // Not applicable for new additions
+      oldStage: "",
+      universalId: player.universal_id,
+    });
+    setShowAddPlayerModal(false);
+    setShowStageReasonModal(true);
+  };
+
+  // Confirm adding player with reason
+  const confirmAddPlayer = async (reason: string, description?: string) => {
+    if (!currentList || !tempSelectedPlayer) return;
+
     try {
       setAddingPlayer(true);
       setError(null);
 
-      await addPlayerToList(currentList.id, player.universal_id);
+      await addPlayerToList(
+        currentList.id,
+        tempSelectedPlayer.universal_id,
+        reason,
+        description
+      );
       await refetch();
 
-      setShowAddPlayerModal(false);
+      setShowStageReasonModal(false);
+      setStageReasonModalData(null);
+      setTempSelectedPlayer(null);
       setPlayerSearchQuery("");
       setPlayerSearchResults([]);
     } catch (err: any) {
@@ -549,13 +620,68 @@ const PlayerListsPage: React.FC = () => {
     setPlayerFavorites(favs);
   }, [lists, userId]);
 
-  const handleStageChange = (itemId: number, newStage: string) => {
-    // Add to pending changes instead of saving immediately (batch mode)
-    setPendingStageChanges((prev) => {
-      const newMap = new Map(prev);
-      newMap.set(itemId, newStage);
-      return newMap;
+  const handleStageChange = (itemId: number, newStage: string, player?: any) => {
+    // Stage 1 and Archived require reason modal
+    if (newStage === "Stage 1" || newStage === "Archived") {
+      if (!player) {
+        console.error("Player data required for Stage 1/Archived change");
+        return;
+      }
+
+      setStageReasonModalData({
+        playerName: player.player_name,
+        targetStage: newStage as "Stage 1" | "Archived",
+        itemId: itemId,
+        oldStage: player.stage,
+      });
+      setShowStageReasonModal(true);
+    } else {
+      // Stage 2, 3, 4 use batch mode as before
+      setPendingStageChanges((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(itemId, newStage);
+        return newMap;
+      });
+    }
+  };
+
+  // Confirm stage change with reason
+  const confirmStageChange = async (reason: string, description?: string) => {
+    if (!currentList || !stageReasonModalData) return;
+
+    try {
+      setSavingChanges(true);
+      setError(null);
+
+      await updatePlayerStage(
+        currentList.id,
+        stageReasonModalData.itemId,
+        stageReasonModalData.targetStage,
+        reason,
+        description
+      );
+      await refetch();
+
+      setShowStageReasonModal(false);
+      setStageReasonModalData(null);
+    } catch (err: any) {
+      console.error("Error updating stage:", err);
+      setError(err.response?.data?.detail || "Failed to update player stage.");
+    } finally {
+      setSavingChanges(false);
+    }
+  };
+
+  // Open stage history modal
+  const openStageHistory = (player: any) => {
+    if (!currentList) return;
+
+    setHistoryModalData({
+      listId: currentList.id,
+      itemId: player.item_id,
+      playerName: player.player_name,
     });
+    setShowHistoryModal(true);
   };
 
   const handleExport = () => {
@@ -980,7 +1106,7 @@ const PlayerListsPage: React.FC = () => {
                                 <Form.Select
                                   size="sm"
                                   value={currentStage}
-                                  onChange={(e) => handleStageChange(player.item_id, e.target.value)}
+                                  onChange={(e) => handleStageChange(player.item_id, e.target.value, player)}
                                   disabled={pendingRemoval}
                                   style={{
                                     fontSize: "0.75rem",
@@ -1065,6 +1191,15 @@ const PlayerListsPage: React.FC = () => {
                                   className="btn-action-circle btn-action-edit"
                                 >
                                   📝
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  title="View stage history"
+                                  onClick={() => openStageHistory(player)}
+                                  className="btn-action-circle"
+                                  disabled={!currentList}
+                                >
+                                  📊
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1234,6 +1369,41 @@ const PlayerListsPage: React.FC = () => {
         universalId={selectedPlayerForNotes?.universalId || ""}
         currentNotes={getPlayerNotes(selectedPlayerForNotes?.universalId || "")}
         onSave={handleSaveNotes}
+      />
+
+      {/* Stage Change Reason Modal */}
+      <StageChangeReasonModal
+        show={showStageReasonModal}
+        onHide={() => {
+          setShowStageReasonModal(false);
+          setStageReasonModalData(null);
+          setTempSelectedPlayer(null);
+        }}
+        playerName={stageReasonModalData?.playerName || ""}
+        targetStage={stageReasonModalData?.targetStage || "Stage 1"}
+        reasons={
+          stageReasonModalData?.targetStage === "Stage 1"
+            ? stage1Reasons
+            : archivedReasons
+        }
+        onConfirm={
+          stageReasonModalData?.universalId
+            ? confirmAddPlayer
+            : confirmStageChange
+        }
+        loading={addingPlayer || savingChanges}
+      />
+
+      {/* Stage History Modal */}
+      <StageHistoryModal
+        show={showHistoryModal}
+        onHide={() => {
+          setShowHistoryModal(false);
+          setHistoryModalData(null);
+        }}
+        listId={historyModalData?.listId || 0}
+        itemId={historyModalData?.itemId || 0}
+        playerName={historyModalData?.playerName || ""}
       />
 
       {/* Floating Save/Discard Changes Button */}

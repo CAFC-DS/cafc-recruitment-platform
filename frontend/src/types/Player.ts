@@ -82,3 +82,32 @@ export interface AttributeData {
   attribute_name?: string;
   avg_score?: number;
 }
+
+// Stage change tracking types
+export interface StageHistoryRecord {
+  id: number;
+  oldStage: string | null;
+  newStage: string;
+  reason: string;
+  description?: string;
+  changedBy: number;
+  changedByName?: string;
+  changedAt: string;
+}
+
+export type Stage1Reason =
+  | "Flagged by Data"
+  | "Flagged by Live Scouting"
+  | "Flagged by Video Scouting"
+  | "Flagged by Recommendation"
+  | "Flagged by Online Noise";
+
+export type ArchivedReason =
+  | "Cost; Salary"
+  | "Cost; Transfer Fee"
+  | "Availability"
+  | "Moved Club"
+  | "Scouting"
+  | "Data";
+
+export type StageChangeReason = Stage1Reason | ArchivedReason;

@@ -620,6 +620,24 @@ ROLE_SCOUT = "scout"
 
 VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT]
 
+# --- Stage Change Reason Constants ---
+STAGE_1_REASONS = [
+    "Flagged by Data",
+    "Flagged by Live Scouting",
+    "Flagged by Video Scouting",
+    "Flagged by Recommendation",
+    "Flagged by Online Noise"
+]
+
+ARCHIVED_REASONS = [
+    "Cost; Salary",
+    "Cost; Transfer Fee",
+    "Availability",
+    "Moved Club",
+    "Scouting",
+    "Data"
+]
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -9715,6 +9733,8 @@ class PlayerListAddPlayer(BaseModel):
     cafc_player_id: Optional[int] = None  # For internal players
     notes: Optional[str] = None
     stage: Optional[str] = "Stage 1"  # Default to Stage 1
+    reason: str  # Required for Stage 1 entry
+    description: Optional[str] = None  # Optional description for stage change
 
 
 class PlayerListReorder(BaseModel):
@@ -9723,6 +9743,8 @@ class PlayerListReorder(BaseModel):
 
 class PlayerStageUpdate(BaseModel):
     stage: str  # New stage value (Stage 1-4, Archived)
+    reason: Optional[str] = None  # Required for Stage 1 and Archived
+    description: Optional[str] = None  # Optional description for stage change
 
 
 @app.post("/player-lists")
@@ -9772,11 +9794,35 @@ async def create_player_list(
             """
             )
 
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_stage_history (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_ITEM_ID INTEGER NOT NULL,
+                    LIST_ID INTEGER NOT NULL,
+                    PLAYER_ID INTEGER,
+                    OLD_STAGE VARCHAR(100),
+                    NEW_STAGE VARCHAR(100) NOT NULL,
+                    REASON VARCHAR(255) NOT NULL,
+                    DESCRIPTION VARCHAR(2000),
+                    CHANGED_BY INTEGER NOT NULL,
+                    CHANGED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID),
+                    FOREIGN KEY (LIST_ITEM_ID) REFERENCES player_list_items(ID),
+                    FOREIGN KEY (LIST_ID) REFERENCES player_lists(ID),
+                    FOREIGN KEY (CHANGED_BY) REFERENCES users(ID)
+                )
+            """
+            )
+
             # Create indexes for performance optimization
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_list_id ON player_list_items(LIST_ID)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_player_id ON player_list_items(PLAYER_ID)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_cafc_player_id ON player_list_items(CAFC_PLAYER_ID)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_sr_scouting_type ON scout_reports(SCOUTING_TYPE)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_item_id ON player_stage_history(LIST_ITEM_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_id ON player_stage_history(LIST_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_player_id ON player_stage_history(PLAYER_ID)")
         except Exception as e:
             logging.warning(f"Tables/indexes may already exist: {e}")
 
@@ -10558,6 +10604,13 @@ async def add_player_to_list(
             status_code=400, detail="Either player_id or cafc_player_id is required"
         )
 
+    # Validate reason for Stage 1 entry
+    if player_data.reason not in STAGE_1_REASONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid reason. Must be one of: {', '.join(STAGE_1_REASONS)}"
+        )
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -10617,6 +10670,36 @@ async def add_player_to_list(
                 player_data.notes,
                 current_user.id,
                 player_data.stage or "Stage 1",
+            ),
+        )
+
+        # Get the ID of the newly created list item
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE LIST_ID = %s
+            ORDER BY CREATED_AT DESC LIMIT 1
+        """,
+            (list_id,),
+        )
+        list_item_id = cursor.fetchone()[0]
+
+        # Insert stage history record for initial addition
+        cursor.execute(
+            """
+            INSERT INTO player_stage_history
+            (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+            (
+                list_item_id,
+                list_id,
+                player_data.player_id or player_data.cafc_player_id,
+                None,  # No old stage for initial addition
+                player_data.stage or "Stage 1",
+                player_data.reason,
+                player_data.description,
+                current_user.id,
             ),
         )
 
@@ -10790,21 +10873,47 @@ async def update_player_stage(
             status_code=400, detail=f"Stage must be one of: {', '.join(valid_stages)}"
         )
 
+    # Validate reason for Stage 1 and Archived
+    if stage_data.stage == "Stage 1":
+        if not stage_data.reason:
+            raise HTTPException(
+                status_code=400, detail="Reason is required when moving to Stage 1"
+            )
+        if stage_data.reason not in STAGE_1_REASONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid reason for Stage 1. Must be one of: {', '.join(STAGE_1_REASONS)}"
+            )
+    elif stage_data.stage == "Archived":
+        if not stage_data.reason:
+            raise HTTPException(
+                status_code=400, detail="Reason is required when archiving a player"
+            )
+        if stage_data.reason not in ARCHIVED_REASONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid reason for Archived. Must be one of: {', '.join(ARCHIVED_REASONS)}"
+            )
+
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check if item exists in the list
+        # Check if item exists and get current stage and player_id
         cursor.execute(
             """
-            SELECT ID FROM player_list_items
+            SELECT STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM player_list_items
             WHERE ID = %s AND LIST_ID = %s
         """,
             (item_id, list_id),
         )
-        if not cursor.fetchone():
+        result = cursor.fetchone()
+        if not result:
             raise HTTPException(status_code=404, detail="Player not found in list")
+
+        old_stage = result[0]
+        player_id = result[1] or result[2]
 
         # Update the stage
         cursor.execute(
@@ -10815,6 +10924,26 @@ async def update_player_stage(
         """,
             (stage_data.stage, item_id, list_id),
         )
+
+        # Insert history record if moving to Stage 1 or Archived
+        if stage_data.stage in ["Stage 1", "Archived"]:
+            cursor.execute(
+                """
+                INSERT INTO player_stage_history
+                (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+                (
+                    item_id,
+                    list_id,
+                    player_id,
+                    old_stage,
+                    stage_data.stage,
+                    stage_data.reason,
+                    stage_data.description,
+                    current_user.id,
+                ),
+            )
 
         # Update list timestamp
         cursor.execute(
@@ -10840,6 +10969,100 @@ async def update_player_stage(
             conn.rollback()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error updating player stage: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/stage-change-reasons")
+async def get_stage_change_reasons(
+    stage: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get valid reasons for a stage change"""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and senior managers can access stage reasons"
+        )
+
+    if stage == "stage1":
+        return {"reasons": STAGE_1_REASONS}
+    elif stage == "archived":
+        return {"reasons": ARCHIVED_REASONS}
+    else:
+        raise HTTPException(
+            status_code=400, detail="Invalid stage. Must be 'stage1' or 'archived'"
+        )
+
+
+@app.get("/player-lists/{list_id}/players/{item_id}/stage-history")
+async def get_player_stage_history(
+    list_id: int,
+    item_id: int,
+    current_user: User = Depends(get_current_user)
+):
+    """Get stage change history for a player in a list"""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and senior managers can view stage history"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if item exists in the list
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE ID = %s AND LIST_ID = %s
+        """,
+            (item_id, list_id),
+        )
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Player not found in list")
+
+        # Get stage history with user names
+        cursor.execute(
+            """
+            SELECT
+                psh.ID,
+                psh.OLD_STAGE,
+                psh.NEW_STAGE,
+                psh.REASON,
+                psh.DESCRIPTION,
+                psh.CHANGED_BY,
+                psh.CHANGED_AT,
+                u.FULL_NAME as CHANGED_BY_NAME
+            FROM player_stage_history psh
+            LEFT JOIN users u ON psh.CHANGED_BY = u.ID
+            WHERE psh.LIST_ITEM_ID = %s
+            ORDER BY psh.CHANGED_AT DESC
+        """,
+            (item_id,),
+        )
+
+        history_records = []
+        for row in cursor.fetchall():
+            history_records.append({
+                "id": row[0],
+                "oldStage": row[1],
+                "newStage": row[2],
+                "reason": row[3],
+                "description": row[4],
+                "changedBy": row[5],
+                "changedAt": row[6].isoformat() if row[6] else None,
+                "changedByName": row[7]
+            })
+
+        return {"history": history_records}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching stage history: {e}")
     finally:
         if conn:
             conn.close()
