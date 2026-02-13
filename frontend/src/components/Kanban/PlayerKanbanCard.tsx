@@ -38,6 +38,7 @@ export interface PlayerInList {
 interface PlayerKanbanCardProps {
   player: PlayerInList;
   onRemove: (itemId: number) => void;
+  onViewHistory?: (player: PlayerInList) => void;
   isRemoving: boolean;
   hasUnsavedChanges?: boolean;
   isPendingRemoval?: boolean;
@@ -48,6 +49,7 @@ interface PlayerKanbanCardProps {
 const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
   player,
   onRemove,
+  onViewHistory,
   isRemoving,
   hasUnsavedChanges = false,
   isPendingRemoval = false,
@@ -184,7 +186,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
             </Col>
           </Row>
 
-          {/* Status Badges and Remove Button */}
+          {/* Status Badges and Action Buttons */}
           <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
             <div className="d-flex gap-1">
               {hasUnsavedChanges && !isPendingRemoval && (
@@ -203,23 +205,45 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
                 </Badge>
               )}
             </div>
-            <button
-              className="remove-btn btn btn-outline-danger btn-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(player.item_id);
-              }}
-              disabled={isRemoving}
-              style={{
-                borderRadius: "50%",
-                width: "28px",
-                height: "28px",
-                padding: "0",
-                lineHeight: "1",
-              }}
-            >
-              {isRemoving ? "..." : "×"}
-            </button>
+            <div className="d-flex gap-1">
+              {onViewHistory && (
+                <button
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewHistory(player);
+                  }}
+                  title="View stage history"
+                  style={{
+                    borderRadius: "50%",
+                    width: "28px",
+                    height: "28px",
+                    padding: "0",
+                    lineHeight: "1",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  📊
+                </button>
+              )}
+              <button
+                className="remove-btn btn btn-outline-danger btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(player.item_id);
+                }}
+                disabled={isRemoving}
+                style={{
+                  borderRadius: "50%",
+                  width: "28px",
+                  height: "28px",
+                  padding: "0",
+                  lineHeight: "1",
+                }}
+              >
+                {isRemoving ? "..." : "×"}
+              </button>
+            </div>
           </div>
         </Card.Body>
       </Card>

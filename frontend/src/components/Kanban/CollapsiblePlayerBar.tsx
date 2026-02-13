@@ -46,6 +46,7 @@ interface CollapsiblePlayerBarProps {
   loadingMemberships?: boolean;
   onOpenNotes?: (player: PlayerInList) => void;
   onToggleFavorite?: (universalId: string) => void;
+  onViewHistory?: (player: PlayerInList) => void;
   isFavorited?: boolean;
 }
 
@@ -59,6 +60,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
   loadingMemberships,
   onOpenNotes,
   onToggleFavorite,
+  onViewHistory,
   isFavorited = false,
 }) => {
   const navigate = useNavigate();
@@ -323,6 +325,32 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                 title={isFavorited ? "Remove from favorites" : "Add to favorites"}
               >
                 {isFavorited ? "⭐" : "☆"}
+              </button>
+            )}
+
+            {/* History Button */}
+            {onViewHistory && (
+              <button
+                className="action-btn btn btn-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewHistory(player);
+                }}
+                style={{
+                  borderRadius: "50%",
+                  width: "24px",
+                  height: "24px",
+                  padding: "0",
+                  lineHeight: "1",
+                  fontSize: "0.8rem",
+                  flexShrink: 0,
+                  border: "1px solid #d1d5db",
+                  backgroundColor: "white",
+                  color: "#6b7280",
+                }}
+                title="View stage history"
+              >
+                📊
               </button>
             )}
 

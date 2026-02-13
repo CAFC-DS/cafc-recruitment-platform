@@ -1068,6 +1068,7 @@ const KanbanPage: React.FC = () => {
             loadingMemberships={loadingMemberships}
             onOpenNotes={handleOpenNotesModal}
             onToggleFavorite={handleToggleFavorite}
+            onViewHistory={openStageHistory}
             playerFavorites={playerFavorites}
           />
 

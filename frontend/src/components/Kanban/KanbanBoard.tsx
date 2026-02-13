@@ -43,6 +43,7 @@ interface KanbanBoardProps {
   loadingMemberships?: boolean;
   onOpenNotes?: (player: PlayerInList) => void;
   onToggleFavorite?: (universalId: string) => void;
+  onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
 }
 
@@ -86,6 +87,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   loadingMemberships,
   onOpenNotes,
   onToggleFavorite,
+  onViewHistory,
   playerFavorites,
 }) => {
   // Track the active player being dragged for the DragOverlay
@@ -361,6 +363,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             loadingMemberships={loadingMemberships}
             onOpenNotes={onOpenNotes}
             onToggleFavorite={onToggleFavorite}
+            onViewHistory={onViewHistory}
             playerFavorites={playerFavorites}
           />
         ))}

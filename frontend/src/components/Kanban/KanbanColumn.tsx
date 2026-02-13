@@ -47,6 +47,7 @@ interface KanbanColumnProps {
   loadingMemberships?: boolean;
   onOpenNotes?: (player: PlayerInList) => void;
   onToggleFavorite?: (universalId: string) => void;
+  onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
 }
 
@@ -87,6 +88,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   loadingMemberships,
   onOpenNotes,
   onToggleFavorite,
+  onViewHistory,
   playerFavorites,
 }) => {
   // Setup droppable area with @dnd-kit
@@ -270,6 +272,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 loadingMemberships={loadingMemberships}
                 onOpenNotes={onOpenNotes}
                 onToggleFavorite={onToggleFavorite}
+                onViewHistory={onViewHistory}
                 isFavorited={playerFavorites?.has(player.universal_id) || false}
               />
             ))
