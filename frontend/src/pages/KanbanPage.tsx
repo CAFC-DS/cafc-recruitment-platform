@@ -163,6 +163,9 @@ const KanbanPage: React.FC = () => {
     playerName: string;
   } | null>(null);
 
+  // Temporary player selection for add modal
+  const [tempSelectedPlayer, setTempSelectedPlayer] = useState<PlayerSearchResult | null>(null);
+
   // Permission check - redirect if unauthorized
   useEffect(() => {
     if (!userLoading && !canAccessLists) {
@@ -585,14 +588,38 @@ const KanbanPage: React.FC = () => {
   const handleAddPlayer = async (player: PlayerSearchResult) => {
     if (!currentListId) return;
 
+    // Store selected player and open reason modal
+    setTempSelectedPlayer(player);
+    setStageReasonModalData({
+      playerName: player.player_name,
+      targetStage: "Stage 1",
+      itemId: -1, // Not applicable for new additions
+      oldStage: "",
+      listId: currentListId,
+    });
+    setShowAddPlayerModal(false);
+    setShowStageReasonModal(true);
+  };
+
+  // Confirm adding player with reason
+  const confirmAddPlayer = async (reason: string, description?: string) => {
+    if (!currentListId || !tempSelectedPlayer) return;
+
     try {
       setAddingPlayer(true);
       setError(null);
 
-      await addPlayerToList(currentListId, player.universal_id);
+      await addPlayerToList(
+        currentListId,
+        tempSelectedPlayer.universal_id,
+        reason,
+        description
+      );
       await refetch();
 
-      setShowAddPlayerModal(false);
+      setShowStageReasonModal(false);
+      setStageReasonModalData(null);
+      setTempSelectedPlayer(null);
       setCurrentListId(null);
       setPlayerSearchQuery("");
       setPlayerSearchResults([]);
@@ -1254,6 +1281,7 @@ const KanbanPage: React.FC = () => {
         onHide={() => {
           setShowStageReasonModal(false);
           setStageReasonModalData(null);
+          setTempSelectedPlayer(null);
         }}
         playerName={stageReasonModalData?.playerName || ""}
         targetStage={stageReasonModalData?.targetStage || "Stage 1"}
@@ -1262,8 +1290,12 @@ const KanbanPage: React.FC = () => {
             ? stage1Reasons
             : archivedReasons
         }
-        onConfirm={confirmStageChange}
-        loading={savingChanges}
+        onConfirm={
+          stageReasonModalData?.itemId === -1
+            ? confirmAddPlayer
+            : confirmStageChange
+        }
+        loading={addingPlayer || savingChanges}
       />
 
       {/* Stage History Modal */}
