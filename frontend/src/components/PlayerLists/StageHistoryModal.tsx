@@ -137,54 +137,55 @@ const StageHistoryModal: React.FC<StageHistoryModalProps> = ({
         )}
 
         {!loading && !error && history.length > 0 && (
-          <div className="timeline">
-            {history.map((record, index) => (
-              <div
-                key={record.id}
-                className="timeline-item mb-4 pb-3"
-                style={{
-                  borderBottom: index < history.length - 1 ? "1px solid #e5e7eb" : "none",
-                }}
-              >
-                <div className="d-flex justify-content-between align-items-start mb-2">
-                  <div>
-                    <strong style={{ fontSize: "0.9rem" }}>
-                      {formatDate(record.changedAt)}
-                    </strong>
-                    <div className="text-muted" style={{ fontSize: "0.8rem" }}>
-                      by {record.changedByName || `User #${record.changedBy}`}
-                    </div>
-                  </div>
-                  {renderStageTransition(record)}
-                </div>
-
-                <div className="mt-2">
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <span
-                      className="badge bg-secondary"
-                      style={{ fontSize: "0.75rem" }}
-                    >
-                      Reason
-                    </span>
-                    <span style={{ fontSize: "0.85rem" }}>{record.reason}</span>
-                  </div>
-
-                  {record.description && (
-                    <div
-                      className="mt-2 p-2"
-                      style={{
-                        backgroundColor: "#f9fafb",
-                        borderLeft: "3px solid #d1d5db",
-                        fontSize: "0.85rem",
-                        color: "#4b5563",
-                      }}
-                    >
-                      {record.description}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="table-responsive">
+            <table className="table table-hover" style={{ fontSize: "0.85rem" }}>
+              <thead style={{ backgroundColor: "#f9fafb" }}>
+                <tr>
+                  <th style={{ width: "20%" }}>Date & Time</th>
+                  <th style={{ width: "15%" }}>Changed By</th>
+                  <th style={{ width: "25%" }}>Stage Transition</th>
+                  <th style={{ width: "15%" }}>Reason</th>
+                  <th style={{ width: "25%" }}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((record) => (
+                  <tr key={record.id}>
+                    <td style={{ verticalAlign: "top" }}>
+                      <div style={{ fontSize: "0.85rem" }}>
+                        {formatDate(record.changedAt)}
+                      </div>
+                    </td>
+                    <td style={{ verticalAlign: "top" }}>
+                      <div style={{ fontSize: "0.85rem" }}>
+                        {record.changedByName || `User #${record.changedBy}`}
+                      </div>
+                    </td>
+                    <td style={{ verticalAlign: "top" }}>
+                      {renderStageTransition(record)}
+                    </td>
+                    <td style={{ verticalAlign: "top" }}>
+                      <span style={{ fontSize: "0.85rem" }}>{record.reason}</span>
+                    </td>
+                    <td style={{ verticalAlign: "top" }}>
+                      {record.description ? (
+                        <div
+                          style={{
+                            fontSize: "0.85rem",
+                            color: "#4b5563",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {record.description}
+                        </div>
+                      ) : (
+                        <span className="text-muted" style={{ fontSize: "0.85rem" }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Modal.Body>

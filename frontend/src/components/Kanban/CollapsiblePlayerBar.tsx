@@ -273,109 +273,6 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
               ARCHIVED
             </Badge>
           )}
-
-          {/* Action Buttons */}
-          <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-            {/* Notes Button */}
-            {onOpenNotes && (
-              <button
-                className="action-btn btn btn-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenNotes(player);
-                }}
-                style={{
-                  borderRadius: "50%",
-                  width: "24px",
-                  height: "24px",
-                  padding: "0",
-                  lineHeight: "1",
-                  fontSize: "0.8rem",
-                  flexShrink: 0,
-                  border: "1px solid #d1d5db",
-                  backgroundColor: "white",
-                  color: "#6b7280",
-                }}
-                title="Add/Edit Notes"
-              >
-                📝
-              </button>
-            )}
-
-            {/* Favorite Button */}
-            {onToggleFavorite && (
-              <button
-                className="action-btn btn btn-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(player.universal_id);
-                }}
-                style={{
-                  borderRadius: "50%",
-                  width: "24px",
-                  height: "24px",
-                  padding: "0",
-                  lineHeight: "1",
-                  fontSize: "0.8rem",
-                  flexShrink: 0,
-                  border: "1px solid #d1d5db",
-                  backgroundColor: "white",
-                  color: isFavorited ? "#FFD700" : "#6b7280",
-                }}
-                title={isFavorited ? "Remove from favorites" : "Add to favorites"}
-              >
-                {isFavorited ? "⭐" : "☆"}
-              </button>
-            )}
-
-            {/* History Button */}
-            {onViewHistory && (
-              <button
-                className="action-btn btn btn-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewHistory(player);
-                }}
-                style={{
-                  borderRadius: "50%",
-                  width: "24px",
-                  height: "24px",
-                  padding: "0",
-                  lineHeight: "1",
-                  fontSize: "0.8rem",
-                  flexShrink: 0,
-                  border: "1px solid #d1d5db",
-                  backgroundColor: "white",
-                  color: "#6b7280",
-                }}
-                title="View stage history"
-              >
-                📊
-              </button>
-            )}
-
-            {/* Remove Button */}
-            <button
-              className="action-btn btn btn-outline-danger btn-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(player.item_id);
-              }}
-              disabled={isRemoving}
-              style={{
-                borderRadius: "50%",
-                width: "24px",
-                height: "24px",
-                padding: "0",
-                lineHeight: "1",
-                fontSize: "1rem",
-                flexShrink: 0,
-              }}
-              title="Remove from list"
-            >
-              {isRemoving ? "..." : "🗑️"}
-            </button>
-          </div>
         </div>
 
         {/* Expanded Details */}
@@ -415,7 +312,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
               </div>
 
               {/* List Memberships */}
-              <div style={{ marginBottom: "8px" }}>
+              <div style={{ marginBottom: "12px" }}>
                 <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "6px", fontWeight: "600" }}>
                   Lists:
                 </div>
@@ -426,6 +323,84 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                   memberships={memberships}
                   loading={loadingMemberships}
                 />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
+                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                  {/* Notes Button */}
+                  {onOpenNotes && (
+                    <button
+                      className="action-btn btn btn-sm btn-outline-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenNotes(player);
+                      }}
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "4px 12px",
+                      }}
+                      title="Add/Edit Notes"
+                    >
+                      📝 Notes
+                    </button>
+                  )}
+
+                  {/* Favorite Button */}
+                  {onToggleFavorite && (
+                    <button
+                      className="action-btn btn btn-sm btn-outline-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(player.universal_id);
+                      }}
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "4px 12px",
+                        color: isFavorited ? "#FFD700" : undefined,
+                        borderColor: isFavorited ? "#FFD700" : undefined,
+                      }}
+                      title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      {isFavorited ? "⭐ Favorited" : "☆ Favorite"}
+                    </button>
+                  )}
+
+                  {/* History Button */}
+                  {onViewHistory && (
+                    <button
+                      className="action-btn btn btn-sm btn-outline-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onViewHistory(player);
+                      }}
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "4px 12px",
+                      }}
+                      title="View stage history"
+                    >
+                      📊 History
+                    </button>
+                  )}
+
+                  {/* Remove Button */}
+                  <button
+                    className="action-btn btn btn-sm btn-outline-danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(player.item_id);
+                    }}
+                    disabled={isRemoving}
+                    style={{
+                      fontSize: "0.8rem",
+                      padding: "4px 12px",
+                    }}
+                    title="Remove from list"
+                  >
+                    {isRemoving ? "Removing..." : "🗑️ Remove"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
