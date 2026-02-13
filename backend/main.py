@@ -11038,7 +11038,10 @@ async def get_player_stage_history(
                 psh.DESCRIPTION,
                 psh.CHANGED_BY,
                 psh.CHANGED_AT,
-                u.FULL_NAME as CHANGED_BY_NAME
+                COALESCE(
+                    CONCAT(u.FIRSTNAME, ' ', u.LASTNAME),
+                    u.USERNAME
+                ) as CHANGED_BY_NAME
             FROM player_stage_history psh
             LEFT JOIN users u ON psh.CHANGED_BY = u.ID
             WHERE psh.LIST_ITEM_ID = %s
