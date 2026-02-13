@@ -9794,35 +9794,11 @@ async def create_player_list(
             """
             )
 
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS player_stage_history (
-                    ID INTEGER AUTOINCREMENT,
-                    LIST_ITEM_ID INTEGER NOT NULL,
-                    LIST_ID INTEGER NOT NULL,
-                    PLAYER_ID INTEGER,
-                    OLD_STAGE VARCHAR(100),
-                    NEW_STAGE VARCHAR(100) NOT NULL,
-                    REASON VARCHAR(255) NOT NULL,
-                    DESCRIPTION VARCHAR(2000),
-                    CHANGED_BY INTEGER NOT NULL,
-                    CHANGED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (ID),
-                    FOREIGN KEY (LIST_ITEM_ID) REFERENCES player_list_items(ID),
-                    FOREIGN KEY (LIST_ID) REFERENCES player_lists(ID),
-                    FOREIGN KEY (CHANGED_BY) REFERENCES users(ID)
-                )
-            """
-            )
-
             # Create indexes for performance optimization
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_list_id ON player_list_items(LIST_ID)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_player_id ON player_list_items(PLAYER_ID)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_pli_cafc_player_id ON player_list_items(CAFC_PLAYER_ID)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_sr_scouting_type ON scout_reports(SCOUTING_TYPE)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_item_id ON player_stage_history(LIST_ITEM_ID)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_id ON player_stage_history(LIST_ID)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_player_id ON player_stage_history(PLAYER_ID)")
         except Exception as e:
             logging.warning(f"Tables/indexes may already exist: {e}")
 
@@ -10615,6 +10591,34 @@ async def add_player_to_list(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+
+        # Create player_stage_history table if it doesn't exist (lazy initialization)
+        try:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS player_stage_history (
+                    ID INTEGER AUTOINCREMENT,
+                    LIST_ITEM_ID INTEGER NOT NULL,
+                    LIST_ID INTEGER NOT NULL,
+                    PLAYER_ID INTEGER,
+                    OLD_STAGE VARCHAR(100),
+                    NEW_STAGE VARCHAR(100) NOT NULL,
+                    REASON VARCHAR(255) NOT NULL,
+                    DESCRIPTION VARCHAR(2000),
+                    CHANGED_BY INTEGER NOT NULL,
+                    CHANGED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (ID),
+                    FOREIGN KEY (LIST_ITEM_ID) REFERENCES player_list_items(ID),
+                    FOREIGN KEY (LIST_ID) REFERENCES player_lists(ID),
+                    FOREIGN KEY (CHANGED_BY) REFERENCES users(ID)
+                )
+            """
+            )
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_item_id ON player_stage_history(LIST_ITEM_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_id ON player_stage_history(LIST_ID)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_player_id ON player_stage_history(PLAYER_ID)")
+        except Exception as e:
+            logging.debug(f"player_stage_history table/indexes may already exist: {e}")
 
         # Check if list exists
         cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
