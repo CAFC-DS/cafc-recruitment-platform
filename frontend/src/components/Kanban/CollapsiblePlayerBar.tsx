@@ -327,7 +327,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
 
               {/* Action Buttons */}
               <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "12px" }}>
-                <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
                   {/* Notes Button */}
                   {onOpenNotes && (
                     <button
@@ -337,12 +337,13 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                         onOpenNotes(player);
                       }}
                       style={{
-                        fontSize: "0.8rem",
-                        padding: "4px 12px",
+                        fontSize: "1rem",
+                        padding: "4px 8px",
+                        minWidth: "36px",
                       }}
                       title="Add/Edit Notes"
                     >
-                      📝 Notes
+                      📝
                     </button>
                   )}
 
@@ -355,14 +356,15 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                         onToggleFavorite(player.universal_id);
                       }}
                       style={{
-                        fontSize: "0.8rem",
-                        padding: "4px 12px",
+                        fontSize: "1rem",
+                        padding: "4px 8px",
+                        minWidth: "36px",
                         color: isFavorited ? "#FFD700" : undefined,
                         borderColor: isFavorited ? "#FFD700" : undefined,
                       }}
                       title={isFavorited ? "Remove from favorites" : "Add to favorites"}
                     >
-                      {isFavorited ? "⭐ Favorited" : "☆ Favorite"}
+                      {isFavorited ? "⭐" : "☆"}
                     </button>
                   )}
 
@@ -375,12 +377,13 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                         onViewHistory(player);
                       }}
                       style={{
-                        fontSize: "0.8rem",
-                        padding: "4px 12px",
+                        fontSize: "1rem",
+                        padding: "4px 8px",
+                        minWidth: "36px",
                       }}
                       title="View stage history"
                     >
-                      📊 History
+                      📊
                     </button>
                   )}
 
@@ -393,12 +396,13 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                     }}
                     disabled={isRemoving}
                     style={{
-                      fontSize: "0.8rem",
-                      padding: "4px 12px",
+                      fontSize: "1rem",
+                      padding: "4px 8px",
+                      minWidth: "36px",
                     }}
                     title="Remove from list"
                   >
-                    {isRemoving ? "Removing..." : "🗑️ Remove"}
+                    {isRemoving ? "..." : "🗑️"}
                   </button>
                 </div>
               </div>

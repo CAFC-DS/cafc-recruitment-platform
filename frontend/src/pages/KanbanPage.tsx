@@ -97,6 +97,7 @@ const KanbanPage: React.FC = () => {
   // Filter states
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
+  const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
 
   // Pitch view expanded toggle
   const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
@@ -229,11 +230,14 @@ const KanbanPage: React.FC = () => {
         apiFilters.stages = filters.stages.join(",");
       }
 
+      // Include archived reports in counts
+      apiFilters.includeArchivedReports = includeArchivedReports;
+
       setDebouncedFilters(apiFilters);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [filters, includeArchivedReports]);
 
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
@@ -955,6 +959,8 @@ const KanbanPage: React.FC = () => {
             onClearFilters={handleClearFilters}
             showArchived={showArchived}
             onShowArchivedChange={setShowArchived}
+            includeArchivedReports={includeArchivedReports}
+            onIncludeArchivedReportsChange={setIncludeArchivedReports}
           />
 
           {/* Actions Container */}
@@ -1025,6 +1031,11 @@ const KanbanPage: React.FC = () => {
                   >
                     {sortDirection === "asc" ? "↑" : "↓"}
                   </Button>
+                  {includeArchivedReports && (
+                    <Badge bg="secondary" className="ms-2" style={{ fontSize: "0.7rem" }}>
+                      Report counts incl. archived
+                    </Badge>
+                  )}
                 </>
               )}
             </div>

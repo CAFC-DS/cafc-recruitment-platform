@@ -121,6 +121,10 @@ const PlayerListsPage: React.FC = () => {
   // Local error
   const [error, setError] = useState<string | null>(null);
 
+  // Show archived state (not part of API filters)
+  const [showArchived, setShowArchived] = useState(false);
+  const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
+
   // Visible lists (multi-select)
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
 
@@ -252,14 +256,14 @@ const PlayerListsPage: React.FC = () => {
         apiFilters.stages = filters.stages.join(",");
       }
 
+      // Include archived reports in counts
+      apiFilters.includeArchivedReports = includeArchivedReports;
+
       setDebouncedFilters(apiFilters);
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [filters]);
-
-  // Show archived state (not part of API filters)
-  const [showArchived, setShowArchived] = useState(false);
+  }, [filters, includeArchivedReports]);
 
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
@@ -865,6 +869,8 @@ const PlayerListsPage: React.FC = () => {
             onClearFilters={handleClearFilters}
             showArchived={showArchived}
             onShowArchivedChange={setShowArchived}
+            includeArchivedReports={includeArchivedReports}
+            onIncludeArchivedReportsChange={setIncludeArchivedReports}
           />
 
           {/* Actions Container */}
@@ -946,6 +952,11 @@ const PlayerListsPage: React.FC = () => {
                   >
                     {sortDirection === "asc" ? "↑" : "↓"}
                   </Button>
+                  {includeArchivedReports && (
+                    <Badge bg="secondary" className="ms-2" style={{ fontSize: "0.7rem" }}>
+                      Report counts incl. archived
+                    </Badge>
+                  )}
                 </>
               )}
             </div>

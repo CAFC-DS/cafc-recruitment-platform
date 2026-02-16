@@ -83,6 +83,7 @@ export interface PlayerListFilters {
   maxReports?: number;
   stages?: string; // Comma-separated
   recencyMonths?: number;
+  includeArchivedReports?: boolean;
 }
 
 /**
@@ -105,6 +106,7 @@ export const getAllListsWithDetails = async (
     if (filters.maxReports !== undefined) params.append("max_reports", filters.maxReports.toString());
     if (filters.stages) params.append("stages", filters.stages);
     if (filters.recencyMonths !== undefined) params.append("recency_months", filters.recencyMonths.toString());
+    if (filters.includeArchivedReports !== undefined) params.append("include_archived", filters.includeArchivedReports.toString());
   }
 
   const url = params.toString()
@@ -118,8 +120,20 @@ export const getAllListsWithDetails = async (
 /**
  * Get a specific player list with player details
  */
-export const getPlayerListDetails = async (listId: number): Promise<ListWithPlayers> => {
-  const response = await axiosInstance.get(`/player-lists/${listId}`);
+export const getPlayerListDetails = async (
+  listId: number,
+  includeArchivedReports?: boolean
+): Promise<ListWithPlayers> => {
+  const params = new URLSearchParams();
+  if (includeArchivedReports !== undefined) {
+    params.append("include_archived", includeArchivedReports.toString());
+  }
+
+  const url = params.toString()
+    ? `/player-lists/${listId}?${params.toString()}`
+    : `/player-lists/${listId}`;
+
+  const response = await axiosInstance.get(url);
   return response.data;
 };
 

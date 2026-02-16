@@ -22,6 +22,8 @@ interface AdvancedFiltersProps {
   onClearFilters: () => void;
   showArchived: boolean;
   onShowArchivedChange: (show: boolean) => void;
+  includeArchivedReports: boolean;
+  onIncludeArchivedReportsChange: (include: boolean) => void;
 }
 
 const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
@@ -34,6 +36,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   onClearFilters,
   showArchived,
   onShowArchivedChange,
+  includeArchivedReports,
+  onIncludeArchivedReportsChange,
 }) => {
   return (
     <Card className="mb-3">
@@ -256,14 +260,41 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             </Col>
             <Col md={4}>
               <Form.Group>
-                <Form.Label className="small fw-bold">Show Archived</Form.Label>
-                <Form.Check
-                  type="checkbox"
-                  id="show-archived-checkbox"
-                  label="Include archived players"
-                  checked={showArchived}
-                  onChange={(e) => onShowArchivedChange(e.target.checked)}
-                />
+                <Form.Label className="small fw-bold">Include Options</Form.Label>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="outline-secondary"
+                    size="sm"
+                    className="w-100 text-start"
+                  >
+                    {showArchived || includeArchivedReports
+                      ? `${[showArchived && "Archived players", includeArchivedReports && "Archived reports"].filter(Boolean).join(", ")}`
+                      : "None selected"}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu
+                    className="p-2"
+                    style={{ minWidth: "250px" }}
+                  >
+                    <div className="px-2 py-1">
+                      <Form.Check
+                        type="checkbox"
+                        id="show-archived-checkbox"
+                        label="Include archived players"
+                        checked={showArchived}
+                        onChange={(e) => onShowArchivedChange(e.target.checked)}
+                      />
+                    </div>
+                    <div className="px-2 py-1">
+                      <Form.Check
+                        type="checkbox"
+                        id="include-archived-reports-checkbox"
+                        label="Include archived reports in counts"
+                        checked={includeArchivedReports}
+                        onChange={(e) => onIncludeArchivedReportsChange(e.target.checked)}
+                      />
+                    </div>
+                  </Dropdown.Menu>
+                </Dropdown>
               </Form.Group>
             </Col>
           </Row>

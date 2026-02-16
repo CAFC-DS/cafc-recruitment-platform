@@ -9958,6 +9958,7 @@ async def get_all_lists_with_details(
     max_reports: Optional[int] = None,
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
     recency_months: Optional[int] = None,
+    include_archived: bool = False,  # Include archived reports in counts
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -10118,6 +10119,7 @@ async def get_all_lists_with_details(
             external_ids_str = ",".join(str(pid) for pid in all_player_ids) if all_player_ids else "NULL"
             internal_ids_str = ",".join(str(cid) for cid in all_cafc_ids) if all_cafc_ids else "NULL"
 
+            archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
             cursor.execute(
                 f"""
                 SELECT
@@ -10130,6 +10132,7 @@ async def get_all_lists_with_details(
                     MAX(sr.CREATED_AT) as last_report_date
                 FROM scout_reports sr
                 WHERE (sr.PLAYER_ID IN ({external_ids_str}) OR sr.CAFC_PLAYER_ID IN ({internal_ids_str}))
+                {archived_filter}
                 GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
                 """
             )
@@ -10237,7 +10240,9 @@ async def get_all_lists_with_details(
 
 @app.get("/player-lists/{list_id}")
 async def get_player_list_detail(
-    list_id: int, current_user: User = Depends(get_current_user)
+    list_id: int,
+    include_archived: bool = False,
+    current_user: User = Depends(get_current_user)
 ):
     """Get a specific player list with enriched player data"""
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
@@ -10348,6 +10353,7 @@ async def get_player_list_detail(
                     params.extend(internal_ids)
 
                 where_clause = ' OR '.join(conditions)
+                archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
 
                 cursor.execute(
                     f"""
@@ -10362,6 +10368,7 @@ async def get_player_list_detail(
                     WHERE ({where_clause})
                       AND sr.PERFORMANCE_SCORE IS NOT NULL
                       AND sr.PERFORMANCE_SCORE > 0
+                      {archived_filter}
                     GROUP BY sr.PLAYER_ID, sr.CAFC_PLAYER_ID
                 """,
                     params,
