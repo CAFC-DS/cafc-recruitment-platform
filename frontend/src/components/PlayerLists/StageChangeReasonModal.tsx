@@ -13,11 +13,17 @@ interface StageChangeReasonModalProps {
 
 const MAX_DESCRIPTION_CHARS = 500;
 
+const STAGE_2_AUTO_ADVANCE_REASONS = [
+  "Flagged by Live Scouting",
+  "Flagged by Video Scouting",
+];
+
 /**
  * StageChangeReasonModal Component
  *
  * Modal for selecting a reason when moving a player to Stage 1 or Archived.
  * Requires a reason selection and allows optional description.
+ * For Live/Video Scouting reasons, the player is automatically placed in Stage 2.
  */
 const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
   show,
@@ -56,8 +62,18 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
   const canConfirm = selectedReason && !isOverLimit && !loading;
 
   const title = targetStage === "Stage 1"
-    ? `Adding ${playerName} to Stage 1`
+    ? `Adding ${playerName}`
     : `Archiving ${playerName}`;
+
+  const effectiveStage =
+    targetStage === "Stage 1" && selectedReason && STAGE_2_AUTO_ADVANCE_REASONS.includes(selectedReason)
+      ? "Stage 2"
+      : targetStage;
+
+  const stagePlacementNote =
+    targetStage === "Stage 1" && selectedReason
+      ? `This will place the player in ${effectiveStage}.`
+      : null;
 
   return (
     <Modal show={show} onHide={handleClose} size="lg" centered>
@@ -88,9 +104,21 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
                 </option>
               ))}
             </Form.Select>
-            <Form.Text className="text-muted">
-              Please select why this player is {targetStage === "Stage 1" ? "being added" : "being archived"}.
-            </Form.Text>
+            {stagePlacementNote && (
+              <Form.Text
+                style={{
+                  color: effectiveStage === "Stage 2" ? "#f59e0b" : "#6b7280",
+                  fontWeight: 500,
+                }}
+              >
+                {stagePlacementNote}
+              </Form.Text>
+            )}
+            {!stagePlacementNote && (
+              <Form.Text className="text-muted">
+                Please select why this player is {targetStage === "Stage 1" ? "being added" : "being archived"}.
+              </Form.Text>
+            )}
           </Form.Group>
 
           <Form.Group>

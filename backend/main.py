@@ -625,8 +625,15 @@ STAGE_1_REASONS = [
     "Flagged by Data",
     "Flagged by Live Scouting",
     "Flagged by Video Scouting",
-    "Flagged by Recommendation",
-    "Flagged by Online Noise"
+    "Flagged by Internal Recommendation",
+    "Flagged by External Recommendation",
+    "Flagged by Potential Availability"
+]
+
+# Reasons that auto-advance the player to Stage 2 instead of Stage 1
+STAGE_2_AUTO_ADVANCE_REASONS = [
+    "Flagged by Live Scouting",
+    "Flagged by Video Scouting"
 ]
 
 ARCHIVED_REASONS = [
@@ -635,7 +642,11 @@ ARCHIVED_REASONS = [
     "Availability",
     "Moved Club",
     "Scouting",
-    "Data"
+    "Data",
+    "Signed",
+    "Character",
+    "Suitability",
+    "Medical"
 ]
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -10594,6 +10605,10 @@ async def add_player_to_list(
             detail=f"Invalid reason. Must be one of: {', '.join(STAGE_1_REASONS)}"
         )
 
+    # Auto-advance to Stage 2 for Live/Video Scouting reasons
+    if player_data.reason in STAGE_2_AUTO_ADVANCE_REASONS:
+        player_data.stage = "Stage 2"
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -10895,6 +10910,9 @@ async def update_player_stage(
                 status_code=400,
                 detail=f"Invalid reason for Stage 1. Must be one of: {', '.join(STAGE_1_REASONS)}"
             )
+        # Auto-advance to Stage 2 for Live/Video Scouting reasons
+        if stage_data.reason in STAGE_2_AUTO_ADVANCE_REASONS:
+            stage_data.stage = "Stage 2"
     elif stage_data.stage == "Archived":
         if not stage_data.reason:
             raise HTTPException(
@@ -10936,8 +10954,8 @@ async def update_player_stage(
             (stage_data.stage, item_id, list_id),
         )
 
-        # Insert history record if moving to Stage 1 or Archived
-        if stage_data.stage in ["Stage 1", "Archived"]:
+        # Insert history record if moving to Stage 1, Archived, or auto-advanced to Stage 2
+        if stage_data.stage in ["Stage 1", "Archived"] or (stage_data.stage == "Stage 2" and stage_data.reason in STAGE_2_AUTO_ADVANCE_REASONS):
             cursor.execute(
                 """
                 INSERT INTO player_stage_history

@@ -99,8 +99,9 @@ export type Stage1Reason =
   | "Flagged by Data"
   | "Flagged by Live Scouting"
   | "Flagged by Video Scouting"
-  | "Flagged by Recommendation"
-  | "Flagged by Online Noise";
+  | "Flagged by Internal Recommendation"
+  | "Flagged by External Recommendation"
+  | "Flagged by Potential Availability";
 
 export type ArchivedReason =
   | "Cost; Salary"
@@ -108,6 +109,10 @@ export type ArchivedReason =
   | "Availability"
   | "Moved Club"
   | "Scouting"
-  | "Data";
+  | "Data"
+  | "Signed"
+  | "Character"
+  | "Suitability"
+  | "Medical";
 
 export type StageChangeReason = Stage1Reason | ArchivedReason;
