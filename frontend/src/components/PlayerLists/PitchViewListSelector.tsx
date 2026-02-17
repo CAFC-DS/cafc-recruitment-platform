@@ -27,13 +27,13 @@ const POSITION_MAP: Record<string, { row: number; col: number }> = {
   GK: { row: 0, col: 2 },
 
   // Defenders (row 1)
-  LB: { row: 1, col: 0 },
+  RB: { row: 1, col: 0 },
+  RWB: { row: 1, col: 0 },
   LCB: { row: 1, col: 1 },
   CB: { row: 1, col: 2 },
   RCB: { row: 1, col: 3 },
-  RB: { row: 1, col: 4 },
-  LWB: { row: 1, col: 0 },
-  RWB: { row: 1, col: 4 },
+  LB: { row: 1, col: 4 },
+  LWB: { row: 1, col: 4 },
 
   // Defensive Midfielders (row 2)
   LDM: { row: 2, col: 1 },

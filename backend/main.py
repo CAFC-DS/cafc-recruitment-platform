@@ -10005,14 +10005,14 @@ async def get_all_lists_with_details(
             LEFT JOIN users u ON pl.USER_ID = u.ID
             ORDER BY
                 CASE
-                    WHEN pl.LIST_NAME LIKE '%- GK%' THEN 1
-                    WHEN pl.LIST_NAME LIKE '%- CB%' THEN 2
-                    WHEN pl.LIST_NAME LIKE '%- RB/RWB%' THEN 3
-                    WHEN pl.LIST_NAME LIKE '%- LB/LWB%' THEN 4
-                    WHEN pl.LIST_NAME LIKE '%- DM/CM%' THEN 5
-                    WHEN pl.LIST_NAME LIKE '%- AM%' THEN 6
-                    WHEN pl.LIST_NAME LIKE '%- W' OR pl.LIST_NAME LIKE '%- W %' THEN 7
-                    WHEN pl.LIST_NAME LIKE '%- CF%' THEN 8
+                    WHEN pl.LIST_NAME LIKE '%GK%' THEN 1
+                    WHEN pl.LIST_NAME LIKE '%RB/RWB%' THEN 2
+                    WHEN pl.LIST_NAME LIKE '%LB/LWB%' THEN 3
+                    WHEN pl.LIST_NAME LIKE '%CB%' THEN 4
+                    WHEN pl.LIST_NAME LIKE '%DM/CM%' THEN 5
+                    WHEN pl.LIST_NAME LIKE '%AM%' THEN 6
+                    WHEN pl.LIST_NAME LIKE '%W%' AND pl.LIST_NAME NOT LIKE '%RWB%' AND pl.LIST_NAME NOT LIKE '%LWB%' THEN 7
+                    WHEN pl.LIST_NAME LIKE '%CF%' THEN 8
                     ELSE 9
                 END,
                 pl.LIST_NAME
@@ -11022,6 +11022,88 @@ async def get_stage_change_reasons(
         raise HTTPException(
             status_code=400, detail="Invalid stage. Must be 'stage1' or 'archived'"
         )
+
+
+class StageHistoryUpdateRequest(BaseModel):
+    reason: str
+    description: Optional[str] = None
+
+
+@app.put("/player-lists/{list_id}/players/{item_id}/stage-history/{history_id}")
+async def update_stage_history_reason(
+    list_id: int,
+    item_id: int,
+    history_id: int,
+    update_data: StageHistoryUpdateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Update the reason and description on an existing stage history record"""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and senior managers can edit stage history"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Fetch the history record to validate it belongs to this item/list and get the stage
+        cursor.execute(
+            """
+            SELECT psh.ID, psh.NEW_STAGE
+            FROM player_stage_history psh
+            JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID
+            WHERE psh.ID = %s AND psh.LIST_ITEM_ID = %s AND psh.LIST_ID = %s
+        """,
+            (history_id, item_id, list_id),
+        )
+        record = cursor.fetchone()
+        if not record:
+            raise HTTPException(status_code=404, detail="Stage history record not found")
+
+        new_stage = record[1]
+
+        # Validate the reason against the correct list for the recorded stage
+        if new_stage == "Stage 1":
+            valid_reasons = STAGE_1_REASONS
+        elif new_stage == "Stage 2" and update_data.reason in STAGE_2_AUTO_ADVANCE_REASONS:
+            valid_reasons = STAGE_2_AUTO_ADVANCE_REASONS
+        elif new_stage == "Archived":
+            valid_reasons = ARCHIVED_REASONS
+        else:
+            # Stage 2/3/4 records that were auto-advanced — allow Stage 1 reasons
+            valid_reasons = STAGE_1_REASONS
+
+        if update_data.reason not in valid_reasons:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid reason for {new_stage}. Must be one of: {', '.join(valid_reasons)}"
+            )
+
+        # Update the history record
+        cursor.execute(
+            """
+            UPDATE player_stage_history
+            SET REASON = %s, DESCRIPTION = %s
+            WHERE ID = %s
+        """,
+            (update_data.reason, update_data.description, history_id),
+        )
+
+        conn.commit()
+        return {"message": "Stage history record updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating stage history: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/player-lists/{list_id}/players/{item_id}/stage-history")

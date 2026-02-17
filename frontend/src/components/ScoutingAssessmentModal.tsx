@@ -1255,6 +1255,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     "Reflexes",
     "Savings 1v1s",
     "Sweeping",
+    "Claims",
     "GK Positioning",
     "Distribution From Hands",
   ].map((s) => ({ value: s, label: s }));
@@ -1332,6 +1333,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     "Reflexes",
     "Savings 1v1s",
     "Sweeping",
+    "Claims",
     "GK Positioning",
     "Distribution From Hands",
   ].map((w) => ({ value: w, label: w }));

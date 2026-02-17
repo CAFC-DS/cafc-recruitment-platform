@@ -837,7 +837,21 @@ const PlayerListsPage: React.FC = () => {
               />
             ) : (
               <div className="d-flex gap-2 flex-wrap align-items-center">
-                {lists.map((list) => {
+                {[...lists].sort((a, b) => {
+                  const getRank = (name: string) => {
+                    const u = name.toUpperCase();
+                    if (/\bGK\b/.test(u)) return 0;
+                    if (u.includes("RB/RWB")) return 1;
+                    if (u.includes("LB/LWB")) return 2;
+                    if (/\bCB\b/.test(u)) return 3;
+                    if (u.includes("DM/CM")) return 4;
+                    if (/\bAM\b/.test(u)) return 5;
+                    if (/\bW\b/.test(u)) return 6;
+                    if (/\bCF\b/.test(u)) return 7;
+                    return 8;
+                  };
+                  return getRank(a.list_name) - getRank(b.list_name);
+                }).map((list) => {
                   const isVisible = visibleListIds.has(list.id);
                   return (
                     <Badge
