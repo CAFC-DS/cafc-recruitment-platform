@@ -262,7 +262,16 @@ const AppNavbar: React.FC = () => {
       const response = await axiosInstance.get(
         `/players/search?query=${encodeURIComponent(query)}&limit=10&offset=0`,
       );
-      const { players = [], has_more = false } = response.data || {};
+
+      // Handle both old format (plain array) and new paginated format ({players, has_more})
+      let players: any[] = [];
+      let has_more = false;
+      if (Array.isArray(response.data)) {
+        players = response.data;
+      } else if (response.data) {
+        players = response.data.players || [];
+        has_more = response.data.has_more || false;
+      }
 
       // Only apply if query hasn't changed during the async call
       if (currentSearchQueryRef.current !== query) return;
@@ -293,7 +302,16 @@ const AppNavbar: React.FC = () => {
       const response = await axiosInstance.get(
         `/players/search?query=${encodeURIComponent(query)}&limit=10&offset=${nextOffset}`,
       );
-      const { players = [], has_more = false } = response.data || {};
+
+      // Handle both old format (plain array) and new paginated format ({players, has_more})
+      let players: any[] = [];
+      let has_more = false;
+      if (Array.isArray(response.data)) {
+        players = response.data;
+      } else if (response.data) {
+        players = response.data.players || [];
+        has_more = response.data.has_more || false;
+      }
 
       if (currentSearchQueryRef.current !== query) return;
 

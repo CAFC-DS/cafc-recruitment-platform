@@ -627,7 +627,8 @@ STAGE_1_REASONS = [
     "Flagged by Video Scouting",
     "Flagged by Internal Recommendation",
     "Flagged by External Recommendation",
-    "Flagged by Potential Availability"
+    "Flagged by Potential Availability",
+    "Flagged by Age"
 ]
 
 # Reasons that auto-advance the player to Stage 2 instead of Stage 1

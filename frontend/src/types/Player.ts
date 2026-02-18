@@ -101,7 +101,8 @@ export type Stage1Reason =
   | "Flagged by Video Scouting"
   | "Flagged by Internal Recommendation"
   | "Flagged by External Recommendation"
-  | "Flagged by Potential Availability";
+  | "Flagged by Potential Availability"
+  | "Flagged by Age";
 
 export type ArchivedReason =
   | "Cost; Salary"
