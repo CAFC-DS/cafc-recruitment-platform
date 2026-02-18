@@ -304,8 +304,8 @@ export const searchPlayers = async (query: string): Promise<any[]> => {
     return [];
   }
   const response = await axiosInstance.get(`/players/search?query=${encodeURIComponent(query)}`);
-  // Backend returns the array directly, not wrapped in a 'players' key
-  return response.data || [];
+  // Handle both old format (plain array) and new paginated format ({players, has_more})
+  return Array.isArray(response.data) ? response.data : response.data?.players || [];
 };
 
 /**

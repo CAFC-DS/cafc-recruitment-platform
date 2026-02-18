@@ -74,9 +74,13 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
             const searchResponse = await axiosInstance.get(
               `/players/search?query=${encodeURIComponent(report.player_name)}`,
             );
-            if (searchResponse.data && searchResponse.data.length > 0) {
+            // Handle both old format (plain array) and new paginated format ({players, has_more})
+            const searchData = Array.isArray(searchResponse.data)
+              ? searchResponse.data
+              : searchResponse.data?.players || [];
+            if (searchData.length > 0) {
               // Try to get profile for the first search result
-              const searchResult = searchResponse.data[0];
+              const searchResult = searchData[0];
               if (searchResult.player_id) {
                 try {
                   playerResponse = await axiosInstance.get(

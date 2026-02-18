@@ -98,7 +98,10 @@ const IntelModal: React.FC<IntelModalProps> = ({
       const response = await axiosInstance.get(
         `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
       );
-      let results = response.data || [];
+      // Handle both old format (plain array) and new paginated format ({players, has_more})
+      let results = Array.isArray(response.data)
+        ? response.data
+        : response.data?.players || [];
 
       // Cache the results
       searchCacheRef.current[trimmedQuery] = results;

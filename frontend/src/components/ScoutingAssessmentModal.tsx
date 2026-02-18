@@ -316,7 +316,11 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         const response = await axiosInstance.get(`/players/search`, {
           params: { query: query.trim() }
         });
-        setPlayerSearchResults(response.data || []);
+        // Handle both old format (plain array) and new paginated format ({players, has_more})
+        const results = Array.isArray(response.data)
+          ? response.data
+          : response.data?.players || [];
+        setPlayerSearchResults(results);
         setShowPlayerDropdown(true);
       } catch (error) {
         console.error("Error searching players:", error);
