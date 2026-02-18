@@ -1506,6 +1506,13 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                         const matchId = selectedOption ? selectedOption.value.toString() : "";
                         setSelectedMatch(matchId);
                         setFormData({ ...formData, selectedMatch: matchId });
+                        // Persist fixture immediately so next report (submit, draft, or queue) opens with it pre-filled
+                        if (fixtureDate && matchId) {
+                          localStorage.setItem(
+                            "lastUsedFixture",
+                            JSON.stringify({ fixtureDate, matchId }),
+                          );
+                        }
                       }}
                       placeholder="Select Match"
                       isClearable
