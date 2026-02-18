@@ -38,9 +38,14 @@ const AppNavbar: React.FC = () => {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [searchOffset, setSearchOffset] = useState(0);
+  const [hasMoreSearchResults, setHasMoreSearchResults] = useState(false);
+  const [loadingMoreResults, setLoadingMoreResults] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchCacheRef = useRef<Map<string, any[]>>(new Map());
+  const searchObserverRef = useRef<IntersectionObserver | null>(null);
+  const currentSearchQueryRef = useRef<string>("");
 
   // Sub-modal states for Add New dropdown
   const [showAssessmentModal, setShowAssessmentModal] = useState(false);
@@ -243,38 +248,28 @@ const AppNavbar: React.FC = () => {
       setSearchResults([]);
       setShowSearchResults(false);
       setSelectedIndex(-1);
+      setHasMoreSearchResults(false);
+      setSearchOffset(0);
       return;
     }
 
-    // Check cache first
-    const cachedResults = searchCacheRef.current.get(query.toLowerCase());
-    if (cachedResults) {
-      setSearchResults(cachedResults);
-      setShowSearchResults(cachedResults.length > 0);
-      setSelectedIndex(-1);
-      return;
-    }
-
+    currentSearchQueryRef.current = query;
     setIsSearching(true);
+    setSearchOffset(0);
+    setHasMoreSearchResults(false);
+
     try {
       const response = await axiosInstance.get(
-        `/players/search?query=${encodeURIComponent(query)}`,
+        `/players/search?query=${encodeURIComponent(query)}&limit=10&offset=0`,
       );
-      const results = response.data || [];
+      const { players = [], has_more = false } = response.data || {};
 
-      // Cache the results
-      searchCacheRef.current.set(query.toLowerCase(), results);
+      // Only apply if query hasn't changed during the async call
+      if (currentSearchQueryRef.current !== query) return;
 
-      // Limit cache size to prevent memory leaks
-      if (searchCacheRef.current.size > 20) {
-        const firstKey = searchCacheRef.current.keys().next().value;
-        if (firstKey) {
-          searchCacheRef.current.delete(firstKey);
-        }
-      }
-
-      setSearchResults(results);
-      setShowSearchResults(results.length > 0);
+      setSearchResults(players);
+      setHasMoreSearchResults(has_more);
+      setShowSearchResults(players.length > 0);
       setSelectedIndex(-1);
     } catch (error) {
       console.error("Search API error:", error);
@@ -284,6 +279,48 @@ const AppNavbar: React.FC = () => {
       setIsSearching(false);
     }
   }, []);
+
+  // Load next page of search results
+  const loadMoreSearchResults = useCallback(async () => {
+    if (loadingMoreResults || !hasMoreSearchResults) return;
+    const query = currentSearchQueryRef.current;
+    if (!query) return;
+
+    setLoadingMoreResults(true);
+    const nextOffset = searchOffset + 10;
+
+    try {
+      const response = await axiosInstance.get(
+        `/players/search?query=${encodeURIComponent(query)}&limit=10&offset=${nextOffset}`,
+      );
+      const { players = [], has_more = false } = response.data || {};
+
+      if (currentSearchQueryRef.current !== query) return;
+
+      setSearchResults((prev) => [...prev, ...players]);
+      setHasMoreSearchResults(has_more);
+      setSearchOffset(nextOffset);
+    } catch (error) {
+      console.error("Load more search error:", error);
+    } finally {
+      setLoadingMoreResults(false);
+    }
+  }, [loadingMoreResults, hasMoreSearchResults, searchOffset]);
+
+  // Attach IntersectionObserver to the last search result element
+  const lastSearchResultRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (loadingMoreResults) return;
+      if (searchObserverRef.current) searchObserverRef.current.disconnect();
+      searchObserverRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMoreSearchResults) {
+          loadMoreSearchResults();
+        }
+      });
+      if (node) searchObserverRef.current.observe(node);
+    },
+    [loadingMoreResults, hasMoreSearchResults, loadMoreSearchResults],
+  );
 
   // Debounced search handler
   const handleSearch = useCallback(
@@ -444,6 +481,7 @@ const AppNavbar: React.FC = () => {
 
               {/* Search Results Dropdown - Always show when search is active */}
               {(showSearchResults ||
+                isSearching ||
                 (searchQuery.length >= 2 && !isSearching)) && (
                 <div
                   className="navbar-search-dropdown"
@@ -463,15 +501,15 @@ const AppNavbar: React.FC = () => {
                     scrollBehavior: "smooth",
                   }}
                 >
+                  {/* Shimmer loading state (initial search) */}
                   {isSearching && (
-                    <div
-                      style={{
-                        padding: "16px",
-                        textAlign: "center",
-                        color: "#6b7280",
-                      }}
-                    >
-                      🔄 Searching...
+                    <div style={{ padding: "8px 16px" }}>
+                      {Array.from({ length: 5 }).map((_, idx) => (
+                        <div key={`shimmer-${idx}`} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
+                          <div className="shimmer-line mb-2" style={{ width: `${140 + idx * 20}px`, height: "16px" }} />
+                          <div className="shimmer-line" style={{ width: "100px", height: "12px" }} />
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -499,15 +537,16 @@ const AppNavbar: React.FC = () => {
                         fontWeight: "600",
                       }}
                     >
-                      {searchResults.length > 10
-                        ? `Showing 10 of ${searchResults.length} results`
+                      {hasMoreSearchResults
+                        ? `Showing ${searchResults.length} results — scroll for more`
                         : `Found ${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`}
                     </div>
                   )}
+
                   {!isSearching &&
                     searchResults.length > 0 &&
-                    searchResults.slice(0, 10).map((player, index) => {
-                      // Try different possible field names for player name
+                    searchResults.map((player, index) => {
+                      const isLast = index === searchResults.length - 1;
                       const playerName =
                         player.playername ||
                         player.name ||
@@ -525,13 +564,14 @@ const AppNavbar: React.FC = () => {
                             player.universal_id ||
                             `player-${index}-${playerName}`
                           }
+                          ref={isLast ? lastSearchResultRef : null}
                           onClick={() => handlePlayerSelect(player)}
                           className="search-result-item"
                           style={{
                             padding: "12px 16px",
                             cursor: "pointer",
                             borderBottom:
-                              index < Math.min(searchResults.length, 10) - 1
+                              index < searchResults.length - 1
                                 ? "1px solid #f3f4f6"
                                 : "none",
                             backgroundColor:
@@ -567,6 +607,18 @@ const AppNavbar: React.FC = () => {
                         </div>
                       );
                     })}
+
+                  {/* Shimmer rows while loading more results */}
+                  {loadingMoreResults && (
+                    <div style={{ padding: "8px 16px" }}>
+                      {Array.from({ length: 3 }).map((_, idx) => (
+                        <div key={`shimmer-more-${idx}`} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
+                          <div className="shimmer-line mb-2" style={{ width: `${120 + idx * 25}px`, height: "16px" }} />
+                          <div className="shimmer-line" style={{ width: "90px", height: "12px" }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

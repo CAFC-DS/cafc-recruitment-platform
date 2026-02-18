@@ -2823,7 +2823,7 @@ async def read_root():
 
 
 @app.get("/players/search")
-async def search_players(query: str, current_user: User = Depends(get_current_user)):
+async def search_players(query: str, limit: int = 10, offset: int = 0, current_user: User = Depends(get_current_user)):
     """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching
 
     Uses Snowflake NORMALIZE_TEXT_UDF() for accent-insensitive search.
@@ -2862,6 +2862,9 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
         # Use Snowflake's NORMALIZE_TEXT_UDF() for accent-insensitive matching
         # This works for ALL Unicode characters (Róbert=Robert, José=Jose, etc.)
         # Order by relevance: exact matches first, then prefix matches, then any match
+        # Fetch one extra row to determine if there are more results
+        fetch_limit = limit + 1
+
         if has_cafc_id:
             cursor.execute(
                 """
@@ -2875,9 +2878,9 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                         ELSE 3
                     END,
                     PLAYERNAME
-                LIMIT 100
+                LIMIT %s OFFSET %s
             """,
-                (search_pattern, normalized_query, normalized_query + '%'),
+                (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
             )
         else:
             cursor.execute(
@@ -2892,12 +2895,14 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                         ELSE 3
                     END,
                     PLAYERNAME
-                LIMIT 100
+                LIMIT %s OFFSET %s
             """,
-                (search_pattern, normalized_query, normalized_query + '%'),
+                (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
             )
 
-        players = cursor.fetchall()
+        rows = cursor.fetchall()
+        has_more = len(rows) > limit
+        players = rows[:limit]  # Trim the extra row
         player_list = []
 
         # Process results
@@ -2941,7 +2946,7 @@ async def search_players(query: str, current_user: User = Depends(get_current_us
                 }
                 player_list.append(player_data)
 
-        return player_list
+        return {"players": player_list, "has_more": has_more, "offset": offset}
 
     except Exception as e:
         print(f"❌ ERROR in /players/search: {type(e).__name__}: {str(e)}")
