@@ -9,6 +9,11 @@ interface StageChangeReasonModalProps {
   reasons: string[];
   onConfirm: (reason: string, description?: string) => void;
   loading?: boolean;
+  /** Pre-populate fields for editing an existing reason */
+  initialReason?: string;
+  initialDescription?: string;
+  /** When true, displays "Edit Reason" title instead of "Adding / Archiving" */
+  editMode?: boolean;
 }
 
 const MAX_DESCRIPTION_CHARS = 500;
@@ -33,17 +38,20 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
   reasons,
   onConfirm,
   loading = false,
+  initialReason,
+  initialDescription,
+  editMode = false,
 }) => {
   const [selectedReason, setSelectedReason] = useState("");
   const [description, setDescription] = useState("");
 
-  // Reset form when modal opens
+  // Reset / pre-populate form when modal opens
   useEffect(() => {
     if (show) {
-      setSelectedReason("");
-      setDescription("");
+      setSelectedReason(initialReason || "");
+      setDescription(initialDescription || "");
     }
-  }, [show]);
+  }, [show, initialReason, initialDescription]);
 
   const handleConfirm = () => {
     if (selectedReason) {
@@ -61,7 +69,9 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
   const isOverLimit = remainingChars < 0;
   const canConfirm = selectedReason && !isOverLimit && !loading;
 
-  const title = targetStage === "Stage 1"
+  const title = editMode
+    ? `Edit Reason — ${playerName}`
+    : targetStage === "Stage 1"
     ? `Adding ${playerName}`
     : `Archiving ${playerName}`;
 
@@ -71,7 +81,7 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
       : targetStage;
 
   const stagePlacementNote =
-    targetStage === "Stage 1" && selectedReason
+    !editMode && targetStage === "Stage 1" && selectedReason
       ? `This will place the player in ${effectiveStage}.`
       : null;
 
@@ -82,7 +92,7 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
         style={{ backgroundColor: "#000000", color: "white" }}
       >
         <Modal.Title>
-          {targetStage === "Stage 1" ? "➕" : "📦"} {title}
+          {editMode ? "✏️" : targetStage === "Stage 1" ? "➕" : "📦"} {title}
         </Modal.Title>
       </Modal.Header>
       <Modal.Body>

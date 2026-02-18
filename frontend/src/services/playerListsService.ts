@@ -329,6 +329,23 @@ export const getPlayerStageHistory = async (
   return response.data.history;
 };
 
+/**
+ * Update the reason and description on an existing stage history record
+ */
+export const updateStageHistoryReason = async (
+  listId: number,
+  itemId: number,
+  historyId: number,
+  reason: string,
+  description?: string
+): Promise<{ message: string }> => {
+  const response = await axiosInstance.put(
+    `/player-lists/${listId}/players/${itemId}/stage-history/${historyId}`,
+    { reason, description }
+  );
+  return response.data;
+};
+
 // ========== Export Utilities ==========
 
 /**
