@@ -390,8 +390,8 @@ const PlayerListsPage: React.FC = () => {
 
       switch (sortField) {
         case "name":
-          aVal = a.player_name.toLowerCase();
-          bVal = b.player_name.toLowerCase();
+          aVal = (a.player_name || "").toLowerCase();
+          bVal = (b.player_name || "").toLowerCase();
           break;
         case "age":
           aVal = a.age || 0;
@@ -1061,7 +1061,9 @@ const PlayerListsPage: React.FC = () => {
                                 }}
                                 style={{ textDecoration: "none", color: colors.primary }}
                               >
-                                <strong>{player.player_name}</strong>
+                                <strong>
+                                  {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
+                                </strong>
                                 {getPlayerNotes(player.universal_id) && (
                                   <span
                                     className="ms-2"
@@ -1358,7 +1360,9 @@ const PlayerListsPage: React.FC = () => {
                   style={{ cursor: "pointer" }}
                 >
                   <div>
-                    <strong>{player.player_name}</strong>
+                    <strong>
+                      {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
+                    </strong>
                     <div className="text-muted small">
                       {player.position && `${player.position} • `}
                       {player.squad_name || "Unknown Club"}

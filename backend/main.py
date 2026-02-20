@@ -2840,16 +2840,13 @@ async def search_players(query: str, limit: int = 10, offset: int = 0, current_u
         db_info = cursor.fetchone()
         print(f"🔍 DEBUG /players/search - Database: {db_info[0]}, Schema: {db_info[1]}")
 
-        # Debug: Check if UDF exists
-        cursor.execute("SHOW USER FUNCTIONS LIKE 'NORMALIZE_TEXT_UDF'")
+        # Debug: Check if UDF exists in CAFC_DB
+        cursor.execute("SHOW USER FUNCTIONS LIKE 'NORMALIZE_TEXT_UDF' IN SCHEMA CAFC_DB.IMPECT_RAW")
         udf_results = cursor.fetchall()
-        print(f"🔍 DEBUG - Found {len(udf_results)} UDFs named NORMALIZE_TEXT_UDF")
+        print(f"🔍 DEBUG - Found {len(udf_results)} UDFs named NORMALIZE_TEXT_UDF in CAFC_DB.IMPECT_RAW")
         if udf_results:
             for udf in udf_results:
                 print(f"    UDF: {udf}")
-
-        # Check if CAFC_PLAYER_ID column exists (using cached schema)
-        has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
 
         # Clean up and normalize the query client-side
         query = query.strip()
@@ -2860,46 +2857,52 @@ async def search_players(query: str, limit: int = 10, offset: int = 0, current_u
         normalized_query = normalize_text(query)
         search_pattern = f"%{normalized_query}%"
 
-        # Use Snowflake's NORMALIZE_TEXT_UDF() for accent-insensitive matching
-        # This works for ALL Unicode characters (Róbert=Robert, José=Jose, etc.)
-        # Order by relevance: exact matches first, then prefix matches, then any match
-        # Fetch one extra row to determine if there are more results
+        # Query CAFC_DB.IMPECT_RAW.PLAYERS joined to SQUADS for squad name.
+        # Column order matches existing row-processing code (positions 0-6):
+        #   0: CAFC_PLAYER_ID (NULL — not in CAFC_DB)
+        #   1: PLAYERID       (p.ID)
+        #   2: PLAYERNAME     (COMMONNAME or FIRSTNAME + LASTNAME)
+        #   3: POSITION       (NULL — not in CAFC_DB)
+        #   4: SQUADNAME      (s.NAME via JOIN)
+        #   5: DATA_SOURCE    ('cafc' — hardcoded for API compatibility)
+        #   6: BIRTHDATE      (p.BIRTHDATE)
+        # NORMALIZE_TEXT_UDF is fully qualified because the connection default
+        # schema is RECRUITMENT_TEST.PUBLIC, not CAFC_DB.IMPECT_RAW.
         fetch_limit = limit + 1
 
-        if has_cafc_id:
-            cursor.execute(
-                """
-                SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
-                FROM players
-                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
-                ORDER BY
-                    CASE
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
-                        ELSE 3
-                    END,
-                    PLAYERNAME
-                LIMIT %s OFFSET %s
-            """,
-                (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
-            )
-        else:
-            cursor.execute(
-                """
-                SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
-                FROM players
-                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
-                ORDER BY
-                    CASE
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
-                        ELSE 3
-                    END,
-                    PLAYERNAME
-                LIMIT %s OFFSET %s
-            """,
-                (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
-            )
+        cursor.execute(
+            """
+            SELECT
+                NULL                                                            AS CAFC_PLAYER_ID,
+                p.ID                                                            AS PLAYERID,
+                COALESCE(p.COMMONNAME, p.FIRSTNAME || ' ' || p.LASTNAME)        AS PLAYERNAME,
+                NULL                                                            AS POSITION,
+                s.NAME                                                          AS SQUADNAME,
+                'cafc'                                                          AS DATA_SOURCE,
+                p.BIRTHDATE
+            FROM CAFC_DB.IMPECT_RAW.PLAYERS p
+            LEFT JOIN CAFC_DB.IMPECT_RAW.SQUADS s ON s.ID = p.CURRENTSQUADID
+            WHERE CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(
+                      COALESCE(p.COMMONNAME, p.FIRSTNAME || ' ' || p.LASTNAME)
+                  ) ILIKE %s
+            -- Deduplicate: PLAYERS has one row per player per iteration (season).
+            -- Keep only the most recent iteration so each player appears once.
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY p.ID ORDER BY p.ITERATION_ID DESC) = 1
+            ORDER BY
+                CASE
+                    WHEN CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(
+                             COALESCE(p.COMMONNAME, p.FIRSTNAME || ' ' || p.LASTNAME)
+                         ) = %s THEN 1
+                    WHEN CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(
+                             COALESCE(p.COMMONNAME, p.FIRSTNAME || ' ' || p.LASTNAME)
+                         ) ILIKE %s THEN 2
+                    ELSE 3
+                END,
+                PLAYERNAME
+            LIMIT %s OFFSET %s
+        """,
+            (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
+        )
 
         rows = cursor.fetchall()
         has_more = len(rows) > limit
@@ -4029,94 +4032,66 @@ async def search_matches(
         parsed = parse_fixture_search_query(query)
 
         if parsed['mode'] == 'both_teams':
-            # Search for matches with both specific teams (in either order)
+            # Search for matches with both specific teams (in either order).
+            # SQUADS is joined twice (hs = home squad, aws = away squad) to get names
+            # from HOMESQUADID / AWAYSQUADID in CAFC_DB.IMPECT_RAW.MATCHES.
+            # TRY_TO_DATE() is needed because SCHEDULEDDATE is VARCHAR in CAFC_DB.
+            # id_type stays 'external' so get_match_universal_id maps m.ID correctly.
             team1_pattern = f"%{parsed['team1']}%"
             team2_pattern = f"%{parsed['team2']}%"
 
             cursor.execute(
                 """
                 SELECT
-                    ID as match_id,
-                    HOMESQUADNAME as home_team,
-                    AWAYSQUADNAME as away_team,
-                    SCHEDULEDDATE as fixture_date,
-                    DATA_SOURCE,
-                    'external' as id_type
-                FROM matches
+                    m.ID                            AS match_id,
+                    hs.NAME                         AS home_team,
+                    aws.NAME                        AS away_team,
+                    TRY_TO_DATE(m.SCHEDULEDDATE)    AS fixture_date,
+                    'cafc'                          AS DATA_SOURCE,
+                    'external'                      AS id_type
+                FROM CAFC_DB.IMPECT_RAW.MATCHES m
+                LEFT JOIN CAFC_DB.IMPECT_RAW.SQUADS hs  ON hs.ID = m.HOMESQUADID
+                LEFT JOIN CAFC_DB.IMPECT_RAW.SQUADS aws ON aws.ID = m.AWAYSQUADID
                 WHERE (
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(hs.NAME) ILIKE %s
+                     AND CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(aws.NAME) ILIKE %s)
                     OR
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(hs.NAME) ILIKE %s
+                     AND CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(aws.NAME) ILIKE %s)
                 )
-                  AND SCHEDULEDDATE < CURRENT_DATE()
-                  AND ID IS NOT NULL
-                  AND DATA_SOURCE = 'external'
-
-                UNION ALL
-
-                SELECT
-                    CAFC_MATCH_ID as match_id,
-                    HOMESQUADNAME as home_team,
-                    AWAYSQUADNAME as away_team,
-                    SCHEDULEDDATE as fixture_date,
-                    DATA_SOURCE,
-                    'manual' as id_type
-                FROM matches
-                WHERE (
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
-                    OR
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
-                )
-                  AND SCHEDULEDDATE < CURRENT_DATE()
-                  AND CAFC_MATCH_ID IS NOT NULL
-                  AND DATA_SOURCE = 'internal'
-
+                  AND TRY_TO_DATE(m.SCHEDULEDDATE) < CURRENT_DATE()
+                  AND TRY_TO_DATE(m.SCHEDULEDDATE) IS NOT NULL
+                  AND m.ID IS NOT NULL
                 ORDER BY fixture_date DESC
                 LIMIT 50
             """,
-                (team1_pattern, team2_pattern, team2_pattern, team1_pattern,
-                 team1_pattern, team2_pattern, team2_pattern, team1_pattern),
+                (team1_pattern, team2_pattern, team2_pattern, team1_pattern),
             )
         else:
-            # Single team search (original logic)
+            # Single team search — matches where either home or away team name matches.
             search_pattern = f"%{parsed['query']}%"
 
             cursor.execute(
                 """
                 SELECT
-                    ID as match_id,
-                    HOMESQUADNAME as home_team,
-                    AWAYSQUADNAME as away_team,
-                    SCHEDULEDDATE as fixture_date,
-                    DATA_SOURCE,
-                    'external' as id_type
-                FROM matches
-                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
-                  AND SCHEDULEDDATE < CURRENT_DATE()
-                  AND ID IS NOT NULL
-                  AND DATA_SOURCE = 'external'
-
-                UNION ALL
-
-                SELECT
-                    CAFC_MATCH_ID as match_id,
-                    HOMESQUADNAME as home_team,
-                    AWAYSQUADNAME as away_team,
-                    SCHEDULEDDATE as fixture_date,
-                    DATA_SOURCE,
-                    'manual' as id_type
-                FROM matches
-                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
-                  AND SCHEDULEDDATE < CURRENT_DATE()
-                  AND CAFC_MATCH_ID IS NOT NULL
-                  AND DATA_SOURCE = 'internal'
-
+                    m.ID                            AS match_id,
+                    hs.NAME                         AS home_team,
+                    aws.NAME                        AS away_team,
+                    TRY_TO_DATE(m.SCHEDULEDDATE)    AS fixture_date,
+                    'cafc'                          AS DATA_SOURCE,
+                    'external'                      AS id_type
+                FROM CAFC_DB.IMPECT_RAW.MATCHES m
+                LEFT JOIN CAFC_DB.IMPECT_RAW.SQUADS hs  ON hs.ID = m.HOMESQUADID
+                LEFT JOIN CAFC_DB.IMPECT_RAW.SQUADS aws ON aws.ID = m.AWAYSQUADID
+                WHERE (CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(hs.NAME) ILIKE %s
+                       OR CAFC_DB.IMPECT_RAW.NORMALIZE_TEXT_UDF(aws.NAME) ILIKE %s)
+                  AND TRY_TO_DATE(m.SCHEDULEDDATE) < CURRENT_DATE()
+                  AND TRY_TO_DATE(m.SCHEDULEDDATE) IS NOT NULL
+                  AND m.ID IS NOT NULL
                 ORDER BY fixture_date DESC
                 LIMIT 50
             """,
-                (search_pattern, search_pattern, search_pattern, search_pattern),
+                (search_pattern, search_pattern),
             )
 
         matches = cursor.fetchall()
