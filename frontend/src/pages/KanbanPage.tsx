@@ -99,6 +99,7 @@ const KanbanPage: React.FC = () => {
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
   const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
+  const [includeFlagReports, setIncludeFlagReports] = useState(false);
 
   // Pitch view expanded toggle
   const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
@@ -244,11 +245,14 @@ const KanbanPage: React.FC = () => {
       // Include archived reports in counts
       apiFilters.includeArchivedReports = includeArchivedReports;
 
+      // Include flag reports in counts
+      apiFilters.includeFlagReports = includeFlagReports;
+
       setDebouncedFilters(apiFilters);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [filters, includeArchivedReports]);
+  }, [filters, includeArchivedReports, includeFlagReports]);
 
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
@@ -1033,6 +1037,8 @@ const KanbanPage: React.FC = () => {
             onShowArchivedChange={setShowArchived}
             includeArchivedReports={includeArchivedReports}
             onIncludeArchivedReportsChange={setIncludeArchivedReports}
+            includeFlagReports={includeFlagReports}
+            onIncludeFlagReportsChange={setIncludeFlagReports}
           />
 
           {/* Actions Container */}

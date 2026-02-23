@@ -194,6 +194,7 @@ const PlayerListsPage: React.FC = () => {
   // Show archived state (not part of API filters)
   const [showArchived, setShowArchived] = useState(false);
   const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
+  const [includeFlagReports, setIncludeFlagReports] = useState(false);
 
   // Visible lists (multi-select)
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
@@ -339,11 +340,14 @@ const PlayerListsPage: React.FC = () => {
       // Include archived reports in counts
       apiFilters.includeArchivedReports = includeArchivedReports;
 
+      // Include flag reports in counts
+      apiFilters.includeFlagReports = includeFlagReports;
+
       setDebouncedFilters(apiFilters);
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [filters, includeArchivedReports]);
+  }, [filters, includeArchivedReports, includeFlagReports]);
 
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
@@ -1004,6 +1008,8 @@ const PlayerListsPage: React.FC = () => {
             onShowArchivedChange={setShowArchived}
             includeArchivedReports={includeArchivedReports}
             onIncludeArchivedReportsChange={setIncludeArchivedReports}
+            includeFlagReports={includeFlagReports}
+            onIncludeFlagReportsChange={setIncludeFlagReports}
           />
 
           {/* Actions Container */}
@@ -1088,6 +1094,11 @@ const PlayerListsPage: React.FC = () => {
                   {includeArchivedReports && (
                     <Badge bg="secondary" className="ms-2" style={{ fontSize: "0.7rem" }}>
                       Report counts incl. archived
+                    </Badge>
+                  )}
+                  {includeFlagReports && (
+                    <Badge bg="secondary" className="ms-2" style={{ fontSize: "0.7rem" }}>
+                      Report counts incl. flags
                     </Badge>
                   )}
                 </>

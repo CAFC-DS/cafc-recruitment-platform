@@ -84,6 +84,7 @@ export interface PlayerListFilters {
   stages?: string; // Comma-separated
   recencyMonths?: number;
   includeArchivedReports?: boolean;
+  includeFlagReports?: boolean;
 }
 
 /**
@@ -107,6 +108,7 @@ export const getAllListsWithDetails = async (
     if (filters.stages) params.append("stages", filters.stages);
     if (filters.recencyMonths !== undefined) params.append("recency_months", filters.recencyMonths.toString());
     if (filters.includeArchivedReports !== undefined) params.append("include_archived", filters.includeArchivedReports.toString());
+    if (filters.includeFlagReports !== undefined) params.append("include_flags", filters.includeFlagReports.toString());
   }
 
   const url = params.toString()
@@ -122,11 +124,15 @@ export const getAllListsWithDetails = async (
  */
 export const getPlayerListDetails = async (
   listId: number,
-  includeArchivedReports?: boolean
+  includeArchivedReports?: boolean,
+  includeFlagReports?: boolean
 ): Promise<ListWithPlayers> => {
   const params = new URLSearchParams();
   if (includeArchivedReports !== undefined) {
     params.append("include_archived", includeArchivedReports.toString());
+  }
+  if (includeFlagReports !== undefined) {
+    params.append("include_flags", includeFlagReports.toString());
   }
 
   const url = params.toString()
