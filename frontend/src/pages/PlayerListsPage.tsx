@@ -22,6 +22,8 @@ import {
   Spinner,
   ListGroup,
   Dropdown,
+  OverlayTrigger,
+  Popover,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -50,6 +52,7 @@ import {
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
   getStageChangeReasons,
+  getPlayerStageHistory,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -92,6 +95,73 @@ interface PlayerList {
 
 type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites";
 type SortDirection = "asc" | "desc";
+
+// Archive Info Content Component for Popover
+const ArchiveInfoContent: React.FC<{
+  itemId: number;
+  fetchArchiveInfo: (itemId: number) => Promise<any>;
+}> = ({ itemId, fetchArchiveInfo }) => {
+  const [archiveData, setArchiveData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const data = await fetchArchiveInfo(itemId);
+      setArchiveData(data);
+      setLoading(false);
+    };
+    loadData();
+  }, [itemId, fetchArchiveInfo]);
+
+  if (loading) {
+    return (
+      <div style={{ padding: "0.5rem", textAlign: "center" }}>
+        <Spinner animation="border" size="sm" />
+      </div>
+    );
+  }
+
+  if (!archiveData) {
+    return (
+      <div style={{ padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>
+        No archive information available
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontSize: "0.85rem" }}>
+      <div style={{ marginBottom: "0.5rem" }}>
+        <strong style={{ color: "#333" }}>Archive Information</strong>
+      </div>
+      <div style={{ lineHeight: "1.6", color: "#555" }}>
+        <div>
+          <strong>Reason:</strong> {archiveData.reason}
+        </div>
+        <div>
+          <strong>Date:</strong>{" "}
+          {archiveData.date
+            ? new Date(archiveData.date).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                timeZone: "Europe/London",
+              })
+            : "N/A"}
+        </div>
+        <div>
+          <strong>By:</strong> {archiveData.changedBy}
+        </div>
+        {archiveData.previousStage && (
+          <div>
+            <strong>Previous:</strong> {archiveData.previousStage}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const PlayerListsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -189,6 +259,16 @@ const PlayerListsPage: React.FC = () => {
     itemId: number;
     playerName: string;
   } | null>(null);
+
+  // Archive info cache for popovers
+  const [archiveInfoCache, setArchiveInfoCache] = useState<{
+    [key: string]: {
+      reason: string;
+      date: string | null;
+      changedBy: string;
+      previousStage: string | null;
+    } | null;
+  }>({});
 
   // Temporary player selection for add modal
   const [tempSelectedPlayer, setTempSelectedPlayer] = useState<PlayerSearchResult | null>(null);
@@ -688,6 +768,45 @@ const PlayerListsPage: React.FC = () => {
     setShowHistoryModal(true);
   };
 
+  // Fetch archive info for popover
+  const fetchArchiveInfo = async (itemId: number) => {
+    if (!currentList) return null;
+
+    const cacheKey = `${currentList.id}-${itemId}`;
+
+    // Return cached data if available
+    if (archiveInfoCache[cacheKey]) {
+      return archiveInfoCache[cacheKey];
+    }
+
+    try {
+      const history = await getPlayerStageHistory(currentList.id, itemId);
+      // Find the most recent archive entry
+      const archiveEntry = history.find((h: any) => h.newStage === "Archived");
+
+      if (archiveEntry) {
+        const info = {
+          reason: archiveEntry.reason,
+          date: archiveEntry.changedAt,
+          changedBy: archiveEntry.changedByName || "Unknown",
+          previousStage: archiveEntry.oldStage,
+        };
+
+        // Cache the result
+        setArchiveInfoCache(prev => ({
+          ...prev,
+          [cacheKey]: info,
+        }));
+
+        return info;
+      }
+    } catch (error) {
+      console.error("Error fetching archive info:", error);
+    }
+
+    return null;
+  };
+
   const handleExport = () => {
     if (visibleListIds.size === 0) return;
     const filename = visibleListIds.size === 1
@@ -1109,20 +1228,52 @@ const PlayerListsPage: React.FC = () => {
                                   </Badge>
                                 )}
                                 {isArchived && !pendingRemoval && !hasPendingStageChange && (
-                                  <Badge
-                                    bg=""
-                                    className="ms-2"
-                                    style={{
-                                      backgroundColor: "#9ca3af",
-                                      color: "white",
-                                      fontSize: "0.6rem",
-                                      padding: "2px 6px",
-                                      fontWeight: "600",
-                                    }}
-                                    title="Archived player"
-                                  >
-                                    ARCHIVED
-                                  </Badge>
+                                  <>
+                                    <Badge
+                                      bg=""
+                                      className="ms-2"
+                                      style={{
+                                        backgroundColor: "#9ca3af",
+                                        color: "white",
+                                        fontSize: "0.6rem",
+                                        padding: "2px 6px",
+                                        fontWeight: "600",
+                                      }}
+                                      title="Archived player"
+                                    >
+                                      ARCHIVED
+                                    </Badge>
+                                    {currentList && (
+                                      <OverlayTrigger
+                                        trigger={["hover", "focus"]}
+                                        placement="top"
+                                        overlay={
+                                          <Popover id={`archive-popover-${player.item_id}`} style={{ maxWidth: "300px" }}>
+                                            <Popover.Body>
+                                              <ArchiveInfoContent
+                                                itemId={player.item_id}
+                                                fetchArchiveInfo={fetchArchiveInfo}
+                                              />
+                                            </Popover.Body>
+                                          </Popover>
+                                        }
+                                      >
+                                        <span
+                                          style={{
+                                            marginLeft: "4px",
+                                            cursor: "pointer",
+                                            fontSize: "0.75rem",
+                                            color: "#999",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                          }}
+                                          title="Archive details"
+                                        >
+                                          ⓘ
+                                        </span>
+                                      </OverlayTrigger>
+                                    )}
+                                  </>
                                 )}
                               </a>
                             </td>

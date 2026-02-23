@@ -45,6 +45,7 @@ interface KanbanBoardProps {
   onToggleFavorite?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
+  fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
 
 /**
@@ -89,6 +90,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onToggleFavorite,
   onViewHistory,
   playerFavorites,
+  fetchArchiveInfo,
 }) => {
   // Track the active player being dragged for the DragOverlay
   const [activePlayer, setActivePlayer] = useState<PlayerInList | null>(null);
@@ -365,6 +367,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             onToggleFavorite={onToggleFavorite}
             onViewHistory={onViewHistory}
             playerFavorites={playerFavorites}
+            fetchArchiveInfo={fetchArchiveInfo}
           />
         ))}
 

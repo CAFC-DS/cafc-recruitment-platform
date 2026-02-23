@@ -46,6 +46,7 @@ import {
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
   getStageChangeReasons,
+  getPlayerStageHistory,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -163,6 +164,16 @@ const KanbanPage: React.FC = () => {
     itemId: number;
     playerName: string;
   } | null>(null);
+
+  // Archive info cache for popover
+  const [archiveInfoCache, setArchiveInfoCache] = useState<{
+    [key: string]: {
+      reason: string;
+      date: string | null;
+      changedBy: string;
+      previousStage: string | null;
+    } | null;
+  }>({});
 
   // Temporary player selection for add modal
   const [tempSelectedPlayer, setTempSelectedPlayer] = useState<PlayerSearchResult | null>(null);
@@ -828,6 +839,53 @@ const KanbanPage: React.FC = () => {
   };
 
   /**
+   * Fetch archive info for a player
+   */
+  const fetchArchiveInfo = async (itemId: number) => {
+    // Find the player in stage columns to get their list_id
+    let listId: number | null = null;
+    for (const column of stageColumns) {
+      const player = column.players.find((p) => p.item_id === itemId);
+      if (player && player.list_id !== undefined) {
+        listId = typeof player.list_id === 'number' ? player.list_id : parseInt(player.list_id as string);
+        break;
+      }
+    }
+
+    if (!listId) {
+      return null;
+    }
+
+    const cacheKey = `${listId}-${itemId}`;
+
+    if (archiveInfoCache[cacheKey]) {
+      return archiveInfoCache[cacheKey];
+    }
+
+    try {
+      const history = await getPlayerStageHistory(listId, itemId);
+      const archiveEntry = history.find((h: any) => h.newStage === "Archived");
+
+      if (archiveEntry) {
+        const info = {
+          reason: archiveEntry.reason,
+          date: archiveEntry.changedAt,
+          changedBy: archiveEntry.changedByName || "Unknown",
+          previousStage: archiveEntry.oldStage,
+        };
+
+        setArchiveInfoCache((prev) => ({ ...prev, [cacheKey]: info }));
+        return info;
+      }
+
+      return null;
+    } catch (err) {
+      console.error("Error fetching archive info:", err);
+      return null;
+    }
+  };
+
+  /**
    * Load favorites from localStorage on mount and when lists change
    */
   useEffect(() => {
@@ -1095,6 +1153,7 @@ const KanbanPage: React.FC = () => {
             onToggleFavorite={handleToggleFavorite}
             onViewHistory={openStageHistory}
             playerFavorites={playerFavorites}
+            fetchArchiveInfo={fetchArchiveInfo}
           />
 
           {/* Floating Save/Discard Changes Button */}

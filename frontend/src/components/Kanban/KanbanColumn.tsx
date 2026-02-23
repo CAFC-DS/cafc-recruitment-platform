@@ -49,6 +49,7 @@ interface KanbanColumnProps {
   onToggleFavorite?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
+  fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
 
 /**
@@ -90,6 +91,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   onToggleFavorite,
   onViewHistory,
   playerFavorites,
+  fetchArchiveInfo,
 }) => {
   // Setup droppable area with @dnd-kit
   const { setNodeRef } = useDroppable({
@@ -274,6 +276,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 onToggleFavorite={onToggleFavorite}
                 onViewHistory={onViewHistory}
                 isFavorited={playerFavorites?.has(player.universal_id) || false}
+                fetchArchiveInfo={fetchArchiveInfo}
               />
             ))
           )}
