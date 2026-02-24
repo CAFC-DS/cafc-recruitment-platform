@@ -9976,7 +9976,7 @@ async def get_all_lists_with_details(
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
     recency_months: Optional[int] = None,
     include_archived: bool = False,  # Include archived reports in counts
-    include_flags: bool = False,  # Include flag reports in counts
+    include_flags: bool = False,  # Include flag reports in counts (default: exclude)
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -10139,6 +10139,7 @@ async def get_all_lists_with_details(
 
             archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
             flag_filter = "" if include_flags else "AND sr.REPORT_TYPE != 'Flag'"
+
             cursor.execute(
                 f"""
                 SELECT
@@ -10262,7 +10263,7 @@ async def get_all_lists_with_details(
 async def get_player_list_detail(
     list_id: int,
     include_archived: bool = False,
-    include_flags: bool = False,
+    include_flags: bool = False,  # Include flag reports in counts (default: exclude)
     current_user: User = Depends(get_current_user)
 ):
     """Get a specific player list with enriched player data"""
