@@ -28,39 +28,39 @@ interface Theme {
 }
 
 const lightTheme: ThemeColors = {
-  primary: "#b91c1c", // Professional red from screenshots
-  primaryDark: "#991b1b",
+  primary: "#CC0000", // Vibrant CAFC red
+  primaryDark: "#AA0000",
 
   success: "#16a34a", // Keep vivid for performance scores
   warning: "#d97706",
   danger: "#dc2626",
 
-  background: "#f8f9fa", // Light gray background
+  background: "#F1F5F9", // Slate-100
   surface: "#ffffff",
-  border: "#e5e7eb",
-  text: "#374151",
-  textMuted: "#6b7280",
+  border: "#E2E8F0", // Slate-200
+  text: "#1E293B", // Slate-800
+  textMuted: "#64748B", // Slate-500
 
-  headerBg: "#000000", // Black navbar
+  headerBg: "#0F172A", // Rich navy-black
   headerText: "#ffffff",
 };
 
 const darkTheme: ThemeColors = {
-  primary: "#ef4444", // Brighter red for dark mode
-  primaryDark: "#dc2626",
+  primary: "#CC0000", // Same red works on dark
+  primaryDark: "#AA0000",
 
   success: "#10b981",
   warning: "#f59e0b",
   danger: "#ef4444",
 
-  background: "#111827", // Dark but not too dark
-  surface: "#374151", // Much lighter surface for better visibility
-  border: "#6b7280", // More visible borders
-  text: "#f9fafb", // High contrast white text
-  textMuted: "#d1d5db", // Better visibility for muted text
+  background: "#0B0F19", // Deep navy
+  surface: "#141824", // Slightly lighter surface
+  border: "#1F2937", // Subtle border
+  text: "#F1F5F9", // Clean white
+  textMuted: "#94A3B8", // Slate-400
 
-  headerBg: "#dc2626", // Darker red for dark mode
-  headerText: "#f9fafb",
+  headerBg: "#07090F", // Near-black
+  headerText: "#F1F5F9",
 };
 
 interface ThemeContextType {
@@ -134,11 +134,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     root.style.setProperty("--bs-table-color", theme.colors.text);
     root.style.setProperty(
       "--bs-table-striped-bg",
-      isDark ? "#4b5563" : "#f8f9fa",
+      isDark ? "#1A2030" : "#f8f9fa",
     );
     root.style.setProperty(
       "--bs-table-hover-bg",
-      isDark ? "#4b5563" : "#e9ecef",
+      isDark ? "#1F2937" : "#e9ecef",
     );
     root.style.setProperty("--bs-form-control-bg", theme.colors.surface);
     root.style.setProperty("--bs-form-control-color", theme.colors.text);

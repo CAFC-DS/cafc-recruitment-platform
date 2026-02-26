@@ -465,14 +465,9 @@ const AppNavbar: React.FC = () => {
                     onKeyDown={handleKeyDown}
                     size="sm"
                     style={{
-                      backgroundColor: "rgba(255, 255, 255, 0.95)",
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                      color: "#374151",
-                      fontWeight: "500",
                       paddingLeft: "0.75rem",
                       paddingRight: "2.5rem",
                       fontSize: "0.875rem",
-                      borderRadius: "20px !important",
                     }}
                     className="navbar-search-input rounded-pill"
                   />
@@ -593,7 +588,7 @@ const AppNavbar: React.FC = () => {
                                 ? "1px solid #f3f4f6"
                                 : "none",
                             backgroundColor:
-                              selectedIndex === index ? "#f0f9ff" : "white",
+                              selectedIndex === index ? "#F1F5F9" : "white",
                             color: "#000000",
                             fontSize: "14px",
                             fontWeight: "600",
@@ -816,7 +811,7 @@ const AppNavbar: React.FC = () => {
 
       {/* Queue Review Modal */}
       <Modal show={showQueueModal} onHide={() => setShowQueueModal(false)} size="lg">
-        <Modal.Header closeButton style={{ backgroundColor: "#007bff", color: "white" }}>
+        <Modal.Header closeButton>
           <Modal.Title>📋 Queued Reports ({queueCount})</Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -825,7 +820,7 @@ const AppNavbar: React.FC = () => {
               <p>No reports in queue</p>
             </div>
           ) : (
-            <Card style={{ backgroundColor: "#f0f8ff", border: "1px solid #007bff" }}>
+            <Card>
               <Card.Body style={{ maxHeight: "400px", overflowY: "auto" }}>
                 <ListGroup>
                   {queuedReports.map((report: any) => (
