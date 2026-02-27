@@ -13,6 +13,8 @@ import {
   Table,
   Dropdown,
   Collapse,
+  OverlayTrigger,
+  Popover,
 } from "react-bootstrap";
 import { PolarArea } from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -68,6 +70,7 @@ interface ScoutReport {
   flag_category?: string;
   scouting_type?: string;
   is_potential?: boolean;
+  user_id?: number;
 }
 
 interface ScoutReportsData {
@@ -194,7 +197,7 @@ const PlayerProfilePage: React.FC = () => {
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
   const { viewMode, setViewMode } = useViewMode();
-  const { canGenerateShareLinks } = useCurrentUser();
+  const { canGenerateShareLinks, canSeeAllReports, isAdmin, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -217,6 +220,21 @@ const PlayerProfilePage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareReportId, setShareReportId] = useState<number | null>(null);
+
+  // Scout report edit/delete state
+  const [editScoutReportId, setEditScoutReportId] = useState<number | null>(null);
+  const [deleteScoutReportId, setDeleteScoutReportId] = useState<number | null>(null);
+  const [deleteScoutLoading, setDeleteScoutLoading] = useState(false);
+  const [showDeleteScoutModal, setShowDeleteScoutModal] = useState(false);
+
+  // Archive information state
+  const [archiveInfo, setArchiveInfo] = useState<Array<{
+    listName: string;
+    reason: string;
+    date: string;
+    changedBy: string;
+    previousStage: string;
+  }>>([]);
 
   // Notes functionality
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
@@ -244,8 +262,8 @@ const PlayerProfilePage: React.FC = () => {
   const [currentReportPage, setCurrentReportPage] = useState(0);
 
   // Collapsible sections
-  const [scoutingHistoryExpanded, setScoutingHistoryExpanded] = useState(false);
-  const [intelExpanded, setIntelExpanded] = useState(false);
+  const [scoutingHistoryExpanded, setScoutingHistoryExpanded] = useState(true);
+  const [intelExpanded, setIntelExpanded] = useState(true);
   const [attributeBreakdownExpanded, setAttributeBreakdownExpanded] = useState(true);
 
   // View mode for Intel section
@@ -401,6 +419,43 @@ const PlayerProfilePage: React.FC = () => {
     setEditMode(false);
     setEditReportData(null);
     setEditReportId(null);
+  };
+
+  // Scout report handlers
+  const handleEditScoutReport = async (reportId: number) => {
+    try {
+      setLoadingReportId(reportId);
+      // Navigate to scouting page with edit parameters
+      navigate(`/scouting?editReportId=${reportId}`);
+    } catch (error) {
+      console.error("Error initiating edit for scout report:", error);
+    } finally {
+      setLoadingReportId(null);
+    }
+  };
+
+  const handleDeleteScoutReport = (reportId: number) => {
+    setDeleteScoutReportId(reportId);
+    setShowDeleteScoutModal(true);
+  };
+
+  const confirmDeleteScoutReport = async () => {
+    if (!deleteScoutReportId) return;
+
+    try {
+      setDeleteScoutLoading(true);
+      await axiosInstance.delete(`/scout_reports/${deleteScoutReportId}`);
+      setShowDeleteScoutModal(false);
+      setDeleteScoutReportId(null);
+
+      // Refresh the scout reports list
+      fetchScoutReports();
+    } catch (error) {
+      console.error("Error deleting scout report:", error);
+      alert("Failed to delete scout report. You may not have permission to delete this report.");
+    } finally {
+      setDeleteScoutLoading(false);
+    }
   };
 
   // Handle position change - updated to support multiple positions
@@ -893,6 +948,39 @@ const PlayerProfilePage: React.FC = () => {
       }));
       console.log("fetchPlayerStages: Extracted stages:", stages);
       setPlayerStages(stages);
+
+      // Fetch archive details for any archived stages
+      const archivedStages = listData.filter((item: any) => item.stage === "Archived");
+      if (archivedStages.length > 0) {
+        const archiveDetails = await Promise.all(
+          archivedStages.map(async (item: any) => {
+            try {
+              const historyResponse = await axiosInstance.get(
+                `/player-lists/${item.list_id}/players/${item.item_id}/stage-history`
+              );
+              const history = historyResponse.data.history || [];
+              // Find the most recent archive entry
+              const archiveEntry = history.find((h: any) => h.newStage === "Archived");
+              if (archiveEntry) {
+                return {
+                  listName: item.list_name,
+                  reason: archiveEntry.reason,
+                  date: archiveEntry.changedAt,
+                  changedBy: archiveEntry.changedByName || "Unknown",
+                  previousStage: archiveEntry.oldStage,
+                };
+              }
+            } catch (error) {
+              console.error(`Error fetching archive history for list ${item.list_name}:`, error);
+            }
+            return null;
+          })
+        );
+        // Filter out null entries and update state
+        setArchiveInfo(archiveDetails.filter((info) => info !== null) as any);
+      } else {
+        setArchiveInfo([]);
+      }
     } catch (error: any) {
       console.error("Error fetching player stages:", error);
       console.error("Error details:", error.response?.data);
@@ -972,84 +1060,173 @@ const PlayerProfilePage: React.FC = () => {
         <div className="profile-header">
           <div className="header-content">
             <div className="player-info">
-              <div className="player-name-section">
+              {/* Player Name */}
+              <div className="player-name-section mb-4">
                 <div className="player-name-line">
                   <span className="player-firstname">{profile.first_name}</span>
                 </div>
                 <h1 className="player-lastname">{profile.last_name}</h1>
-                <div className="player-meta">
-                  <div className="player-position">{profile.position}</div>
-                  <div className="club-name">{profile.squad_name}</div>
-                  <div className="position-age">
-                    {profile.birth_date
-                      ? `${new Date(profile.birth_date).toLocaleDateString("en-GB")} (${profile.age})`
-                      : "N/A"}
-                  </div>
-                </div>
-                {(() => {
-                  const avgScore = calculateAveragePerformanceScore();
-                  return (
-                    avgScore && (
-                      <div className="average-performance-score mt-2">
-                        <span className="score-label">
-                          Average Performance Score:
-                        </span>
-                        <span
-                          className={`badge score-badge ms-2 ${
-                            avgScore === 9 ? 'performance-score-9' :
-                            avgScore === 10 ? 'performance-score-10' : ''
-                          }`}
-                          style={{
-                            backgroundColor: getPerformanceScoreColor(avgScore),
-                            color: "white !important",
-                            fontWeight: "bold",
-                            fontSize: "1rem",
-                            padding: "0.4rem 0.8rem",
-                            ...(avgScore !== 9 && avgScore !== 10 ? { border: "none" } : {}),
-                          }}
-                        >
-                          {avgScore}/10
-                        </span>
-                      </div>
-                    )
-                  );
-                })()}
-                {/* Player Stages from Lists */}
-                {playerStages.length > 0 && (
-                  <div className="player-stages mt-2">
-                    <span className="score-label">Stage:</span>
-                    {playerStages.map((stageInfo, index) => {
-                      // Color code stages
-                      const getStageColor = (stage: string) => {
-                        switch (stage) {
-                          case "Stage 1": return "#6c757d";
-                          case "Stage 2": return "#0dcaf0";
-                          case "Stage 3": return "#ffc107";
-                          case "Stage 4": return "#198754";
-                          case "Archived": return "#dc3545";
-                          default: return "#6c757d";
-                        }
-                      };
-
-                      return (
-                        <span
-                          key={index}
-                          className="badge stage-badge ms-2 me-2 mb-1"
-                          style={{
-                            backgroundColor: getStageColor(stageInfo.stage),
-                            color: "white",
-                            fontWeight: "500",
-                            fontSize: "0.85rem",
-                            padding: "0.3rem 0.6rem",
-                          }}
-                        >
-                          {stageInfo.stage}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
+
+              {/* Two Column Info Layout */}
+              <Row className="g-3">
+                {/* Left Column - Basic Info */}
+                <Col md={6}>
+                  <div className="info-group">
+                    <div className="info-row">
+                      <span className="info-label">Club</span>
+                      <span className="info-value">{profile.squad_name}</span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Birth Date</span>
+                      <span className="info-value">
+                        {profile.birth_date
+                          ? `${new Date(profile.birth_date).toLocaleDateString("en-GB", { timeZone: "Europe/London" })} (${profile.age})`
+                          : "N/A"}
+                      </span>
+                    </div>
+                    <div className="info-row">
+                      <span className="info-label">Reports</span>
+                      <span className="info-value">
+                        {scoutReportsData?.total_reports || 0} Scout, {profile.intel_reports?.length || 0} Intel
+                      </span>
+                    </div>
+                  </div>
+                </Col>
+
+                {/* Right Column - Performance & Status */}
+                <Col md={6}>
+                  {(() => {
+                    const avgScore = calculateAveragePerformanceScore();
+                    const getStageColor = (stage: string) => {
+                      switch (stage) {
+                        case "Stage 1": return "#6c757d";
+                        case "Stage 2": return "#0dcaf0";
+                        case "Stage 3": return "#ffc107";
+                        case "Stage 4": return "#198754";
+                        case "Archived": return "#dc3545";
+                        default: return "#6c757d";
+                      }
+                    };
+
+                    return (
+                      <div className="info-group">
+                        {avgScore && (
+                          <div className="info-row">
+                            <span className="info-label">Average Performance Score</span>
+                            <div>
+                              <span
+                                className={`badge score-badge ${
+                                  avgScore === 9 ? 'performance-score-9' :
+                                  avgScore === 10 ? 'performance-score-10' : ''
+                                }`}
+                                style={{
+                                  backgroundColor: getPerformanceScoreColor(avgScore),
+                                  color: "white !important",
+                                  fontWeight: "bold",
+                                  fontSize: "0.95rem",
+                                  padding: "0.35rem 0.75rem",
+                                  ...(avgScore !== 9 && avgScore !== 10 ? { border: "none" } : {}),
+                                }}
+                              >
+                                {avgScore}/10
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {(playerStages.length > 0 || archiveInfo.length > 0) && (
+                          <div className="info-row">
+                            <span className="info-label">Status</span>
+                            <div className="d-flex align-items-center gap-2">
+                              {/* Non-archived stage badges */}
+                              {playerStages
+                                .filter(s => s.stage !== "Archived")
+                                .map((stageInfo, index) => (
+                                  <span
+                                    key={index}
+                                    className="badge stage-badge"
+                                    style={{
+                                      backgroundColor: getStageColor(stageInfo.stage),
+                                      color: "white",
+                                      fontWeight: "500",
+                                      fontSize: "0.8rem",
+                                      padding: "0.3rem 0.6rem",
+                                    }}
+                                  >
+                                    {stageInfo.stage}
+                                  </span>
+                                ))}
+
+                              {/* Archived badge */}
+                              {archiveInfo.length > 0 && (
+                                <span
+                                  className="badge stage-badge"
+                                  style={{
+                                    backgroundColor: "#dc3545",
+                                    color: "white",
+                                    fontWeight: "500",
+                                    fontSize: "0.8rem",
+                                    padding: "0.3rem 0.6rem",
+                                  }}
+                                >
+                                  Archived
+                                </span>
+                              )}
+
+                              {/* Info icon with popover */}
+                              <OverlayTrigger
+                                placement="right"
+                                overlay={
+                                  <Popover id="status-popover" className="status-popover">
+                                    <Popover.Body>
+                                      {/* Active stages */}
+                                      {playerStages
+                                        .filter(s => s.stage !== "Archived")
+                                        .map((stageInfo, index) => (
+                                          <div key={index} className="popover-list-item">
+                                            <div className="popover-list-header">
+                                              {stageInfo.list_name}
+                                            </div>
+                                            <div className="popover-list-detail">
+                                              • {stageInfo.stage}
+                                            </div>
+                                          </div>
+                                        ))}
+
+                                      {/* Archived items */}
+                                      {archiveInfo.map((info, index) => (
+                                        <div key={index} className="popover-list-item">
+                                          <div className="popover-list-header">
+                                            {info.listName} - Archived
+                                          </div>
+                                          <div className="popover-list-detail">
+                                            • {info.reason}
+                                          </div>
+                                          <div className="popover-list-meta">
+                                            • {info.date ? new Date(info.date).toLocaleDateString("en-GB", {
+                                              day: "numeric",
+                                              month: "short",
+                                              year: "numeric",
+                                              timeZone: "Europe/London",
+                                            }) : "N/A"} · {info.changedBy}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </Popover.Body>
+                                  </Popover>
+                                }
+                              >
+                                <span className="info-icon">ⓘ</span>
+                              </OverlayTrigger>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </Col>
+              </Row>
             </div>
 
             <div className="header-actions">
@@ -1358,6 +1535,26 @@ const PlayerProfilePage: React.FC = () => {
                                   🔗
                                 </Button>
                               )}
+                              {(canSeeAllReports || report.user_id === user?.id) && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleEditScoutReport(report.report_id)}
+                                    title="Edit Report"
+                                    className="btn-action-circle btn-action-edit ms-1"
+                                  >
+                                    ✏️
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleDeleteScoutReport(report.report_id)}
+                                    title="Delete Report"
+                                    className="btn-action-circle btn-action-delete ms-1"
+                                  >
+                                    🗑️
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1585,6 +1782,26 @@ const PlayerProfilePage: React.FC = () => {
                                 >
                                   🔗
                                 </Button>
+                              )}
+                              {(canSeeAllReports || report.user_id === user?.id) && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleEditScoutReport(report.report_id)}
+                                    title="Edit Report"
+                                    className="btn-action-circle btn-action-edit"
+                                  >
+                                    ✏️
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleDeleteScoutReport(report.report_id)}
+                                    title="Delete Report"
+                                    className="btn-action-circle btn-action-delete"
+                                  >
+                                    🗑️
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </Col>
@@ -2468,6 +2685,36 @@ const PlayerProfilePage: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
+      {/* Delete Scout Report Confirmation Modal */}
+      <Modal show={showDeleteScoutModal} onHide={() => setShowDeleteScoutModal(false)}>
+        <Modal.Header
+          closeButton
+          style={{ backgroundColor: "#000000", color: "white" }}
+        >
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this scout report? This action cannot
+          be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteScoutModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={confirmDeleteScoutReport}
+            disabled={deleteScoutLoading}
+          >
+            {deleteScoutLoading ? (
+              <Spinner animation="border" size="sm" />
+            ) : (
+              "Delete"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Share Link Modal */}
       {shareReportId && (
         <ShareLinkModal
@@ -2591,6 +2838,93 @@ const PlayerProfilePage: React.FC = () => {
           background: #f8f9fa;
           border-color: #bbb;
           color: #333;
+        }
+
+        /* Info Row Styles */
+        .info-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .info-row {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .info-row.align-items-start {
+          align-items: start;
+        }
+
+        .info-label {
+          font-size: 0.8rem;
+          color: #888;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          white-space: nowrap;
+        }
+
+        .info-value {
+          font-size: 0.95rem;
+          color: #333;
+          font-weight: 500;
+        }
+
+        /* Info Icon Styles */
+        .info-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          font-size: 14px;
+          color: #999;
+          cursor: pointer;
+          transition: color 0.2s ease;
+          user-select: none;
+        }
+
+        .info-icon:hover {
+          color: #666;
+        }
+
+        /* Popover Styles */
+        .status-popover {
+          max-width: 320px;
+        }
+
+        .status-popover .popover-body {
+          padding: 0.75rem;
+        }
+
+        .popover-list-item {
+          margin-bottom: 0.75rem;
+        }
+
+        .popover-list-item:last-child {
+          margin-bottom: 0;
+        }
+
+        .popover-list-header {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #333;
+          margin-bottom: 0.25rem;
+        }
+
+        .popover-list-detail {
+          font-size: 0.85rem;
+          color: #555;
+          line-height: 1.5;
+        }
+
+        .popover-list-meta {
+          font-size: 0.8rem;
+          color: #999;
+          line-height: 1.5;
         }
 
         .attributes-legend {
