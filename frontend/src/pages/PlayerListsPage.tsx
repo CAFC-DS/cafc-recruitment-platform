@@ -20,6 +20,7 @@ import {
   Badge,
   Modal,
   Spinner,
+  ProgressBar,
   ListGroup,
   Dropdown,
   OverlayTrigger,
@@ -48,7 +49,8 @@ import {
   updatePlayerList,
   deletePlayerList,
   addPlayerToList,
-  removePlayerFromList,
+  bulkRemovePlayersFromList,
+  bulkUpdatePlayerStages,
   searchPlayers,
   updatePlayerStage,
   exportPlayersToCSV,
@@ -97,6 +99,7 @@ interface PlayerList {
 
 type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites" | "decisions";
 type SortDirection = "asc" | "desc";
+type SaveProgressState = "idle" | "saving" | "refetching" | "success" | "error";
 
 // Archive Info Content Component for Popover
 const ArchiveInfoContent: React.FC<{
@@ -242,6 +245,21 @@ const PlayerListsPage: React.FC = () => {
   const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, string>>(new Map());
   const [pendingRemovals, setPendingRemovals] = useState<Set<number>>(new Set());
   const [savingChanges, setSavingChanges] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{
+    state: SaveProgressState;
+    currentStep: number;
+    totalSteps: number;
+    savedCount: number;
+    failedCount: number;
+    message: string;
+  }>({
+    state: "idle",
+    currentStep: 0,
+    totalSteps: 0,
+    savedCount: 0,
+    failedCount: 0,
+    message: "",
+  });
 
   // Stage change reason modal state
   const [showStageReasonModal, setShowStageReasonModal] = useState(false);
@@ -871,31 +889,126 @@ const PlayerListsPage: React.FC = () => {
       return;
     }
 
+    const stageEntries = Array.from(pendingStageChanges.entries());
+    const removalItemIds = Array.from(pendingRemovals);
+    const totalChanges = stageEntries.length + removalItemIds.length;
+    const totalSteps =
+      (stageEntries.length > 0 ? 1 : 0) +
+      (removalItemIds.length > 0 ? 1 : 0) +
+      1; // always include refetch step
+
     try {
       setSavingChanges(true);
       setError(null);
+      setSaveProgress({
+        state: "saving",
+        currentStep: 0,
+        totalSteps,
+        savedCount: 0,
+        failedCount: 0,
+        message: "Preparing save...",
+      });
 
-      // Execute all stage updates
-      const stageUpdatePromises = Array.from(pendingStageChanges.entries()).map(
-        ([itemId, newStage]) => updatePlayerStage(currentList.id, itemId, newStage)
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.time("player-lists-save-pending-changes");
+      }
 
-      // Execute all removals
-      const removalPromises = Array.from(pendingRemovals).map(
-        (itemId) => removePlayerFromList(currentList.id, itemId)
-      );
+      let step = 0;
+      let savedCount = 0;
+      let failedCount = 0;
+      const failedStageIds = new Set<number>();
+      let keepAllRemovalsPending = false;
 
-      await Promise.all([...stageUpdatePromises, ...removalPromises]);
+      if (stageEntries.length > 0) {
+        step += 1;
+        setSaveProgress((prev) => ({
+          ...prev,
+          state: "saving",
+          currentStep: step,
+          message: `Saving stage changes... (${step}/${totalSteps})`,
+        }));
+
+        const stageResponse = await bulkUpdatePlayerStages(
+          currentList.id,
+          stageEntries.map(([itemId, stage]) => ({ item_id: itemId, stage }))
+        );
+        savedCount += stageResponse.updated;
+        failedCount += stageResponse.failed;
+        stageResponse.failures.forEach((failure) => failedStageIds.add(failure.item_id));
+      }
+
+      if (removalItemIds.length > 0) {
+        step += 1;
+        setSaveProgress((prev) => ({
+          ...prev,
+          state: "saving",
+          currentStep: step,
+          message: `Saving removals... (${step}/${totalSteps})`,
+        }));
+
+        const removalResponse = await bulkRemovePlayersFromList(currentList.id, removalItemIds);
+        savedCount += removalResponse.removed;
+        const removalFailures = Math.max(0, removalItemIds.length - removalResponse.removed);
+        failedCount += removalFailures;
+        keepAllRemovalsPending = removalFailures > 0;
+      }
+
+      step += 1;
+      setSaveProgress((prev) => ({
+        ...prev,
+        state: "refetching",
+        currentStep: step,
+        message: `Refreshing data... (${step}/${totalSteps})`,
+      }));
       await refetch();
 
-      // Clear pending changes
-      setPendingStageChanges(new Map());
-      setPendingRemovals(new Set());
+      const nextPendingStageChanges = new Map(
+        stageEntries.filter(([itemId]) => failedStageIds.has(itemId))
+      );
+      const nextPendingRemovals = keepAllRemovalsPending ? new Set(removalItemIds) : new Set<number>();
+
+      setPendingStageChanges(nextPendingStageChanges);
+      setPendingRemovals(nextPendingRemovals);
+
+      const resultState: SaveProgressState = failedCount > 0 ? "error" : "success";
+      setSaveProgress({
+        state: resultState,
+        currentStep: totalSteps,
+        totalSteps,
+        savedCount,
+        failedCount,
+        message:
+          failedCount > 0
+            ? `Saved ${savedCount}/${totalChanges} changes. ${failedCount} failed and can be retried.`
+            : `Saved ${savedCount} changes successfully.`,
+      });
+
+      if (failedCount > 0) {
+        setError(`Partial save completed: ${savedCount} saved, ${failedCount} failed. Failed changes remain pending.`);
+      }
     } catch (err: any) {
       console.error("Error saving changes:", err);
       setError(err.response?.data?.detail || "Failed to save changes. Please try again.");
+      setSaveProgress((prev) => ({
+        ...prev,
+        state: "error",
+        message: "Save failed. Pending changes were not cleared.",
+      }));
     } finally{
       setSavingChanges(false);
+      if (process.env.NODE_ENV !== "production") {
+        console.timeEnd("player-lists-save-pending-changes");
+      }
+      setTimeout(() => {
+        setSaveProgress((prev) => (prev.state === "success" ? {
+          state: "idle",
+          currentStep: 0,
+          totalSteps: 0,
+          savedCount: 0,
+          failedCount: 0,
+          message: "",
+        } : prev));
+      }, 3500);
     }
   };
 
@@ -1646,7 +1759,7 @@ const PlayerListsPage: React.FC = () => {
       />
 
       {/* Floating Save/Discard Changes Button */}
-      {currentList && (pendingStageChanges.size > 0 || pendingRemovals.size > 0) && (
+      {currentList && (pendingStageChanges.size > 0 || pendingRemovals.size > 0 || saveProgress.state !== "idle") && (
         <div
           style={{
             position: "fixed",
@@ -1664,12 +1777,18 @@ const PlayerListsPage: React.FC = () => {
         >
           <div className="d-flex align-items-center gap-2">
             <span style={{ fontSize: "0.9rem", fontWeight: 600, color: colors.gray[700] }}>
-              {pendingStageChanges.size + pendingRemovals.size} unsaved change
-              {pendingStageChanges.size + pendingRemovals.size > 1 ? "s" : ""}
-              {pendingStageChanges.size > 0 && pendingRemovals.size > 0 && (
-                <span style={{ fontSize: "0.8rem", fontWeight: 400 }}>
-                  {" "}({pendingStageChanges.size} stage, {pendingRemovals.size} removal{pendingRemovals.size > 1 ? "s" : ""})
-                </span>
+              {pendingStageChanges.size + pendingRemovals.size > 0 ? (
+                <>
+                  {pendingStageChanges.size + pendingRemovals.size} unsaved change
+                  {pendingStageChanges.size + pendingRemovals.size > 1 ? "s" : ""}
+                  {pendingStageChanges.size > 0 && pendingRemovals.size > 0 && (
+                    <span style={{ fontSize: "0.8rem", fontWeight: 400 }}>
+                      {" "}({pendingStageChanges.size} stage, {pendingRemovals.size} removal{pendingRemovals.size > 1 ? "s" : ""})
+                    </span>
+                  )}
+                </>
+              ) : (
+                "No pending changes"
               )}
             </span>
             <Button
@@ -1706,6 +1825,28 @@ const PlayerListsPage: React.FC = () => {
               )}
             </Button>
           </div>
+          {(saveProgress.state !== "idle" && saveProgress.message) && (
+            <div style={{ minWidth: "260px", marginLeft: "8px" }}>
+              <small
+                className="d-block mb-1"
+                style={{
+                  color: saveProgress.state === "error" ? "#b91c1c" : colors.gray[700],
+                  fontWeight: 600,
+                }}
+              >
+                {saveProgress.message}
+              </small>
+              <ProgressBar
+                now={
+                  saveProgress.totalSteps > 0
+                    ? (saveProgress.currentStep / saveProgress.totalSteps) * 100
+                    : 0
+                }
+                variant={saveProgress.state === "error" ? "danger" : "dark"}
+                style={{ height: "8px" }}
+              />
+            </div>
+          )}
         </div>
       )}
     </Container>

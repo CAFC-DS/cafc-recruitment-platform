@@ -9767,6 +9767,17 @@ class PlayerStageUpdate(BaseModel):
     description: Optional[str] = None  # Optional description for stage change
 
 
+class BulkStageUpdateItem(BaseModel):
+    item_id: int
+    stage: str
+    reason: Optional[str] = None
+    description: Optional[str] = None
+
+
+class BulkStageUpdateRequest(BaseModel):
+    updates: List[BulkStageUpdateItem]
+
+
 @app.post("/player-lists")
 async def create_player_list(
     list_data: PlayerListCreate, current_user: User = Depends(get_current_user)
@@ -11014,6 +11025,178 @@ async def update_player_stage(
             conn.rollback()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error updating player stage: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/{list_id}/players/stage/bulk")
+async def bulk_update_player_stages(
+    list_id: int,
+    bulk_data: BulkStageUpdateRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Bulk update player stages in a list (admin/manager only)"""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and senior managers can update player stages"
+        )
+
+    if not bulk_data.updates:
+        raise HTTPException(status_code=400, detail="No stage updates provided")
+
+    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"]
+    start_time = datetime.utcnow()
+    failures = []
+    updated_count = 0
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Check if list exists once
+        cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="List not found")
+
+        for update in bulk_data.updates:
+            item_id = update.item_id
+            target_stage = update.stage
+            reason = update.reason
+            description = update.description
+
+            # Validate stage value
+            if target_stage not in valid_stages:
+                failures.append({
+                    "item_id": item_id,
+                    "reason": f"Stage must be one of: {', '.join(valid_stages)}",
+                })
+                continue
+
+            # Validate reason rules and preserve current single-update behavior
+            if target_stage == "Stage 1":
+                if not reason:
+                    failures.append({
+                        "item_id": item_id,
+                        "reason": "Reason is required when moving to Stage 1",
+                    })
+                    continue
+                if reason not in STAGE_1_REASONS:
+                    failures.append({
+                        "item_id": item_id,
+                        "reason": f"Invalid reason for Stage 1. Must be one of: {', '.join(STAGE_1_REASONS)}",
+                    })
+                    continue
+                if reason in STAGE_2_AUTO_ADVANCE_REASONS:
+                    target_stage = "Stage 2"
+            elif target_stage == "Archived":
+                if not reason:
+                    failures.append({
+                        "item_id": item_id,
+                        "reason": "Reason is required when archiving a player",
+                    })
+                    continue
+                if reason not in ARCHIVED_REASONS:
+                    failures.append({
+                        "item_id": item_id,
+                        "reason": f"Invalid reason for Archived. Must be one of: {', '.join(ARCHIVED_REASONS)}",
+                    })
+                    continue
+
+            # Check item exists and belongs to list
+            cursor.execute(
+                """
+                SELECT STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM player_list_items
+                WHERE ID = %s AND LIST_ID = %s
+            """,
+                (item_id, list_id),
+            )
+            item_row = cursor.fetchone()
+            if not item_row:
+                failures.append({
+                    "item_id": item_id,
+                    "reason": "Player not found in list",
+                })
+                continue
+
+            old_stage = item_row[0]
+            player_id = item_row[1] or item_row[2]
+
+            # Update stage
+            cursor.execute(
+                """
+                UPDATE player_list_items
+                SET STAGE = %s
+                WHERE ID = %s AND LIST_ID = %s
+            """,
+                (target_stage, item_id, list_id),
+            )
+
+            # Insert history record using same conditions as single-update endpoint
+            if target_stage in ["Stage 1", "Archived"] or (
+                target_stage == "Stage 2" and reason in STAGE_2_AUTO_ADVANCE_REASONS
+            ):
+                cursor.execute(
+                    """
+                    INSERT INTO player_stage_history
+                    (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                    (
+                        item_id,
+                        list_id,
+                        player_id,
+                        old_stage,
+                        target_stage,
+                        reason,
+                        description,
+                        current_user.id,
+                    ),
+                )
+
+            updated_count += 1
+
+        # Update list timestamp once for batch
+        cursor.execute(
+            """
+            UPDATE player_lists
+            SET UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (datetime.utcnow(), list_id),
+        )
+
+        conn.commit()
+
+        # Invalidate cache once for batch
+        invalidate_cache("player_lists_all")
+
+        requested_count = len(bulk_data.updates)
+        failed_count = len(failures)
+        duration_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        logging.error(
+            "[METRIC] bulk_update_player_stages list_id=%s requested=%s updated=%s failed=%s duration_ms=%s",
+            list_id,
+            requested_count,
+            updated_count,
+            failed_count,
+            duration_ms,
+        )
+
+        return {
+            "requested": requested_count,
+            "updated": updated_count,
+            "failed": failed_count,
+            "failures": failures,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error bulk updating player stages: {e}")
     finally:
         if conn:
             conn.close()

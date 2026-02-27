@@ -61,6 +61,20 @@ export interface PlayerListMembership {
   added_at: string | null;
 }
 
+export interface BulkStageUpdateItem {
+  item_id: number;
+  stage: string;
+  reason?: string;
+  description?: string;
+}
+
+export interface BulkStageUpdateResponse {
+  requested: number;
+  updated: number;
+  failed: number;
+  failures: Array<{ item_id: number; reason: string }>;
+}
+
 // ========== API Methods ==========
 
 /**
@@ -235,6 +249,19 @@ export const updatePlayerStage = async (
     stage,
     reason,
     description,
+  });
+  return response.data;
+};
+
+/**
+ * Bulk update player stages in a list
+ */
+export const bulkUpdatePlayerStages = async (
+  listId: number,
+  updates: BulkStageUpdateItem[]
+): Promise<BulkStageUpdateResponse> => {
+  const response = await axiosInstance.put(`/player-lists/${listId}/players/stage/bulk`, {
+    updates,
   });
   return response.data;
 };

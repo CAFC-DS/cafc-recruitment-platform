@@ -20,6 +20,7 @@ import {
   Modal,
   Badge,
   Spinner,
+  ProgressBar,
   Dropdown,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
@@ -47,7 +48,8 @@ import {
   updatePlayerList,
   deletePlayerList,
   addPlayerToList,
-  removePlayerFromList,
+  bulkRemovePlayersFromList,
+  bulkUpdatePlayerStages,
   updatePlayerStage,
   searchPlayers,
   exportPlayersToCSV,
@@ -120,6 +122,21 @@ const KanbanPage: React.FC = () => {
   const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, { fromStage: string; toStage: string; listId: number }>>(new Map());
   const [pendingRemovals, setPendingRemovals] = useState<Map<number, number>>(new Map()); // itemId -> listId
   const [savingChanges, setSavingChanges] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{
+    state: "idle" | "saving" | "refetching" | "success" | "error";
+    currentStep: number;
+    totalSteps: number;
+    savedCount: number;
+    failedCount: number;
+    message: string;
+  }>({
+    state: "idle",
+    currentStep: 0,
+    totalSteps: 0,
+    savedCount: 0,
+    failedCount: 0,
+    message: "",
+  });
 
   // Batch list memberships (for MultiListBadges performance)
   const [batchMemberships, setBatchMemberships] = useState<Record<string, PlayerListMembership[]>>({});
@@ -775,31 +792,151 @@ const KanbanPage: React.FC = () => {
   const savePendingChanges = async () => {
     if (pendingStageChanges.size === 0 && pendingRemovals.size === 0) return;
 
+    const stageEntries = Array.from(pendingStageChanges.entries());
+    const removalEntries = Array.from(pendingRemovals.entries());
+    const totalChanges = stageEntries.length + removalEntries.length;
+
+    const stageGroups = new Map<number, Array<{ item_id: number; stage: string }>>();
+    stageEntries.forEach(([itemId, change]) => {
+      const existing = stageGroups.get(change.listId) || [];
+      existing.push({ item_id: itemId, stage: change.toStage });
+      stageGroups.set(change.listId, existing);
+    });
+
+    const removalGroups = new Map<number, number[]>();
+    removalEntries.forEach(([itemId, listId]) => {
+      const existing = removalGroups.get(listId) || [];
+      existing.push(itemId);
+      removalGroups.set(listId, existing);
+    });
+
+    const totalSteps = stageGroups.size + removalGroups.size + 1; // include refetch
+
     try {
       setSavingChanges(true);
       setError(null);
+      setSaveProgress({
+        state: "saving",
+        currentStep: 0,
+        totalSteps,
+        savedCount: 0,
+        failedCount: 0,
+        message: "Preparing save...",
+      });
 
-      // Execute all stage updates
-      const stageUpdatePromises = Array.from(pendingStageChanges.entries()).map(
-        ([itemId, change]) => updatePlayerStage(change.listId, itemId, change.toStage)
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.time("kanban-save-pending-changes");
+      }
 
-      // Execute all removals
-      const removalPromises = Array.from(pendingRemovals.entries()).map(
-        ([itemId, listId]) => removePlayerFromList(listId, itemId)
-      );
+      let step = 0;
+      let savedCount = 0;
+      let failedCount = 0;
+      const failedStageIds = new Set<number>();
+      const failedRemovalIds = new Set<number>();
 
-      await Promise.all([...stageUpdatePromises, ...removalPromises]);
+      const stageGroupEntries = Array.from(stageGroups.entries());
+      for (let i = 0; i < stageGroupEntries.length; i += 1) {
+        const [listId, updates] = stageGroupEntries[i];
+        step += 1;
+        setSaveProgress({
+          state: "saving",
+          currentStep: step,
+          totalSteps,
+          savedCount,
+          failedCount,
+          message: `Saving stage changes... (${step}/${totalSteps})`,
+        });
+
+        const stageResponse = await bulkUpdatePlayerStages(listId, updates);
+        savedCount += stageResponse.updated;
+        failedCount += stageResponse.failed;
+        stageResponse.failures.forEach((failure) => failedStageIds.add(failure.item_id));
+      }
+
+      const removalGroupEntries = Array.from(removalGroups.entries());
+      for (let i = 0; i < removalGroupEntries.length; i += 1) {
+        const [listId, itemIds] = removalGroupEntries[i];
+        step += 1;
+        setSaveProgress({
+          state: "saving",
+          currentStep: step,
+          totalSteps,
+          savedCount,
+          failedCount,
+          message: `Saving removals... (${step}/${totalSteps})`,
+        });
+
+        const removalResponse = await bulkRemovePlayersFromList(listId, itemIds);
+        savedCount += removalResponse.removed;
+        const removalFailures = Math.max(0, itemIds.length - removalResponse.removed);
+        failedCount += removalFailures;
+        if (removalFailures > 0) {
+          itemIds.forEach((itemId) => failedRemovalIds.add(itemId));
+        }
+      }
+
+      step += 1;
+      setSaveProgress((prev) => ({
+        ...prev,
+        state: "refetching",
+        currentStep: step,
+        message: `Refreshing data... (${step}/${totalSteps})`,
+      }));
       await refetch();
 
-      // Clear pending changes
-      setPendingStageChanges(new Map());
-      setPendingRemovals(new Map());
+      const nextPendingStageChanges = new Map(
+        stageEntries
+          .filter(([itemId]) => failedStageIds.has(itemId))
+          .map(([itemId, change]) => [itemId, change])
+      );
+      const nextPendingRemovals = new Map(
+        removalEntries
+          .filter(([itemId]) => failedRemovalIds.has(itemId))
+          .map(([itemId, listId]) => [itemId, listId])
+      );
+
+      setPendingStageChanges(nextPendingStageChanges);
+      setPendingRemovals(nextPendingRemovals);
+
+      const resultState = failedCount > 0 ? "error" : "success";
+      setSaveProgress({
+        state: resultState,
+        currentStep: totalSteps,
+        totalSteps,
+        savedCount,
+        failedCount,
+        message:
+          failedCount > 0
+            ? `Saved ${savedCount}/${totalChanges} changes. ${failedCount} failed and can be retried.`
+            : `Saved ${savedCount} changes successfully.`,
+      });
+
+      if (failedCount > 0) {
+        setError(`Partial save completed: ${savedCount} saved, ${failedCount} failed. Failed changes remain pending.`);
+      }
     } catch (err: any) {
       console.error("Error saving changes:", err);
       setError(err.response?.data?.detail || "Failed to save changes. Please try again.");
+      setSaveProgress((prev) => ({
+        ...prev,
+        state: "error",
+        message: "Save failed. Pending changes were not cleared.",
+      }));
     } finally {
       setSavingChanges(false);
+      if (process.env.NODE_ENV !== "production") {
+        console.timeEnd("kanban-save-pending-changes");
+      }
+      setTimeout(() => {
+        setSaveProgress((prev) => (prev.state === "success" ? {
+          state: "idle",
+          currentStep: 0,
+          totalSteps: 0,
+          savedCount: 0,
+          failedCount: 0,
+          message: "",
+        } : prev));
+      }, 3500);
     }
   };
 
@@ -1216,7 +1353,7 @@ const KanbanPage: React.FC = () => {
           />
 
           {/* Floating Save/Discard Changes Button */}
-          {(pendingStageChanges.size > 0 || pendingRemovals.size > 0) && (
+          {(pendingStageChanges.size > 0 || pendingRemovals.size > 0 || saveProgress.state !== "idle") && (
             <div
               style={{
                 position: "fixed",
@@ -1234,12 +1371,18 @@ const KanbanPage: React.FC = () => {
             >
               <div className="d-flex align-items-center gap-2">
                 <span style={{ fontSize: "0.9rem", fontWeight: 600, color: colors.gray[700] }}>
-                  {pendingStageChanges.size + pendingRemovals.size} unsaved change
-                  {pendingStageChanges.size + pendingRemovals.size > 1 ? "s" : ""}
-                  {pendingStageChanges.size > 0 && pendingRemovals.size > 0 && (
-                    <span style={{ fontSize: "0.8rem", fontWeight: 400 }}>
-                      {" "}({pendingStageChanges.size} stage, {pendingRemovals.size} removal{pendingRemovals.size > 1 ? "s" : ""})
-                    </span>
+                  {pendingStageChanges.size + pendingRemovals.size > 0 ? (
+                    <>
+                      {pendingStageChanges.size + pendingRemovals.size} unsaved change
+                      {pendingStageChanges.size + pendingRemovals.size > 1 ? "s" : ""}
+                      {pendingStageChanges.size > 0 && pendingRemovals.size > 0 && (
+                        <span style={{ fontSize: "0.8rem", fontWeight: 400 }}>
+                          {" "}({pendingStageChanges.size} stage, {pendingRemovals.size} removal{pendingRemovals.size > 1 ? "s" : ""})
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    "No pending changes"
                   )}
                 </span>
                 <Button
@@ -1276,6 +1419,28 @@ const KanbanPage: React.FC = () => {
                   )}
                 </Button>
               </div>
+              {(saveProgress.state !== "idle" && saveProgress.message) && (
+                <div style={{ minWidth: "260px", marginLeft: "8px" }}>
+                  <small
+                    className="d-block mb-1"
+                    style={{
+                      color: saveProgress.state === "error" ? "#b91c1c" : colors.gray[700],
+                      fontWeight: 600,
+                    }}
+                  >
+                    {saveProgress.message}
+                  </small>
+                  <ProgressBar
+                    now={
+                      saveProgress.totalSteps > 0
+                        ? (saveProgress.currentStep / saveProgress.totalSteps) * 100
+                        : 0
+                    }
+                    variant={saveProgress.state === "error" ? "danger" : "dark"}
+                    style={{ height: "8px" }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </>
