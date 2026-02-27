@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Collapse } from "react-bootstrap";
+import { Badge, Collapse, OverlayTrigger, Popover, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import {
   getPerformanceScoreColor,
@@ -50,7 +50,57 @@ interface CollapsiblePlayerBarProps {
   onViewHistory?: (player: PlayerInList) => void;
   isFavorited?: boolean;
   isDecision?: boolean;
+  fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
+
+// Archive info content component
+const ArchiveInfoContent: React.FC<{
+  itemId: number;
+  fetchArchiveInfo: (itemId: number) => Promise<any>;
+}> = ({ itemId, fetchArchiveInfo }) => {
+  const [archiveData, setArchiveData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      const data = await fetchArchiveInfo(itemId);
+      setArchiveData(data);
+      setLoading(false);
+    };
+    loadData();
+  }, [itemId, fetchArchiveInfo]);
+
+  if (loading) return <Spinner animation="border" size="sm" />;
+  if (!archiveData) return <div>No archive information available</div>;
+
+  return (
+    <div style={{ fontSize: "0.85rem" }}>
+      <div>
+        <strong>Reason:</strong> {archiveData.reason}
+      </div>
+      <div>
+        <strong>Date:</strong>{" "}
+        {archiveData.date
+          ? new Date(archiveData.date).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              timeZone: "Europe/London",
+            })
+          : "N/A"}
+      </div>
+      <div>
+        <strong>By:</strong> {archiveData.changedBy}
+      </div>
+      {archiveData.previousStage && (
+        <div>
+          <strong>Previous:</strong> {archiveData.previousStage}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
   player,
@@ -66,6 +116,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
   onViewHistory,
   isFavorited = false,
   isDecision = false,
+  fetchArchiveInfo,
 }) => {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -263,19 +314,49 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
             </Badge>
           )}
           {isArchived && !isPendingRemoval && !hasUnsavedChanges && (
-            <Badge
-              bg=""
-              style={{
-                backgroundColor: "#9ca3af",
-                color: "white",
-                fontSize: "0.6rem",
-                padding: "2px 6px",
-                flexShrink: 0,
-              }}
-              title="Archived player"
-            >
-              ARCHIVED
-            </Badge>
+            <>
+              <Badge
+                bg=""
+                style={{
+                  backgroundColor: "#9ca3af",
+                  color: "white",
+                  fontSize: "0.6rem",
+                  padding: "2px 6px",
+                  flexShrink: 0,
+                }}
+                title="Archived player"
+              >
+                ARCHIVED
+              </Badge>
+              {fetchArchiveInfo && (
+                <OverlayTrigger
+                  trigger={["hover", "focus"]}
+                  placement="top"
+                  overlay={
+                    <Popover id={`archive-popover-bar-${player.item_id}`} style={{ maxWidth: "300px" }}>
+                      <Popover.Body>
+                        <ArchiveInfoContent
+                          itemId={player.item_id}
+                          fetchArchiveInfo={fetchArchiveInfo}
+                        />
+                      </Popover.Body>
+                    </Popover>
+                  }
+                >
+                  <span
+                    style={{
+                      marginLeft: "4px",
+                      cursor: "pointer",
+                      fontSize: "0.6rem",
+                      color: "#999",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ⓘ
+                  </span>
+                </OverlayTrigger>
+              )}
+            </>
           )}
         </div>
 

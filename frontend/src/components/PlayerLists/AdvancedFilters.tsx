@@ -24,6 +24,8 @@ interface AdvancedFiltersProps {
   onShowArchivedChange: (show: boolean) => void;
   includeArchivedReports: boolean;
   onIncludeArchivedReportsChange: (include: boolean) => void;
+  includeFlagReports: boolean;
+  onIncludeFlagReportsChange: (include: boolean) => void;
 }
 
 const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
@@ -38,6 +40,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   onShowArchivedChange,
   includeArchivedReports,
   onIncludeArchivedReportsChange,
+  includeFlagReports,
+  onIncludeFlagReportsChange,
 }) => {
   return (
     <Card className="mb-3">
@@ -267,8 +271,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     size="sm"
                     className="w-100 text-start"
                   >
-                    {showArchived || includeArchivedReports
-                      ? `${[showArchived && "Archived players", includeArchivedReports && "Archived reports"].filter(Boolean).join(", ")}`
+                    {showArchived || includeArchivedReports || includeFlagReports
+                      ? `${[showArchived && "Archived players", includeArchivedReports && "Archived reports", includeFlagReports && "Flag reports"].filter(Boolean).join(", ")}`
                       : "None selected"}
                   </Dropdown.Toggle>
                   <Dropdown.Menu
@@ -291,6 +295,15 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         label="Include archived reports in counts"
                         checked={includeArchivedReports}
                         onChange={(e) => onIncludeArchivedReportsChange(e.target.checked)}
+                      />
+                    </div>
+                    <div className="px-2 py-1">
+                      <Form.Check
+                        type="checkbox"
+                        id="include-flag-reports-checkbox"
+                        label="Include flag reports in counts"
+                        checked={includeFlagReports}
+                        onChange={(e) => onIncludeFlagReportsChange(e.target.checked)}
                       />
                     </div>
                   </Dropdown.Menu>
