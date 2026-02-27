@@ -470,7 +470,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                       }}
                       title={isDecision ? "Remove decision" : "Mark as decision"}
                     >
-                      {isDecision ? "⬢" : "⬡"}
+                      {isDecision ? "💭" : "○"}
                     </button>
                   )}
 

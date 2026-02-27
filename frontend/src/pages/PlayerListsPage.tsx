@@ -1445,7 +1445,7 @@ const PlayerListsPage: React.FC = () => {
                                   className="btn-action-circle"
                                   style={{ color: playerDecisions.has(player.universal_id) ? "#111827" : "#6b7280" }}
                                 >
-                                  {playerDecisions.has(player.universal_id) ? "⬢" : "⬡"}
+                                  {playerDecisions.has(player.universal_id) ? "💭" : "○"}
                                 </Button>
                                 <Button
                                   size="sm"
