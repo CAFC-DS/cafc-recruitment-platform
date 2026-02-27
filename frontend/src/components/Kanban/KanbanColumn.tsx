@@ -47,8 +47,10 @@ interface KanbanColumnProps {
   loadingMemberships?: boolean;
   onOpenNotes?: (player: PlayerInList) => void;
   onToggleFavorite?: (universalId: string) => void;
+  onToggleDecision?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
+  playerDecisions?: Set<string>;
 }
 
 /**
@@ -88,8 +90,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   loadingMemberships,
   onOpenNotes,
   onToggleFavorite,
+  onToggleDecision,
   onViewHistory,
   playerFavorites,
+  playerDecisions,
 }) => {
   // Setup droppable area with @dnd-kit
   const { setNodeRef } = useDroppable({
@@ -272,8 +276,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 loadingMemberships={loadingMemberships}
                 onOpenNotes={onOpenNotes}
                 onToggleFavorite={onToggleFavorite}
+                onToggleDecision={onToggleDecision}
                 onViewHistory={onViewHistory}
                 isFavorited={playerFavorites?.has(player.universal_id) || false}
+                isDecision={playerDecisions?.has(player.universal_id) || false}
               />
             ))
           )}

@@ -46,8 +46,10 @@ interface CollapsiblePlayerBarProps {
   loadingMemberships?: boolean;
   onOpenNotes?: (player: PlayerInList) => void;
   onToggleFavorite?: (universalId: string) => void;
+  onToggleDecision?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   isFavorited?: boolean;
+  isDecision?: boolean;
 }
 
 const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
@@ -60,8 +62,10 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
   loadingMemberships,
   onOpenNotes,
   onToggleFavorite,
+  onToggleDecision,
   onViewHistory,
   isFavorited = false,
+  isDecision = false,
 }) => {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -365,6 +369,27 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                       title={isFavorited ? "Remove from favorites" : "Add to favorites"}
                     >
                       {isFavorited ? "⭐" : "☆"}
+                    </button>
+                  )}
+
+                  {/* Decision Button */}
+                  {onToggleDecision && (
+                    <button
+                      className="action-btn btn btn-sm btn-outline-secondary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleDecision(player.universal_id);
+                      }}
+                      style={{
+                        fontSize: "1rem",
+                        padding: "4px 8px",
+                        minWidth: "36px",
+                        color: isDecision ? "#111827" : undefined,
+                        borderColor: isDecision ? "#111827" : undefined,
+                      }}
+                      title={isDecision ? "Remove decision" : "Mark as decision"}
+                    >
+                      {isDecision ? "⬢" : "⬡"}
                     </button>
                   )}
 

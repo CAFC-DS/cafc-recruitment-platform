@@ -29,9 +29,9 @@ const POSITION_MAP: Record<string, { row: number; col: number }> = {
   // Defenders (row 1)
   RB: { row: 1, col: 0 },
   RWB: { row: 1, col: 0 },
-  LCB: { row: 1, col: 1 },
-  CB: { row: 1, col: 2 },
-  RCB: { row: 1, col: 3 },
+  RCB: { row: 1, col: 1 },
+  CCB: { row: 1, col: 2 },
+  LCB: { row: 1, col: 3 },
   LB: { row: 1, col: 4 },
   LWB: { row: 1, col: 4 },
 
@@ -55,9 +55,8 @@ const POSITION_MAP: Record<string, { row: number; col: number }> = {
   AM: { row: 4, col: 2 },
 
   // Wingers (row 5)
-  LW: { row: 5, col: 0 },
-  W: { row: 5, col: 2 },
-  RW: { row: 5, col: 4 },
+  RW: { row: 5, col: 0 },
+  LW: { row: 5, col: 4 },
 
   // Forwards (row 6)
   LF: { row: 6, col: 1 },

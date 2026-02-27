@@ -34,7 +34,14 @@ import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSe
 import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
 import StageChangeReasonModal from "../components/PlayerLists/StageChangeReasonModal";
 import StageHistoryModal from "../components/PlayerLists/StageHistoryModal";
-import { getPlayerNotes, setPlayerNotes, isPlayerFavorite, togglePlayerFavorite } from "../utils/playerListPreferences";
+import {
+  getPlayerNotes,
+  setPlayerNotes,
+  isPlayerFavorite,
+  togglePlayerFavorite,
+  isPlayerDecision,
+  togglePlayerDecision,
+} from "../utils/playerListPreferences";
 import {
   createPlayerList,
   updatePlayerList,
@@ -103,7 +110,7 @@ const KanbanPage: React.FC = () => {
   const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
 
   // Sort state
-  type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites";
+  type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites" | "decisions";
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -142,6 +149,7 @@ const KanbanPage: React.FC = () => {
     name: string;
   } | null>(null);
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
+  const [playerDecisions, setPlayerDecisions] = useState<Set<string>>(new Set());
 
   // Stage change reason modal state
   const [showStageReasonModal, setShowStageReasonModal] = useState(false);
@@ -346,6 +354,10 @@ const KanbanPage: React.FC = () => {
             aVal = playerFavorites.has(a.universal_id) ? 1 : 0;
             bVal = playerFavorites.has(b.universal_id) ? 1 : 0;
             break;
+          case "decisions":
+            aVal = playerDecisions.has(a.universal_id) ? 1 : 0;
+            bVal = playerDecisions.has(b.universal_id) ? 1 : 0;
+            break;
           default:
             return 0;
         }
@@ -375,7 +387,7 @@ const KanbanPage: React.FC = () => {
           : null,
       players: sortPlayers(players),
     }));
-  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection, playerFavorites]);
+  }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection, playerFavorites, playerDecisions]);
 
   /**
    * Fetch batch memberships when stage columns change
@@ -828,6 +840,23 @@ const KanbanPage: React.FC = () => {
   };
 
   /**
+   * Handle toggling decision status
+   */
+  const handleToggleDecision = (universalId: string) => {
+    const userId = currentUser?.id?.toString() || "0";
+    const newDecisionStatus = togglePlayerDecision(userId, universalId);
+    setPlayerDecisions((prev) => {
+      const newSet = new Set(prev);
+      if (newDecisionStatus) {
+        newSet.add(universalId);
+      } else {
+        newSet.delete(universalId);
+      }
+      return newSet;
+    });
+  };
+
+  /**
    * Load favorites from localStorage on mount and when lists change
    */
   useEffect(() => {
@@ -843,6 +872,24 @@ const KanbanPage: React.FC = () => {
       });
     });
     setPlayerFavorites(favs);
+  }, [lists, currentUser]);
+
+  /**
+   * Load decisions from localStorage on mount and when lists change
+   */
+  useEffect(() => {
+    const userId = currentUser?.id?.toString() || "0";
+    if (!userId || lists.length === 0) return;
+
+    const decisions = new Set<string>();
+    lists.forEach((list) => {
+      list.players.forEach((player) => {
+        if (isPlayerDecision(userId, player.universal_id)) {
+          decisions.add(player.universal_id);
+        }
+      });
+    });
+    setPlayerDecisions(decisions);
   }, [lists, currentUser]);
 
   /**
@@ -932,13 +979,16 @@ const KanbanPage: React.FC = () => {
                     const u = name.toUpperCase();
                     if (/\bGK\b/.test(u)) return 0;
                     if (u.includes("RB/RWB")) return 1;
-                    if (u.includes("LB/LWB")) return 2;
-                    if (/\bCB\b/.test(u)) return 3;
-                    if (u.includes("DM/CM")) return 4;
-                    if (/\bAM\b/.test(u)) return 5;
-                    if (/\bW\b/.test(u)) return 6;
-                    if (/\bCF\b/.test(u)) return 7;
-                    return 8;
+                    if (/\bRCB\b/.test(u)) return 2;
+                    if (/\bCCB\b/.test(u)) return 3;
+                    if (/\bLCB\b/.test(u)) return 4;
+                    if (u.includes("LB/LWB")) return 5;
+                    if (u.includes("DM/CM")) return 6;
+                    if (/\bAM\b/.test(u)) return 7;
+                    if (/\bRW\b/.test(u)) return 8;
+                    if (/\bLW\b/.test(u)) return 9;
+                    if (/\bCF\b/.test(u)) return 10;
+                    return 11;
                   };
                   return getRank(a.list_name) - getRank(b.list_name);
                 }).map((list) => {
@@ -1037,6 +1087,7 @@ const KanbanPage: React.FC = () => {
                     <option value="score">Score</option>
                     <option value="reports">Reports</option>
                     <option value="favorites">Favorites</option>
+                    <option value="decisions">Decisions</option>
                   </Form.Select>
                   <Button
                     size="sm"
@@ -1093,8 +1144,10 @@ const KanbanPage: React.FC = () => {
             loadingMemberships={loadingMemberships}
             onOpenNotes={handleOpenNotesModal}
             onToggleFavorite={handleToggleFavorite}
+            onToggleDecision={handleToggleDecision}
             onViewHistory={openStageHistory}
             playerFavorites={playerFavorites}
+            playerDecisions={playerDecisions}
           />
 
           {/* Floating Save/Discard Changes Button */}

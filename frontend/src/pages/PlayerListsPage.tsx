@@ -38,6 +38,8 @@ import {
   setPlayerNotes,
   isPlayerFavorite,
   togglePlayerFavorite,
+  isPlayerDecision,
+  togglePlayerDecision,
 } from "../utils/playerListPreferences";
 import {
   createPlayerList,
@@ -90,7 +92,7 @@ interface PlayerList {
   avg_performance_score: number | null;
 }
 
-type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites";
+type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites" | "decisions";
 type SortDirection = "asc" | "desc";
 
 const PlayerListsPage: React.FC = () => {
@@ -156,6 +158,7 @@ const PlayerListsPage: React.FC = () => {
     name: string;
   } | null>(null);
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
+  const [playerDecisions, setPlayerDecisions] = useState<Set<string>>(new Set());
 
   // Remove player (currently using batch removal with pending state)
   // const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
@@ -418,6 +421,10 @@ const PlayerListsPage: React.FC = () => {
           aVal = playerFavorites.has(a.universal_id) ? 1 : 0;
           bVal = playerFavorites.has(b.universal_id) ? 1 : 0;
           break;
+        case "decisions":
+          aVal = playerDecisions.has(a.universal_id) ? 1 : 0;
+          bVal = playerDecisions.has(b.universal_id) ? 1 : 0;
+          break;
       }
 
       if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
@@ -426,7 +433,7 @@ const PlayerListsPage: React.FC = () => {
     });
 
     return result;
-  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived, playerFavorites]);
+  }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived, playerFavorites, playerDecisions]);
 
   // Handlers
   const handleSort = (field: SortField) => {
@@ -609,6 +616,19 @@ const PlayerListsPage: React.FC = () => {
     });
   };
 
+  const handleToggleDecision = (universalId: string) => {
+    const newDecisionStatus = togglePlayerDecision(userId, universalId);
+    setPlayerDecisions((prev) => {
+      const newSet = new Set(prev);
+      if (newDecisionStatus) {
+        newSet.add(universalId);
+      } else {
+        newSet.delete(universalId);
+      }
+      return newSet;
+    });
+  };
+
   // Load user-specific favorites on mount or when lists change
   useEffect(() => {
     if (!userId || lists.length === 0) return;
@@ -622,6 +642,21 @@ const PlayerListsPage: React.FC = () => {
       });
     });
     setPlayerFavorites(favs);
+  }, [lists, userId]);
+
+  // Load user-specific decisions on mount or when lists change
+  useEffect(() => {
+    if (!userId || lists.length === 0) return;
+
+    const decisions = new Set<string>();
+    lists.forEach((list) => {
+      list.players.forEach((player) => {
+        if (isPlayerDecision(userId, player.universal_id)) {
+          decisions.add(player.universal_id);
+        }
+      });
+    });
+    setPlayerDecisions(decisions);
   }, [lists, userId]);
 
   const handleStageChange = (itemId: number, newStage: string, player?: any) => {
@@ -842,13 +877,16 @@ const PlayerListsPage: React.FC = () => {
                     const u = name.toUpperCase();
                     if (/\bGK\b/.test(u)) return 0;
                     if (u.includes("RB/RWB")) return 1;
-                    if (u.includes("LB/LWB")) return 2;
-                    if (/\bCB\b/.test(u)) return 3;
-                    if (u.includes("DM/CM")) return 4;
-                    if (/\bAM\b/.test(u)) return 5;
-                    if (/\bW\b/.test(u)) return 6;
-                    if (/\bCF\b/.test(u)) return 7;
-                    return 8;
+                    if (/\bRCB\b/.test(u)) return 2;
+                    if (/\bCCB\b/.test(u)) return 3;
+                    if (/\bLCB\b/.test(u)) return 4;
+                    if (u.includes("LB/LWB")) return 5;
+                    if (u.includes("DM/CM")) return 6;
+                    if (/\bAM\b/.test(u)) return 7;
+                    if (/\bRW\b/.test(u)) return 8;
+                    if (/\bLW\b/.test(u)) return 9;
+                    if (/\bCF\b/.test(u)) return 10;
+                    return 11;
                   };
                   return getRank(a.list_name) - getRank(b.list_name);
                 }).map((list) => {
@@ -958,6 +996,7 @@ const PlayerListsPage: React.FC = () => {
                     <option value="score">Score</option>
                     <option value="reports">Reports</option>
                     <option value="favorites">Favorites</option>
+                    <option value="decisions">Decisions</option>
                   </Form.Select>
                   <Button
                     size="sm"
@@ -1236,6 +1275,15 @@ const PlayerListsPage: React.FC = () => {
                                   style={{ color: playerFavorites.has(player.universal_id) ? "#FFD700" : "#6b7280" }}
                                 >
                                   {playerFavorites.has(player.universal_id) ? "⭐" : "☆"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  title={playerDecisions.has(player.universal_id) ? "Remove decision" : "Mark as decision"}
+                                  onClick={() => handleToggleDecision(player.universal_id)}
+                                  className="btn-action-circle"
+                                  style={{ color: playerDecisions.has(player.universal_id) ? "#111827" : "#6b7280" }}
+                                >
+                                  {playerDecisions.has(player.universal_id) ? "⬢" : "⬡"}
                                 </Button>
                                 <Button
                                   size="sm"
