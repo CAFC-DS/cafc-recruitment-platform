@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   Table,
@@ -8,6 +8,7 @@ import {
   Spinner,
   Modal,
   ButtonGroup,
+  Form,
 } from "react-bootstrap";
 import axiosInstance from "../axiosInstance";
 import axios from "axios";
@@ -47,7 +48,11 @@ interface FixtureClash {
   clash_type: "fixture";
 }
 
-const DataClashesTab: React.FC = () => {
+interface DataClashesTabProps {
+  onSummaryChange?: (total: number) => void;
+}
+
+const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,22 +67,23 @@ const DataClashesTab: React.FC = () => {
     PlayerClash | FixtureClash | null
   >(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    entityType: "player" | "match";
+    universalId: string;
+    label: string;
+  } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-  // For merge operations
-  const [keepId, setKeepId] = useState<string>("");
-  const [removeId, setRemoveId] = useState<string>("");
-
-  useEffect(() => {
-    fetchClashes();
-  }, []);
-
-  const fetchClashes = async () => {
+  const fetchClashes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await axiosInstance.get("/admin/detect-clashes");
       setPlayerClashes(response.data.player_clashes);
       setFixtureClashes(response.data.fixture_clashes);
+      if (onSummaryChange) {
+        onSummaryChange(response.data.total_clashes || 0);
+      }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.detail || "Failed to fetch clashes");
@@ -87,7 +93,11 @@ const DataClashesTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [onSummaryChange]);
+
+  useEffect(() => {
+    fetchClashes();
+  }, [fetchClashes]);
 
   const handleMergePlayer = async (clash: PlayerClash, keepPlayer: 1 | 2) => {
     const keep = keepPlayer === 1 ? clash.player1 : clash.player2;
@@ -146,25 +156,25 @@ const DataClashesTab: React.FC = () => {
     }
   };
 
-  const handleDelete = async (
-    entityType: "player" | "match",
-    universalId: string
-  ) => {
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     setActionLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
       await axiosInstance.post(
-        `/admin/delete-duplicate?entity_type=${entityType}&universal_id=${universalId}`
+        `/admin/delete-duplicate?entity_type=${deleteTarget.entityType}&universal_id=${deleteTarget.universalId}`
       );
-      setSuccess(`Successfully deleted ${entityType}`);
+      setSuccess(`Successfully deleted ${deleteTarget.entityType}`);
       setShowDeleteModal(false);
+      setDeleteTarget(null);
+      setDeleteConfirmText("");
       fetchClashes(); // Refresh
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(
-          err.response.data.detail || `Failed to delete ${entityType}`
+          err.response.data.detail || `Failed to delete ${deleteTarget.entityType}`
         );
       } else {
         setError("An unexpected error occurred");
@@ -278,7 +288,7 @@ const DataClashesTab: React.FC = () => {
                       </Badge>
                     </td>
                     <td>
-                      <ButtonGroup size="sm">
+                      <ButtonGroup size="sm" className="d-flex">
                         <Button
                           variant="primary"
                           onClick={() => {
@@ -287,6 +297,20 @@ const DataClashesTab: React.FC = () => {
                           }}
                         >
                           Merge
+                        </Button>
+                        <Button
+                          variant="outline-secondary"
+                          onClick={() => {
+                            setDeleteTarget({
+                              entityType: "player",
+                              universalId: clash.player2.universal_id,
+                              label: clash.player2.name,
+                            });
+                            setDeleteConfirmText("");
+                            setShowDeleteModal(true);
+                          }}
+                        >
+                          Delete
                         </Button>
                       </ButtonGroup>
                     </td>
@@ -346,7 +370,7 @@ const DataClashesTab: React.FC = () => {
                       </small>
                     </td>
                     <td>
-                      <ButtonGroup size="sm">
+                      <ButtonGroup size="sm" className="d-flex">
                         <Button
                           variant="primary"
                           onClick={() => {
@@ -355,6 +379,20 @@ const DataClashesTab: React.FC = () => {
                           }}
                         >
                           Merge
+                        </Button>
+                        <Button
+                          variant="outline-secondary"
+                          onClick={() => {
+                            setDeleteTarget({
+                              entityType: "match",
+                              universalId: clash.match2.universal_id,
+                              label: `${clash.match2.home} vs ${clash.match2.away}`,
+                            });
+                            setDeleteConfirmText("");
+                            setShowDeleteModal(true);
+                          }}
+                        >
+                          Delete
                         </Button>
                       </ButtonGroup>
                     </td>
@@ -514,6 +552,38 @@ const DataClashesTab: React.FC = () => {
             onClick={() => setShowMergeFixtureModal(false)}
           >
             Cancel
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete Duplicate</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning">
+            This is destructive. Type <strong>DELETE</strong> to confirm.
+          </Alert>
+          <p className="mb-2">
+            Target: <strong>{deleteTarget?.label}</strong>
+          </p>
+          <Form.Control
+            type="text"
+            value={deleteConfirmText}
+            placeholder="Type DELETE"
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleDelete}
+            disabled={actionLoading || deleteConfirmText !== "DELETE"}
+          >
+            {actionLoading ? "Deleting..." : "Delete Duplicate"}
           </Button>
         </Modal.Footer>
       </Modal>

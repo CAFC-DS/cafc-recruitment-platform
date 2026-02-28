@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Container,
-  Card,
-  Table,
-  Button,
-  Modal,
-  Form,
   Alert,
+  Badge,
+  Button,
+  Card,
+  Col,
+  Container,
+  Form,
+  Modal,
+  Row,
   Spinner,
-  Tabs,
   Tab,
+  Table,
+  Tabs,
 } from "react-bootstrap";
-import axiosInstance from "../axiosInstance";
 import axios from "axios";
+import axiosInstance from "../axiosInstance";
 import DataClashesTab from "../components/DataClashesTab";
+import InternalPlayerAuditTab from "../components/admin/InternalPlayerAuditTab";
 
 interface User {
   id: number;
@@ -34,13 +38,32 @@ interface CreateUserForm {
 }
 
 const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>("users");
+  const [activeSection, setActiveSection] = useState<string>("data-quality");
+  const [activeDataQualityTab, setActiveDataQualityTab] = useState<string>("internal-audit");
+
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Create User Modal
+  const [auditStats, setAuditStats] = useState({
+    totalCandidates: 0,
+    unresolved: 0,
+    lastScanAt: "",
+  });
+  const [clashCount, setClashCount] = useState(0);
+
+  const handleAuditStatsChange = useCallback(
+    (stats: { totalCandidates: number; unresolved: number; lastScanAt: string }) => {
+      setAuditStats(stats);
+    },
+    []
+  );
+
+  const handleClashSummaryChange = useCallback((total: number) => {
+    setClashCount(total);
+  }, []);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<CreateUserForm>({
     username: "",
@@ -52,37 +75,35 @@ const AdminPage: React.FC = () => {
   });
   const [createLoading, setCreateLoading] = useState(false);
 
-  // Delete confirmation
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      setLoadingUsers(true);
       const response = await axiosInstance.get("/admin/users");
-      setUsers(response.data.users);
+      setUsers(response.data.users || []);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.detail || "Failed to fetch users");
       } else {
-        setError("An unexpected error occurred");
+        setError("Failed to fetch users");
       }
     } finally {
-      setLoading(false);
+      setLoadingUsers(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateLoading(true);
     setError(null);
     setSuccess(null);
-
     try {
       await axiosInstance.post("/admin/users", createForm);
       setSuccess(`User '${createForm.username}' created successfully`);
@@ -95,12 +116,12 @@ const AdminPage: React.FC = () => {
         firstname: "",
         lastname: "",
       });
-      fetchUsers(); // Refresh the list
+      fetchUsers();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.detail || "Failed to create user");
       } else {
-        setError("An unexpected error occurred");
+        setError("Failed to create user");
       }
     } finally {
       setCreateLoading(false);
@@ -109,22 +130,20 @@ const AdminPage: React.FC = () => {
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return;
-
     setDeleteLoading(true);
     setError(null);
     setSuccess(null);
-
     try {
       await axiosInstance.delete(`/admin/users/${userToDelete.id}`);
       setSuccess(`User '${userToDelete.username}' deleted successfully`);
       setShowDeleteModal(false);
       setUserToDelete(null);
-      fetchUsers(); // Refresh the list
+      fetchUsers();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.detail || "Failed to delete user");
       } else {
-        setError("An unexpected error occurred");
+        setError("Failed to delete user");
       }
     } finally {
       setDeleteLoading(false);
@@ -134,312 +153,316 @@ const AdminPage: React.FC = () => {
   const handleRoleChange = async (userId: number, newRole: string) => {
     setError(null);
     setSuccess(null);
-
     try {
-      await axiosInstance.put(
-        `/admin/users/${userId}/role?new_role=${newRole}`,
-      );
+      await axiosInstance.put(`/admin/users/${userId}/role?new_role=${newRole}`);
       setSuccess(`User role updated to '${newRole}'`);
-      fetchUsers(); // Refresh the list
+      fetchUsers();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.detail || "Failed to update role");
       } else {
-        setError("An unexpected error occurred");
+        setError("Failed to update role");
       }
     }
   };
 
-  const addEmailColumn = async () => {
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await axiosInstance.post("/admin/add-email-column");
-      setSuccess(response.data.message);
-      fetchUsers(); // Refresh the list
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || "Failed to add email column");
-      } else {
-        setError("An unexpected error occurred");
-      }
-    }
-  };
-
-  const setupCafcPlayerIds = async () => {
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await axiosInstance.post("/admin/setup-cafc-player-ids");
-      setSuccess(
-        `CAFC Player ID system setup completed! Results: ${response.data.results.join(", ")}`,
-      );
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || "Failed to setup CAFC Player IDs");
-      } else {
-        setError("An unexpected error occurred");
-      }
-    }
-  };
-
-  const migratePurposeValues = async () => {
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const response = await axiosInstance.post(
-        "/admin/migrate-purpose-values",
-      );
-      setSuccess(
-        `Purpose values migration completed! ${response.data.message}. Total updates: ${response.data.total_updates}`,
-      );
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setError(
-          err.response.data.detail || "Failed to migrate purpose values",
-        );
-      } else {
-        setError("An unexpected error occurred");
-      }
-    }
-  };
-
-  const migrateRoles = async () => {
-    setError(null);
-    setSuccess(null);
-
-    if (
-      !window.confirm(
-        "Migrate user roles from old naming to new 5-tier system?\n\n" +
-        "This will update:\n" +
-        "- 'loan' → 'loan_manager'\n\n" +
-        "Safe to run multiple times.",
-      )
-    ) {
+  const runAdminAction = async (
+    endpoint: string,
+    successMessage: (data: any) => string,
+    confirmText?: string
+  ) => {
+    if (confirmText && !window.confirm(confirmText)) {
       return;
     }
-
-    try {
-      const response = await axiosInstance.post("/admin/migrate-roles");
-      setSuccess(
-        `Role migration completed!\n${response.data.results.join("\n")}`,
-      );
-      fetchUsers(); // Refresh user list
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || "Failed to migrate roles");
-      } else {
-        setError("An unexpected error occurred");
-      }
-    }
-  };
-
-  const createTestUsers = async () => {
     setError(null);
     setSuccess(null);
-
-    if (
-      !window.confirm(
-        "Create 5 test users (one for each role)?\n\n" +
-        "Users:\n" +
-        "- test_admin (admin)\n" +
-        "- test_senior_manager (senior_manager)\n" +
-        "- test_manager (manager)\n" +
-        "- test_loan_manager (loan_manager)\n" +
-        "- test_scout (scout)\n\n" +
-        "Password for all: TestPassword123!\n\n" +
-        "Existing users will be skipped.",
-      )
-    ) {
-      return;
-    }
-
     try {
-      const response = await axiosInstance.post("/admin/create-test-users");
-      let message = `${response.data.message}\n\n${response.data.note}`;
-
-      if (response.data.created_users.length > 0) {
-        message += "\n\n✅ Created Users:\n";
-        response.data.created_users.forEach((user: any) => {
-          message += `- ${user.username} (${user.role})\n`;
-        });
+      const response = await axiosInstance.post(endpoint);
+      setSuccess(successMessage(response.data));
+      if (endpoint.includes("roles") || endpoint.includes("users") || endpoint.includes("email")) {
+        fetchUsers();
       }
-
-      if (response.data.skipped_users.length > 0) {
-        message += "\n\n⏭️ Skipped Users:\n";
-        response.data.skipped_users.forEach((user: any) => {
-          message += `- ${user.username}: ${user.reason}\n`;
-        });
-      }
-
-      setSuccess(message);
-      fetchUsers(); // Refresh user list
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
-        setError(err.response.data.detail || "Failed to create test users");
+        setError(err.response.data.detail || "Admin action failed");
       } else {
-        setError("An unexpected error occurred");
+        setError("Admin action failed");
       }
     }
   };
+
+  const totalUsers = users.length;
+  const lastScanLabel = useMemo(() => {
+    if (!auditStats.lastScanAt) return "No scan yet";
+    const d = new Date(auditStats.lastScanAt);
+    return Number.isNaN(d.getTime()) ? auditStats.lastScanAt : d.toLocaleString();
+  }, [auditStats.lastScanAt]);
 
   return (
-    <Container className="mt-4">
-      <h2 className="mb-4">⚙️ Admin Dashboard</h2>
+    <Container className="mt-4 admin-console">
+      <div className="admin-console-header mb-4">
+        <h2 className="mb-1">Admin Operations Console</h2>
+        <p className="text-muted mb-0">
+          Manage users, audit internal duplicates, and run controlled system operations.
+        </p>
+      </div>
 
-      <Tabs
-        id="admin-tabs"
-        activeKey={activeTab}
-        onSelect={(k) => setActiveTab(k || "users")}
-        className="mb-3"
-      >
-        <Tab eventKey="users" title="👥 User Management">
-          <Card>
-            <Card.Header>
-              <div className="d-flex justify-content-between align-items-center">
-                <h4>User Management</h4>
-            <div>
-              <Button
-                variant="outline-secondary"
-                onClick={addEmailColumn}
-                className="me-2"
-                size="sm"
-              >
-                Add Email Column
-              </Button>
-              <Button
-                variant="outline-warning"
-                onClick={setupCafcPlayerIds}
-                className="me-2"
-                size="sm"
-              >
-                🔄 Setup CAFC Player IDs
-              </Button>
-              <Button
-                variant="outline-info"
-                onClick={migratePurposeValues}
-                className="me-2"
-                size="sm"
-              >
-                📋 Migrate Purpose Values
-              </Button>
-              <Button
-                variant="outline-success"
-                onClick={migrateRoles}
-                className="me-2"
-                size="sm"
-              >
-                🔄 Migrate Roles
-              </Button>
-              <Button
-                variant="outline-primary"
-                onClick={createTestUsers}
-                className="me-2"
-                size="sm"
-              >
-                👥 Create Test Users
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => setShowCreateModal(true)}
-              >
-                ➕ Create User
-              </Button>
-            </div>
-          </div>
-        </Card.Header>
-        <Card.Body>
-          {error && (
-            <Alert variant="danger" dismissible onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          )}
-          {success && (
-            <Alert
-              variant="success"
-              dismissible
-              onClose={() => setSuccess(null)}
-            >
-              {success}
-            </Alert>
-          )}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert variant="success" dismissible onClose={() => setSuccess(null)}>
+          {success}
+        </Alert>
+      )}
 
-          {loading ? (
-            <div className="text-center">
-              <Spinner animation="border" />
-              <p className="mt-2">Loading users...</p>
-            </div>
-          ) : (
-            <Table striped bordered hover responsive>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Username</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.id}</td>
-                    <td>{user.username}</td>
-                    <td>
-                      {user.firstname} {user.lastname}
-                    </td>
-                    <td>{user.email}</td>
-                    <td>
-                      <span className="badge badge-neutral-grey">
-                        {user.role}
-                      </span>
-                    </td>
-                    <td>
-                      <Form.Select
-                        size="sm"
-                        value={user.role}
-                        onChange={(e) =>
-                          handleRoleChange(user.id, e.target.value)
-                        }
-                        className="d-inline-block me-2"
-                        style={{ width: "auto" }}
-                      >
-                        <option value="scout">Scout</option>
-                        <option value="loan_manager">Loan Manager</option>
-                        <option value="manager">Manager</option>
-                        <option value="senior_manager">Senior Manager</option>
-                        <option value="admin">Admin</option>
-                      </Form.Select>
-                      <Button
-                        variant="outline-danger"
-                        size="sm"
-                        onClick={() => {
-                          setUserToDelete(user);
-                          setShowDeleteModal(true);
-                        }}
-                      >
-                        🗑️ Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+      <Row className="g-3 mb-4">
+        <Col md={3}>
+          <Card className="admin-metric-card">
+            <Card.Body>
+              <div className="metric-title">Users</div>
+              <div className="metric-value">{totalUsers}</div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="admin-metric-card">
+            <Card.Body>
+              <div className="metric-title">Internal Candidates</div>
+              <div className="metric-value">{auditStats.totalCandidates}</div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="admin-metric-card">
+            <Card.Body>
+              <div className="metric-title">Unresolved Internal</div>
+              <div className="metric-value">{auditStats.unresolved}</div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="admin-metric-card">
+            <Card.Body>
+              <div className="metric-title">General Clashes</div>
+              <div className="metric-value">{clashCount}</div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card className="mb-4 admin-card">
+        <Card.Body className="py-2">
+          <small className="text-muted">Last internal scan: {lastScanLabel}</small>
         </Card.Body>
       </Card>
-      </Tab>
 
-      <Tab eventKey="clashes" title="⚠️ Data Clashes">
-        <DataClashesTab />
-      </Tab>
-    </Tabs>
+      <Tabs
+        id="admin-sections"
+        activeKey={activeSection}
+        onSelect={(key) => setActiveSection(key || "data-quality")}
+        className="mb-3 admin-tabs"
+      >
+        <Tab eventKey="data-quality" title="Data Quality">
+          <Card className="admin-card">
+            <Card.Header className="admin-card-header">
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Data Quality Workbench</h5>
+                <Badge bg="light" text="dark">
+                  Internal-first review mode
+                </Badge>
+              </div>
+            </Card.Header>
+            <Card.Body>
+              <Tabs
+                id="admin-data-quality-tabs"
+                activeKey={activeDataQualityTab}
+                onSelect={(key) => setActiveDataQualityTab(key || "internal-audit")}
+                className="mb-3"
+              >
+                <Tab eventKey="internal-audit" title="Internal Player Audit">
+                  <InternalPlayerAuditTab
+                    onStatsChange={handleAuditStatsChange}
+                  />
+                </Tab>
+                <Tab eventKey="general-clashes" title="General Clashes">
+                  <DataClashesTab onSummaryChange={handleClashSummaryChange} />
+                </Tab>
+              </Tabs>
+            </Card.Body>
+          </Card>
+        </Tab>
 
-      {/* Create User Modal */}
+        <Tab eventKey="users" title="User Management">
+          <Card className="admin-card">
+            <Card.Header className="admin-card-header d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">User Accounts & Roles</h5>
+              <Button variant="light" size="sm" onClick={() => setShowCreateModal(true)}>
+                Create User
+              </Button>
+            </Card.Header>
+            <Card.Body>
+              {loadingUsers ? (
+                <div className="text-center py-4">
+                  <Spinner animation="border" />
+                  <p className="mt-2 mb-0">Loading users...</p>
+                </div>
+              ) : (
+                <div className="table-responsive">
+                  <Table hover className="align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td>{user.id}</td>
+                          <td>{user.username}</td>
+                          <td>{`${user.firstname || ""} ${user.lastname || ""}`.trim() || "N/A"}</td>
+                          <td>{user.email || "N/A"}</td>
+                          <td>
+                            <Badge bg="secondary">{user.role}</Badge>
+                          </td>
+                          <td className="d-flex gap-2">
+                            <Form.Select
+                              size="sm"
+                              value={user.role}
+                              onChange={(e) => handleRoleChange(user.id, e.target.value)}
+                              style={{ maxWidth: "180px" }}
+                            >
+                              <option value="scout">Scout</option>
+                              <option value="loan_manager">Loan Manager</option>
+                              <option value="manager">Manager</option>
+                              <option value="senior_manager">Senior Manager</option>
+                              <option value="admin">Admin</option>
+                            </Form.Select>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={() => {
+                                setUserToDelete(user);
+                                setShowDeleteModal(true);
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        </Tab>
+
+        <Tab eventKey="system-ops" title="System Ops">
+          <Card className="admin-card">
+            <Card.Header className="admin-card-header">
+              <h5 className="mb-0">Maintenance & Migration Controls</h5>
+            </Card.Header>
+            <Card.Body>
+              <Row className="g-3">
+                <Col md={6}>
+                  <Card className="h-100">
+                    <Card.Body>
+                      <h6 className="mb-2">Schema & Data Setup</h6>
+                      <p className="text-muted small">
+                        One-off setup and compatibility actions.
+                      </p>
+                      <div className="d-flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline-secondary"
+                          onClick={() =>
+                            runAdminAction("/admin/add-email-column", (d) => d.message)
+                          }
+                        >
+                          Add Email Column
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-warning"
+                          onClick={() =>
+                            runAdminAction(
+                              "/admin/setup-cafc-player-ids",
+                              (d) => `CAFC setup complete: ${(d.results || []).join(", ") || d.message}`
+                            )
+                          }
+                        >
+                          Setup CAFC IDs
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-info"
+                          onClick={() =>
+                            runAdminAction(
+                              "/admin/migrate-purpose-values",
+                              (d) =>
+                                `Purpose migration complete. ${d.total_updates ?? 0} rows updated.`
+                            )
+                          }
+                        >
+                          Migrate Purpose Values
+                        </Button>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+                <Col md={6}>
+                  <Card className="h-100">
+                    <Card.Body>
+                      <h6 className="mb-2">User Role/Test Utilities</h6>
+                      <p className="text-muted small">
+                        Controlled user-role migration and test account generation.
+                      </p>
+                      <div className="d-flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline-success"
+                          onClick={() =>
+                            runAdminAction(
+                              "/admin/migrate-roles",
+                              () => "Role migration complete.",
+                              "Migrate user roles to latest role naming?"
+                            )
+                          }
+                        >
+                          Migrate Roles
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline-primary"
+                          onClick={() =>
+                            runAdminAction(
+                              "/admin/create-test-users",
+                              (d) => d.message || "Test user creation complete.",
+                              "Create test users for all role types?"
+                            )
+                          }
+                        >
+                          Create Test Users
+                        </Button>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        </Tab>
+      </Tabs>
+
       <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>Create New User</Modal.Title>
@@ -451,70 +474,52 @@ const AdminPage: React.FC = () => {
               <Form.Control
                 type="text"
                 value={createForm.username}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, username: e.target.value })
-                }
+                onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
                 required
               />
             </Form.Group>
-
             <Form.Group className="mb-3">
               <Form.Label>First Name</Form.Label>
               <Form.Control
                 type="text"
                 value={createForm.firstname}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, firstname: e.target.value })
-                }
+                onChange={(e) => setCreateForm({ ...createForm, firstname: e.target.value })}
                 required
               />
             </Form.Group>
-
             <Form.Group className="mb-3">
               <Form.Label>Last Name</Form.Label>
               <Form.Control
                 type="text"
                 value={createForm.lastname}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, lastname: e.target.value })
-                }
+                onChange={(e) => setCreateForm({ ...createForm, lastname: e.target.value })}
                 required
               />
             </Form.Group>
-
             <Form.Group className="mb-3">
               <Form.Label>Email</Form.Label>
               <Form.Control
                 type="email"
                 value={createForm.email}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, email: e.target.value })
-                }
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                 required
               />
             </Form.Group>
-
             <Form.Group className="mb-3">
               <Form.Label>Password</Form.Label>
               <Form.Control
                 type="password"
                 value={createForm.password}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, password: e.target.value })
-                }
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                 required
                 minLength={8}
               />
-              <Form.Text className="text-muted">Minimum 8 characters</Form.Text>
             </Form.Group>
-
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-1">
               <Form.Label>Role</Form.Label>
               <Form.Select
                 value={createForm.role}
-                onChange={(e) =>
-                  setCreateForm({ ...createForm, role: e.target.value })
-                }
+                onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
               >
                 <option value="scout">Scout</option>
                 <option value="loan_manager">Loan Manager</option>
@@ -529,51 +534,25 @@ const AdminPage: React.FC = () => {
           <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={handleCreateUser}
-            disabled={createLoading}
-          >
-            {createLoading ? (
-              <>
-                <Spinner animation="border" size="sm" className="me-2" />
-                Creating...
-              </>
-            ) : (
-              "Create User"
-            )}
+          <Button variant="dark" onClick={handleCreateUser} disabled={createLoading}>
+            {createLoading ? "Creating..." : "Create User"}
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
+          <Modal.Title>Delete User</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Are you sure you want to delete user{" "}
-          <strong>{userToDelete?.username}</strong>?
-          <br />
-          <small className="text-muted">This action cannot be undone.</small>
+          Delete <strong>{userToDelete?.username}</strong> permanently?
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
             Cancel
           </Button>
-          <Button
-            variant="danger"
-            onClick={handleDeleteUser}
-            disabled={deleteLoading}
-          >
-            {deleteLoading ? (
-              <>
-                <Spinner animation="border" size="sm" className="me-2" />
-                Deleting...
-              </>
-            ) : (
-              "Delete User"
-            )}
+          <Button variant="danger" onClick={handleDeleteUser} disabled={deleteLoading}>
+            {deleteLoading ? "Deleting..." : "Delete"}
           </Button>
         </Modal.Footer>
       </Modal>

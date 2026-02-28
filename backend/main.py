@@ -2489,6 +2489,305 @@ async def check_player_duplicates(
             conn.close()
 
 
+@app.get("/admin/internal-player-audit")
+async def internal_player_audit(
+    page: int = 1,
+    limit: int = 50,
+    confidence: str = "all",
+    name: Optional[str] = None,
+    squad: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+):
+    """Internal-first duplicate audit: internal anchors with ranked external candidates."""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    if page < 1:
+        page = 1
+    if limit < 1:
+        limit = 1
+    if limit > 200:
+        limit = 200
+
+    allowed_confidence = {"all", "high", "medium", "low"}
+    confidence = (confidence or "all").lower()
+    if confidence not in allowed_confidence:
+        raise HTTPException(
+            status_code=400,
+            detail="confidence must be one of: all, high, medium, low",
+        )
+
+    conn = None
+    try:
+        from rapidfuzz.distance import Levenshtein as levenshtein_module
+
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Pull internal anchors (manual/internal records)
+        params = []
+        internal_filters = ["CAFC_PLAYER_ID IS NOT NULL", "PLAYERID IS NULL"]
+        if name:
+            internal_filters.append("NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s")
+            params.append(f"%{name}%")
+        if squad:
+            internal_filters.append("NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')) ILIKE %s")
+            params.append(f"%{squad}%")
+
+        cursor.execute(
+            f"""
+            SELECT
+                CAFC_PLAYER_ID,
+                PLAYERNAME,
+                FIRSTNAME,
+                LASTNAME,
+                BIRTHDATE,
+                SQUADNAME,
+                POSITION,
+                COALESCE(DATA_SOURCE, 'internal') as DATA_SOURCE
+            FROM players
+            WHERE {' AND '.join(internal_filters)}
+            ORDER BY PLAYERNAME, CAFC_PLAYER_ID
+        """,
+            params,
+        )
+        internal_rows = cursor.fetchall()
+
+        # Pull external candidates once
+        external_params = []
+        external_filters = ["PLAYERID IS NOT NULL", "COALESCE(DATA_SOURCE, 'external') = 'external'"]
+        if name:
+            external_filters.append("NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s")
+            external_params.append(f"%{name}%")
+        if squad:
+            external_filters.append("NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')) ILIKE %s")
+            external_params.append(f"%{squad}%")
+
+        cursor.execute(
+            f"""
+            SELECT
+                PLAYERID,
+                PLAYERNAME,
+                FIRSTNAME,
+                LASTNAME,
+                BIRTHDATE,
+                SQUADNAME,
+                POSITION,
+                COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE
+            FROM players
+            WHERE {' AND '.join(external_filters)}
+            ORDER BY PLAYERNAME, PLAYERID
+        """,
+            external_params,
+        )
+        external_rows = cursor.fetchall()
+
+        # Build fast lookup buckets for external rows by normalized name
+        by_exact_name: Dict[str, list] = {}
+        for ext in external_rows:
+            ext_name = normalize_text(ext[1] or "")
+            if not ext_name:
+                continue
+            by_exact_name.setdefault(ext_name, []).append(ext)
+
+        def score_candidate(internal_row, external_row):
+            internal_name = normalize_text(internal_row[1] or "")
+            external_name = normalize_text(external_row[1] or "")
+            internal_squad = normalize_text(internal_row[5] or "")
+            external_squad = normalize_text(external_row[5] or "")
+            internal_dob = internal_row[4]
+            external_dob = external_row[4]
+
+            max_len_name = max(len(internal_name), len(external_name), 1)
+            name_dist = levenshtein_module.distance(internal_name, external_name)
+            name_similarity = (1 - (name_dist / max_len_name)) * 100
+
+            max_len_squad = max(len(internal_squad), len(external_squad), 1)
+            squad_dist = levenshtein_module.distance(internal_squad, external_squad)
+            squad_similarity = (1 - (squad_dist / max_len_squad)) * 100
+
+            name_exact = internal_name == external_name and internal_name != ""
+            dob_exact = (
+                internal_dob is not None
+                and external_dob is not None
+                and internal_dob == external_dob
+            )
+            squad_exact = internal_squad == external_squad and internal_squad != ""
+            squad_near = squad_similarity >= 90
+
+            conf = None
+            if name_exact and dob_exact:
+                conf = "high"
+            elif name_exact and squad_exact:
+                conf = "medium"
+            elif name_similarity >= 88 and (squad_exact or squad_near):
+                conf = "low"
+
+            if conf is None:
+                return None
+
+            evidence = []
+            if name_exact:
+                evidence.append("Name exact")
+            else:
+                evidence.append(f"Fuzzy {round(name_similarity, 1)}%")
+            if dob_exact:
+                evidence.append("DOB exact")
+            elif internal_dob is None or external_dob is None:
+                evidence.append("DOB missing")
+            else:
+                evidence.append("DOB mismatch")
+            if squad_exact:
+                evidence.append("Squad exact")
+            elif squad_near:
+                evidence.append(f"Squad near {round(squad_similarity, 1)}%")
+            else:
+                evidence.append("Squad mismatch")
+
+            return {
+                "external": {
+                    "player_id": external_row[0],
+                    "player_name": external_row[1],
+                    "first_name": external_row[2],
+                    "last_name": external_row[3],
+                    "birth_date": external_row[4].isoformat() if external_row[4] else None,
+                    "squad_name": external_row[5],
+                    "position": external_row[6],
+                    "data_source": external_row[7],
+                    "universal_id": f"external_{external_row[0]}",
+                },
+                "confidence": conf,
+                "name_similarity": round(name_similarity, 1),
+                "squad_similarity": round(squad_similarity, 1),
+                "evidence": evidence,
+            }
+
+        confidence_rank = {"high": 3, "medium": 2, "low": 1}
+        items = []
+        summary_counts = {"high": 0, "medium": 0, "low": 0}
+        unresolved_count = 0
+
+        # Precompute normalized external keys for low-confidence pass
+        external_for_fuzzy = [
+            {
+                "row": ext,
+                "name_norm": normalize_text(ext[1] or ""),
+                "squad_norm": normalize_text(ext[5] or ""),
+            }
+            for ext in external_rows
+        ]
+
+        for internal in internal_rows:
+            internal_name_norm = normalize_text(internal[1] or "")
+            internal_squad_norm = normalize_text(internal[5] or "")
+
+            # Candidate pool:
+            # 1) exact normalized name matches
+            # 2) for low confidence: near-name + same/near squad across externals
+            candidate_rows = list(by_exact_name.get(internal_name_norm, []))
+
+            if internal_squad_norm:
+                for ext_item in external_for_fuzzy:
+                    if ext_item["row"] in candidate_rows:
+                        continue
+                    if not ext_item["name_norm"]:
+                        continue
+
+                    max_len_name = max(len(internal_name_norm), len(ext_item["name_norm"]), 1)
+                    name_dist = levenshtein_module.distance(internal_name_norm, ext_item["name_norm"])
+                    name_similarity = (1 - (name_dist / max_len_name)) * 100
+                    if name_similarity < 88:
+                        continue
+
+                    max_len_squad = max(len(internal_squad_norm), len(ext_item["squad_norm"]), 1)
+                    squad_dist = levenshtein_module.distance(internal_squad_norm, ext_item["squad_norm"])
+                    squad_similarity = (1 - (squad_dist / max_len_squad)) * 100
+                    if internal_squad_norm == ext_item["squad_norm"] or squad_similarity >= 90:
+                        candidate_rows.append(ext_item["row"])
+
+            candidate_matches = []
+            for external in candidate_rows:
+                scored = score_candidate(internal, external)
+                if scored:
+                    candidate_matches.append(scored)
+
+            candidate_matches.sort(
+                key=lambda c: (
+                    confidence_rank[c["confidence"]],
+                    c["name_similarity"],
+                    c["squad_similarity"],
+                    c["external"]["player_name"] or "",
+                ),
+                reverse=True,
+            )
+
+            if not candidate_matches:
+                unresolved_count += 1
+                continue
+
+            best_conf = candidate_matches[0]["confidence"]
+            if confidence != "all" and best_conf != confidence:
+                continue
+
+            summary_counts[best_conf] += 1
+            items.append(
+                {
+                    "internal_player": {
+                        "cafc_player_id": internal[0],
+                        "player_name": internal[1],
+                        "first_name": internal[2],
+                        "last_name": internal[3],
+                        "birth_date": internal[4].isoformat() if internal[4] else None,
+                        "squad_name": internal[5],
+                        "position": internal[6],
+                        "data_source": internal[7],
+                        "universal_id": f"internal_{internal[0]}",
+                    },
+                    "best_confidence": best_conf,
+                    "candidate_count": len(candidate_matches),
+                    "candidates": candidate_matches[:5],  # keep payload practical
+                }
+            )
+
+        items.sort(
+            key=lambda i: (
+                confidence_rank[i["best_confidence"]],
+                i["internal_player"]["player_name"] or "",
+                i["internal_player"]["cafc_player_id"],
+            ),
+            reverse=True,
+        )
+
+        total = len(items)
+        start = (page - 1) * limit
+        end = start + limit
+        paginated = items[start:end]
+
+        return {
+            "items": paginated,
+            "summary": {
+                "high": summary_counts["high"],
+                "medium": summary_counts["medium"],
+                "low": summary_counts["low"],
+                "unresolved": unresolved_count,
+                "total_candidates": total,
+                "last_scan_at": datetime.utcnow().isoformat(),
+            },
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": (total + limit - 1) // limit if limit else 1,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error running internal player audit: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.post("/admin/merge-duplicate-match")
 async def merge_duplicate_match(
     keep_match_universal_id: str,
