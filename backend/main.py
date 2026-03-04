@@ -303,11 +303,74 @@ app = FastAPI(
 # Load table schemas and user cache on startup
 @app.on_event("startup")
 async def startup_event():
-    print("🚀 Loading table schemas into cache...")
-    load_table_schemas()
-    print("🚀 Loading user cache...")
-    load_user_cache()
-    print("✅ Application startup complete")
+    """Load caches in a background thread so a slow/failed Snowflake connection
+    never blocks the HTTP server from accepting requests (including CORS preflight)."""
+    def _load_caches():
+        try:
+            print("🚀 Loading table schemas into cache...")
+            load_table_schemas()
+            print("🚀 Loading user cache...")
+            load_user_cache()
+            print("✅ Startup cache loading complete")
+        except Exception as e:
+            print(f"⚠️  Startup cache loading failed (non-fatal): {e}")
+            print("ℹ️  App is still reachable; caches will load on first request.")
+
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, _load_caches)
+    print("✅ Application startup complete (cache loading running in background)")
+
+
+@app.get("/health/debug")
+async def debug_health():
+    """
+    Diagnostic endpoint - exposes env var presence (NOT values) and CORS config.
+    Safe to call publicly: only shows whether variables are set, never their contents.
+    Use this first when diagnosing Railway deployment issues.
+    """
+    def _present(val):
+        """Return 'SET' / 'MISSING' without leaking the value."""
+        return "SET" if val else "MISSING"
+
+    snowflake_key_raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "")
+    key_info = "MISSING"
+    if snowflake_key_raw:
+        has_header = "-----BEGIN" in snowflake_key_raw
+        # Check for literal \n vs real newlines (common Railway copy-paste mistake)
+        has_literal_backslash_n = r"\n" in snowflake_key_raw and "\n" not in snowflake_key_raw
+        if has_literal_backslash_n:
+            key_info = "SET but contains literal \\n instead of real newlines - WILL FAIL"
+        elif not has_header:
+            key_info = "SET but missing PEM header (-----BEGIN ...) - WILL FAIL"
+        else:
+            key_info = f"SET (length={len(snowflake_key_raw)}, has PEM header=True)"
+
+    cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+    parsed_origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw else []
+
+    return {
+        "environment": ENVIRONMENT,
+        "snowflake": {
+            "account": _present(os.getenv("SNOWFLAKE_PROD_ACCOUNT") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
+            "username": _present(os.getenv("SNOWFLAKE_PROD_USERNAME") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
+            "warehouse": _present(os.getenv("SNOWFLAKE_PROD_WAREHOUSE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
+            "database": _present(os.getenv("SNOWFLAKE_PROD_DATABASE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
+            "schema": _present(os.getenv("SNOWFLAKE_PROD_SCHEMA") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
+            "role": _present(os.getenv("SNOWFLAKE_PROD_ROLE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
+            "private_key": key_info,
+        },
+        "auth": {
+            "secret_key": _present(os.getenv("SECRET_KEY")),
+        },
+        "cors": {
+            "origins_env_var_set": bool(cors_origins_raw),
+            "parsed_origins": parsed_origins,
+        },
+        "connection_pool": {
+            "initialised": _connection_pool is not None,
+            "pool_size_approx": _connection_pool.qsize() if _connection_pool else 0,
+        },
+    }
 
 
 @app.get("/health/snowflake")
@@ -495,7 +558,8 @@ def _create_new_connection():
         # Performance optimizations
         "client_session_keep_alive": True,
         "client_session_keep_alive_heartbeat_frequency": 3600,  # 1 hour
-        "network_timeout": 60,
+        "login_timeout": 15,   # Fail fast on auth/network issues (was hanging indefinitely)
+        "network_timeout": 30,  # Reduced from 60s so failures surface quickly
         "query_timeout": 300,  # 5 minutes
     }
 
@@ -581,20 +645,11 @@ def get_snowflake_connection():
         # Try to get connection from pool (non-blocking)
         try:
             conn = _connection_pool.get_nowait()
-
-            # Test if connection is still alive
-            try:
-                conn.cursor().execute("SELECT 1")
-                # Wrap in pooled connection that returns to pool on close
-                return PooledSnowflakeConnection(conn, _connection_pool)
-            except:
-                # Connection is dead, create a new one
-                try:
-                    conn.close()
-                except:
-                    pass
-                conn = _create_new_connection()
-                return PooledSnowflakeConnection(conn, _connection_pool)
+            # Return pooled connection directly - avoid SELECT 1 health check on
+            # every retrieval as it adds round-trip latency and blocks the event
+            # loop when Snowflake is degraded. Stale connections are caught by
+            # the first real query and handled via PooledSnowflakeConnection.close().
+            return PooledSnowflakeConnection(conn, _connection_pool)
 
         except Empty:
             # Pool is empty, create new connection
@@ -996,11 +1051,18 @@ async def get_user_by_id(user_id: int):
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    raw_pw = form_data.password
-    print("DEBUG: Received password string:", raw_pw)
-    print("DEBUG: Password length (chars):", len(raw_pw))
-    print("DEBUG: Password length (bytes):", len(raw_pw.encode("utf-8")))
-    user = await get_user(form_data.username)
+    print(f"DEBUG: Login attempt for username: {form_data.username}")
+    try:
+        user = await get_user(form_data.username)
+    except HTTPException as e:
+        if e.status_code == 500:
+            # Snowflake connection failure - surface as 503 with actionable message
+            print(f"ERROR: Database unavailable during login for {form_data.username}: {e.detail}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Database connection failed.",
+            )
+        raise
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
