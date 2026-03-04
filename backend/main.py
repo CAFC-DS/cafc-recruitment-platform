@@ -351,12 +351,12 @@ async def debug_health():
     return {
         "environment": ENVIRONMENT,
         "snowflake": {
-            "account": _present(os.getenv("SNOWFLAKE_PROD_ACCOUNT") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
-            "username": _present(os.getenv("SNOWFLAKE_PROD_USERNAME") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
-            "warehouse": _present(os.getenv("SNOWFLAKE_PROD_WAREHOUSE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
-            "database": _present(os.getenv("SNOWFLAKE_PROD_DATABASE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
-            "schema": _present(os.getenv("SNOWFLAKE_PROD_SCHEMA") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
-            "role": _present(os.getenv("SNOWFLAKE_PROD_ROLE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
+            "account": _present(os.getenv("SNOWFLAKE_ACCOUNT") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
+            "username": _present(os.getenv("SNOWFLAKE_USERNAME") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
+            "warehouse": _present(os.getenv("SNOWFLAKE_WAREHOUSE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
+            "database": _present(os.getenv("SNOWFLAKE_DATABASE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
+            "schema": _present(os.getenv("SNOWFLAKE_SCHEMA") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
+            "role": _present(os.getenv("SNOWFLAKE_ROLE") if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
             "private_key": key_info,
         },
         "auth": {
@@ -444,22 +444,22 @@ else:
 # Snowflake Connection Configuration - Environment-Based
 # Load configuration based on ENVIRONMENT variable (development or production)
 if ENVIRONMENT == "production":
-    # Production: Use APP_USER with COMPUTE_WH
-    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_PROD_ACCOUNT")
-    SNOWFLAKE_USERNAME = os.getenv("SNOWFLAKE_PROD_USERNAME")
-    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_PROD_ROLE")
-    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_PROD_WAREHOUSE")
-    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_PROD_DATABASE")
-    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
-    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
+    # Production: read plain var names (no _PROD_ prefix) as set in Railway
+    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_ACCOUNT")
+    SNOWFLAKE_USERNAME = os.getenv("SNOWFLAKE_USERNAME")
+    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_ROLE")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_WAREHOUSE")
+    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_DATABASE")
+    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_SCHEMA")
+    SNOWFLAKE_PRIVATE_KEY_PATH = None  # production uses SNOWFLAKE_PRIVATE_KEY env var, not a file
     print(f"🚀 PRODUCTION MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
     missing = [k for k, v in {
-        "SNOWFLAKE_PROD_ACCOUNT": SNOWFLAKE_ACCOUNT,
-        "SNOWFLAKE_PROD_USERNAME": SNOWFLAKE_USERNAME,
-        "SNOWFLAKE_PROD_ROLE": SNOWFLAKE_ROLE,
-        "SNOWFLAKE_PROD_WAREHOUSE": SNOWFLAKE_WAREHOUSE,
-        "SNOWFLAKE_PROD_DATABASE": SNOWFLAKE_DATABASE,
-        "SNOWFLAKE_PROD_SCHEMA": SNOWFLAKE_SCHEMA,
+        "SNOWFLAKE_ACCOUNT": SNOWFLAKE_ACCOUNT,
+        "SNOWFLAKE_USERNAME": SNOWFLAKE_USERNAME,
+        "SNOWFLAKE_ROLE": SNOWFLAKE_ROLE,
+        "SNOWFLAKE_WAREHOUSE": SNOWFLAKE_WAREHOUSE,
+        "SNOWFLAKE_DATABASE": SNOWFLAKE_DATABASE,
+        "SNOWFLAKE_SCHEMA": SNOWFLAKE_SCHEMA,
     }.items() if not v]
     if missing:
         print(f"🔴 MISSING REQUIRED ENV VARS: {missing} — all Snowflake calls will fail until these are set in Railway")
