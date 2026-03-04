@@ -250,7 +250,7 @@ def load_table_schemas():
         conn.close()
         print(f"🎯 Schema cache loaded: {len(TABLE_SCHEMA_CACHE)} tables")
     except Exception as e:
-        print(f"❌ Failed to load table schemas: {e}")
+        print(f"❌ Failed to load table schemas: {type(e).__name__}: {e!r}")
         # Initialize with empty cache if connection fails
         TABLE_SCHEMA_CACHE = {}
 
@@ -279,7 +279,7 @@ def load_user_cache():
         conn.close()
         print(f"✅ User cache loaded: {len(USER_CACHE)} users")
     except Exception as e:
-        print(f"❌ Failed to load user cache: {e}")
+        print(f"❌ Failed to load user cache: {type(e).__name__}: {e!r}")
         USER_CACHE = {}
 
 def get_cached_username(user_id: int) -> Optional[str]:
@@ -453,6 +453,16 @@ if ENVIRONMENT == "production":
     SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
     SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
     print(f"🚀 PRODUCTION MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
+    missing = [k for k, v in {
+        "SNOWFLAKE_PROD_ACCOUNT": SNOWFLAKE_ACCOUNT,
+        "SNOWFLAKE_PROD_USERNAME": SNOWFLAKE_USERNAME,
+        "SNOWFLAKE_PROD_ROLE": SNOWFLAKE_ROLE,
+        "SNOWFLAKE_PROD_WAREHOUSE": SNOWFLAKE_WAREHOUSE,
+        "SNOWFLAKE_PROD_DATABASE": SNOWFLAKE_DATABASE,
+        "SNOWFLAKE_PROD_SCHEMA": SNOWFLAKE_SCHEMA,
+    }.items() if not v]
+    if missing:
+        print(f"🔴 MISSING REQUIRED ENV VARS: {missing} — all Snowflake calls will fail until these are set in Railway")
 else:
     # Development: Use personal account with DEVELOPMENT_WH
     SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_DEV_ACCOUNT", os.getenv("SNOWFLAKE_ACCOUNT"))
