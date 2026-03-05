@@ -1,0 +1,126 @@
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import AgentPortalShell from '../../components/agents/AgentPortalShell';
+import SubmissionStatusBadge from '../../components/agents/SubmissionStatusBadge';
+import { agentRecommendationsService } from '../../services/agentRecommendationsService';
+import { Recommendation, RecommendationStatusHistory } from '../../types/recommendations';
+
+const formatCurrency = (value?: number, currency?: string) => {
+  if (value === undefined || value === null) return '-';
+  return `${currency || 'GBP'} ${Math.round(value).toLocaleString('en-GB')} p/w`;
+};
+
+const formatAmountCurrency = (amount?: number, currency?: string, fallback?: string) => {
+  if (amount === undefined || amount === null) return fallback || '-';
+  return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')}`;
+};
+
+const AgentSubmissionDetailPage: React.FC = () => {
+  const { id } = useParams();
+  const [item, setItem] = useState<Recommendation | null>(null);
+  const [history, setHistory] = useState<RecommendationStatusHistory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (!id) return;
+        const recommendationId = Number(id);
+        const [detail, statusHistory] = await Promise.all([
+          agentRecommendationsService.getDetail(recommendationId),
+          agentRecommendationsService.getStatusHistory(recommendationId),
+        ]);
+        setItem(detail);
+        setHistory(statusHistory);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load submission');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [id]);
+
+  return (
+    <AgentPortalShell title="Submission Detail" subtitle="Read-only view of the recommendation you submitted.">
+      {loading ? (
+        <div className="agent-portal-card">
+          <div className="agent-portal-card-body">
+            <div className="agent-portal-empty">Loading submission...</div>
+          </div>
+        </div>
+      ) : null}
+      {error ? <div className="agent-portal-banner">{error}</div> : null}
+      {!loading && !error && item ? (
+        <div className="agent-portal-detail-grid">
+          <section className="agent-portal-card">
+            <div className="agent-portal-card-body">
+              <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                <div>
+                  <div className="agent-portal-section-title">{item.player_name}</div>
+                  <div className="agent-portal-section-copy">Submitted recommendation record and commercial details.</div>
+                </div>
+                <SubmissionStatusBadge status={item.status} />
+              </div>
+
+              <div className="agent-portal-info-grid">
+                {[
+                  ['Submitted date', item.created_at ? new Date(item.created_at).toLocaleString() : '-'],
+                  ['Last updated', item.status_updated_at ? new Date(item.status_updated_at).toLocaleString() : '-'],
+                  ['Agreement type', item.agreement_type || '-'],
+                  ['Potential deal type', item.potential_deal_type || '-'],
+                  ['Transfer fee', formatAmountCurrency(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)],
+                  ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency)],
+                  ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency)],
+                  ['Contract expiry', item.confirmed_contract_expiry ? new Date(item.confirmed_contract_expiry).toLocaleDateString() : '-'],
+                  ['Transfermarkt link', item.transfermarkt_link || '-'],
+                  ['Contract options', item.contract_options || '-'],
+                ].map(([label, value]) => (
+                  <div key={label} className="agent-portal-info-card">
+                    <div className="agent-portal-label">{label}</div>
+                    <div className="agent-portal-meta" style={{ color: '#111827' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
+                <div className="agent-portal-label">Additional Information</div>
+                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                  {item.additional_information || 'No additional information provided.'}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="agent-portal-card">
+            <div className="agent-portal-card-body">
+              <div className="agent-portal-section-title">Status Timeline</div>
+              <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
+                Internal scouting notes remain hidden. This view only shows status progression recorded against your submission.
+              </div>
+              <div className="agent-portal-review-stack">
+                {history.length === 0 ? (
+                  <div className="agent-portal-empty">No status changes yet. Your submission remains at its initial state.</div>
+                ) : (
+                  history.map((entry) => (
+                    <div key={entry.id} className="agent-portal-surface-muted">
+                      <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', marginBottom: '0.45rem' }}>
+                        <div style={{ fontWeight: 800, color: '#111827' }}>{entry.new_status}</div>
+                        <div className="agent-portal-meta">{new Date(entry.changed_at).toLocaleString()}</div>
+                      </div>
+                      {entry.old_status ? <div className="agent-portal-meta">Updated from {entry.old_status}</div> : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </AgentPortalShell>
+  );
+};
+
+export default AgentSubmissionDetailPage;
