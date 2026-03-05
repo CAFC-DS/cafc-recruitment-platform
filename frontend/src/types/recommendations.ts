@@ -128,8 +128,8 @@ export interface AgentPlayerSearchResult {
 }
 
 export interface AgentRegisterPayload {
-  firstname: string;
-  lastname: string;
+  firstname?: string;
+  lastname?: string;
   email: string;
   password: string;
   agent_name: string;

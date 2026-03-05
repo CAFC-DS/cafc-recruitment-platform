@@ -11,12 +11,10 @@ const AgentRegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [form, setForm] = useState({
-    firstname: '',
-    lastname: '',
-    email: '',
-    password: '',
     agent_name: '',
     agency: '',
+    email: '',
+    password: '',
     calling_code: '+44',
     phone_local: '',
   });
@@ -40,8 +38,6 @@ const AgentRegisterPage: React.FC = () => {
     setError(null);
     try {
       await agentRecommendationsService.register({
-        firstname: form.firstname,
-        lastname: form.lastname,
         email: form.email,
         password: form.password,
         agent_name: form.agent_name,
@@ -97,12 +93,12 @@ const AgentRegisterPage: React.FC = () => {
             <Form onSubmit={handleSubmit}>
               <div className="row g-3">
                 <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">First name</Form.Label>
-                  <Form.Control className="agent-auth-input" value={form.firstname} onChange={(e) => handleChange('firstname', e.target.value)} required />
+                  <Form.Label className="agent-auth-label">Agent name</Form.Label>
+                  <Form.Control className="agent-auth-input" value={form.agent_name} onChange={(e) => handleChange('agent_name', e.target.value)} required />
                 </div>
                 <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Last name</Form.Label>
-                  <Form.Control className="agent-auth-input" value={form.lastname} onChange={(e) => handleChange('lastname', e.target.value)} required />
+                  <Form.Label className="agent-auth-label">Agency</Form.Label>
+                  <Form.Control className="agent-auth-input" value={form.agency} onChange={(e) => handleChange('agency', e.target.value)} required />
                 </div>
                 <div className="col-12">
                   <Form.Label className="agent-auth-label">Email</Form.Label>
@@ -111,14 +107,6 @@ const AgentRegisterPage: React.FC = () => {
                 <div className="col-12">
                   <Form.Label className="agent-auth-label">Password</Form.Label>
                   <Form.Control className="agent-auth-input" type="password" value={form.password} onChange={(e) => handleChange('password', e.target.value)} required />
-                </div>
-                <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Agent name</Form.Label>
-                  <Form.Control className="agent-auth-input" value={form.agent_name} onChange={(e) => handleChange('agent_name', e.target.value)} required />
-                </div>
-                <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Agency</Form.Label>
-                  <Form.Control className="agent-auth-input" value={form.agency} onChange={(e) => handleChange('agency', e.target.value)} />
                 </div>
                 <div className="col-12">
                   <Form.Label className="agent-auth-label">Phone number</Form.Label>

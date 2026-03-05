@@ -854,8 +854,8 @@ class UserCreate(BaseModel):
 
 
 class AgentRegisterRequest(BaseModel):
-    firstname: str
-    lastname: str
+    firstname: Optional[str] = None
+    lastname: Optional[str] = None
     email: str
     password: str
     agent_name: str
@@ -1882,6 +1882,19 @@ async def register_agent(payload: AgentRegisterRequest):
 
     normalized_email = payload.email.strip().lower()
     normalized_agent_number = validate_agent_number(payload.agent_number)
+    normalized_agent_name = payload.agent_name.strip()
+    if not normalized_agent_name:
+        raise HTTPException(status_code=400, detail="Agent name is required")
+
+    first_name = payload.firstname.strip() if payload.firstname and payload.firstname.strip() else None
+    last_name = payload.lastname.strip() if payload.lastname and payload.lastname.strip() else None
+    if not first_name:
+        name_parts = normalized_agent_name.split()
+        first_name = name_parts[0] if name_parts else "Agent"
+        last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else "Account"
+    elif not last_name:
+        last_name = "Account"
+
     if await get_user(normalized_email):
         raise HTTPException(status_code=400, detail="An account with this email already exists")
 
@@ -1905,8 +1918,8 @@ async def register_agent(payload: AgentRegisterRequest):
                 normalized_email,
                 hashed_password,
                 ROLE_AGENT,
-                payload.firstname.strip(),
-                payload.lastname.strip(),
+                first_name,
+                last_name,
             ),
         )
 
@@ -1934,7 +1947,7 @@ async def register_agent(payload: AgentRegisterRequest):
         """,
             (
                 user_id,
-                payload.agent_name.strip(),
+                normalized_agent_name,
                 payload.agency.strip() if payload.agency else None,
                 normalized_email,
                 normalized_agent_number,
@@ -2001,32 +2014,86 @@ async def search_agent_players(
         safe_limit = min(max(limit, 1), 20)
         normalized_search = normalize_text(normalized_query)
         search_pattern = f"%{normalized_search}%"
-        cursor.execute(
-            """
-            SELECT
-                p.PLAYERNAME,
-                p.BIRTHDATE,
-                AVG(CASE WHEN sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE
-            FROM players
-            LEFT JOIN scout_reports sr
-                ON (
-                    (p.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID)
-                    OR (p.PLAYERID IS NOT NULL AND sr.PLAYER_ID = p.PLAYERID)
-                )
-            WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
-            GROUP BY p.PLAYERNAME, p.BIRTHDATE
-            ORDER BY
-                CASE
-                    WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                    WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
-                    ELSE 3
-                END,
-                PLAYERNAME,
-                BIRTHDATE
-            LIMIT %s
-        """,
-            (search_pattern, normalized_search, normalized_search + "%", safe_limit),
+        player_columns = get_table_columns("players")
+        player_name_column = "PLAYERNAME" if "PLAYERNAME" in player_columns else None
+        if not player_name_column:
+            raise HTTPException(status_code=500, detail="Player search unavailable: missing players name column")
+        player_birthdate_column = (
+            "BIRTHDATE"
+            if "BIRTHDATE" in player_columns
+            else ("DATE_OF_BIRTH" if "DATE_OF_BIRTH" in player_columns else None)
         )
+        player_cafc_id_column = "CAFC_PLAYER_ID" if "CAFC_PLAYER_ID" in player_columns else None
+        player_external_id_column = "PLAYERID" if "PLAYERID" in player_columns else None
+
+        select_birthdate_expr = (
+            f"p.{player_birthdate_column}" if player_birthdate_column else "NULL"
+        )
+        search_name_expr = f"NORMALIZE_TEXT_UDF(p.{player_name_column})"
+
+        scout_report_columns = get_table_columns("scout_reports")
+        has_sr_perf = "PERFORMANCE_SCORE" in scout_report_columns
+        has_sr_cafc = "CAFC_PLAYER_ID" in scout_report_columns
+        has_sr_player = "PLAYER_ID" in scout_report_columns
+
+        if has_sr_perf and (
+            (has_sr_cafc and player_cafc_id_column)
+            or (has_sr_player and player_external_id_column)
+        ):
+            join_parts = []
+            if has_sr_cafc and player_cafc_id_column:
+                join_parts.append(
+                    f"(p.{player_cafc_id_column} IS NOT NULL AND sr.CAFC_PLAYER_ID = p.{player_cafc_id_column})"
+                )
+            if has_sr_player and player_external_id_column:
+                join_parts.append(
+                    f"(p.{player_external_id_column} IS NOT NULL AND sr.PLAYER_ID = p.{player_external_id_column})"
+                )
+            join_condition = " OR ".join(join_parts)
+            cursor.execute(
+                f"""
+                SELECT
+                    p.{player_name_column},
+                    {select_birthdate_expr},
+                    AVG(CASE WHEN sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE
+                FROM players p
+                LEFT JOIN scout_reports sr
+                    ON ({join_condition})
+                WHERE {search_name_expr} ILIKE %s
+                GROUP BY p.{player_name_column}, {select_birthdate_expr}
+                ORDER BY
+                    CASE
+                        WHEN {search_name_expr} = %s THEN 1
+                        WHEN {search_name_expr} ILIKE %s THEN 2
+                        ELSE 3
+                    END,
+                    p.{player_name_column},
+                    {select_birthdate_expr}
+                LIMIT %s
+            """,
+                (search_pattern, normalized_search, normalized_search + "%", safe_limit),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT
+                    p.{player_name_column},
+                    {select_birthdate_expr},
+                    NULL AS AVG_PERFORMANCE_SCORE
+                FROM players p
+                WHERE {search_name_expr} ILIKE %s
+                ORDER BY
+                    CASE
+                        WHEN {search_name_expr} = %s THEN 1
+                        WHEN {search_name_expr} ILIKE %s THEN 2
+                        ELSE 3
+                    END,
+                    p.{player_name_column},
+                    {select_birthdate_expr}
+                LIMIT %s
+            """,
+                (search_pattern, normalized_search, normalized_search + "%", safe_limit),
+            )
 
         items: List[AgentPlayerSearchResult] = []
         seen = set()
@@ -2160,6 +2227,25 @@ async def create_agent_recommendation(
             normalized_current_wages_currency = None
         if normalized_expected_wages is None:
             normalized_expected_wages_currency = None
+        if not submission_date:
+            raise HTTPException(status_code=400, detail="Submission date is required")
+        if not player_name or not player_name.strip():
+            raise HTTPException(status_code=400, detail="Player name is required")
+        if not transfermarkt_link or not transfermarkt_link.strip():
+            raise HTTPException(status_code=400, detail="Transfermarkt link is required")
+        if not normalized_agreement_type:
+            raise HTTPException(status_code=400, detail="Agreement type is required")
+        if not confirmed_contract_expiry:
+            raise HTTPException(status_code=400, detail="Confirmed contract expiry is required")
+        if not normalized_contract_option:
+            raise HTTPException(status_code=400, detail="Contract options are required")
+        if not normalized_potential_deal_type:
+            raise HTTPException(status_code=400, detail="Potential deal type is required")
+        if normalized_expected_wages is None:
+            raise HTTPException(status_code=400, detail="Expected wages are required")
+        selected_deal_types = [part.strip() for part in normalized_potential_deal_type.split(",")] if normalized_potential_deal_type else []
+        if "Permanent Transfer" in selected_deal_types and normalized_transfer_fee_amount is None:
+            raise HTTPException(status_code=400, detail="Transfer fee is required for permanent transfer")
         resolved_agent_name = profile[1] if profile and profile[1] else agent_name.strip()
         resolved_agency = profile[2] if profile and profile[2] else (agency.strip() if agency else None)
         resolved_agent_email = profile[3] if profile and profile[3] else (current_user.email or agent_email.strip().lower())

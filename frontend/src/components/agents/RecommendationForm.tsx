@@ -365,6 +365,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               className="agent-portal-input"
               value={values.transfermarkt_link}
               onChange={(event) => onChange('transfermarkt_link', event.target.value)}
+              required
             />
           </div>
           <MultiSelectDropdown
@@ -381,6 +382,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               className="agent-portal-input"
               value={values.confirmed_contract_expiry}
               onChange={(event) => onChange('confirmed_contract_expiry', event.target.value)}
+              required
             />
           </div>
           <MultiSelectDropdown
@@ -406,6 +408,9 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               onChange={(event) => onChange('transfer_fee', normalizeWholePounds(event.target.value))}
               placeholder="50,000"
             />
+            <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+              Required only when potential deal type includes Permanent Transfer.
+            </div>
           </div>
           <div>
             <label className="agent-portal-label">Current Wages (Per Week - P/W, GBP)</label>
@@ -425,6 +430,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               value={formattedExpectedWages}
               onChange={(event) => onChange('expected_wages_per_week', normalizeWholePounds(event.target.value))}
               placeholder="18,000"
+              required
             />
           </div>
           <div className="full-span">

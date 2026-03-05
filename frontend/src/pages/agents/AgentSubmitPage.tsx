@@ -64,6 +64,56 @@ const AgentSubmitPage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const requiredAgentFields = [
+      values.agent_name,
+      values.agency,
+      values.agent_email,
+      values.agent_number,
+    ];
+    if (requiredAgentFields.some((field) => !field || !field.trim())) {
+      setError('Your agent profile is incomplete. Please contact support to update missing account details.');
+      return;
+    }
+    if (!values.submission_date) {
+      setError('Date is required.');
+      return;
+    }
+    if (!values.player_name.trim()) {
+      setError('Player name is required.');
+      return;
+    }
+    if (!values.transfermarkt_link.trim()) {
+      setError('Transfermarkt link is required.');
+      return;
+    }
+    if (values.agreement_type.length === 0) {
+      setError('Agreement type is required.');
+      return;
+    }
+    if (!values.confirmed_contract_expiry) {
+      setError('Confirmed contract expiry is required.');
+      return;
+    }
+    if (values.contract_options.length === 0) {
+      setError('Contract options are required.');
+      return;
+    }
+    if (values.potential_deal_type.length === 0) {
+      setError('Potential deal type is required.');
+      return;
+    }
+    if (!values.expected_wages_per_week.trim()) {
+      setError('Expected wages are required.');
+      return;
+    }
+    if (
+      values.potential_deal_type.includes('Permanent Transfer')
+      && !values.transfer_fee.trim()
+    ) {
+      setError('Transfer fee is required when potential deal type includes Permanent Transfer.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSubmitSuccess(null);
