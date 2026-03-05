@@ -1104,9 +1104,12 @@ const KanbanPage: React.FC = () => {
   // Loading state
   if (userLoading || loading) {
     return (
-      <Container className="mt-4">
-        <div className="mb-3">
-          <h3>Player Lists - Kanban View</h3>
+      <Container className="mt-4 page-lists-cafc">
+        <div className="agent-portal-card mb-3">
+          <div className="agent-portal-card-body">
+            <div className="agent-portal-section-title">Internal Lists - Kanban</div>
+            <div className="agent-portal-section-copy">Current recruitment list workflow in kanban form.</div>
+          </div>
         </div>
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
           <div className="text-center">
@@ -1119,7 +1122,7 @@ const KanbanPage: React.FC = () => {
   }
 
   return (
-    <Container className="mt-4">
+    <Container className="mt-4 page-lists-cafc">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
@@ -1128,7 +1131,12 @@ const KanbanPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <h3>Player Lists - Kanban View</h3>
+      <div className="agent-portal-card mb-3">
+        <div className="agent-portal-card-body">
+          <div className="agent-portal-section-title">Internal Lists - Kanban</div>
+          <div className="agent-portal-section-copy">Manage Charlton recruitment lists in kanban format without changing the existing workflow.</div>
+        </div>
+      </div>
 
       {lists.length === 0 ? (
         <EmptyState
@@ -1252,7 +1260,7 @@ const KanbanPage: React.FC = () => {
                   </Dropdown.Toggle>
 
                   <Dropdown.Menu>
-                    <Dropdown.Item onClick={() => navigate("/lists")}>
+                    <Dropdown.Item onClick={() => navigate("/lists/internal")}>
                       🔄 Switch to Table View
                     </Dropdown.Item>
                     <Dropdown.Divider />

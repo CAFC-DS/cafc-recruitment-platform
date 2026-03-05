@@ -7,7 +7,7 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi import FastAPI, HTTPException, Request, Depends, status, UploadFile, File, Form, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from dotenv import load_dotenv
@@ -33,6 +33,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
 import uuid
+import tempfile
+import os.path
+import csv
+import io
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
@@ -234,7 +238,10 @@ def load_table_schemas():
             "scout_reports",
             "player_information",
             "player_notes",
-            "matches"
+            "matches",
+            "player_recommendations",
+            "agent_profiles",
+            "status_history",
         ]
 
         for table_name in tables_to_cache:
@@ -250,7 +257,7 @@ def load_table_schemas():
         conn.close()
         print(f"🎯 Schema cache loaded: {len(TABLE_SCHEMA_CACHE)} tables")
     except Exception as e:
-        print(f"❌ Failed to load table schemas: {e}")
+        print(f"❌ Failed to load table schemas: {type(e).__name__}: {e!r}")
         # Initialize with empty cache if connection fails
         TABLE_SCHEMA_CACHE = {}
 
@@ -262,6 +269,23 @@ def has_column(table_name: str, column_name: str) -> bool:
     """Check if a table has a specific column using cached schema"""
     columns = get_table_columns(table_name)
     return column_name in columns
+
+
+def refresh_table_schema(table_name: str):
+    """Refresh a single table schema in the local cache."""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"DESCRIBE TABLE {table_name}")
+        TABLE_SCHEMA_CACHE[table_name.lower()] = [col[0] for col in cursor.fetchall()]
+    except Exception as e:
+        logging.warning(f"Could not refresh schema cache for {table_name}: {e}")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def load_user_cache():
     """Load users into memory cache"""
@@ -279,7 +303,7 @@ def load_user_cache():
         conn.close()
         print(f"✅ User cache loaded: {len(USER_CACHE)} users")
     except Exception as e:
-        print(f"❌ Failed to load user cache: {e}")
+        print(f"❌ Failed to load user cache: {type(e).__name__}: {e!r}")
         USER_CACHE = {}
 
 def get_cached_username(user_id: int) -> Optional[str]:
@@ -303,11 +327,74 @@ app = FastAPI(
 # Load table schemas and user cache on startup
 @app.on_event("startup")
 async def startup_event():
-    print("🚀 Loading table schemas into cache...")
-    load_table_schemas()
-    print("🚀 Loading user cache...")
-    load_user_cache()
-    print("✅ Application startup complete")
+    """Load caches in a background thread so a slow/failed Snowflake connection
+    never blocks the HTTP server from accepting requests (including CORS preflight)."""
+    def _load_caches():
+        try:
+            print("🚀 Loading table schemas into cache...")
+            load_table_schemas()
+            print("🚀 Loading user cache...")
+            load_user_cache()
+            print("✅ Startup cache loading complete")
+        except Exception as e:
+            print(f"⚠️  Startup cache loading failed (non-fatal): {e}")
+            print("ℹ️  App is still reachable; caches will load on first request.")
+
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, _load_caches)
+    print("✅ Application startup complete (cache loading running in background)")
+
+
+@app.get("/health/debug")
+async def debug_health():
+    """
+    Diagnostic endpoint - exposes env var presence (NOT values) and CORS config.
+    Safe to call publicly: only shows whether variables are set, never their contents.
+    Use this first when diagnosing Railway deployment issues.
+    """
+    def _present(val):
+        """Return 'SET' / 'MISSING' without leaking the value."""
+        return "SET" if val else "MISSING"
+
+    snowflake_key_raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "")
+    key_info = "MISSING"
+    if snowflake_key_raw:
+        has_header = "-----BEGIN" in snowflake_key_raw
+        # Check for literal \n vs real newlines (common Railway copy-paste mistake)
+        has_literal_backslash_n = r"\n" in snowflake_key_raw and "\n" not in snowflake_key_raw
+        if has_literal_backslash_n:
+            key_info = "SET but contains literal \\n instead of real newlines - WILL FAIL"
+        elif not has_header:
+            key_info = "SET but missing PEM header (-----BEGIN ...) - WILL FAIL"
+        else:
+            key_info = f"SET (length={len(snowflake_key_raw)}, has PEM header=True)"
+
+    cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+    parsed_origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw else []
+
+    return {
+        "environment": ENVIRONMENT,
+        "snowflake": {
+            "account":   _present((os.getenv("SNOWFLAKE_PROD_ACCOUNT")   or os.getenv("SNOWFLAKE_ACCOUNT"))   if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
+            "username":  _present((os.getenv("SNOWFLAKE_PROD_USERNAME")  or os.getenv("SNOWFLAKE_USERNAME"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
+            "warehouse": _present((os.getenv("SNOWFLAKE_PROD_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE")) if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
+            "database":  _present((os.getenv("SNOWFLAKE_PROD_DATABASE")  or os.getenv("SNOWFLAKE_DATABASE"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
+            "schema":    _present((os.getenv("SNOWFLAKE_PROD_SCHEMA")    or os.getenv("SNOWFLAKE_SCHEMA"))    if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
+            "role":      _present((os.getenv("SNOWFLAKE_PROD_ROLE")      or os.getenv("SNOWFLAKE_ROLE"))      if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
+            "private_key": key_info,
+        },
+        "auth": {
+            "secret_key": _present(os.getenv("SECRET_KEY")),
+        },
+        "cors": {
+            "origins_env_var_set": bool(cors_origins_raw),
+            "parsed_origins": parsed_origins,
+        },
+        "connection_pool": {
+            "initialised": _connection_pool is not None,
+            "pool_size_approx": _connection_pool.qsize() if _connection_pool else 0,
+        },
+    }
 
 
 @app.get("/health/snowflake")
@@ -381,15 +468,25 @@ else:
 # Snowflake Connection Configuration - Environment-Based
 # Load configuration based on ENVIRONMENT variable (development or production)
 if ENVIRONMENT == "production":
-    # Production: Use APP_USER with COMPUTE_WH
-    SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_PROD_ACCOUNT")
-    SNOWFLAKE_USERNAME = os.getenv("SNOWFLAKE_PROD_USERNAME")
-    SNOWFLAKE_ROLE = os.getenv("SNOWFLAKE_PROD_ROLE")
-    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_PROD_WAREHOUSE")
-    SNOWFLAKE_DATABASE = os.getenv("SNOWFLAKE_PROD_DATABASE")
-    SNOWFLAKE_SCHEMA = os.getenv("SNOWFLAKE_PROD_SCHEMA")
-    SNOWFLAKE_PRIVATE_KEY_PATH = os.getenv("SNOWFLAKE_PROD_PRIVATE_KEY_PATH")
+    # Accept both SNOWFLAKE_PROD_* and plain SNOWFLAKE_* naming conventions
+    SNOWFLAKE_ACCOUNT   = os.getenv("SNOWFLAKE_PROD_ACCOUNT")   or os.getenv("SNOWFLAKE_ACCOUNT")
+    SNOWFLAKE_USERNAME  = os.getenv("SNOWFLAKE_PROD_USERNAME")  or os.getenv("SNOWFLAKE_USERNAME")
+    SNOWFLAKE_ROLE      = os.getenv("SNOWFLAKE_PROD_ROLE")      or os.getenv("SNOWFLAKE_ROLE")
+    SNOWFLAKE_WAREHOUSE = os.getenv("SNOWFLAKE_PROD_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE")
+    SNOWFLAKE_DATABASE  = os.getenv("SNOWFLAKE_PROD_DATABASE")  or os.getenv("SNOWFLAKE_DATABASE")
+    SNOWFLAKE_SCHEMA    = os.getenv("SNOWFLAKE_PROD_SCHEMA")    or os.getenv("SNOWFLAKE_SCHEMA")
+    SNOWFLAKE_PRIVATE_KEY_PATH = None  # production uses SNOWFLAKE_PRIVATE_KEY env var, not a file
     print(f"🚀 PRODUCTION MODE: Connecting to Snowflake as {SNOWFLAKE_USERNAME} with role {SNOWFLAKE_ROLE} using warehouse {SNOWFLAKE_WAREHOUSE}")
+    missing = [k for k, v in {
+        "SNOWFLAKE_ACCOUNT": SNOWFLAKE_ACCOUNT,
+        "SNOWFLAKE_USERNAME": SNOWFLAKE_USERNAME,
+        "SNOWFLAKE_ROLE": SNOWFLAKE_ROLE,
+        "SNOWFLAKE_WAREHOUSE": SNOWFLAKE_WAREHOUSE,
+        "SNOWFLAKE_DATABASE": SNOWFLAKE_DATABASE,
+        "SNOWFLAKE_SCHEMA": SNOWFLAKE_SCHEMA,
+    }.items() if not v]
+    if missing:
+        print(f"🔴 MISSING REQUIRED ENV VARS: {missing} — all Snowflake calls will fail until these are set in Railway")
 else:
     # Development: Use personal account with DEVELOPMENT_WH
     SNOWFLAKE_ACCOUNT = os.getenv("SNOWFLAKE_DEV_ACCOUNT", os.getenv("SNOWFLAKE_ACCOUNT"))
@@ -495,7 +592,8 @@ def _create_new_connection():
         # Performance optimizations
         "client_session_keep_alive": True,
         "client_session_keep_alive_heartbeat_frequency": 3600,  # 1 hour
-        "network_timeout": 60,
+        "login_timeout": 15,   # Fail fast on auth/network issues (was hanging indefinitely)
+        "network_timeout": 30,  # Reduced from 60s so failures surface quickly
         "query_timeout": 300,  # 5 minutes
     }
 
@@ -581,20 +679,11 @@ def get_snowflake_connection():
         # Try to get connection from pool (non-blocking)
         try:
             conn = _connection_pool.get_nowait()
-
-            # Test if connection is still alive
-            try:
-                conn.cursor().execute("SELECT 1")
-                # Wrap in pooled connection that returns to pool on close
-                return PooledSnowflakeConnection(conn, _connection_pool)
-            except:
-                # Connection is dead, create a new one
-                try:
-                    conn.close()
-                except:
-                    pass
-                conn = _create_new_connection()
-                return PooledSnowflakeConnection(conn, _connection_pool)
+            # Return pooled connection directly - avoid SELECT 1 health check on
+            # every retrieval as it adds round-trip latency and blocks the event
+            # loop when Snowflake is degraded. Stale connections are caught by
+            # the first real query and handled via PooledSnowflakeConnection.close().
+            return PooledSnowflakeConnection(conn, _connection_pool)
 
         except Empty:
             # Pool is empty, create new connection
@@ -617,8 +706,60 @@ ROLE_SENIOR_MANAGER = "senior_manager"
 ROLE_MANAGER = "manager"
 ROLE_LOAN_MANAGER = "loan_manager"
 ROLE_SCOUT = "scout"
+ROLE_AGENT = "agent"
 
-VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT]
+VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT, ROLE_AGENT]
+INTERNAL_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT]
+
+RECOMMENDATION_STATUSES = [
+    "Submitted",
+    "Under Review",
+    "Added to Scouting Process",
+    "Added to Emerging Talent Process",
+    "Not Currently under Consideration",
+]
+
+ALLOWED_AGREEMENT_TYPES = [
+    "Player Agreement/Mandate",
+    "Club Mandate",
+    "None",
+]
+
+ALLOWED_CONTRACT_OPTIONS = [
+    "None",
+    "+1 Club",
+    "+1 Player",
+    "+1 Mutual",
+    "+2 Club",
+    "+2 Player",
+    "+2 Mutual",
+    "Other",
+]
+
+ALLOWED_POTENTIAL_DEAL_TYPES = [
+    "Free",
+    "Permanent Transfer",
+    "Loan",
+    "Loan with Option",
+]
+
+ALLOWED_CURRENCY_CODES = [
+    "GBP",
+    "EUR",
+    "USD",
+]
+
+RECOMMENDATION_MAX_FILE_SIZE = 15 * 1024 * 1024
+RECOMMENDATION_ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"}
+RECOMMENDATION_ALLOWED_CONTENT_TYPES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "image/png",
+    "image/jpeg",
+}
+RECOMMENDATION_EMAILS_ENABLED = False
+RECOMMENDATION_UPLOADS_ENABLED = False
 
 # --- Stage Change Reason Constants ---
 STAGE_1_REASONS = [
@@ -710,6 +851,89 @@ class UserCreate(BaseModel):
     role: Optional[str] = "scout"  # admin, senior_manager, manager, loan_manager, scout
     firstname: str
     lastname: str
+
+
+class AgentRegisterRequest(BaseModel):
+    firstname: str
+    lastname: str
+    email: str
+    password: str
+    agent_name: str
+    agency: Optional[str] = None
+    agent_number: Optional[str] = None
+
+
+class AgentProfileResponse(BaseModel):
+    user_id: int
+    firstname: Optional[str] = None
+    lastname: Optional[str] = None
+    email: Optional[str] = None
+    agent_name: Optional[str] = None
+    agency: Optional[str] = None
+    agent_number: Optional[str] = None
+
+
+class AgentPlayerSearchResult(BaseModel):
+    label: str
+    name: str
+    date_of_birth: Optional[str] = None
+    avg_performance_score: Optional[float] = None
+
+
+class RecommendationResponse(BaseModel):
+    id: int
+    player_name: str
+    transfermarkt_link: Optional[str] = None
+    agreement_type: Optional[str] = None
+    confirmed_contract_expiry: Optional[str] = None
+    contract_options: Optional[str] = None
+    potential_deal_type: Optional[str] = None
+    transfer_fee: Optional[str] = None
+    transfer_fee_amount: Optional[float] = None
+    transfer_fee_currency: Optional[str] = None
+    current_wages_per_week: Optional[float] = None
+    current_wages_currency: Optional[str] = None
+    expected_wages_per_week: Optional[float] = None
+    expected_wages_currency: Optional[str] = None
+    additional_information: Optional[str] = None
+    supporting_file_name: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    submission_date: Optional[str] = None
+    status: str
+    status_updated_at: Optional[str] = None
+    agent_name: Optional[str] = None
+    agency: Optional[str] = None
+    agent_email: Optional[str] = None
+    agent_number: Optional[str] = None
+
+
+class RecommendationStatusHistoryResponse(BaseModel):
+    id: int
+    old_status: Optional[str] = None
+    new_status: str
+    changed_at: str
+    changed_by: Optional[int] = None
+    changed_by_name: Optional[str] = None
+
+
+class InternalRecommendationResponse(RecommendationResponse):
+    submitted_by_user_id: Optional[int] = None
+    submitted_by_username: Optional[str] = None
+    internal_notes: Optional[str] = None
+    status_updated_by: Optional[int] = None
+    status_updated_by_name: Optional[str] = None
+    supporting_file_content_type: Optional[str] = None
+    supporting_file_size_bytes: Optional[int] = None
+    status_history: Optional[List[RecommendationStatusHistoryResponse]] = None
+
+
+class RecommendationStatusUpdateRequest(BaseModel):
+    new_status: str
+
+
+class RecommendationNotesUpdateRequest(BaseModel):
+    internal_notes: str
 
 
 class PasswordResetRequest(BaseModel):
@@ -990,17 +1214,593 @@ async def get_user_by_id(user_id: int):
     return None
 
 
+RECOMMENDATION_REQUIRED_COLUMNS = {
+    "player_recommendations": [
+        "ID",
+        "AGENT_NAME",
+        "AGENCY",
+        "AGENT_EMAIL",
+        "AGENT_NUMBER",
+        "DATE",
+        "PLAYER_NAME",
+        "TRANSFERMARKT_LINK",
+        "AGREEMENT_TYPE",
+        "CONTRACT_EXPIRY",
+        "CONTRACT_OPTIONS",
+        "POTENTIAL_DEAL_TYPE",
+        "TRANSFER_FEE",
+        "CURRENT_WAGES",
+        "EXPECTED_WAGES",
+        "ADDITIONAL_INFO",
+        "SUBMITTED_BY_USER_ID",
+        "STATUS",
+        "STATUS_UPDATED_AT",
+        "STATUS_UPDATED_BY",
+        "INTERNAL_NOTES",
+        "CREATED_AT",
+        "UPDATED_AT",
+    ],
+    "agent_profiles": [
+        "USER_ID",
+        "AGENT_NAME",
+        "AGENCY",
+        "AGENT_EMAIL",
+        "AGENT_NUMBER",
+        "CREATED_AT",
+        "UPDATED_AT",
+    ],
+    "status_history": [
+        "ID",
+        "RECOMMENDATION_ID",
+        "OLD_STATUS",
+        "NEW_STATUS",
+        "CHANGED_BY",
+        "CHANGED_AT",
+    ],
+}
+
+RECOMMENDATION_OPTIONAL_COLUMNS = {
+    "player_recommendations": [
+        "TRANSFER_FEE_AMOUNT",
+        "TRANSFER_FEE_CURRENCY",
+        "CURRENT_WAGES_AMOUNT",
+        "CURRENT_WAGES_CURRENCY",
+        "EXPECTED_WAGES_AMOUNT",
+        "EXPECTED_WAGES_CURRENCY",
+    ]
+}
+
+
+def validate_recommendation_schema_ready():
+    """Fail recommendation-specific requests cleanly when migration has not been applied."""
+    if not TABLE_SCHEMA_CACHE:
+        load_table_schemas()
+
+    for table_name, required_columns in RECOMMENDATION_REQUIRED_COLUMNS.items():
+        columns = get_table_columns(table_name)
+        if not columns:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Recommendation schema not ready: missing table {table_name.upper()}",
+            )
+
+        missing_columns = [column for column in required_columns if column not in columns]
+        if missing_columns:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    f"Recommendation schema not ready: missing "
+                    f"{table_name.upper()}.{missing_columns[0]}"
+                ),
+            )
+
+
+def recommendation_column_exists(table_name: str, column_name: str) -> bool:
+    columns = get_table_columns(table_name)
+    return column_name in columns
+
+
+def serialize_datetime(value) -> Optional[str]:
+    if value is None:
+        return None
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return str(value)
+
+
+def format_decimal(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def sanitize_filename(filename: str) -> str:
+    if not filename:
+        return "supporting-file"
+    filename = re.sub(r"[^A-Za-z0-9._-]+", "-", filename).strip(".-")
+    return filename or "supporting-file"
+
+
+def validate_recommendation_status(status_value: str):
+    if status_value not in RECOMMENDATION_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(RECOMMENDATION_STATUSES)}",
+        )
+
+
+def validate_agent_number(agent_number: Optional[str]) -> Optional[str]:
+    if agent_number is None:
+        return None
+    normalized = agent_number.strip()
+    if not normalized:
+        return None
+    if not re.fullmatch(r"\+[1-9]\d{6,14}", normalized):
+        raise HTTPException(
+            status_code=400,
+            detail="Agent number must be in international format (e.g. +447700900123)",
+        )
+    return normalized
+
+
+def validate_recommendation_option(
+    value: Optional[str], allowed_values: List[str], field_label: str
+) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized not in allowed_values:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Must be one of: {', '.join(allowed_values)}",
+        )
+    return normalized
+
+
+def validate_recommendation_multi_option(
+    value: Optional[str], allowed_values: List[str], field_label: str
+) -> Optional[str]:
+    if value is None:
+        return None
+    raw_values = [part.strip() for part in value.split(",") if part.strip()]
+    if not raw_values:
+        return None
+    invalid_values = [part for part in raw_values if part not in allowed_values]
+    if invalid_values:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Must be one of: {', '.join(allowed_values)}",
+        )
+    # Keep a predictable persisted order based on allowed values.
+    ordered_unique = [candidate for candidate in allowed_values if candidate in raw_values]
+    return ",".join(ordered_unique)
+
+
+def parse_whole_number_field(value: Optional[str], field_label: str) -> Optional[int]:
+    if value is None:
+        return None
+    normalized = value.replace(",", "").strip()
+    if not normalized:
+        return None
+    if not re.fullmatch(r"\d+", normalized):
+        raise HTTPException(status_code=400, detail=f"Invalid {field_label}. Whole numbers only")
+    return int(normalized)
+
+
+def normalize_currency_code(value: Optional[str], field_label: str) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = value.strip().upper()
+    if not normalized:
+        return None
+    if not re.fullmatch(r"[A-Z]{3}", normalized):
+        raise HTTPException(status_code=400, detail=f"Invalid {field_label}. Use a 3-letter code")
+    return normalized
+
+
+def normalize_currency_selection(selected_currency: Optional[str], field_label: str) -> Optional[str]:
+    selected = normalize_currency_code(selected_currency, field_label)
+    if selected and selected not in ALLOWED_CURRENCY_CODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Must be one of: {', '.join(ALLOWED_CURRENCY_CODES)}",
+        )
+    return selected
+
+
+def get_private_stage_name() -> str:
+    if not RECOMMENDATION_UPLOADS_ENABLED:
+        raise HTTPException(status_code=404, detail="Supporting file uploads are disabled")
+    stage_name = os.getenv("SNOWFLAKE_PRIVATE_STAGE")
+    if not stage_name:
+        raise HTTPException(
+            status_code=500,
+            detail="SNOWFLAKE_PRIVATE_STAGE is not configured",
+        )
+    return stage_name.lstrip("@")
+
+
+async def upload_recommendation_supporting_file(file: UploadFile) -> Dict[str, Any]:
+    if not RECOMMENDATION_UPLOADS_ENABLED:
+        raise HTTPException(status_code=400, detail="Supporting file uploads are disabled for testing")
+    content = await file.read()
+    file_extension = os.path.splitext(file.filename or "")[1].lower()
+    content_type = file.content_type or ""
+
+    if len(content) > RECOMMENDATION_MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Supporting material exceeds 15MB limit")
+
+    if file_extension not in RECOMMENDATION_ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    if content_type and content_type not in RECOMMENDATION_ALLOWED_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported file content type")
+
+    conn = None
+    temp_file_path = None
+    try:
+        stage_name = get_private_stage_name()
+        storage_key = f"recommendations/{uuid.uuid4().hex}{file_extension}"
+        safe_name = sanitize_filename(file.filename or "supporting-file")
+
+        fd, temp_file_path = tempfile.mkstemp(suffix=file_extension)
+        os.close(fd)
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(content)
+
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        normalized_local_path = temp_file_path.replace("\\", "/")
+        cursor.execute(
+            f"PUT 'file://{normalized_local_path}' @{stage_name}/{storage_key} AUTO_COMPRESS=FALSE OVERWRITE=TRUE"
+        )
+
+        return {
+            "supporting_file_key": storage_key,
+            "supporting_file_name": safe_name,
+            "supporting_file_content_type": content_type or None,
+            "supporting_file_size_bytes": len(content),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(f"Supporting file upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload supporting material")
+    finally:
+        if conn:
+            conn.close()
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+
+def download_recommendation_supporting_file(storage_key: str) -> bytes:
+    if not RECOMMENDATION_UPLOADS_ENABLED:
+        raise HTTPException(status_code=404, detail="Supporting file downloads are disabled")
+    conn = None
+    temp_dir = None
+    try:
+        stage_name = get_private_stage_name()
+        temp_dir = tempfile.mkdtemp(prefix="rec-download-")
+        normalized_dir = temp_dir.replace("\\", "/")
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"GET @{stage_name}/{storage_key} 'file://{normalized_dir}'")
+        downloaded_files = [name for name in os.listdir(temp_dir) if not name.endswith(".gz")]
+        if not downloaded_files:
+            downloaded_files = os.listdir(temp_dir)
+        if not downloaded_files:
+            raise HTTPException(status_code=404, detail="Supporting file not found")
+        with open(os.path.join(temp_dir, downloaded_files[0]), "rb") as downloaded_file:
+            return downloaded_file.read()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(f"Supporting file download failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download supporting material")
+    finally:
+        if conn:
+            conn.close()
+        if temp_dir and os.path.isdir(temp_dir):
+            for file_name in os.listdir(temp_dir):
+                try:
+                    os.remove(os.path.join(temp_dir, file_name))
+                except Exception:
+                    pass
+            os.rmdir(temp_dir)
+
+
+def send_recommendation_status_email(agent_email: str, agent_name: str, player_name: str, new_status: str, changed_at: datetime):
+    if not RECOMMENDATION_EMAILS_ENABLED:
+        logging.info("Recommendation status email skipped because emails are disabled")
+        return
+    if not agent_email:
+        return
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_username = os.getenv("SMTP_USERNAME")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from_email = os.getenv("SMTP_FROM_EMAIL")
+    smtp_from_name = os.getenv("SMTP_FROM_NAME", "Charlton Athletic Recruitment")
+    smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+
+    if not smtp_host or not smtp_port or not smtp_from_email:
+        logging.warning("SMTP configuration incomplete; recommendation status email skipped")
+        return
+
+    msg = MIMEMultipart()
+    msg["From"] = f"{smtp_from_name} <{smtp_from_email}>"
+    msg["To"] = agent_email
+    msg["Subject"] = f"CAFC Player Recommendation Update: {player_name}"
+
+    body = (
+        f"Hello {agent_name or 'Agent'},\n\n"
+        f"Your player recommendation for {player_name} has been updated.\n\n"
+        f"New status: {new_status}\n"
+        f"Updated at: {changed_at.isoformat()}\n\n"
+        "You can log in to the portal to view the latest status.\n"
+    )
+    msg.attach(MIMEText(body, "plain"))
+
+    server = None
+    try:
+        server = smtplib.SMTP(smtp_host, int(smtp_port))
+        server.ehlo()
+        if smtp_use_tls:
+            server.starttls()
+            server.ehlo()
+        if smtp_username and smtp_password:
+            server.login(smtp_username, smtp_password)
+        server.sendmail(smtp_from_email, [agent_email], msg.as_string())
+    finally:
+        if server:
+            try:
+                server.quit()
+            except Exception:
+                pass
+
+
+def get_agent_profile_row(cursor, user_id: int):
+    cursor.execute(
+        """
+        SELECT USER_ID, AGENT_NAME, AGENCY, AGENT_EMAIL, AGENT_NUMBER, CREATED_AT, UPDATED_AT
+        FROM agent_profiles
+        WHERE USER_ID = %s
+    """,
+        (user_id,),
+    )
+    return cursor.fetchone()
+
+
+def serialize_agent_profile(user: User, profile_row) -> AgentProfileResponse:
+    return AgentProfileResponse(
+        user_id=user.id,
+        firstname=user.firstname,
+        lastname=user.lastname,
+        email=profile_row[3] if profile_row and profile_row[3] else user.email,
+        agent_name=profile_row[1] if profile_row else None,
+        agency=profile_row[2] if profile_row else None,
+        agent_number=profile_row[4] if profile_row else None,
+    )
+
+
+def fetch_recommendation_status_history(cursor, recommendation_id: int, include_actor_names: bool = False):
+    cursor.execute(
+        """
+        SELECT
+            sh.ID,
+            sh.OLD_STATUS,
+            sh.NEW_STATUS,
+            sh.CHANGED_BY,
+            sh.CHANGED_AT,
+            u.FIRSTNAME,
+            u.LASTNAME,
+            u.USERNAME
+        FROM status_history sh
+        LEFT JOIN users u ON sh.CHANGED_BY = u.ID
+        WHERE sh.RECOMMENDATION_ID = %s
+        ORDER BY sh.CHANGED_AT DESC
+    """,
+        (recommendation_id,),
+    )
+    history = []
+    for row in cursor.fetchall():
+        actor_name = None
+        if include_actor_names and row[3]:
+            actor_name = " ".join(part for part in [row[5], row[6]] if part) or row[7]
+        history.append(
+            RecommendationStatusHistoryResponse(
+                id=row[0],
+                old_status=row[1],
+                new_status=row[2],
+                changed_by=row[3],
+                changed_by_name=actor_name,
+                changed_at=serialize_datetime(row[4]) or "",
+            )
+        )
+    return history
+
+
+def build_recommendation_select():
+    transfer_fee_amount_expr = (
+        "pr.TRANSFER_FEE_AMOUNT"
+        if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_AMOUNT")
+        else "NULL"
+    )
+    transfer_fee_currency_expr = (
+        "pr.TRANSFER_FEE_CURRENCY"
+        if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_CURRENCY")
+        else "NULL"
+    )
+    current_wages_amount_expr = (
+        "pr.CURRENT_WAGES_AMOUNT"
+        if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_AMOUNT")
+        else "NULL"
+    )
+    current_wages_currency_expr = (
+        "pr.CURRENT_WAGES_CURRENCY"
+        if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_CURRENCY")
+        else "NULL"
+    )
+    expected_wages_amount_expr = (
+        "pr.EXPECTED_WAGES_AMOUNT"
+        if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_AMOUNT")
+        else "NULL"
+    )
+    expected_wages_currency_expr = (
+        "pr.EXPECTED_WAGES_CURRENCY"
+        if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_CURRENCY")
+        else "NULL"
+    )
+    return """
+        SELECT
+            pr.ID,
+            pr.AGENT_NAME,
+            pr.AGENCY,
+            pr.AGENT_EMAIL,
+            pr.AGENT_NUMBER,
+            pr.DATE,
+            pr.PLAYER_NAME,
+            pr.TRANSFERMARKT_LINK,
+            pr.AGREEMENT_TYPE,
+            pr.CONTRACT_EXPIRY,
+            pr.CONTRACT_OPTIONS,
+            pr.POTENTIAL_DEAL_TYPE,
+            pr.TRANSFER_FEE,
+            pr.CURRENT_WAGES,
+            pr.EXPECTED_WAGES,
+            {transfer_fee_amount_expr} AS TRANSFER_FEE_AMOUNT,
+            {transfer_fee_currency_expr} AS TRANSFER_FEE_CURRENCY,
+            {current_wages_amount_expr} AS CURRENT_WAGES_AMOUNT,
+            {current_wages_currency_expr} AS CURRENT_WAGES_CURRENCY,
+            {expected_wages_amount_expr} AS EXPECTED_WAGES_AMOUNT,
+            {expected_wages_currency_expr} AS EXPECTED_WAGES_CURRENCY,
+            pr.ADDITIONAL_INFO,
+            pr.SUBMITTED_BY_USER_ID,
+            pr.STATUS,
+            pr.STATUS_UPDATED_AT,
+            pr.STATUS_UPDATED_BY,
+            pr.INTERNAL_NOTES,
+            pr.CREATED_AT,
+            pr.UPDATED_AT,
+            NULL AS SUPPORTING_FILE_KEY,
+            NULL AS SUPPORTING_FILE_NAME,
+            NULL AS SUPPORTING_FILE_CONTENT_TYPE,
+            NULL AS SUPPORTING_FILE_SIZE_BYTES,
+            u.USERNAME,
+            u.FIRSTNAME,
+            u.LASTNAME,
+            su.USERNAME,
+            su.FIRSTNAME,
+            su.LASTNAME
+        FROM player_recommendations pr
+        LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
+        LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
+    """.format(
+        transfer_fee_amount_expr=transfer_fee_amount_expr,
+        transfer_fee_currency_expr=transfer_fee_currency_expr,
+        current_wages_amount_expr=current_wages_amount_expr,
+        current_wages_currency_expr=current_wages_currency_expr,
+        expected_wages_amount_expr=expected_wages_amount_expr,
+        expected_wages_currency_expr=expected_wages_currency_expr,
+    )
+
+
+def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
+    submitted_by_name = " ".join(part for part in [row[34], row[35]] if part) or row[33]
+    status_updated_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
+    transfer_fee_amount = format_decimal(row[15])
+    transfer_fee_currency = row[16]
+    current_wages_amount = format_decimal(row[17])
+    current_wages_currency = row[18]
+    expected_wages_amount = format_decimal(row[19])
+    expected_wages_currency = row[20]
+    current_wages_value = current_wages_amount if current_wages_amount is not None else format_decimal(row[13])
+    expected_wages_value = expected_wages_amount if expected_wages_amount is not None else format_decimal(row[14])
+    current_wages_currency_value = (current_wages_currency or "GBP") if current_wages_value is not None else None
+    expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
+    legacy_transfer_fee = str(row[12]) if row[12] is not None else None
+    display_transfer_fee = (
+        f"{transfer_fee_currency or 'GBP'} {int(transfer_fee_amount):,}"
+        if transfer_fee_amount is not None
+        else legacy_transfer_fee
+    )
+
+    base_data = {
+        "id": row[0],
+        "player_name": row[6],
+        "transfermarkt_link": row[7],
+        "agreement_type": row[8],
+        "confirmed_contract_expiry": serialize_datetime(row[9]),
+        "contract_options": row[10],
+        "potential_deal_type": row[11],
+        "transfer_fee": display_transfer_fee,
+        "transfer_fee_amount": transfer_fee_amount,
+        "transfer_fee_currency": transfer_fee_currency,
+        "current_wages_per_week": current_wages_value,
+        "current_wages_currency": current_wages_currency_value,
+        "expected_wages_per_week": expected_wages_value,
+        "expected_wages_currency": expected_wages_currency_value,
+        "additional_information": row[21],
+        "supporting_file_name": row[30],
+        "created_at": serialize_datetime(row[27]),
+        "updated_at": serialize_datetime(row[28]),
+        "submission_date": serialize_datetime(row[5]),
+        "status": row[23],
+        "status_updated_at": serialize_datetime(row[24]),
+        "agent_name": row[1],
+        "agency": row[2],
+        "agent_email": row[3],
+        "agent_number": row[4],
+    }
+
+    if not include_internal:
+        return RecommendationResponse(**base_data)
+
+    return InternalRecommendationResponse(
+        **base_data,
+        submitted_by_user_id=row[22],
+        submitted_by_username=submitted_by_name,
+        internal_notes=row[26],
+        status_updated_by=row[25],
+        status_updated_by_name=status_updated_by_name,
+        supporting_file_content_type=row[31],
+        supporting_file_size_bytes=row[32],
+        status_history=status_history or [],
+    )
+
+
+def fetch_recommendation_detail(cursor, recommendation_id: int):
+    cursor.execute(
+        build_recommendation_select() + " WHERE pr.ID = %s",
+        (recommendation_id,),
+    )
+    return cursor.fetchone()
+
+
 # --- Authentication Endpoints ---
 # Note: Public registration removed - only admins can create users
 
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    raw_pw = form_data.password
-    print("DEBUG: Received password string:", raw_pw)
-    print("DEBUG: Password length (chars):", len(raw_pw))
-    print("DEBUG: Password length (bytes):", len(raw_pw.encode("utf-8")))
-    user = await get_user(form_data.username)
+    print(f"DEBUG: Login attempt for username: {form_data.username}")
+    try:
+        user = await get_user(form_data.username)
+    except HTTPException as e:
+        if e.status_code == 500:
+            # Snowflake connection failure - surface as 503 with actionable message
+            print(f"ERROR: Database unavailable during login for {form_data.username}: {e.detail}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable. Database connection failed.",
+            )
+        raise
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1062,6 +1862,733 @@ async def refresh_access_token(current_user: User = Depends(get_current_user)):
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+def require_internal_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in INTERNAL_ROLES:
+        raise HTTPException(status_code=403, detail="Internal access required")
+    return current_user
+
+
+def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != ROLE_AGENT:
+        raise HTTPException(status_code=403, detail="Agent access required")
+    return current_user
+
+
+@app.post("/agents/register", response_model=AgentProfileResponse)
+async def register_agent(payload: AgentRegisterRequest):
+    validate_recommendation_schema_ready()
+
+    normalized_email = payload.email.strip().lower()
+    normalized_agent_number = validate_agent_number(payload.agent_number)
+    if await get_user(normalized_email):
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+
+    existing_email = await get_user_by_email(normalized_email)
+    if existing_email:
+        raise HTTPException(status_code=400, detail="An account with this email already exists")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        hashed_password = get_password_hash(payload.password)
+
+        cursor.execute(
+            """
+            INSERT INTO users (USERNAME, EMAIL, HASHED_PASSWORD, ROLE, FIRSTNAME, LASTNAME)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+            (
+                normalized_email,
+                normalized_email,
+                hashed_password,
+                ROLE_AGENT,
+                payload.firstname.strip(),
+                payload.lastname.strip(),
+            ),
+        )
+
+        cursor.execute(
+            "SELECT ID FROM users WHERE USERNAME = %s ORDER BY ID DESC LIMIT 1",
+            (normalized_email,),
+        )
+        user_id = cursor.fetchone()[0]
+
+        cursor.execute(
+            """
+            MERGE INTO agent_profiles target
+            USING (
+                SELECT %s AS USER_ID, %s AS AGENT_NAME, %s AS AGENCY, %s AS AGENT_EMAIL, %s AS AGENT_NUMBER
+            ) source
+            ON target.USER_ID = source.USER_ID
+            WHEN MATCHED THEN UPDATE SET
+                AGENT_NAME = source.AGENT_NAME,
+                AGENCY = source.AGENCY,
+                AGENT_EMAIL = source.AGENT_EMAIL,
+                AGENT_NUMBER = source.AGENT_NUMBER,
+                UPDATED_AT = CURRENT_TIMESTAMP
+            WHEN NOT MATCHED THEN INSERT (USER_ID, AGENT_NAME, AGENCY, AGENT_EMAIL, AGENT_NUMBER)
+            VALUES (source.USER_ID, source.AGENT_NAME, source.AGENCY, source.AGENT_EMAIL, source.AGENT_NUMBER)
+        """,
+            (
+                user_id,
+                payload.agent_name.strip(),
+                payload.agency.strip() if payload.agency else None,
+                normalized_email,
+                normalized_agent_number,
+            ),
+        )
+
+        conn.commit()
+        load_user_cache()
+
+        user = await get_user_by_id(user_id)
+        profile = get_agent_profile_row(cursor, user_id)
+        return serialize_agent_profile(
+            User(
+                id=user.id,
+                username=user.username,
+                role=user.role,
+                email=user.email,
+                firstname=user.firstname,
+                lastname=user.lastname,
+            ),
+            profile,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Agent registration failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to register agent")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/agents/me", response_model=AgentProfileResponse)
+async def get_agent_me(current_user: User = Depends(require_agent_user)):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        profile = get_agent_profile_row(cursor, current_user.id)
+        return serialize_agent_profile(current_user, profile)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/agents/player-search", response_model=List[AgentPlayerSearchResult])
+async def search_agent_players(
+    query: str,
+    limit: int = 10,
+    current_user: User = Depends(require_agent_user),
+):
+    validate_recommendation_schema_ready()
+    normalized_query = query.strip()
+    if len(normalized_query) < 2:
+        return []
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        safe_limit = min(max(limit, 1), 20)
+        normalized_search = normalize_text(normalized_query)
+        search_pattern = f"%{normalized_search}%"
+        cursor.execute(
+            """
+            SELECT
+                p.PLAYERNAME,
+                p.BIRTHDATE,
+                AVG(CASE WHEN sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE
+            FROM players
+            LEFT JOIN scout_reports sr
+                ON (
+                    (p.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID)
+                    OR (p.PLAYERID IS NOT NULL AND sr.PLAYER_ID = p.PLAYERID)
+                )
+            WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+            GROUP BY p.PLAYERNAME, p.BIRTHDATE
+            ORDER BY
+                CASE
+                    WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
+                    WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
+                    ELSE 3
+                END,
+                PLAYERNAME,
+                BIRTHDATE
+            LIMIT %s
+        """,
+            (search_pattern, normalized_search, normalized_search + "%", safe_limit),
+        )
+
+        items: List[AgentPlayerSearchResult] = []
+        seen = set()
+        for row in cursor.fetchall():
+            name = row[0]
+            if not name:
+                continue
+            dob_iso = serialize_datetime(row[1])
+            if dob_iso and "T" in dob_iso:
+                dob_iso = dob_iso.split("T")[0]
+            dob_label = (
+                datetime.strptime(dob_iso, "%Y-%m-%d").strftime("%d/%m/%Y")
+                if dob_iso
+                else "Unknown DOB"
+            )
+            avg_performance_score = format_decimal(row[2])
+            unique_key = (name.strip().lower(), dob_iso or "")
+            if unique_key in seen:
+                continue
+            seen.add(unique_key)
+            label = f"{name} - {dob_label}"
+            items.append(
+                AgentPlayerSearchResult(
+                    label=label,
+                    name=name,
+                    date_of_birth=dob_iso,
+                    avg_performance_score=avg_performance_score,
+                )
+            )
+        return items
+    except Exception as e:
+        logging.exception(f"Agent player search failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to search players")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/agents/recommendations", response_model=List[RecommendationResponse])
+async def list_agent_recommendations(current_user: User = Depends(require_agent_user)):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            build_recommendation_select()
+            + """
+            WHERE pr.SUBMITTED_BY_USER_ID = %s
+            ORDER BY pr.CREATED_AT DESC
+        """,
+            (current_user.id,),
+        )
+        return [serialize_recommendation_row(row) for row in cursor.fetchall()]
+    except Exception as e:
+        logging.exception(f"Failed to fetch agent recommendations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load recommendations")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/agents/recommendations", response_model=RecommendationResponse)
+async def create_agent_recommendation(
+    agent_name: str = Form(...),
+    agency: Optional[str] = Form(None),
+    agent_email: str = Form(...),
+    agent_number: Optional[str] = Form(None),
+    submission_date: str = Form(...),
+    player_name: str = Form(...),
+    player_date_of_birth: Optional[str] = Form(None),
+    transfermarkt_link: Optional[str] = Form(None),
+    agreement_type: Optional[str] = Form(None),
+    confirmed_contract_expiry: Optional[str] = Form(None),
+    contract_options: Optional[str] = Form(None),
+    potential_deal_type: Optional[str] = Form(None),
+    transfer_fee: Optional[str] = Form(None),
+    transfer_fee_currency: Optional[str] = Form(None),
+    current_wages_per_week: Optional[str] = Form(None),
+    current_wages_currency: Optional[str] = Form(None),
+    expected_wages_per_week: Optional[str] = Form(None),
+    expected_wages_currency: Optional[str] = Form(None),
+    additional_information: Optional[str] = Form(None),
+    supporting_file: Optional[UploadFile] = File(None),
+    current_user: User = Depends(require_agent_user),
+):
+    validate_recommendation_schema_ready()
+    if supporting_file:
+        raise HTTPException(status_code=400, detail="Supporting file uploads are disabled for testing")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        profile = get_agent_profile_row(cursor, current_user.id)
+        normalized_agent_number = validate_agent_number(agent_number)
+        normalized_agreement_type = validate_recommendation_multi_option(
+            agreement_type, ALLOWED_AGREEMENT_TYPES, "agreement type"
+        )
+        normalized_contract_option = validate_recommendation_multi_option(
+            contract_options, ALLOWED_CONTRACT_OPTIONS, "contract option"
+        )
+        normalized_potential_deal_type = validate_recommendation_multi_option(
+            potential_deal_type, ALLOWED_POTENTIAL_DEAL_TYPES, "potential deal type"
+        )
+        normalized_transfer_fee_amount = parse_whole_number_field(transfer_fee, "transfer fee")
+        normalized_current_wages = parse_whole_number_field(
+            current_wages_per_week, "current wages"
+        )
+        normalized_expected_wages = parse_whole_number_field(
+            expected_wages_per_week, "expected wages"
+        )
+        normalized_transfer_fee_currency = normalize_currency_selection(
+            transfer_fee_currency, "transfer fee currency"
+        )
+        normalized_current_wages_currency = normalize_currency_selection(
+            current_wages_currency, "current wages currency"
+        )
+        normalized_expected_wages_currency = normalize_currency_selection(
+            expected_wages_currency, "expected wages currency"
+        )
+        if normalized_transfer_fee_amount is not None and not normalized_transfer_fee_currency:
+            normalized_transfer_fee_currency = "GBP"
+        if normalized_current_wages is not None and not normalized_current_wages_currency:
+            normalized_current_wages_currency = "GBP"
+        if normalized_expected_wages is not None and not normalized_expected_wages_currency:
+            normalized_expected_wages_currency = "GBP"
+        if normalized_transfer_fee_amount is None:
+            normalized_transfer_fee_currency = None
+        if normalized_current_wages is None:
+            normalized_current_wages_currency = None
+        if normalized_expected_wages is None:
+            normalized_expected_wages_currency = None
+        resolved_agent_name = profile[1] if profile and profile[1] else agent_name.strip()
+        resolved_agency = profile[2] if profile and profile[2] else (agency.strip() if agency else None)
+        resolved_agent_email = profile[3] if profile and profile[3] else (current_user.email or agent_email.strip().lower())
+        resolved_agent_number = profile[4] if profile and profile[4] else normalized_agent_number
+        confirmed_expiry = datetime.strptime(confirmed_contract_expiry, "%Y-%m-%d").date() if confirmed_contract_expiry else None
+        submitted_date = datetime.strptime(submission_date, "%Y-%m-%d").date() if submission_date else datetime.utcnow().date()
+        player_dob = datetime.strptime(player_date_of_birth, "%Y-%m-%d").date() if player_date_of_birth else None
+        normalized_additional_information = additional_information
+        if player_dob:
+            dob_note = f"Player DOB: {player_dob.isoformat()}"
+            if normalized_additional_information and normalized_additional_information.strip():
+                normalized_additional_information = f"{dob_note}\\n{normalized_additional_information.strip()}"
+            else:
+                normalized_additional_information = dob_note
+
+        recommendation_columns = get_table_columns("player_recommendations")
+        insert_columns = [
+            "AGENT_NAME",
+            "AGENCY",
+            "AGENT_EMAIL",
+            "AGENT_NUMBER",
+            "DATE",
+            "PLAYER_NAME",
+            "TRANSFERMARKT_LINK",
+            "AGREEMENT_TYPE",
+            "CONTRACT_EXPIRY",
+            "CONTRACT_OPTIONS",
+            "POTENTIAL_DEAL_TYPE",
+            "TRANSFER_FEE",
+            "CURRENT_WAGES",
+            "EXPECTED_WAGES",
+            "ADDITIONAL_INFO",
+            "SUBMITTED_BY_USER_ID",
+            "STATUS",
+            "STATUS_UPDATED_AT",
+            "STATUS_UPDATED_BY",
+            "INTERNAL_NOTES",
+            "CREATED_AT",
+            "UPDATED_AT",
+        ]
+        insert_values = [
+                resolved_agent_name,
+            resolved_agency,
+            resolved_agent_email,
+            resolved_agent_number,
+            submitted_date,
+            player_name.strip(),
+            transfermarkt_link.strip() if transfermarkt_link else None,
+            normalized_agreement_type,
+            confirmed_expiry,
+            normalized_contract_option,
+            normalized_potential_deal_type,
+            str(normalized_transfer_fee_amount) if normalized_transfer_fee_amount is not None else None,
+            normalized_current_wages,
+            normalized_expected_wages,
+                normalized_additional_information,
+            current_user.id,
+            "Submitted",
+            datetime.utcnow(),
+            None,
+            None,
+            datetime.utcnow(),
+            datetime.utcnow(),
+        ]
+
+        optional_amount_currency_pairs = [
+            ("TRANSFER_FEE_AMOUNT", normalized_transfer_fee_amount),
+            ("TRANSFER_FEE_CURRENCY", normalized_transfer_fee_currency),
+            ("CURRENT_WAGES_AMOUNT", normalized_current_wages),
+            ("CURRENT_WAGES_CURRENCY", normalized_current_wages_currency),
+            ("EXPECTED_WAGES_AMOUNT", normalized_expected_wages),
+            ("EXPECTED_WAGES_CURRENCY", normalized_expected_wages_currency),
+        ]
+        for optional_column, optional_value in optional_amount_currency_pairs:
+            if optional_column in recommendation_columns:
+                insert_columns.append(optional_column)
+                insert_values.append(optional_value)
+
+        placeholders = ", ".join(["%s"] * len(insert_columns))
+        cursor.execute(
+            f"""
+            INSERT INTO player_recommendations (
+                {", ".join(insert_columns)}
+            ) VALUES ({placeholders})
+        """,
+            tuple(insert_values),
+        )
+
+        cursor.execute(
+            """
+            SELECT ID
+            FROM player_recommendations
+            WHERE SUBMITTED_BY_USER_ID = %s
+            ORDER BY CREATED_AT DESC, ID DESC
+            LIMIT 1
+        """,
+            (current_user.id,),
+        )
+        recommendation_id = cursor.fetchone()[0]
+        conn.commit()
+
+        detail_row = fetch_recommendation_detail(cursor, recommendation_id)
+        return serialize_recommendation_row(detail_row)
+    except ValueError:
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=400, detail="Invalid numeric or date field")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to create recommendation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to submit recommendation")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/agents/recommendations/{recommendation_id}", response_model=RecommendationResponse)
+async def get_agent_recommendation_detail(
+    recommendation_id: int, current_user: User = Depends(require_agent_user)
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row or row[22] != current_user.id:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        return serialize_recommendation_row(row)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/agents/recommendations/{recommendation_id}/status-history", response_model=List[RecommendationStatusHistoryResponse])
+async def get_agent_recommendation_history(
+    recommendation_id: int, current_user: User = Depends(require_agent_user)
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row or row[22] != current_user.id:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=False)
+        return history
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/agents/recommendations/{recommendation_id}/supporting-file")
+async def download_agent_recommendation_supporting_file(
+    recommendation_id: int, current_user: User = Depends(require_agent_user)
+):
+    validate_recommendation_schema_ready()
+    raise HTTPException(status_code=400, detail="Supporting file downloads are disabled for testing")
+
+
+@app.get("/internal/recommendations")
+async def list_internal_recommendations(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    agent_user_id: Optional[int] = None,
+    created_from: Optional[str] = None,
+    created_to: Optional[str] = None,
+    player_name: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 25,
+    current_user: User = Depends(require_internal_user),
+):
+    validate_recommendation_schema_ready()
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), 100)
+    if status_filter:
+        validate_recommendation_status(status_filter)
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        where_clauses = []
+        params: List[Any] = []
+
+        if status_filter:
+            where_clauses.append("pr.STATUS = %s")
+            params.append(status_filter)
+        if agent_user_id:
+            where_clauses.append("pr.SUBMITTED_BY_USER_ID = %s")
+            params.append(agent_user_id)
+        if created_from:
+            where_clauses.append("pr.CREATED_AT >= %s")
+            params.append(created_from)
+        if created_to:
+            where_clauses.append("pr.CREATED_AT <= %s")
+            params.append(created_to)
+        if player_name:
+            where_clauses.append("pr.PLAYER_NAME ILIKE %s")
+            params.append(f"%{player_name}%")
+
+        where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM player_recommendations pr" + where_sql,
+            params,
+        )
+        total = cursor.fetchone()[0]
+
+        query_params = list(params)
+        query_params.extend([page_size, (page - 1) * page_size])
+        cursor.execute(
+            build_recommendation_select()
+            + where_sql
+            + " ORDER BY pr.CREATED_AT DESC, pr.ID DESC LIMIT %s OFFSET %s",
+            query_params,
+        )
+
+        data = [serialize_recommendation_row(row, include_internal=True) for row in cursor.fetchall()]
+        return {"items": data, "page": page, "page_size": page_size, "total": total}
+    except Exception as e:
+        logging.exception(f"Failed to fetch internal recommendations: {e}")
+        raise HTTPException(status_code=500, detail="Failed to load recommendations")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/recommendations/filters/meta")
+async def get_internal_recommendation_filters_meta(current_user: User = Depends(require_internal_user)):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT pr.SUBMITTED_BY_USER_ID, COALESCE(ap.AGENT_NAME, u.FIRSTNAME || ' ' || u.LASTNAME, u.USERNAME)
+            FROM player_recommendations pr
+            LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
+            LEFT JOIN agent_profiles ap ON pr.SUBMITTED_BY_USER_ID = ap.USER_ID
+            WHERE pr.SUBMITTED_BY_USER_ID IS NOT NULL
+            ORDER BY 2
+        """
+        )
+        agents = [{"user_id": row[0], "label": row[1]} for row in cursor.fetchall() if row[0]]
+        return {"statuses": RECOMMENDATION_STATUSES, "agents": agents}
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/recommendations/export.csv")
+async def export_internal_recommendations_csv(current_user: User = Depends(require_internal_user)):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT PLAYER_NAME, AGENT_NAME, AGENCY, AGENT_EMAIL, STATUS, CREATED_AT, STATUS_UPDATED_AT
+            FROM player_recommendations
+            ORDER BY CREATED_AT DESC, ID DESC
+        """
+        )
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["player_name", "agent_name", "agency", "agent_email", "status", "created_at", "status_updated_at"])
+        for row in cursor.fetchall():
+            writer.writerow(
+                [
+                    row[0],
+                    row[1],
+                    row[2],
+                    row[3],
+                    row[4],
+                    serialize_datetime(row[5]),
+                    serialize_datetime(row[6]),
+                ]
+            )
+
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="recommendations.csv"'},
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/recommendations/{recommendation_id}", response_model=InternalRecommendationResponse)
+async def get_internal_recommendation_detail(
+    recommendation_id: int, current_user: User = Depends(require_internal_user)
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
+        return serialize_recommendation_row(row, include_internal=True, status_history=history)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.patch("/internal/recommendations/{recommendation_id}/status")
+async def update_internal_recommendation_status(
+    recommendation_id: int,
+    payload: RecommendationStatusUpdateRequest,
+    current_user: User = Depends(require_internal_user),
+):
+    validate_recommendation_schema_ready()
+    validate_recommendation_status(payload.new_status)
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+
+        previous_status = row[23]
+        changed_at = datetime.utcnow()
+        if previous_status != payload.new_status:
+            cursor.execute(
+                """
+                INSERT INTO status_history (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
+                VALUES (%s, %s, %s, %s, %s)
+            """,
+                (recommendation_id, previous_status, payload.new_status, current_user.id, changed_at),
+            )
+
+            cursor.execute(
+                """
+                UPDATE player_recommendations
+                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, UPDATED_AT = %s
+                WHERE ID = %s
+            """,
+                (payload.new_status, changed_at, current_user.id, changed_at, recommendation_id),
+            )
+
+            conn.commit()
+        updated_row = fetch_recommendation_detail(cursor, recommendation_id)
+        history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
+        return {
+            "item": serialize_recommendation_row(updated_row, include_internal=True, status_history=history),
+            "warning": None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to update recommendation status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update recommendation status")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.patch("/internal/recommendations/{recommendation_id}/notes", response_model=InternalRecommendationResponse)
+async def update_internal_recommendation_notes(
+    recommendation_id: int,
+    payload: RecommendationNotesUpdateRequest,
+    current_user: User = Depends(require_internal_user),
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE player_recommendations
+            SET INTERNAL_NOTES = %s, UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (payload.internal_notes, datetime.utcnow(), recommendation_id),
+        )
+        conn.commit()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
+        return serialize_recommendation_row(row, include_internal=True, status_history=history)
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to update recommendation notes: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update recommendation notes")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/recommendations/{recommendation_id}/status-history", response_model=List[RecommendationStatusHistoryResponse])
+async def get_internal_recommendation_history(
+    recommendation_id: int, current_user: User = Depends(require_internal_user)
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        return fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/recommendations/{recommendation_id}/supporting-file")
+async def download_internal_recommendation_supporting_file(
+    recommendation_id: int, current_user: User = Depends(require_internal_user)
+):
+    validate_recommendation_schema_ready()
+    raise HTTPException(status_code=400, detail="Supporting file downloads are disabled for testing")
 
 
 @app.get("/analytics/timeline")

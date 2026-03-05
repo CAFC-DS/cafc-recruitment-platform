@@ -1,0 +1,62 @@
+import axiosInstance from '../axiosInstance';
+import {
+  InternalRecommendation,
+  InternalRecommendationFiltersMeta,
+  InternalRecommendationsResponse,
+  InternalStatusUpdateResponse,
+  RecommendationStatus,
+  RecommendationStatusHistory,
+} from '../types/recommendations';
+
+export const internalRecommendationsService = {
+  async list(params: {
+    status?: RecommendationStatus | '';
+    agent_user_id?: string;
+    created_from?: string;
+    created_to?: string;
+    player_name?: string;
+    page?: number;
+    page_size?: number;
+  }) {
+    const cleanedParams = Object.fromEntries(
+      Object.entries(params).filter(([, value]) => value !== '' && value !== undefined && value !== null),
+    );
+    const response = await axiosInstance.get<InternalRecommendationsResponse>('/internal/recommendations', { params: cleanedParams });
+    return response.data;
+  },
+
+  async getFiltersMeta() {
+    const response = await axiosInstance.get<InternalRecommendationFiltersMeta>('/internal/recommendations/filters/meta');
+    return response.data;
+  },
+
+  async getDetail(id: number) {
+    const response = await axiosInstance.get<InternalRecommendation>(`/internal/recommendations/${id}`);
+    return response.data;
+  },
+
+  async updateStatus(id: number, newStatus: RecommendationStatus) {
+    const response = await axiosInstance.patch<InternalStatusUpdateResponse>(`/internal/recommendations/${id}/status`, {
+      new_status: newStatus,
+    });
+    return response.data;
+  },
+
+  async updateNotes(id: number, internalNotes: string) {
+    const response = await axiosInstance.patch<InternalRecommendation>(`/internal/recommendations/${id}/notes`, {
+      internal_notes: internalNotes,
+    });
+    return response.data;
+  },
+
+  async getStatusHistory(id: number) {
+    const response = await axiosInstance.get<RecommendationStatusHistory[]>(`/internal/recommendations/${id}/status-history`);
+    return response.data;
+  },
+  async exportCsv() {
+    const response = await axiosInstance.get('/internal/recommendations/export.csv', {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+};

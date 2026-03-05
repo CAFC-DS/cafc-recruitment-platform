@@ -1,6 +1,6 @@
 // FORCE CACHE REFRESH - UI REDESIGN COMPLETE
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ViewModeProvider } from './contexts/ViewModeContext';
@@ -16,6 +16,15 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import PlayerListsPage from './pages/PlayerListsPage';
 import KanbanPage from './pages/KanbanPage';
 import SharedReportPage from './pages/SharedReportPage';
+import AgentLandingPage from './pages/agents/AgentLandingPage';
+import AgentLoginPage from './pages/agents/AgentLoginPage';
+import AgentRegisterPage from './pages/agents/AgentRegisterPage';
+import AgentDashboardPage from './pages/agents/AgentDashboardPage';
+import AgentSubmitPage from './pages/agents/AgentSubmitPage';
+import AgentSubmissionDetailPage from './pages/agents/AgentSubmissionDetailPage';
+import InternalRecommendationsPage from './pages/internal/InternalRecommendationsPage';
+import ListsGatewayPage from './pages/ListsGatewayPage';
+import ExternalRecommendationsListPage from './pages/ExternalRecommendationsListPage';
 
 interface AuthContextType {
   token: string | null;
@@ -171,82 +180,130 @@ export const useAuth = () => {
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
+  const { user, loading } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
     }
-  }, [token, navigate, location]);
+  }, [token, loading, user, navigate, location]);
 
-  return token ? children : null; // Render children only if authenticated
+  return token && user && user.role !== 'agent' ? children : null; // Render children only if authenticated
+};
+
+const AgentRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { user, loading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/agents/login', { state: { from: location.pathname } });
+    } else if (!loading && user && user.role !== 'agent') {
+      navigate('/', { replace: true });
+    }
+  }, [token, user, loading, navigate, location]);
+
+  return token && user?.role === 'agent' ? children : null;
+};
+
+const PublicAgentRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { user, loading } = useCurrentUser();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && token && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
+    } else if (!loading && token && user && user.role !== 'agent') {
+      navigate('/', { replace: true });
+    }
+  }, [token, user, loading, navigate]);
+
+  if (token && loading) {
+    return null;
+  }
+
+  return !token ? children : null;
 };
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
-  const { canAccessAdmin, loading } = useCurrentUser();
+  const { canAccessAdmin, loading, user } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
     } else if (!loading && !canAccessAdmin) {
       navigate('/', { replace: true });
     }
-  }, [token, canAccessAdmin, loading, navigate, location]);
+  }, [token, canAccessAdmin, loading, user, navigate, location]);
 
   return token && canAccessAdmin ? children : null;
 };
 
 const IntelRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
-  const { canAccessIntel, loading } = useCurrentUser();
+  const { canAccessIntel, loading, user } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
     } else if (!loading && !canAccessIntel) {
       navigate('/', { replace: true });
     }
-  }, [token, canAccessIntel, loading, navigate, location]);
+  }, [token, canAccessIntel, loading, user, navigate, location]);
 
   return token && canAccessIntel ? children : null;
 };
 
 const AnalyticsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
-  const { canAccessAnalytics, loading } = useCurrentUser();
+  const { canAccessAnalytics, loading, user } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
     } else if (!loading && !canAccessAnalytics) {
       navigate('/', { replace: true });
     }
-  }, [token, canAccessAnalytics, loading, navigate, location]);
+  }, [token, canAccessAnalytics, loading, user, navigate, location]);
 
   return token && canAccessAnalytics ? children : null;
 };
 
 const ListsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
-  const { canAccessLists, loading } = useCurrentUser();
+  const { canAccessLists, loading, user } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
     } else if (!loading && !canAccessLists) {
       navigate('/', { replace: true });
     }
-  }, [token, canAccessLists, loading, navigate, location]);
+  }, [token, canAccessLists, loading, user, navigate, location]);
 
   return token && canAccessLists ? children : null;
 };
@@ -260,6 +317,7 @@ const LoginPageWrapper: React.FC = () => {
 // Home page wrapper that redirects to login if not authenticated
 const HomePageWrapper: React.FC = () => {
   const { token } = useAuth();
+  const { user, loading } = useCurrentUser();
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -267,27 +325,32 @@ const HomePageWrapper: React.FC = () => {
     const checkAuth = async () => {
       if (!token) {
         navigate('/login');
+      } else if (!loading && user?.role === 'agent') {
+        navigate('/agents/dashboard');
       }
-      setAuthChecked(true);
+      if (!loading) {
+        setAuthChecked(true);
+      }
     };
 
     checkAuth();
-  }, [token, navigate]);
+  }, [token, user, loading, navigate]);
 
   // Don't render anything until auth check is complete
   if (!authChecked) {
     return null;
   }
 
-  return token ? <HomePage /> : null;
+  return token && user && user.role !== 'agent' ? <HomePage /> : null;
 };
 
 // Conditional navbar wrapper - only show navbar if not on shared report page
 const ConditionalNavbar: React.FC = () => {
   const location = useLocation();
   const isSharedReportPage = location.pathname.startsWith('/shared-report/');
+  const isAgentPortalPage = location.pathname.startsWith('/agents');
 
-  return isSharedReportPage ? null : <AppNavbar />;
+  return isSharedReportPage || isAgentPortalPage ? null : <AppNavbar />;
 };
 
 
@@ -301,6 +364,12 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePageWrapper />} />
             <Route path="/login" element={<LoginPageWrapper />} /> {/* Use the wrapper here */}
+            <Route path="/agents" element={<PublicAgentRoute><AgentLandingPage /></PublicAgentRoute>} />
+            <Route path="/agents/login" element={<PublicAgentRoute><AgentLoginPage /></PublicAgentRoute>} />
+            <Route path="/agents/register" element={<PublicAgentRoute><AgentRegisterPage /></PublicAgentRoute>} />
+            <Route path="/agents/dashboard" element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
+            <Route path="/agents/submit" element={<AgentRoute><AgentSubmitPage /></AgentRoute>} />
+            <Route path="/agents/submissions/:id" element={<AgentRoute><AgentSubmissionDetailPage /></AgentRoute>} />
             {/* Public route for shared reports - no authentication required */}
             <Route path="/shared-report/:token" element={<SharedReportPage />} />
             <Route
@@ -323,15 +392,32 @@ function App() {
               path="/lists"
               element={
                 <ListsRoute>
+                  <ListsGatewayPage />
+                </ListsRoute>
+              }
+            />
+            <Route
+              path="/lists/internal"
+              element={
+                <ListsRoute>
                   <PlayerListsPage />
                 </ListsRoute>
               }
             />
             <Route
-              path="/lists/kanban"
+              path="/lists/internal/kanban"
               element={
                 <ListsRoute>
                   <KanbanPage />
+                </ListsRoute>
+              }
+            />
+            <Route path="/lists/kanban" element={<Navigate to="/lists/internal/kanban" replace />} />
+            <Route
+              path="/lists/external"
+              element={
+                <ListsRoute>
+                  <ExternalRecommendationsListPage />
                 </ListsRoute>
               }
             />
@@ -365,6 +451,14 @@ function App() {
                 <AnalyticsRoute>
                   <AnalyticsPage />
                 </AnalyticsRoute>
+              }
+            />
+            <Route
+              path="/internal/recommendations"
+              element={
+                <PrivateRoute>
+                  <InternalRecommendationsPage />
+                </PrivateRoute>
               }
             />
           </Routes>

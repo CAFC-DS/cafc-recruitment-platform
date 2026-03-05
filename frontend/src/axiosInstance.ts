@@ -32,10 +32,11 @@ axiosInstance.interceptors.request.use(
 // Function to clear authentication and redirect
 const clearAuthAndRedirect = () => {
   localStorage.removeItem('token');
+  const loginPath = window.location.pathname.startsWith('/agents') ? '/agents/login' : '/login';
   
   // Only redirect if we're not already on the login page
   if (!window.location.pathname.includes('/login')) {
-    window.location.href = '/login';
+    window.location.href = loginPath;
   }
 };
 

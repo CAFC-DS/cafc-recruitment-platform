@@ -1039,9 +1039,12 @@ const PlayerListsPage: React.FC = () => {
   // Loading state
   if (userLoading || loading) {
     return (
-      <Container className="mt-4">
-        <div className="mb-3">
-          <h3>Player Lists</h3>
+      <Container className="mt-4 page-lists-cafc">
+        <div className="agent-portal-card mb-3">
+          <div className="agent-portal-card-body">
+            <div className="agent-portal-section-title">Internal Lists</div>
+            <div className="agent-portal-section-copy">Current recruitment list workflow with pills, pitch view, stage management, and exports.</div>
+          </div>
         </div>
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
           <div className="text-center">
@@ -1054,7 +1057,7 @@ const PlayerListsPage: React.FC = () => {
   }
 
   return (
-    <Container className="mt-4">
+    <Container className="mt-4 page-lists-cafc">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
@@ -1063,7 +1066,12 @@ const PlayerListsPage: React.FC = () => {
       )}
 
       {/* Header */}
-      <h3>Player Lists</h3>
+      <div className="agent-portal-card mb-3">
+        <div className="agent-portal-card-body">
+          <div className="agent-portal-section-title">Internal Lists</div>
+          <div className="agent-portal-section-copy">Manage Charlton recruitment lists with the existing table workflow.</div>
+        </div>
+      </div>
 
       {lists.length === 0 ? (
         <EmptyState
@@ -1198,7 +1206,7 @@ const PlayerListsPage: React.FC = () => {
                   </Dropdown.Toggle>
 
                     <Dropdown.Menu>
-                      <Dropdown.Item onClick={() => navigate("/lists/kanban")}>
+                      <Dropdown.Item onClick={() => navigate("/lists/internal/kanban")}>
                         🔄 Switch to Kanban View
                       </Dropdown.Item>
                       <Dropdown.Divider />

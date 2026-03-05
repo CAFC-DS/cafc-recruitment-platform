@@ -44,6 +44,7 @@ export const useCurrentUser = () => {
   const isManager = user?.role === "manager";
   const isLoanManager = user?.role === "loan_manager";
   const isScout = user?.role === "scout";
+  const isAgent = user?.role === "agent";
 
   return {
     user,
@@ -54,11 +55,13 @@ export const useCurrentUser = () => {
     isManager,
     isLoanManager,
     isScout,
+    isAgent,
     // Permission checks
     canAccessAdmin: isAdmin,
     canAccessIntel: isAdmin || isSeniorManager,
     canAccessAnalytics: isAdmin || isSeniorManager || isManager,
     canAccessLists: isAdmin || isSeniorManager,
+    canAccessRecommendations: isAdmin || isSeniorManager || isManager || isLoanManager || isScout,
     canSeeAllReports: isAdmin || isSeniorManager || isManager,
     canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanManager,
     canGenerateShareLinks: isAdmin || isSeniorManager || isManager,
