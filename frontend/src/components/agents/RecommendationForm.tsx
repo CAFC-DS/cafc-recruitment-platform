@@ -212,6 +212,9 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             <div className="agent-portal-section-copy">
               Submit structured player and deal information into the Charlton workflow. This test release is read-only after submission.
             </div>
+            <div className="agent-portal-meta" style={{ marginTop: '0.5rem', fontWeight: 600 }}>
+              * Required fields
+            </div>
           </div>
           <div className="agent-portal-surface-muted" style={{ maxWidth: 360 }}>
             Registered as {profile?.firstname || profile?.agent_name || 'Agent'}. Contact details are locked to your account for audit integrity.
@@ -239,7 +242,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
 
         <div className="agent-portal-form-grid" style={{ marginBottom: '1.75rem' }}>
           <div>
-            <label className="agent-portal-label">Date</label>
+            <label className="agent-portal-label">Date *</label>
             <input
               type="date"
               className="agent-portal-input"
@@ -277,7 +280,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             {isManualPlayerEntry ? (
               <div className="agent-portal-form-grid">
                 <div>
-                  <label className="agent-portal-label">Player Name</label>
+                  <label className="agent-portal-label">Player Name *</label>
                   <input
                     className="agent-portal-input"
                     value={values.player_name}
@@ -286,7 +289,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                   />
                 </div>
                 <div>
-                  <label className="agent-portal-label">Date of Birth</label>
+                  <label className="agent-portal-label">Date of Birth *</label>
                   <input
                     type="date"
                     className="agent-portal-input"
@@ -298,7 +301,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               </div>
             ) : (
               <div className="agent-player-search-root" onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}>
-                <label className="agent-portal-label">Player Name</label>
+                <label className="agent-portal-label">Player Name *</label>
                 <input
                   className="agent-portal-input"
                   value={playerSearchQuery}
@@ -345,11 +348,6 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                           onClick={() => selectSuggestion(result)}
                         >
                           <span>{result.label}</span>
-                          <span className="agent-player-score-badge">
-                            {result.avg_performance_score !== null && result.avg_performance_score !== undefined
-                              ? `Avg ${result.avg_performance_score.toFixed(1)}`
-                              : 'Avg N/A'}
-                          </span>
                         </button>
                       ))
                     )}
@@ -360,7 +358,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
           </div>
 
           <div>
-            <label className="agent-portal-label">Transfermarkt Link</label>
+            <label className="agent-portal-label">Transfermarkt Link *</label>
             <input
               className="agent-portal-input"
               value={values.transfermarkt_link}
@@ -369,14 +367,14 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             />
           </div>
           <MultiSelectDropdown
-            label="Agreement Type"
+            label="Agreement Type *"
             values={values.agreement_type}
             options={AGREEMENT_TYPE_OPTIONS}
             placeholder="Select agreement type"
             onChange={(nextValues) => onChange('agreement_type', nextValues)}
           />
           <div>
-            <label className="agent-portal-label">Confirmed Contract Expiry</label>
+            <label className="agent-portal-label">Confirmed Contract Expiry *</label>
             <input
               type="date"
               className="agent-portal-input"
@@ -386,14 +384,14 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             />
           </div>
           <MultiSelectDropdown
-            label="Contract Options"
+            label="Contract Options *"
             values={values.contract_options}
             options={CONTRACT_OPTION_OPTIONS}
             placeholder="Select contract options"
             onChange={(nextValues) => onChange('contract_options', nextValues)}
           />
           <MultiSelectDropdown
-            label="Potential Deal Type"
+            label="Potential Deal Type *"
             values={values.potential_deal_type}
             options={POTENTIAL_DEAL_OPTIONS}
             placeholder="Select deal types"
@@ -423,7 +421,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             />
           </div>
           <div>
-            <label className="agent-portal-label">Expected Wages (Per Week - P/W, GBP)</label>
+            <label className="agent-portal-label">Expected Wages (Per Week - P/W, GBP) *</label>
             <input
               className="agent-portal-input"
               inputMode="numeric"

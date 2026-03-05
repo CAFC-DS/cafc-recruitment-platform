@@ -85,6 +85,9 @@ const AgentRegisterPage: React.FC = () => {
 
             <h2 className="agent-auth-title">Register</h2>
             <p className="agent-auth-subtitle">Create your external portal account using your agency contact details.</p>
+            <div style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              * Required fields
+            </div>
             <div style={{ color: '#64748B', fontSize: '0.85rem', marginBottom: '1rem' }}>
               Your details are stored for identity verification and recommendation audit trail purposes.
             </div>
@@ -93,19 +96,19 @@ const AgentRegisterPage: React.FC = () => {
             <Form onSubmit={handleSubmit}>
               <div className="row g-3">
                 <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Agent name</Form.Label>
+                  <Form.Label className="agent-auth-label">Agent name *</Form.Label>
                   <Form.Control className="agent-auth-input" value={form.agent_name} onChange={(e) => handleChange('agent_name', e.target.value)} required />
                 </div>
                 <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Agency</Form.Label>
+                  <Form.Label className="agent-auth-label">Agency *</Form.Label>
                   <Form.Control className="agent-auth-input" value={form.agency} onChange={(e) => handleChange('agency', e.target.value)} required />
                 </div>
                 <div className="col-12">
-                  <Form.Label className="agent-auth-label">Email</Form.Label>
+                  <Form.Label className="agent-auth-label">Email *</Form.Label>
                   <Form.Control className="agent-auth-input" type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} required />
                 </div>
                 <div className="col-12">
-                  <Form.Label className="agent-auth-label">Password</Form.Label>
+                  <Form.Label className="agent-auth-label">Password *</Form.Label>
                   <Form.Control className="agent-auth-input" type="password" value={form.password} onChange={(e) => handleChange('password', e.target.value)} required />
                 </div>
                 <div className="col-12">
