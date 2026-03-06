@@ -309,18 +309,13 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                   />
                 </div>
                 <div>
-                  <label className="agent-portal-label">Recommended Position *</label>
-                  <select
-                    className="agent-portal-select"
-                    value={values.recommended_position}
-                    onChange={(event) => onChange('recommended_position', event.target.value)}
-                    required
-                  >
-                    <option value="">Select position</option>
-                    {RECOMMENDED_POSITION_OPTIONS.map((position) => (
-                      <option key={position} value={position}>{position}</option>
-                    ))}
-                  </select>
+                  <MultiSelectDropdown
+                    label="Recommended Position *"
+                    values={values.recommended_position}
+                    options={RECOMMENDED_POSITION_OPTIONS}
+                    placeholder="Select recommended position"
+                    onChange={(nextValues) => onChange('recommended_position', nextValues)}
+                  />
                 </div>
                 <div>
                   <label className="agent-portal-label">Date of Birth *</label>
@@ -358,18 +353,13 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                     />
                   </div>
                   <div>
-                    <label className="agent-portal-label">Recommended Position *</label>
-                    <select
-                      className="agent-portal-select"
-                      value={values.recommended_position}
-                      onChange={(event) => onChange('recommended_position', event.target.value)}
-                      required
-                    >
-                      <option value="">Select position</option>
-                      {RECOMMENDED_POSITION_OPTIONS.map((position) => (
-                        <option key={position} value={position}>{position}</option>
-                      ))}
-                    </select>
+                    <MultiSelectDropdown
+                      label="Recommended Position *"
+                      values={values.recommended_position}
+                      options={RECOMMENDED_POSITION_OPTIONS}
+                      placeholder="Select recommended position"
+                      onChange={(nextValues) => onChange('recommended_position', nextValues)}
+                    />
                   </div>
                 </div>
                 <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>

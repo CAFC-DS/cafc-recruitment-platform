@@ -2278,11 +2278,9 @@ async def create_agent_recommendation(
         normalized_expected_wages_currency = normalize_currency_selection(
             expected_wages_currency, "expected wages currency"
         )
-        normalized_recommended_position = (
-            recommended_position.strip() if recommended_position and recommended_position.strip() else None
+        normalized_recommended_position = validate_recommendation_multi_option(
+            recommended_position, ALLOWED_RECOMMENDED_POSITIONS, "recommended position"
         )
-        if normalized_recommended_position and normalized_recommended_position not in ALLOWED_RECOMMENDED_POSITIONS:
-            raise HTTPException(status_code=400, detail="Invalid recommended position")
         if normalized_transfer_fee_amount is not None and not normalized_transfer_fee_currency:
             normalized_transfer_fee_currency = "GBP"
         if normalized_current_wages is not None and not normalized_current_wages_currency:
@@ -6441,6 +6439,7 @@ async def get_all_scout_reports(
     scout_name: Optional[str] = None,
     player_name: Optional[str] = None,
     report_types: Optional[str] = None,  # Comma-separated: "Player Assessment,Flag"
+    purpose: Optional[str] = None,  # "Player Report" or "Loan Report"
     scouting_type: Optional[str] = None,  # "Live" or "Video"
     position: Optional[str] = None,
     match_id: Optional[str] = None,  # Filter by match ID (universal_id format)
@@ -6489,18 +6488,16 @@ async def get_all_scout_reports(
                     logging.info(
                         f"Applied scout filtering for user ID: {current_user.id}"
                     )
-                elif current_user.role == ROLE_LOAN_MANAGER:
-                    # Loan scouts see their own reports OR any Loan Reports
-                    # Use UPPER() for case-insensitive comparison
-                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
-                    sql_params.append(current_user.id)
+                elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                    # Loan scouts see ALL loan reports and nothing else
+                    where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
                     sql_params.append("Loan Report")
                     print(f"🔍 LOAN SCOUT FILTER APPLIED - User: {current_user.username} (ID: {current_user.id})")
-                    print(f"🔍 Filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
+                    print("🔍 Filter: UPPER(PURPOSE) = UPPER('Loan Report')")
                     logging.info(
                         f"Applied loan scout filtering for user ID: {current_user.id}, username: {current_user.username}"
                     )
-                    logging.info(f"Loan scout filter: (USER_ID = {current_user.id} OR UPPER(PURPOSE) = UPPER('Loan Report'))")
+                    logging.info("Loan scout filter: UPPER(PURPOSE) = UPPER('Loan Report')")
                 # Admin, Senior Manager, and Manager see ALL reports (no filtering)
                 else:
                     logging.info(
@@ -6551,8 +6548,13 @@ async def get_all_scout_reports(
             types = [t.strip() for t in report_types.split(",") if t.strip()]
             if types:
                 placeholders = ", ".join(["%s"] * len(types))
-                where_clauses.append(f"sr.REPORT_TYPE IN ({placeholders})")
-                sql_params.extend(types)
+                where_clauses.append(f"UPPER(sr.REPORT_TYPE) IN ({placeholders})")
+                sql_params.extend([t.upper() for t in types])
+
+        # Purpose filter
+        if purpose:
+            where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
+            sql_params.append(purpose)
 
         # Scouting type filter
         if scouting_type:
@@ -6753,10 +6755,9 @@ async def get_recent_scout_reports(
                     # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
-                elif current_user.role == ROLE_LOAN_MANAGER:
-                    # Loan scouts see their own reports OR any Loan Reports
-                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
-                    sql_params.append(current_user.id)
+                elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                    # Loan scouts see ALL loan reports and nothing else
+                    where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
                     sql_params.append("Loan Report")
                 # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except Exception as e:
@@ -6764,7 +6765,7 @@ async def get_recent_scout_reports(
 
         # Apply report type filter
         if report_type:
-            where_clauses.append("sr.REPORT_TYPE = %s")
+            where_clauses.append("UPPER(sr.REPORT_TYPE) = UPPER(%s)")
             sql_params.append(report_type)
 
         # Apply recency filter
@@ -6949,10 +6950,9 @@ async def get_top_attribute_reports(
                     # Scouts see ONLY their own reports
                     where_clauses.append("sr.USER_ID = %s")
                     sql_params.append(current_user.id)
-                elif current_user.role == ROLE_LOAN_MANAGER:
-                    # Loan scouts see their own reports OR any Loan Reports
-                    where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
-                    sql_params.append(current_user.id)
+                elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                    # Loan scouts see ALL loan reports and nothing else
+                    where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
                     sql_params.append("Loan Report")
                 # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except Exception as e:
@@ -7679,10 +7679,9 @@ async def mark_all_reports_viewed(current_user: User = Depends(get_current_user)
                 where_clauses.append("sr.USER_ID = %s")
                 sql_params.append(current_user.id)
                 logging.info(f"Marking all reports for scout user ID: {current_user.id}")
-            elif current_user.role == "loan":
-                # Loan users see their own reports OR any Loan Reports
-                where_clauses.append("(sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))")
-                sql_params.append(current_user.id)
+            elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                # Loan scouts see ALL loan reports and nothing else
+                where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
                 sql_params.append("Loan Report")
                 logging.info(f"Marking all reports for loan user ID: {current_user.id}")
             else:
@@ -7820,13 +7819,13 @@ async def get_player_profile(
                     f"WHERE {player_id_column} = %s AND sr.USER_ID = %s",
                 )
                 scout_values = (actual_player_id, current_user.id)
-            elif current_user.role == ROLE_LOAN_MANAGER:
-                # Loan scouts see their own reports OR any Loan Reports
+            elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                # Loan scouts see ALL loan reports and nothing else
                 scout_sql = scout_sql.replace(
                     f"WHERE {player_id_column} = %s",
-                    f"WHERE {player_id_column} = %s AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))",
+                    f"WHERE {player_id_column} = %s AND UPPER(sr.PURPOSE) = UPPER(%s)",
                 )
-                scout_values = (actual_player_id, current_user.id, "Loan Report")
+                scout_values = (actual_player_id, "Loan Report")
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
@@ -8065,10 +8064,9 @@ async def get_player_attributes(
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == ROLE_LOAN_MANAGER:
-                # Loan scouts see their own reports OR any Loan Reports
-                base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
-                query_params.append(current_user.id)
+            elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                # Loan scouts see ALL loan reports and nothing else
+                base_query += " AND UPPER(sr.PURPOSE) = UPPER(%s)"
                 query_params.append("Loan Report")
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
@@ -8274,10 +8272,9 @@ async def get_player_scout_reports(
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == ROLE_LOAN_MANAGER:
-                # Loan scouts see their own reports OR any Loan Reports
-                base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
-                query_params.append(current_user.id)
+            elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                # Loan scouts see ALL loan reports and nothing else
+                base_query += " AND UPPER(sr.PURPOSE) = UPPER(%s)"
                 query_params.append("Loan Report")
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
@@ -8408,10 +8405,9 @@ async def get_player_position_counts(
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
                 query_params.append(current_user.id)
-            elif current_user.role == ROLE_LOAN_MANAGER:
-                # Loan scouts see their own reports OR any Loan Reports
-                base_query += " AND (sr.USER_ID = %s OR UPPER(sr.PURPOSE) = UPPER(%s))"
-                query_params.append(current_user.id)
+            elif current_user.role in [ROLE_LOAN_MANAGER, "loan"]:
+                # Loan scouts see ALL loan reports and nothing else
+                base_query += " AND UPPER(sr.PURPOSE) = UPPER(%s)"
                 query_params.append("Loan Report")
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:

@@ -285,13 +285,13 @@ const IntelPage: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
-  const getIntelEffectiveDate = (report: IntelReport) =>
-    report.date_of_information || report.created_at;
+  const formatReportDate = (report: IntelReport) =>
+    report.created_at ? new Date(report.created_at).toLocaleDateString("en-GB") : "N/A";
 
-  const formatIntelEffectiveDate = (report: IntelReport) => {
-    const dateValue = getIntelEffectiveDate(report);
-    return dateValue ? new Date(dateValue).toLocaleDateString("en-GB") : "N/A";
-  };
+  const formatInformationDate = (report: IntelReport) =>
+    report.date_of_information
+      ? new Date(report.date_of_information).toLocaleDateString("en-GB")
+      : "N/A";
 
   // Filter reports based on advanced filters
   const getFilteredIntelReports = () => {
@@ -322,7 +322,7 @@ const IntelPage: React.FC = () => {
 
     if (dateFromFilter || dateToFilter) {
       filtered = filtered.filter((report) => {
-        const reportDate = new Date(getIntelEffectiveDate(report));
+        const reportDate = new Date(report.created_at);
         const fromDate = dateFromFilter
           ? new Date(dateFromFilter)
           : new Date("1900-01-01");
@@ -335,8 +335,8 @@ const IntelPage: React.FC = () => {
 
     return [...filtered].sort(
       (a, b) =>
-        new Date(getIntelEffectiveDate(b)).getTime() -
-        new Date(getIntelEffectiveDate(a)).getTime(),
+        new Date(b.created_at).getTime() -
+        new Date(a.created_at).getTime(),
     );
   };
 
@@ -615,7 +615,8 @@ const IntelPage: React.FC = () => {
               >
                 <thead className="table-dark">
                   <tr>
-                    <th>Information Date</th>
+                    <th>Report Date</th>
+                    <th>Date of Information</th>
                     <th>Player</th>
                     <th>User</th>
                     <th>Contact Name</th>
@@ -630,7 +631,7 @@ const IntelPage: React.FC = () => {
                     <ShimmerLoading variant="table" count={10} />
                   ) : intelReports.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center text-muted py-4">
+                      <td colSpan={9} className="text-center text-muted py-4">
                         No reports found
                       </td>
                     </tr>
@@ -638,7 +639,10 @@ const IntelPage: React.FC = () => {
                     filteredIntelReports.map((report) => (
                     <tr key={report.intel_id}>
                       <td>
-                        {formatIntelEffectiveDate(report)}
+                        {formatReportDate(report)}
+                      </td>
+                      <td>
+                        {formatInformationDate(report)}
                       </td>
                       <td>
                         {report.player_id ? (
@@ -784,7 +788,7 @@ const IntelPage: React.FC = () => {
                               {report.contact_name}
                             </small>
                             <small className="text-muted d-block">
-                              {formatIntelEffectiveDate(report)}
+                              {formatReportDate(report)}
                             </small>
                           </div>
                         </Col>

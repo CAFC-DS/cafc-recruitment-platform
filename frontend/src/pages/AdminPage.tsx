@@ -37,6 +37,27 @@ interface CreateUserForm {
   lastname: string;
 }
 
+const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "admin", label: "Admin" },
+  { value: "senior_manager", label: "Senior Manager" },
+  { value: "manager", label: "Manager" },
+  { value: "loan_manager", label: "Loan Manager" },
+  { value: "scout", label: "Scout" },
+  { value: "agent", label: "Agent (External)" },
+];
+
+const LEGACY_ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "loan", label: "Loan (Legacy)" },
+];
+const LEGACY_ROLE_VALUES = new Set(LEGACY_ROLE_OPTIONS.map((r) => r.value));
+
+const getRoleLabel = (role: string): string => {
+  const all = [...ROLE_OPTIONS, ...LEGACY_ROLE_OPTIONS];
+  const match = all.find((r) => r.value === role);
+  if (match) return match.label;
+  return role;
+};
+
 const AdminPage: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>("data-quality");
   const [activeDataQualityTab, setActiveDataQualityTab] = useState<string>("internal-audit");
@@ -192,6 +213,11 @@ const AdminPage: React.FC = () => {
   };
 
   const totalUsers = users.length;
+  const allRoleOptions = useMemo(
+    () => [...ROLE_OPTIONS, ...LEGACY_ROLE_OPTIONS],
+    []
+  );
+
   const lastScanLabel = useMemo(() => {
     if (!auditStats.lastScanAt) return "No scan yet";
     const d = new Date(auditStats.lastScanAt);
@@ -330,7 +356,7 @@ const AdminPage: React.FC = () => {
                           <td>{`${user.firstname || ""} ${user.lastname || ""}`.trim() || "N/A"}</td>
                           <td>{user.email || "N/A"}</td>
                           <td>
-                            <Badge bg="secondary">{user.role}</Badge>
+                            <Badge bg="secondary">{getRoleLabel(user.role)}</Badge>
                           </td>
                           <td className="d-flex gap-2">
                             <Form.Select
@@ -339,11 +365,15 @@ const AdminPage: React.FC = () => {
                               onChange={(e) => handleRoleChange(user.id, e.target.value)}
                               style={{ maxWidth: "180px" }}
                             >
-                              <option value="scout">Scout</option>
-                              <option value="loan_manager">Loan Manager</option>
-                              <option value="manager">Manager</option>
-                              <option value="senior_manager">Senior Manager</option>
-                              <option value="admin">Admin</option>
+                              {allRoleOptions.map((roleOption) => (
+                                <option
+                                  key={roleOption.value}
+                                  value={roleOption.value}
+                                  disabled={LEGACY_ROLE_VALUES.has(roleOption.value)}
+                                >
+                                  {roleOption.label}
+                                </option>
+                              ))}
                             </Form.Select>
                             <Button
                               variant="outline-danger"
@@ -521,11 +551,11 @@ const AdminPage: React.FC = () => {
                 value={createForm.role}
                 onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
               >
-                <option value="scout">Scout</option>
-                <option value="loan_manager">Loan Manager</option>
-                <option value="manager">Manager</option>
-                <option value="senior_manager">Senior Manager</option>
-                <option value="admin">Admin</option>
+                {ROLE_OPTIONS.map((roleOption) => (
+                  <option key={roleOption.value} value={roleOption.value}>
+                    {roleOption.label}
+                  </option>
+                ))}
               </Form.Select>
             </Form.Group>
           </Form>

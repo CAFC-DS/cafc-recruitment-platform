@@ -10,7 +10,10 @@ interface AddPlayerToListModalProps {
   universalId?: string;
 }
 
-const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
+const SCOUTING_STAGE_2_REASONS = [
+  "Flagged by Live Scouting",
+  "Flagged by Video Scouting",
+];
 
 const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
   show,
@@ -21,7 +24,7 @@ const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
 }) => {
   const [lists, setLists] = useState<PlayerList[]>([]);
   const [selectedListId, setSelectedListId] = useState<string>("");
-  const [selectedStage, setSelectedStage] = useState<string>("Stage 1");
+  const [selectedReason, setSelectedReason] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [fetchingLists, setFetchingLists] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +55,7 @@ const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
   useEffect(() => {
     if (show) {
       setSelectedListId("");
-      setSelectedStage("Stage 1");
+      setSelectedReason("");
       setError(null);
       setSuccess(null);
     }
@@ -67,6 +70,10 @@ const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
       setError("Please select a list");
       return;
     }
+    if (!selectedReason) {
+      setError("Please select a reason");
+      return;
+    }
 
     setLoading(true);
 
@@ -77,7 +84,9 @@ const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
       await addPlayerToList(
         parseInt(selectedListId),
         playerUniversalId,
-        selectedStage
+        selectedReason,
+        undefined,
+        "Stage 2"
       );
 
       setSuccess(`${playerName} added to list successfully!`);
@@ -150,18 +159,25 @@ const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
               </Form.Group>
 
               <Form.Group className="mb-3">
-                <Form.Label>Stage</Form.Label>
+                <Form.Label>
+                  Reason <span className="text-danger">*</span>
+                </Form.Label>
                 <Form.Select
-                  value={selectedStage}
-                  onChange={(e) => setSelectedStage(e.target.value)}
+                  value={selectedReason}
+                  onChange={(e) => setSelectedReason(e.target.value)}
                   disabled={loading}
+                  required
                 >
-                  {STAGE_OPTIONS.map((stage) => (
-                    <option key={stage} value={stage}>
-                      {stage}
+                  <option value="">-- Choose a reason --</option>
+                  {SCOUTING_STAGE_2_REASONS.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
                     </option>
                   ))}
                 </Form.Select>
+                <Form.Text className="text-muted">
+                  Player will be added directly to Stage 2.
+                </Form.Text>
               </Form.Group>
             </>
           )}
@@ -173,7 +189,7 @@ const AddPlayerToListModal: React.FC<AddPlayerToListModalProps> = ({
           <Button
             variant="primary"
             type="submit"
-            disabled={loading || fetchingLists || !selectedListId || !!success}
+            disabled={loading || fetchingLists || !selectedListId || !selectedReason || !!success}
           >
             {loading ? (
               <>

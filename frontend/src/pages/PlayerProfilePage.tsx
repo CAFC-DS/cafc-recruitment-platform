@@ -375,19 +375,19 @@ const PlayerProfilePage: React.FC = () => {
     return dealTypes.map(type => labels[type] || type).join(", ");
   };
 
-  const getIntelEffectiveDate = (intel: any) =>
-    intel?.date_of_information || intel?.created_at;
+  const formatIntelReportDate = (intel: any) =>
+    intel?.created_at ? new Date(intel.created_at).toLocaleDateString("en-GB") : "N/A";
 
-  const formatIntelEffectiveDate = (intel: any) => {
-    const dateValue = getIntelEffectiveDate(intel);
-    return dateValue ? new Date(dateValue).toLocaleDateString("en-GB") : "N/A";
-  };
+  const formatIntelInformationDate = (intel: any) =>
+    intel?.date_of_information
+      ? new Date(intel.date_of_information).toLocaleDateString("en-GB")
+      : "N/A";
 
   const sortedIntelReports = profile?.intel_reports
     ? [...profile.intel_reports].sort(
         (a: any, b: any) =>
-          new Date(getIntelEffectiveDate(b)).getTime() -
-          new Date(getIntelEffectiveDate(a)).getTime(),
+          new Date(b.created_at).getTime() -
+          new Date(a.created_at).getTime(),
       )
     : [];
 
@@ -1933,7 +1933,8 @@ const PlayerProfilePage: React.FC = () => {
                     >
                       <thead className="table-dark">
                         <tr>
-                          <th>Information Date</th>
+                          <th>Report Date</th>
+                          <th>Date of Information</th>
                           <th>User</th>
                           <th>Contact Name</th>
                           <th>Contact Organisation</th>
@@ -1947,7 +1948,10 @@ const PlayerProfilePage: React.FC = () => {
                           return (
                             <tr key={intel.intel_id}>
                               <td>
-                                {formatIntelEffectiveDate(intel)}
+                                {formatIntelReportDate(intel)}
+                              </td>
+                              <td>
+                                {formatIntelInformationDate(intel)}
                               </td>
                               <td>{intel.submitted_by || "Unknown"}</td>
                               <td>{intel.contact_name || "N/A"}</td>
@@ -2069,7 +2073,7 @@ const PlayerProfilePage: React.FC = () => {
                                           {intel.contact_organisation || "N/A"}
                                         </small>
                                         <small className="text-muted d-block">
-                                          {formatIntelEffectiveDate(intel)}
+                                          {formatIntelReportDate(intel)}
                                         </small>
                                       </div>
                                     </Col>
