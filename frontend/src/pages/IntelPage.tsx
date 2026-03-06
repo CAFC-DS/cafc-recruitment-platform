@@ -285,6 +285,14 @@ const IntelPage: React.FC = () => {
     setCurrentPage(pageNumber);
   };
 
+  const getIntelEffectiveDate = (report: IntelReport) =>
+    report.date_of_information || report.created_at;
+
+  const formatIntelEffectiveDate = (report: IntelReport) => {
+    const dateValue = getIntelEffectiveDate(report);
+    return dateValue ? new Date(dateValue).toLocaleDateString("en-GB") : "N/A";
+  };
+
   // Filter reports based on advanced filters
   const getFilteredIntelReports = () => {
     let filtered = intelReports;
@@ -314,7 +322,7 @@ const IntelPage: React.FC = () => {
 
     if (dateFromFilter || dateToFilter) {
       filtered = filtered.filter((report) => {
-        const reportDate = new Date(report.created_at);
+        const reportDate = new Date(getIntelEffectiveDate(report));
         const fromDate = dateFromFilter
           ? new Date(dateFromFilter)
           : new Date("1900-01-01");
@@ -325,7 +333,11 @@ const IntelPage: React.FC = () => {
       });
     }
 
-    return filtered;
+    return [...filtered].sort(
+      (a, b) =>
+        new Date(getIntelEffectiveDate(b)).getTime() -
+        new Date(getIntelEffectiveDate(a)).getTime(),
+    );
   };
 
   const filteredIntelReports = getFilteredIntelReports();
@@ -603,7 +615,7 @@ const IntelPage: React.FC = () => {
               >
                 <thead className="table-dark">
                   <tr>
-                    <th>Report Date</th>
+                    <th>Information Date</th>
                     <th>Player</th>
                     <th>User</th>
                     <th>Contact Name</th>
@@ -626,7 +638,7 @@ const IntelPage: React.FC = () => {
                     filteredIntelReports.map((report) => (
                     <tr key={report.intel_id}>
                       <td>
-                        {new Date(report.created_at).toLocaleDateString("en-GB")}
+                        {formatIntelEffectiveDate(report)}
                       </td>
                       <td>
                         {report.player_id ? (
@@ -772,7 +784,7 @@ const IntelPage: React.FC = () => {
                               {report.contact_name}
                             </small>
                             <small className="text-muted d-block">
-                              {new Date(report.created_at).toLocaleDateString("en-GB")}
+                              {formatIntelEffectiveDate(report)}
                             </small>
                           </div>
                         </Col>

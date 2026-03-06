@@ -42,6 +42,28 @@ const POTENTIAL_DEAL_OPTIONS: PotentialDealType[] = [
   'Loan with Option',
 ];
 
+const RECOMMENDED_POSITION_OPTIONS = [
+  'GK',
+  'RB',
+  'RWB',
+  'RCB(3)',
+  'RCB(2)',
+  'CCB(3)',
+  'LCB(2)',
+  'LCB(3)',
+  'LWB',
+  'LB',
+  'DM',
+  'CM',
+  'RAM',
+  'AM',
+  'LAM',
+  'RW',
+  'LW',
+  'Target Man CF',
+  'In Behind CF',
+] as const;
+
 interface MultiSelectDropdownProps<T extends string> {
   label: string;
   values: T[];
@@ -254,29 +276,27 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
         </div>
 
         <div className="agent-portal-section-title">Player Details</div>
-        <div className="agent-portal-form-grid" style={{ marginTop: '1rem' }}>
+        <div className="agent-portal-inline-actions" style={{ justifyContent: 'flex-start', marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+          <label className="agent-manual-toggle">
+            <input
+              type="checkbox"
+              checked={isManualPlayerEntry}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setIsManualPlayerEntry(checked);
+                setSearchOpen(false);
+                setSearchResults([]);
+                setActiveSuggestionIndex(-1);
+                if (!checked && values.player_date_of_birth) {
+                  onChange('player_date_of_birth', '');
+                }
+              }}
+            />
+            <span>Other (Manual Entry)</span>
+          </label>
+        </div>
+        <div className="agent-portal-form-grid" style={{ marginTop: '0.5rem' }}>
           <div className="full-span">
-            <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span />
-              <label className="agent-manual-toggle">
-                <input
-                  type="checkbox"
-                  checked={isManualPlayerEntry}
-                  onChange={(event) => {
-                    const checked = event.target.checked;
-                    setIsManualPlayerEntry(checked);
-                    setSearchOpen(false);
-                    setSearchResults([]);
-                    setActiveSuggestionIndex(-1);
-                    if (!checked && values.player_date_of_birth) {
-                      onChange('player_date_of_birth', '');
-                    }
-                  }}
-                />
-                <span>Other (Manual Entry)</span>
-              </label>
-            </div>
-
             {isManualPlayerEntry ? (
               <div className="agent-portal-form-grid">
                 <div>
@@ -287,6 +307,20 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                     onChange={(event) => onChange('player_name', event.target.value)}
                     required
                   />
+                </div>
+                <div>
+                  <label className="agent-portal-label">Recommended Position *</label>
+                  <select
+                    className="agent-portal-select"
+                    value={values.recommended_position}
+                    onChange={(event) => onChange('recommended_position', event.target.value)}
+                    required
+                  >
+                    <option value="">Select position</option>
+                    {RECOMMENDED_POSITION_OPTIONS.map((position) => (
+                      <option key={position} value={position}>{position}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="agent-portal-label">Date of Birth *</label>
@@ -301,25 +335,43 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               </div>
             ) : (
               <div className="agent-player-search-root" onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}>
-                <label className="agent-portal-label">Player Name *</label>
-                <input
-                  className="agent-portal-input"
-                  value={playerSearchQuery}
-                  onChange={(event) => {
-                    const nextQuery = event.target.value;
-                    setPlayerSearchQuery(nextQuery);
-                    onChange('player_name', nextQuery);
-                    onChange('player_date_of_birth', '');
-                  }}
-                  onFocus={() => {
-                    if (searchResults.length > 0) {
-                      setSearchOpen(true);
-                    }
-                  }}
-                  onKeyDown={handlePlayerInputKeyDown}
-                  placeholder="Start typing player name"
-                  required
-                />
+                <div className="agent-portal-form-grid">
+                  <div>
+                    <label className="agent-portal-label">Player Name *</label>
+                    <input
+                      className="agent-portal-input"
+                      value={playerSearchQuery}
+                      onChange={(event) => {
+                        const nextQuery = event.target.value;
+                        setPlayerSearchQuery(nextQuery);
+                        onChange('player_name', nextQuery);
+                        onChange('player_date_of_birth', '');
+                      }}
+                      onFocus={() => {
+                        if (searchResults.length > 0) {
+                          setSearchOpen(true);
+                        }
+                      }}
+                      onKeyDown={handlePlayerInputKeyDown}
+                      placeholder="Start typing player name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="agent-portal-label">Recommended Position *</label>
+                    <select
+                      className="agent-portal-select"
+                      value={values.recommended_position}
+                      onChange={(event) => onChange('recommended_position', event.target.value)}
+                      required
+                    >
+                      <option value="">Select position</option>
+                      {RECOMMENDED_POSITION_OPTIONS.map((position) => (
+                        <option key={position} value={position}>{position}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
                 <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
                   Enter a player's name to get started.
                 </div>

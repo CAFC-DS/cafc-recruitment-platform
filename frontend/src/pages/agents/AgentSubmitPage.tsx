@@ -22,6 +22,7 @@ const AgentSubmitPage: React.FC = () => {
     submission_date: getToday(),
     player_name: '',
     player_date_of_birth: '',
+    recommended_position: '',
     transfermarkt_link: '',
     agreement_type: [],
     confirmed_contract_expiry: '',
@@ -80,6 +81,10 @@ const AgentSubmitPage: React.FC = () => {
     }
     if (!values.player_name.trim()) {
       setError('Player name is required.');
+      return;
+    }
+    if (!values.recommended_position.trim()) {
+      setError('Recommended position is required.');
       return;
     }
     if (!values.transfermarkt_link.trim()) {

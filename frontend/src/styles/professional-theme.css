@@ -2822,6 +2822,11 @@ span.badge.badge-neutral-grey {
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
 }
 
+.page-lists-cafc .external-recommendations-table-wrap.table-responsive {
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
 .page-lists-cafc .form-select,
 .page-lists-cafc .form-control {
   border-radius: 12px;
@@ -2840,9 +2845,18 @@ span.badge.badge-neutral-grey {
   overflow-x: auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d7dee8;
   border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+}
+
+.external-recommendations-table {
+  width: max-content;
+  min-width: 1750px;
+  table-layout: auto;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .external-recommendations-page.review-mode .external-recommendations-table-wrap.review-scroll-active {
@@ -2851,9 +2865,7 @@ span.badge.badge-neutral-grey {
 }
 
 .external-recommendations-page.review-mode .external-recommendations-table {
-  width: max-content;
   min-width: 1850px;
-  table-layout: auto;
 }
 
 .external-recommendations-page.review-mode .external-recommendations-table-wrap.review-scroll-active::-webkit-scrollbar {
@@ -2870,22 +2882,89 @@ span.badge.badge-neutral-grey {
   top: 0;
   z-index: 2;
   white-space: nowrap;
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, #0b1220 0%, #060b14 100%);
+  color: #f8fafc;
+  font-size: 0.8rem;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .external-recommendations-table td,
 .external-recommendations-table th {
   white-space: nowrap;
-  padding: 0.95rem 1.1rem;
+  padding: 1rem 1rem;
+  border-right: 1px solid #edf2f7;
 }
 
 .external-recommendations-table td {
   line-height: 1.55;
-  font-size: 0.92rem;
+  font-size: 0.93rem;
+  color: #1f2937;
+  border-top: 1px solid #eef2f7;
+}
+
+.external-recommendations-table th:last-child,
+.external-recommendations-table td:last-child {
+  border-right: none;
+}
+
+.external-recommendations-table tbody tr:nth-child(even) td {
+  background: #fbfcfe;
 }
 
 .external-recommendations-table tbody tr:hover td {
-  background: #f4f7fb;
+  background: #f4f8ff;
+}
+
+.external-recommendations-table tbody tr.is-selected td {
+  background: #fff4f4;
+}
+
+.external-recommendations-table .cell-transfermarkt a {
+  color: #b32627;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.external-recommendations-table .cell-transfermarkt a:hover {
+  color: #8f1b1c;
+}
+
+.external-recommendations-table .cell-flag {
+  text-align: center;
+  font-weight: 700;
+  color: #111827;
+}
+
+.external-recommendations-table .cell-money,
+.external-recommendations-table th.col-money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.external-recommendations-table .cell-date {
+  color: #334155;
+  font-weight: 600;
+}
+
+.external-recommendations-table .cell-name {
+  min-width: 220px;
+}
+
+.external-recommendations-score-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: #e2e8f0;
+  color: #0f172a;
+  white-space: nowrap;
 }
 
 .external-recommendations-table th:nth-child(1),
@@ -2950,6 +3029,102 @@ span.badge.badge-neutral-grey {
   min-width: 320px;
   max-width: 420px;
   white-space: normal;
+}
+
+/* External recommendations responsive table behavior */
+.external-recommendations-table-wrap {
+  width: 100%;
+  border-radius: 16px;
+}
+
+.external-recommendations-table thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+.external-recommendations-table thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+/* Desktop/tablet wide: fit available page width */
+@media (min-width: 1200px) {
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th,
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table td {
+    min-width: 0;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-name,
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table td.cell-name {
+    width: 16%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-date,
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table td.cell-date {
+    width: 8%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-transfermarkt,
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table td.cell-transfermarkt {
+    width: 9%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-recommended-by {
+    width: 12%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-status {
+    width: 11%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-agency {
+    width: 13%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-flag,
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table td.cell-flag {
+    width: 4.8%;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table th.col-money,
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table td.cell-money {
+    width: 10%;
+  }
+}
+
+/* Review mode + smaller viewports: preserve full table via horizontal scroll */
+@media (max-width: 1199px), (min-width: 1200px) {
+  .external-recommendations-page.review-mode .external-recommendations-table {
+    width: max-content;
+    min-width: 1450px;
+    table-layout: auto;
+  }
+}
+
+@media (max-width: 1199px) {
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table {
+    width: max-content;
+    min-width: 1300px;
+    table-layout: auto;
+  }
+}
+
+@media (max-width: 767px) {
+  .external-recommendations-table-wrap {
+    border-radius: 12px;
+  }
+
+  .external-recommendations-page:not(.review-mode) .external-recommendations-table {
+    min-width: 1180px;
+  }
+
+  .external-recommendations-page.review-mode .external-recommendations-table {
+    min-width: 1220px;
+  }
 }
 
 @media (max-width: 991px) {

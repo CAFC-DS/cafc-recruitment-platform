@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
+import { getPerformanceScoreColor } from '../utils/colorUtils';
 import {
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
@@ -253,19 +254,19 @@ const ExternalRecommendationsListPage: React.FC = () => {
                 <table className="agent-portal-table external-recommendations-table">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Date</th>
-                      <th>Transfermarkt</th>
-                      <th>Recommended By</th>
-                      <th>Status</th>
-                      <th>Agency / Organisation</th>
-                      <th>Free</th>
-                      <th>Perm</th>
-                      <th>Loan</th>
-                      <th>Loan +</th>
-                      <th>Fee</th>
-                      <th>Current Salary</th>
-                      <th>Expected Salary</th>
+                      <th className="col-name">Name</th>
+                      <th className="col-date">Date</th>
+                      <th className="col-transfermarkt">Transfermarkt</th>
+                      <th className="col-recommended-by">Recommended By</th>
+                      <th className="col-status">Status</th>
+                      <th className="col-agency">Agency / Organisation</th>
+                      <th className="col-flag">Free</th>
+                      <th className="col-flag">Perm</th>
+                      <th className="col-flag">Loan</th>
+                      <th className="col-flag">Loan +</th>
+                      <th className="col-money">Fee</th>
+                      <th className="col-money">Current Salary</th>
+                      <th className="col-money">Expected Salary</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -277,22 +278,40 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       items.map((item) => {
                         const dealFlags = getDealFlags(item.potential_deal_type);
                         return (
-                          <tr key={item.id} onClick={() => openDetail(item)} style={{ cursor: 'pointer' }}>
-                            <td>
-                              <div style={{ fontWeight: 700, color: '#111827' }}>{item.player_name}</div>
+                          <tr
+                            key={item.id}
+                            onClick={() => openDetail(item)}
+                            style={{ cursor: 'pointer' }}
+                            className={selected?.id === item.id ? 'is-selected' : ''}
+                          >
+                            <td className="cell-name">
+                              <div style={{ fontWeight: 700, color: '#111827', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                                <span>{item.player_name}</span>
+                                {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
+                                  <span
+                                    className="external-recommendations-score-badge"
+                                    style={{
+                                      backgroundColor: getPerformanceScoreColor(item.avg_performance_score),
+                                      color: item.avg_performance_score >= 7 ? '#ffffff' : '#111827',
+                                    }}
+                                  >
+                                    {item.avg_performance_score.toFixed(1)}
+                                  </span>
+                                ) : null}
+                              </div>
                             </td>
-                            <td>{item.submission_date ? new Date(item.submission_date).toLocaleDateString() : item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
-                            <td>{item.transfermarkt_link ? <a href={item.transfermarkt_link} target="_blank" rel="noreferrer">Open</a> : '-'}</td>
+                            <td className="cell-date">{item.submission_date ? new Date(item.submission_date).toLocaleDateString() : item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}</td>
+                            <td className="cell-transfermarkt">{item.transfermarkt_link ? <a href={item.transfermarkt_link} target="_blank" rel="noreferrer">Open</a> : '-'}</td>
                             <td>{item.agent_name || '-'}</td>
                             <td><SubmissionStatusBadge status={item.status} /></td>
                             <td>{item.agency || '-'}</td>
-                            <td>{dealFlags.free}</td>
-                            <td>{dealFlags.perm}</td>
-                            <td>{dealFlags.loan}</td>
-                            <td>{dealFlags.loanPlus}</td>
-                            <td>{formatAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)}</td>
-                            <td>{formatWeeklyAmount(item.current_wages_per_week, item.current_wages_currency)}</td>
-                            <td>{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
+                            <td className="cell-flag">{dealFlags.free || '-'}</td>
+                            <td className="cell-flag">{dealFlags.perm || '-'}</td>
+                            <td className="cell-flag">{dealFlags.loan || '-'}</td>
+                            <td className="cell-flag">{dealFlags.loanPlus || '-'}</td>
+                            <td className="cell-money">{formatAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)}</td>
+                            <td className="cell-money">{formatWeeklyAmount(item.current_wages_per_week, item.current_wages_currency)}</td>
+                            <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
                           </tr>
                         );
                       })

@@ -62,6 +62,7 @@ export interface Recommendation {
   agency?: string;
   agent_email?: string;
   agent_number?: string;
+  avg_performance_score?: number | null;
 }
 
 export interface RecommendationStatusHistory {
@@ -109,6 +110,7 @@ export interface RecommendationFormValues {
   submission_date: string;
   player_name: string;
   player_date_of_birth?: string;
+  recommended_position: string;
   transfermarkt_link: string;
   agreement_type: AgreementType[];
   confirmed_contract_expiry: string;

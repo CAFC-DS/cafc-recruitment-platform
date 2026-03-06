@@ -743,6 +743,28 @@ ALLOWED_POTENTIAL_DEAL_TYPES = [
     "Loan with Option",
 ]
 
+ALLOWED_RECOMMENDED_POSITIONS = [
+    "GK",
+    "RB",
+    "RWB",
+    "RCB(3)",
+    "RCB(2)",
+    "CCB(3)",
+    "LCB(2)",
+    "LCB(3)",
+    "LWB",
+    "LB",
+    "DM",
+    "CM",
+    "RAM",
+    "AM",
+    "LAM",
+    "RW",
+    "LW",
+    "Target Man CF",
+    "In Behind CF",
+]
+
 ALLOWED_CURRENCY_CODES = [
     "GBP",
     "EUR",
@@ -906,6 +928,7 @@ class RecommendationResponse(BaseModel):
     agency: Optional[str] = None
     agent_email: Optional[str] = None
     agent_number: Optional[str] = None
+    avg_performance_score: Optional[float] = None
 
 
 class RecommendationStatusHistoryResponse(BaseModel):
@@ -1657,6 +1680,42 @@ def build_recommendation_select():
         if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_CURRENCY")
         else "NULL"
     )
+    has_sr_perf = recommendation_column_exists("scout_reports", "PERFORMANCE_SCORE")
+    has_sr_player_id = recommendation_column_exists("scout_reports", "PLAYER_ID")
+    has_sr_cafc_player_id = recommendation_column_exists("scout_reports", "CAFC_PLAYER_ID")
+    has_sr_playername = recommendation_column_exists("scout_reports", "PLAYERNAME")
+    has_players_playername = recommendation_column_exists("players", "PLAYERNAME")
+    has_players_playerid = recommendation_column_exists("players", "PLAYERID")
+    has_players_cafc_id = recommendation_column_exists("players", "CAFC_PLAYER_ID")
+
+    if has_sr_perf and has_players_playername and (
+        (has_sr_player_id and has_players_playerid)
+        or (has_sr_cafc_player_id and has_players_cafc_id)
+    ):
+        join_parts = []
+        if has_sr_player_id and has_players_playerid:
+            join_parts.append("(p.PLAYERID IS NOT NULL AND sr.PLAYER_ID = p.PLAYERID)")
+        if has_sr_cafc_player_id and has_players_cafc_id:
+            join_parts.append("(p.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID)")
+        join_condition = " OR ".join(join_parts)
+        avg_performance_expr = f"""
+            (
+                SELECT AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)
+                FROM players p
+                LEFT JOIN scout_reports sr ON ({join_condition})
+                WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+            )
+        """
+    elif has_sr_perf and has_sr_playername:
+        avg_performance_expr = """
+            (
+                SELECT AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)
+                FROM scout_reports sr
+                WHERE NORMALIZE_TEXT_UDF(sr.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+            )
+        """
+    else:
+        avg_performance_expr = "NULL"
     return """
         SELECT
             pr.ID,
@@ -1692,6 +1751,7 @@ def build_recommendation_select():
             NULL AS SUPPORTING_FILE_NAME,
             NULL AS SUPPORTING_FILE_CONTENT_TYPE,
             NULL AS SUPPORTING_FILE_SIZE_BYTES,
+            {avg_performance_expr} AS AVG_PERFORMANCE_SCORE,
             u.USERNAME,
             u.FIRSTNAME,
             u.LASTNAME,
@@ -1708,12 +1768,13 @@ def build_recommendation_select():
         current_wages_currency_expr=current_wages_currency_expr,
         expected_wages_amount_expr=expected_wages_amount_expr,
         expected_wages_currency_expr=expected_wages_currency_expr,
+        avg_performance_expr=avg_performance_expr,
     )
 
 
 def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
-    submitted_by_name = " ".join(part for part in [row[34], row[35]] if part) or row[33]
-    status_updated_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
+    submitted_by_name = " ".join(part for part in [row[35], row[36]] if part) or row[34]
+    status_updated_by_name = " ".join(part for part in [row[38], row[39]] if part) or row[37]
     transfer_fee_amount = format_decimal(row[15])
     transfer_fee_currency = row[16]
     current_wages_amount = format_decimal(row[17])
@@ -1757,6 +1818,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agency": row[2],
         "agent_email": row[3],
         "agent_number": row[4],
+        "avg_performance_score": format_decimal(row[33]),
     }
 
     if not include_internal:
@@ -2165,6 +2227,7 @@ async def create_agent_recommendation(
     submission_date: str = Form(...),
     player_name: str = Form(...),
     player_date_of_birth: Optional[str] = Form(None),
+    recommended_position: Optional[str] = Form(None),
     transfermarkt_link: Optional[str] = Form(None),
     agreement_type: Optional[str] = Form(None),
     confirmed_contract_expiry: Optional[str] = Form(None),
@@ -2215,6 +2278,11 @@ async def create_agent_recommendation(
         normalized_expected_wages_currency = normalize_currency_selection(
             expected_wages_currency, "expected wages currency"
         )
+        normalized_recommended_position = (
+            recommended_position.strip() if recommended_position and recommended_position.strip() else None
+        )
+        if normalized_recommended_position and normalized_recommended_position not in ALLOWED_RECOMMENDED_POSITIONS:
+            raise HTTPException(status_code=400, detail="Invalid recommended position")
         if normalized_transfer_fee_amount is not None and not normalized_transfer_fee_currency:
             normalized_transfer_fee_currency = "GBP"
         if normalized_current_wages is not None and not normalized_current_wages_currency:
@@ -2231,6 +2299,8 @@ async def create_agent_recommendation(
             raise HTTPException(status_code=400, detail="Submission date is required")
         if not player_name or not player_name.strip():
             raise HTTPException(status_code=400, detail="Player name is required")
+        if not normalized_recommended_position:
+            raise HTTPException(status_code=400, detail="Recommended position is required")
         if not transfermarkt_link or not transfermarkt_link.strip():
             raise HTTPException(status_code=400, detail="Transfermarkt link is required")
         if not normalized_agreement_type:
@@ -2254,6 +2324,11 @@ async def create_agent_recommendation(
         submitted_date = datetime.strptime(submission_date, "%Y-%m-%d").date() if submission_date else datetime.utcnow().date()
         player_dob = datetime.strptime(player_date_of_birth, "%Y-%m-%d").date() if player_date_of_birth else None
         normalized_additional_information = additional_information
+        position_note = (
+            f"Recommended Position: {normalized_recommended_position}"
+            if normalized_recommended_position
+            else None
+        )
         if player_dob:
             dob_note = f"Player DOB: {player_dob.isoformat()}"
             if normalized_additional_information and normalized_additional_information.strip():
@@ -2262,6 +2337,11 @@ async def create_agent_recommendation(
                 normalized_additional_information = dob_note
 
         recommendation_columns = get_table_columns("player_recommendations")
+        if position_note and "RECOMMENDED_POSITION" not in recommendation_columns:
+            if normalized_additional_information and normalized_additional_information.strip():
+                normalized_additional_information = f"{position_note}\n{normalized_additional_information.strip()}"
+            else:
+                normalized_additional_information = position_note
         insert_columns = [
             "AGENT_NAME",
             "AGENCY",
@@ -2323,6 +2403,10 @@ async def create_agent_recommendation(
             if optional_column in recommendation_columns:
                 insert_columns.append(optional_column)
                 insert_values.append(optional_value)
+
+        if "RECOMMENDED_POSITION" in recommendation_columns:
+            insert_columns.append("RECOMMENDED_POSITION")
+            insert_values.append(normalized_recommended_position)
 
         placeholders = ", ".join(["%s"] * len(insert_columns))
         cursor.execute(

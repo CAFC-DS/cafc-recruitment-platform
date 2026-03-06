@@ -375,6 +375,22 @@ const PlayerProfilePage: React.FC = () => {
     return dealTypes.map(type => labels[type] || type).join(", ");
   };
 
+  const getIntelEffectiveDate = (intel: any) =>
+    intel?.date_of_information || intel?.created_at;
+
+  const formatIntelEffectiveDate = (intel: any) => {
+    const dateValue = getIntelEffectiveDate(intel);
+    return dateValue ? new Date(dateValue).toLocaleDateString("en-GB") : "N/A";
+  };
+
+  const sortedIntelReports = profile?.intel_reports
+    ? [...profile.intel_reports].sort(
+        (a: any, b: any) =>
+          new Date(getIntelEffectiveDate(b)).getTime() -
+          new Date(getIntelEffectiveDate(a)).getTime(),
+      )
+    : [];
+
   // Intel report handlers
   const handleEditIntelReport = async (reportId: number) => {
     try {
@@ -1917,7 +1933,7 @@ const PlayerProfilePage: React.FC = () => {
                     >
                       <thead className="table-dark">
                         <tr>
-                          <th>Report Date</th>
+                          <th>Information Date</th>
                           <th>User</th>
                           <th>Contact Name</th>
                           <th>Contact Organisation</th>
@@ -1927,13 +1943,11 @@ const PlayerProfilePage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {profile.intel_reports.map((intel) => {
+                        {sortedIntelReports.map((intel) => {
                           return (
                             <tr key={intel.intel_id}>
                               <td>
-                                {intel.created_at
-                                  ? new Date(intel.created_at).toLocaleDateString("en-GB")
-                                  : "N/A"}
+                                {formatIntelEffectiveDate(intel)}
                               </td>
                               <td>{intel.submitted_by || "Unknown"}</td>
                               <td>{intel.contact_name || "N/A"}</td>
@@ -2003,7 +2017,7 @@ const PlayerProfilePage: React.FC = () => {
                     marginBottom: "1rem"
                   }}>
                       <Row>
-                        {profile.intel_reports.map((intel) => {
+                        {sortedIntelReports.map((intel) => {
                           return (
                             <Col
                               key={intel.intel_id}
@@ -2055,9 +2069,7 @@ const PlayerProfilePage: React.FC = () => {
                                           {intel.contact_organisation || "N/A"}
                                         </small>
                                         <small className="text-muted d-block">
-                                          {intel.created_at
-                                            ? new Date(intel.created_at).toLocaleDateString("en-GB")
-                                            : "N/A"}
+                                          {formatIntelEffectiveDate(intel)}
                                         </small>
                                       </div>
                                     </Col>
