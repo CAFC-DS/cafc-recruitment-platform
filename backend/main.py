@@ -9163,7 +9163,7 @@ async def get_all_intel_reports(
 
         # Base SQL query for fetching reports
         base_sql = f"""
-            SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
+            SELECT pi.ID, pi.CREATED_AT, pi.DATE_OF_INFORMATION, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME,
@@ -9219,17 +9219,17 @@ async def get_all_intel_reports(
         report_list = []
 
         # Parse results based on the base_sql columns:
-        # pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
+        # pi.ID, pi.CREATED_AT, pi.DATE_OF_INFORMATION, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
         # pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
         # pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
         # pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME
 
         for row in reports:
-            deal_types = row[10].split(",") if row[10] else []
+            deal_types = row[11].split(",") if row[11] else []
 
-            player_id = row[14]
-            cafc_player_id = row[15]
-            data_source = row[16]
+            player_id = row[15]
+            cafc_player_id = row[16]
+            data_source = row[17]
             universal_id = None
             if data_source == 'internal' and cafc_player_id:
                 universal_id = f"internal_{cafc_player_id}"
@@ -9240,21 +9240,22 @@ async def get_all_intel_reports(
                 {
                     "intel_id": row[0],
                     "created_at": str(row[1]),
-                    "contact_name": row[2],
-                    "contact_organisation": row[3],
-                    "action_required": row[4],
-                    "conversation_notes": row[5],
-                    "transfer_fee": row[6],
-                    "current_wages": row[7],
-                    "expected_wages": row[8],
-                    "confirmed_contract_expiry": str(row[9]) if row[9] else None,
+                    "date_of_information": str(row[2]) if row[2] else None,
+                    "contact_name": row[3],
+                    "contact_organisation": row[4],
+                    "action_required": row[5],
+                    "conversation_notes": row[6],
+                    "transfer_fee": row[7],
+                    "current_wages": row[8],
+                    "expected_wages": row[9],
+                    "confirmed_contract_expiry": str(row[10]) if row[10] else None,
                     "potential_deal_types": deal_types,
-                    "player_name": row[11],
-                    "position": row[12],
-                    "squad_name": row[13],
+                    "player_name": row[12],
+                    "position": row[13],
+                    "squad_name": row[14],
                     "player_id": player_id,
                     "universal_id": universal_id,
-                    "submitted_by": f"{row[18] or ''} {row[19] or ''}".strip() if (row[18] or row[19]) else (row[17] or "Unknown"),
+                    "submitted_by": f"{row[19] or ''} {row[20] or ''}".strip() if (row[19] or row[20]) else (row[18] or "Unknown"),
                 }
             )
 

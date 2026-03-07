@@ -131,12 +131,14 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                       <strong>Player:</strong> {intel.player_name}
                     </p>
                     <p>
-                      <strong>Date Submitted:</strong>{" "}
+                      <strong>Report Date:</strong>{" "}
                       {new Date(intel.created_at).toLocaleDateString("en-GB")}
                     </p>
                     <p>
-                      <strong>Information Date:</strong>{" "}
-                      {new Date(intel.date_of_information).toLocaleDateString("en-GB")}
+                      <strong>Date of Information:</strong>{" "}
+                      {intel.date_of_information
+                        ? new Date(intel.date_of_information).toLocaleDateString("en-GB")
+                        : "N/A"}
                     </p>
                   </Col>
                   <Col md={6}>
