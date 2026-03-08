@@ -61,7 +61,7 @@ interface ScoutReport {
 const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
-  const { canAccessLists, isLoanManager, loading: currentUserLoading } = useCurrentUser();
+  const { canAccessLists } = useCurrentUser();
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -91,7 +91,6 @@ const ScoutingPage: React.FC = () => {
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
   const [reportTypeFilter, setReportTypeFilter] = useState("");
-  const [reportPurposeFilter, setReportPurposeFilter] = useState("Player Report");
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
   const [fixtureFilter, setFixtureFilter] = useState("");
@@ -153,9 +152,6 @@ const ScoutingPage: React.FC = () => {
         if (reportTypeFilter) {
           params.report_types = reportTypeFilter;
         }
-        if (reportPurposeFilter) {
-          params.purpose = reportPurposeFilter;
-        }
         if (scoutingTypeFilter) {
           params.scouting_type = scoutingTypeFilter;
         }
@@ -197,7 +193,6 @@ const ScoutingPage: React.FC = () => {
       scoutNameFilter,
       playerNameFilter,
       reportTypeFilter,
-      reportPurposeFilter,
       scoutingTypeFilter,
       positionFilter,
       fixtureFilter,
@@ -326,12 +321,6 @@ const ScoutingPage: React.FC = () => {
     }
   }, [token]);
 
-  // Default report purpose by role
-  useEffect(() => {
-    if (currentUserLoading) return;
-    setReportPurposeFilter(isLoanManager ? "Loan Report" : "Player Report");
-  }, [isLoanManager, currentUserLoading]);
-
   // Fetch fixture autocomplete results when user types
   useEffect(() => {
     const fetchFixtures = async () => {
@@ -385,7 +374,6 @@ const ScoutingPage: React.FC = () => {
     scoutNameFilter,
     playerNameFilter,
     reportTypeFilter,
-    reportPurposeFilter,
     scoutingTypeFilter,
     positionFilter,
     fixtureFilter,
@@ -883,9 +871,9 @@ const ScoutingPage: React.FC = () => {
               </Col>
             </Row>
 
-            {/* Row 2: Scout Name, Report Type, Report Purpose, Scouting Type */}
+            {/* Row 2: Scout Name, Report Type, Scouting Type */}
             <Row className="mb-3">
-              <Col md={3}>
+              <Col md={4}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">Scout Name</Form.Label>
                   <Form.Control
@@ -897,7 +885,7 @@ const ScoutingPage: React.FC = () => {
                   />
                 </Form.Group>
               </Col>
-              <Col md={3}>
+              <Col md={4}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">Report Type</Form.Label>
                   <Form.Select
@@ -912,20 +900,7 @@ const ScoutingPage: React.FC = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={3}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">Report Purpose</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={reportPurposeFilter}
-                    onChange={(e) => setReportPurposeFilter(e.target.value)}
-                  >
-                    <option value="Player Report">Player Report</option>
-                    <option value="Loan Report">Loan Report</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={3}>
+              <Col md={4}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">
                     Scouting Type
@@ -1088,7 +1063,6 @@ const ScoutingPage: React.FC = () => {
                       setDateFromFilter("");
                       setDateToFilter("");
                       setReportTypeFilter("");
-                      setReportPurposeFilter(isLoanManager ? "Loan Report" : "Player Report");
                       setScoutingTypeFilter("");
                       setPositionFilter("");
                       setFixtureFilter("");
