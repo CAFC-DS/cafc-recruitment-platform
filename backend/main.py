@@ -11974,6 +11974,8 @@ async def get_all_lists_with_details(
     player_name: Optional[str] = None,
     position: Optional[str] = None,
     club: Optional[str] = None,
+    country: Optional[str] = None,
+    competition: Optional[str] = None,
     min_age: Optional[int] = None,
     max_age: Optional[int] = None,
     min_score: Optional[int] = None,
@@ -12058,6 +12060,12 @@ async def get_all_lists_with_details(
         filter_conditions = []
         filter_params = []
 
+        has_squad_country = has_column("players", "SQUADCOUNTRYNAME")
+        has_comp_country = has_column("players", "COMPETITIONCOUNTRYNAME")
+        has_country_name = has_column("players", "COUNTRYNAME")
+        has_country = has_column("players", "COUNTRY")
+        has_competition_name = has_column("players", "COMPETITIONNAME")
+
         # Stage filter
         if stages:
             stage_list = [s.strip() for s in stages.split(",")]
@@ -12070,10 +12078,33 @@ async def get_all_lists_with_details(
             filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)) ILIKE %s)")
             filter_params.append(f"%{position}%")
 
-        # Club filter (using only players.SQUADNAME)
+        # Club filter
         if club:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(p.SQUADNAME) ILIKE %s)")
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)) ILIKE %s)")
             filter_params.append(f"%{club}%")
+
+        # Country filter (team/competition country where available)
+        if country:
+            country_expr_parts = []
+            for alias in ["p", "ip"]:
+                if has_squad_country:
+                    country_expr_parts.append(f"{alias}.SQUADCOUNTRYNAME")
+                if has_comp_country:
+                    country_expr_parts.append(f"{alias}.COMPETITIONCOUNTRYNAME")
+                if has_country_name:
+                    country_expr_parts.append(f"{alias}.COUNTRYNAME")
+                if has_country:
+                    country_expr_parts.append(f"{alias}.COUNTRY")
+
+            if country_expr_parts:
+                country_expr = f"COALESCE({', '.join(country_expr_parts)})"
+                filter_conditions.append(f"(NORMALIZE_TEXT_UDF({country_expr}) ILIKE %s)")
+                filter_params.append(f"%{country}%")
+
+        # Competition filter (competition name)
+        if competition and has_competition_name:
+            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) ILIKE %s)")
+            filter_params.append(f"%{competition}%")
 
         # Age filter
         if min_age is not None:

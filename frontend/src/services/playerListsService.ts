@@ -89,6 +89,8 @@ export interface PlayerListFilters {
   playerName?: string;
   position?: string;
   club?: string;
+  country?: string;
+  competition?: string;
   minAge?: number;
   maxAge?: number;
   minScore?: number;
@@ -113,6 +115,8 @@ export const getAllListsWithDetails = async (
     if (filters.playerName) params.append("player_name", filters.playerName);
     if (filters.position) params.append("position", filters.position);
     if (filters.club) params.append("club", filters.club);
+    if (filters.country) params.append("country", filters.country);
+    if (filters.competition) params.append("competition", filters.competition);
     if (filters.minAge !== undefined) params.append("min_age", filters.minAge.toString());
     if (filters.maxAge !== undefined) params.append("max_age", filters.maxAge.toString());
     if (filters.minScore !== undefined) params.append("min_score", filters.minScore.toString());

@@ -5,6 +5,8 @@ export interface PlayerListFilters {
   playerName: string;
   position: string;
   club: string;
+  country: string;
+  competition: string;
   performanceScores: number[];
   minAge: string;
   maxAge: string;
@@ -60,9 +62,9 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       </Card.Header>
       <Collapse in={showFilters}>
         <Card.Body className="filter-section-improved">
-          {/* Row 1: Player Name, Position, Club */}
+          {/* Row 1: Player Name, Position, Club, Country, Competition */}
           <Row className="mb-3">
-            <Col md={4}>
+            <Col md={2}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Player Name</Form.Label>
                 <Form.Control
@@ -74,7 +76,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 />
               </Form.Group>
             </Col>
-            <Col md={4}>
+            <Col md={2}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Position</Form.Label>
                 <Form.Control
@@ -86,7 +88,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 />
               </Form.Group>
             </Col>
-            <Col md={4}>
+            <Col md={3}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Club</Form.Label>
                 <Form.Control
@@ -95,6 +97,30 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                   placeholder="Enter club name"
                   value={filters.club}
                   onChange={(e) => onFilterChange({ club: e.target.value })}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={2}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Country</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  placeholder="e.g. England"
+                  value={filters.country}
+                  onChange={(e) => onFilterChange({ country: e.target.value })}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={3}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Competition</Form.Label>
+                <Form.Control
+                  size="sm"
+                  type="text"
+                  placeholder="e.g. Premier League"
+                  value={filters.competition}
+                  onChange={(e) => onFilterChange({ competition: e.target.value })}
                 />
               </Form.Group>
             </Col>
