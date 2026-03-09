@@ -5,7 +5,7 @@ export interface PlayerListFilters {
   playerName: string;
   position: string;
   club: string;
-  competition: string;
+  competitions: string[];
   performanceScores: number[];
   minAge: string;
   maxAge: string;
@@ -104,18 +104,43 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <Col md={5}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Competition</Form.Label>
-                <Form.Select
-                  size="sm"
-                  value={filters.competition}
-                  onChange={(e) => onFilterChange({ competition: e.target.value })}
-                >
-                  <option value="">All competitions</option>
-                  {competitionOptions.map((competition) => (
-                    <option key={competition} value={competition}>
-                      {competition}
-                    </option>
-                  ))}
-                </Form.Select>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="outline-secondary"
+                    size="sm"
+                    className="w-100 text-start"
+                  >
+                    {filters.competitions.length > 0
+                      ? `${filters.competitions.length} competition${filters.competitions.length > 1 ? "s" : ""} selected`
+                      : "All competitions"}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu
+                    className="p-2"
+                    style={{ minWidth: "300px", maxHeight: "300px", overflowY: "auto" }}
+                  >
+                    {competitionOptions.map((competition) => (
+                      <div key={competition} className="px-2 py-1">
+                        <Form.Check
+                          type="checkbox"
+                          id={`competition-${competition}`}
+                          label={competition}
+                          checked={filters.competitions.includes(competition)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              onFilterChange({
+                                competitions: [...filters.competitions, competition],
+                              });
+                            } else {
+                              onFilterChange({
+                                competitions: filters.competitions.filter((c) => c !== competition),
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
               </Form.Group>
             </Col>
           </Row>
