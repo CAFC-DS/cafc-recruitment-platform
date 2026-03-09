@@ -12119,10 +12119,14 @@ async def get_all_lists_with_details(
             filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)) ILIKE %s)")
             filter_params.append(f"%{club}%")
 
-        # Competition filter (competition name)
+        # Competition filter (supports comma-separated values for multi-select)
         if competition:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) ILIKE %s)")
-            filter_params.append(f"%{competition}%")
+            competition_list = [c.strip() for c in competition.split(",")]
+            competition_conditions = " OR ".join(
+                ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) ILIKE %s"] * len(competition_list)
+            )
+            filter_conditions.append(f"({competition_conditions})")
+            filter_params.extend([f"%{c}%" for c in competition_list])
 
         # Age filter
         if min_age is not None:
