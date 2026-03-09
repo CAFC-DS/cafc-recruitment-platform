@@ -85,10 +85,17 @@ export const getAllPlayerLists = async (): Promise<PlayerList[]> => {
   return response.data.lists;
 };
 
+
+export const getCompetitionOptions = async (): Promise<string[]> => {
+  const response = await axiosInstance.get("/leagues");
+  return response.data.leagues || [];
+};
+
 export interface PlayerListFilters {
   playerName?: string;
   position?: string;
   club?: string;
+  competition?: string;
   minAge?: number;
   maxAge?: number;
   minScore?: number;
@@ -113,6 +120,7 @@ export const getAllListsWithDetails = async (
     if (filters.playerName) params.append("player_name", filters.playerName);
     if (filters.position) params.append("position", filters.position);
     if (filters.club) params.append("club", filters.club);
+    if (filters.competition) params.append("competition", filters.competition);
     if (filters.minAge !== undefined) params.append("min_age", filters.minAge.toString());
     if (filters.maxAge !== undefined) params.append("max_age", filters.maxAge.toString());
     if (filters.minScore !== undefined) params.append("min_score", filters.minScore.toString());

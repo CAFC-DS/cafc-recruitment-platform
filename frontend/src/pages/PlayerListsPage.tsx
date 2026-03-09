@@ -57,6 +57,7 @@ import {
   getBatchPlayerListMemberships,
   getStageChangeReasons,
   getPlayerStageHistory,
+  getCompetitionOptions,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -178,6 +179,7 @@ const PlayerListsPage: React.FC = () => {
     playerName: "",
     position: "",
     club: "",
+    competition: "",
     performanceScores: [],
     minAge: "",
     maxAge: "",
@@ -200,6 +202,7 @@ const PlayerListsPage: React.FC = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
   const [includeFlagReports, setIncludeFlagReports] = useState(false);
+  const [competitionOptions, setCompetitionOptions] = useState<string[]>([]);
 
   // Visible lists (multi-select)
   const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
@@ -322,6 +325,19 @@ const PlayerListsPage: React.FC = () => {
     fetchReasons();
   }, []);
 
+  useEffect(() => {
+    const fetchDropdownOptions = async () => {
+      try {
+        const competitions = await getCompetitionOptions();
+        setCompetitionOptions(competitions);
+      } catch (err) {
+        console.error("Error fetching competition options:", err);
+      }
+    };
+
+    fetchDropdownOptions();
+  }, []);
+
   // Don't auto-select lists - let user choose
   // useEffect removed - lists start deselected
 
@@ -340,6 +356,7 @@ const PlayerListsPage: React.FC = () => {
       if (filters.playerName) apiFilters.playerName = filters.playerName;
       if (filters.position) apiFilters.position = filters.position;
       if (filters.club) apiFilters.club = filters.club;
+      if (filters.competition) apiFilters.competition = filters.competition;
       if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
       if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
@@ -380,6 +397,7 @@ const PlayerListsPage: React.FC = () => {
       playerName: "",
       position: "",
       club: "",
+        competition: "",
       performanceScores: [],
       minAge: "",
       maxAge: "",
@@ -1169,6 +1187,7 @@ const PlayerListsPage: React.FC = () => {
             onIncludeArchivedReportsChange={setIncludeArchivedReports}
             includeFlagReports={includeFlagReports}
             onIncludeFlagReportsChange={setIncludeFlagReports}
+            competitionOptions={competitionOptions}
           />
 
           {/* Actions Container */}
