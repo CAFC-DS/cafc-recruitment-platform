@@ -9413,7 +9413,7 @@ async def get_single_intel_report(
 @app.get("/leagues")
 async def get_leagues(current_user: User = Depends(get_current_user)):
     """Get all available leagues/competitions with caching"""
-    cache_key = "leagues_list"
+    cache_key = "leagues_list_competitionname"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -9424,13 +9424,14 @@ async def get_leagues(current_user: User = Depends(get_current_user)):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+
         cursor.execute(
             """
-            SELECT DISTINCT COMPETITIONNAME 
-            FROM players 
-            WHERE COMPETITIONNAME IS NOT NULL 
-            ORDER BY COMPETITIONNAME
-        """
+            SELECT DISTINCT NULLIF(TRIM(COMPETITIONNAME), '') AS LEAGUE
+            FROM players
+            WHERE COMPETITIONNAME IS NOT NULL
+            ORDER BY LEAGUE
+            """
         )
         leagues = cursor.fetchall()
         league_list = [row[0] for row in leagues if row[0]]
@@ -9446,6 +9447,48 @@ async def get_leagues(current_user: User = Depends(get_current_user)):
         if conn:
             conn.close()
 
+@app.get("/countries")
+async def get_countries(current_user: User = Depends(get_current_user)):
+    """Get all available player/team countries for dropdown filters"""
+    cache_key = "countries_list"
+
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return {"countries": cached_data}
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        if not country_columns:
+            return {"countries": []}
+        union_parts = []
+        for col in country_columns:
+            safe_col = col.replace('"', '""')
+            union_parts.append(
+                f"SELECT NULLIF(TRIM(TRY_TO_VARCHAR(\"{safe_col}\")), '') AS COUNTRY "
+                f"FROM players WHERE \"{safe_col}\" IS NOT NULL"
+            )
+        country_sql = (
+            "SELECT DISTINCT COUNTRY FROM ("
+            + " UNION ALL ".join(union_parts)
+            + ") WHERE COUNTRY IS NOT NULL ORDER BY COUNTRY"
+        )
+        cursor.execute(country_sql)
+
+        countries = cursor.fetchall()
+        country_list = [row[0] for row in countries if row[0]]
+
+        set_cache(cache_key, country_list, expiry_minutes=60)
+
+        return {"countries": country_list}
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching countries: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 @app.get("/clubs")
 async def get_clubs(
@@ -11974,7 +12017,6 @@ async def get_all_lists_with_details(
     player_name: Optional[str] = None,
     position: Optional[str] = None,
     club: Optional[str] = None,
-    country: Optional[str] = None,
     competition: Optional[str] = None,
     min_age: Optional[int] = None,
     max_age: Optional[int] = None,
@@ -12060,12 +12102,6 @@ async def get_all_lists_with_details(
         filter_conditions = []
         filter_params = []
 
-        has_squad_country = has_column("players", "SQUADCOUNTRYNAME")
-        has_comp_country = has_column("players", "COMPETITIONCOUNTRYNAME")
-        has_country_name = has_column("players", "COUNTRYNAME")
-        has_country = has_column("players", "COUNTRY")
-        has_competition_name = has_column("players", "COMPETITIONNAME")
-
         # Stage filter
         if stages:
             stage_list = [s.strip() for s in stages.split(",")]
@@ -12083,26 +12119,8 @@ async def get_all_lists_with_details(
             filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)) ILIKE %s)")
             filter_params.append(f"%{club}%")
 
-        # Country filter (team/competition country where available)
-        if country:
-            country_expr_parts = []
-            for alias in ["p", "ip"]:
-                if has_squad_country:
-                    country_expr_parts.append(f"{alias}.SQUADCOUNTRYNAME")
-                if has_comp_country:
-                    country_expr_parts.append(f"{alias}.COMPETITIONCOUNTRYNAME")
-                if has_country_name:
-                    country_expr_parts.append(f"{alias}.COUNTRYNAME")
-                if has_country:
-                    country_expr_parts.append(f"{alias}.COUNTRY")
-
-            if country_expr_parts:
-                country_expr = f"COALESCE({', '.join(country_expr_parts)})"
-                filter_conditions.append(f"(NORMALIZE_TEXT_UDF({country_expr}) ILIKE %s)")
-                filter_params.append(f"%{country}%")
-
         # Competition filter (competition name)
-        if competition and has_competition_name:
+        if competition:
             filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) ILIKE %s)")
             filter_params.append(f"%{competition}%")
 
