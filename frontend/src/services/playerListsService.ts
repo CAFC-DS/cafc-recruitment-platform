@@ -46,6 +46,8 @@ export interface PlayerInList {
   avg_performance_score: number | null;
   live_reports: number;
   video_reports: number;
+  last_report_date?: string | null;
+  intel_reports_count?: number;
 }
 
 export interface ListWithPlayers extends PlayerList {
@@ -331,8 +333,8 @@ export const bulkRemovePlayersFromList = async (
   listId: number,
   itemIds: number[]
 ): Promise<{ message: string; removed: number }> => {
-  const response = await axiosInstance.delete(`/player-lists/${listId}/players/bulk`, {
-    data: { item_ids: itemIds },
+  const response = await axiosInstance.post(`/player-lists/${listId}/players/bulk-remove`, {
+    item_ids: itemIds,
   });
   return response.data;
 };
@@ -404,6 +406,8 @@ export const exportPlayersToCSV = (players: PlayerInList[], filename: string = "
     "Reports",
     "Live Reports",
     "Video Reports",
+    "Intel Reports",
+    "Last Report Date",
   ];
 
   // Build CSV rows
@@ -417,6 +421,10 @@ export const exportPlayersToCSV = (players: PlayerInList[], filename: string = "
     player.report_count,
     player.live_reports,
     player.video_reports,
+    player.intel_reports_count || 0,
+    player.last_report_date
+      ? new Date(player.last_report_date).toLocaleDateString("en-GB")
+      : "N/A",
   ]);
 
   // Combine headers and rows

@@ -1765,9 +1765,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                 }}
                 label={
                   <span>
-                    <strong>This is a Potential Score</strong>
+                    <strong>Potential Score</strong>
                     <small className="text-muted d-block">
-                      Check this if scoring future ability/ceiling rather than current performance
+                      Tick this if scoring potential ability rather than current performance
                     </small>
                   </span>
                 }

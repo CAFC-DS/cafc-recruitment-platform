@@ -54,6 +54,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
     { value: "permanent", label: "Permanent Transfer" },
     { value: "loan", label: "Loan" },
     { value: "loan_with_option", label: "Loan with Option" },
+    { value: "na", label: "N/A" },
   ];
 
   const actionOptions = [

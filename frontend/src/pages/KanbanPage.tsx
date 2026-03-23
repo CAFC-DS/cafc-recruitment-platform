@@ -87,7 +87,7 @@ const KanbanPage: React.FC = () => {
     playerName: "",
     position: "",
     club: "",
-    competition: "",
+    competition: [],
     performanceScores: [],
     minAge: "",
     maxAge: "",
@@ -265,7 +265,7 @@ const KanbanPage: React.FC = () => {
       if (filters.playerName) apiFilters.playerName = filters.playerName;
       if (filters.position) apiFilters.position = filters.position;
       if (filters.club) apiFilters.club = filters.club;
-      if (filters.competition) apiFilters.competition = filters.competition;
+      if (filters.competition.length > 0) apiFilters.competition = filters.competition.join(",");
       if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
       if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
@@ -306,7 +306,7 @@ const KanbanPage: React.FC = () => {
       playerName: "",
       position: "",
       club: "",
-        competition: "",
+      competition: [],
       performanceScores: [],
       minAge: "",
       maxAge: "",

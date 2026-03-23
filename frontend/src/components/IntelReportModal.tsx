@@ -63,6 +63,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
       permanent: "Permanent",
       loan: "Loan",
       loan_with_option: "Loan with Option",
+      na: "N/A",
     };
 
     return (

@@ -370,6 +370,7 @@ const PlayerProfilePage: React.FC = () => {
       permanent: "Permanent",
       loan: "Loan",
       loan_with_option: "Loan with Option",
+      na: "N/A",
     };
 
     return dealTypes.map(type => labels[type] || type).join(", ");

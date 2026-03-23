@@ -9125,6 +9125,11 @@ async def get_all_intel_reports(
     page: int = 1,
     limit: int = 10,
     recency_days: Optional[int] = None,
+    action_required: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    player_name: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
 ):
     # Intel reports are only accessible to Admin and Senior Manager
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
@@ -9187,6 +9192,27 @@ async def get_all_intel_reports(
         if recency_days is not None and recency_days > 0:
             where_clauses.append("pi.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
             sql_params.append(recency_days)
+
+        # Apply server-side filters
+        if action_required:
+            where_clauses.append("UPPER(pi.ACTION_REQUIRED) = UPPER(%s)")
+            sql_params.append(action_required)
+
+        if contact_name:
+            where_clauses.append("UPPER(pi.CONTACT_NAME) LIKE UPPER(%s)")
+            sql_params.append(f"%{contact_name}%")
+
+        if player_name:
+            where_clauses.append("UPPER(COALESCE(p.PLAYERNAME, '')) LIKE UPPER(%s)")
+            sql_params.append(f"%{player_name}%")
+
+        if date_from:
+            where_clauses.append("pi.CREATED_AT >= %s")
+            sql_params.append(date_from)
+
+        if date_to:
+            where_clauses.append("pi.CREATED_AT <= %s")
+            sql_params.append(date_to)
 
         # Construct WHERE clause
         if where_clauses:
@@ -12119,14 +12145,16 @@ async def get_all_lists_with_details(
             filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)) ILIKE %s)")
             filter_params.append(f"%{club}%")
 
-        # Competition filter (supports comma-separated values for multi-select)
+        # Competition filter (supports comma-separated multi-select from UI)
         if competition:
-            competition_list = [c.strip() for c in competition.split(",")]
-            competition_conditions = " OR ".join(
-                ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) ILIKE %s"] * len(competition_list)
-            )
-            filter_conditions.append(f"({competition_conditions})")
-            filter_params.extend([f"%{c}%" for c in competition_list])
+            competition_list = [c.strip() for c in competition.split(",") if c.strip()]
+            if competition_list:
+                competition_placeholders = " OR ".join(
+                    ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
+                    * len(competition_list)
+                )
+                filter_conditions.append(f"({competition_placeholders})")
+                filter_params.extend(competition_list)
 
         # Age filter
         if min_age is not None:
@@ -12228,6 +12256,43 @@ async def get_all_lists_with_details(
                     "last_report_date": stats_row[6],
                 }
 
+        intel_stats_lookup = {}
+        if all_player_ids or all_cafc_ids:
+            intel_conditions = []
+            intel_params = []
+            has_intel_cafc_player_id = has_column("player_information", "CAFC_PLAYER_ID")
+
+            if all_player_ids:
+                external_ids = list(all_player_ids)
+                placeholders = ", ".join(["%s"] * len(external_ids))
+                intel_conditions.append(f"PLAYER_ID IN ({placeholders})")
+                intel_params.extend(external_ids)
+
+            if all_cafc_ids and has_intel_cafc_player_id:
+                internal_ids = list(all_cafc_ids)
+                placeholders = ", ".join(["%s"] * len(internal_ids))
+                intel_conditions.append(f"CAFC_PLAYER_ID IN ({placeholders})")
+                intel_params.extend(internal_ids)
+
+            if intel_conditions:
+                cafc_player_id_select = "CAFC_PLAYER_ID" if has_intel_cafc_player_id else "NULL as CAFC_PLAYER_ID"
+                cafc_player_id_group = ", CAFC_PLAYER_ID" if has_intel_cafc_player_id else ""
+                cursor.execute(
+                    f"""
+                    SELECT
+                        PLAYER_ID,
+                        {cafc_player_id_select},
+                        COUNT(*) as intel_reports_count
+                    FROM player_information
+                    WHERE {" OR ".join(intel_conditions)}
+                    GROUP BY PLAYER_ID{cafc_player_id_group}
+                    """,
+                    intel_params,
+                )
+
+                for intel_row in cursor.fetchall():
+                    intel_stats_lookup[(intel_row[0], intel_row[1])] = intel_row[2] or 0
+
         # Build player data and attach to lists
         for row in player_rows:
             list_id = row[0]
@@ -12246,6 +12311,7 @@ async def get_all_lists_with_details(
                 "video_reports": 0,
                 "last_report_date": None,
             })
+            intel_reports_count = intel_stats_lookup.get((player_id, cafc_player_id), 0)
 
             # Apply filters based on stats
             # Performance score filter
@@ -12296,6 +12362,8 @@ async def get_all_lists_with_details(
                 "avg_performance_score": stats["avg_performance_score"],
                 "live_reports": stats["live_reports"],
                 "video_reports": stats["video_reports"],
+                "last_report_date": stats["last_report_date"].isoformat() if stats["last_report_date"] else None,
+                "intel_reports_count": intel_reports_count,
             }
 
             lists_data[list_id]["players"].append(player_obj)
@@ -13721,7 +13789,7 @@ class BulkRemovePlayersRequest(BaseModel):
     item_ids: list[int]
 
 
-@app.delete("/player-lists/{list_id}/players/bulk")
+@app.post("/player-lists/{list_id}/players/bulk-remove")
 async def bulk_remove_players_from_list(
     list_id: int,
     bulk_request: BulkRemovePlayersRequest,

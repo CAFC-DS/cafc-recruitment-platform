@@ -5,7 +5,7 @@ export interface PlayerListFilters {
   playerName: string;
   position: string;
   club: string;
-  competitions: string[];
+  competition: string[];
   performanceScores: number[];
   minAge: string;
   maxAge: string;
@@ -110,13 +110,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     size="sm"
                     className="w-100 text-start"
                   >
-                    {filters.competitions.length > 0
-                      ? `${filters.competitions.length} competition${filters.competitions.length > 1 ? "s" : ""} selected`
+                    {filters.competition.length > 0
+                      ? `${filters.competition.length} competition${filters.competition.length > 1 ? "s" : ""} selected`
                       : "All competitions"}
                   </Dropdown.Toggle>
                   <Dropdown.Menu
                     className="p-2"
-                    style={{ minWidth: "300px", maxHeight: "300px", overflowY: "auto" }}
+                    style={{ minWidth: "320px", maxHeight: "280px", overflowY: "auto" }}
                   >
                     {competitionOptions.map((competition) => (
                       <div key={competition} className="px-2 py-1">
@@ -124,15 +124,15 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                           type="checkbox"
                           id={`competition-${competition}`}
                           label={competition}
-                          checked={filters.competitions.includes(competition)}
+                          checked={filters.competition.includes(competition)}
                           onChange={(e) => {
                             if (e.target.checked) {
                               onFilterChange({
-                                competitions: [...filters.competitions, competition],
+                                competition: [...filters.competition, competition],
                               });
                             } else {
                               onFilterChange({
-                                competitions: filters.competitions.filter((c) => c !== competition),
+                                competition: filters.competition.filter((item) => item !== competition),
                               });
                             }
                           }}

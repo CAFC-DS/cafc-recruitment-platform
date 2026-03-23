@@ -98,7 +98,7 @@ interface PlayerList {
   avg_performance_score: number | null;
 }
 
-type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites" | "decisions";
+type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "lastReport" | "favorites" | "decisions";
 type SortDirection = "asc" | "desc";
 type SaveProgressState = "idle" | "saving" | "refetching" | "success" | "error";
 
@@ -179,7 +179,7 @@ const PlayerListsPage: React.FC = () => {
     playerName: "",
     position: "",
     club: "",
-    competitions: [],
+    competition: [],
     performanceScores: [],
     minAge: "",
     maxAge: "",
@@ -356,7 +356,7 @@ const PlayerListsPage: React.FC = () => {
       if (filters.playerName) apiFilters.playerName = filters.playerName;
       if (filters.position) apiFilters.position = filters.position;
       if (filters.club) apiFilters.club = filters.club;
-      if (filters.competitions.length > 0) apiFilters.competition = filters.competitions.join(",");
+      if (filters.competition.length > 0) apiFilters.competition = filters.competition.join(",");
       if (filters.minAge) apiFilters.minAge = parseInt(filters.minAge);
       if (filters.maxAge) apiFilters.maxAge = parseInt(filters.maxAge);
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
@@ -397,7 +397,7 @@ const PlayerListsPage: React.FC = () => {
       playerName: "",
       position: "",
       club: "",
-      competitions: [],
+      competition: [],
       performanceScores: [],
       minAge: "",
       maxAge: "",
@@ -536,6 +536,10 @@ const PlayerListsPage: React.FC = () => {
         case "reports":
           aVal = a.report_count;
           bVal = b.report_count;
+          break;
+        case "lastReport":
+          aVal = a.last_report_date ? new Date(a.last_report_date).getTime() : 0;
+          bVal = b.last_report_date ? new Date(b.last_report_date).getTime() : 0;
           break;
         case "favorites":
           aVal = playerFavorites.has(a.universal_id) ? 1 : 0;
@@ -888,6 +892,11 @@ const PlayerListsPage: React.FC = () => {
       ? `${lists.find((list) => visibleListIds.has(list.id))?.list_name || "export"}.csv`
       : "player-lists-export.csv";
     exportPlayersToCSV(sortedPlayers, filename);
+  };
+
+  const formatLastReportDate = (lastReportDate?: string | null) => {
+    if (!lastReportDate) return "N/A";
+    return new Date(lastReportDate).toLocaleDateString("en-GB");
   };
 
   const getPlayerPath = (universalId: string): string => {
@@ -1327,6 +1336,9 @@ const PlayerListsPage: React.FC = () => {
                         <th onClick={() => handleSort("reports")} style={{ cursor: "pointer" }}>
                           Reports {sortField === "reports" && (sortDirection === "asc" ? "↑" : "↓")}
                         </th>
+                        <th onClick={() => handleSort("lastReport")} style={{ cursor: "pointer" }}>
+                          Last Report {sortField === "lastReport" && (sortDirection === "asc" ? "↑" : "↓")}
+                        </th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -1538,6 +1550,7 @@ const PlayerListsPage: React.FC = () => {
                                 <Badge
                                   bg=""
                                   className="ms-2"
+                                  title={`${player.live_reports} live report${player.live_reports === 1 ? "" : "s"}`}
                                   style={{
                                     backgroundColor: "#ffffff",
                                     color: "#000000",
@@ -1549,7 +1562,24 @@ const PlayerListsPage: React.FC = () => {
                                   🏟️ {player.live_reports}
                                 </Badge>
                               )}
+                              {(player.intel_reports_count || 0) > 0 && (
+                                <Badge
+                                  bg=""
+                                  className="ms-2"
+                                  title={`${player.intel_reports_count} intel report${player.intel_reports_count === 1 ? "" : "s"}`}
+                                  style={{
+                                    backgroundColor: "#ffffff",
+                                    color: "#000000",
+                                    border: "1px solid #dee2e6",
+                                    fontSize: "0.75rem",
+                                    padding: "3px 6px",
+                                  }}
+                                >
+                                  🔍 {player.intel_reports_count}
+                                </Badge>
+                              )}
                             </td>
+                            <td>{formatLastReportDate(player.last_report_date)}</td>
                             <td>
                               <div className="btn-group" style={{ justifyContent: "center" }}>
                                 <Button
@@ -1583,9 +1613,11 @@ const PlayerListsPage: React.FC = () => {
                                   title={playerDecisions.has(player.universal_id) ? "Remove decision" : "Mark as decision"}
                                   onClick={() => handleToggleDecision(player.universal_id)}
                                   className="btn-action-circle"
-                                  style={{ color: playerDecisions.has(player.universal_id) ? "#111827" : "#6b7280" }}
+                                  style={{
+                                    color: playerDecisions.has(player.universal_id) ? "#111827" : "#6b7280",
+                                  }}
                                 >
-                                  {playerDecisions.has(player.universal_id) ? "💭" : "○"}
+                                  {playerDecisions.has(player.universal_id) ? "⁉️" : "○"}
                                 </Button>
                                 <Button
                                   size="sm"

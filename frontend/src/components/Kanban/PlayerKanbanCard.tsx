@@ -33,6 +33,8 @@ export interface PlayerInList {
   avg_performance_score: number | null;
   live_reports: number;
   video_reports: number;
+  last_report_date?: string | null;
+  intel_reports_count?: number;
 }
 
 interface PlayerKanbanCardProps {

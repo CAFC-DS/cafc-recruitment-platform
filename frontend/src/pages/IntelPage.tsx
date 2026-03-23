@@ -101,6 +101,23 @@ const IntelPage: React.FC = () => {
           params.recency_days = parseInt(recencyFilter);
         }
 
+        // Add server-side filters
+        if (actionFilter) {
+          params.action_required = actionFilter;
+        }
+        if (contactNameFilter) {
+          params.contact_name = contactNameFilter;
+        }
+        if (playerNameFilter) {
+          params.player_name = playerNameFilter;
+        }
+        if (dateFromFilter) {
+          params.date_from = dateFromFilter;
+        }
+        if (dateToFilter) {
+          params.date_to = dateToFilter;
+        }
+
         const response = await axiosInstance.get("/intel_reports/all", {
           params,
         });
@@ -116,7 +133,15 @@ const IntelPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [recencyFilter, itemsPerPage],
+    [
+      recencyFilter,
+      itemsPerPage,
+      actionFilter,
+      contactNameFilter,
+      playerNameFilter,
+      dateFromFilter,
+      dateToFilter,
+    ],
   );
 
   // Fetch user role and username
@@ -202,7 +227,7 @@ const IntelPage: React.FC = () => {
     // Reset to page 1 when filters change
     if (currentPage !== 1) {
       setCurrentPage(1);
-      return;
+      return; // Let the page useEffect handle the fetch
     }
 
     // Debounce text filters (500ms delay)
@@ -211,6 +236,7 @@ const IntelPage: React.FC = () => {
     }, 500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     token,
     recencyFilter,
@@ -219,8 +245,6 @@ const IntelPage: React.FC = () => {
     playerNameFilter,
     dateFromFilter,
     dateToFilter,
-    currentPage,
-    fetchIntelReports,
   ]);
 
   // Fetch when page changes (no debounce for pagination)
@@ -228,7 +252,8 @@ const IntelPage: React.FC = () => {
     if (token) {
       fetchIntelReports(currentPage);
     }
-  }, [currentPage, token, fetchIntelReports]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, token]);
 
   // Listen for intel report changes from other components (navbar, etc.)
   useEffect(() => {
@@ -276,6 +301,7 @@ const IntelPage: React.FC = () => {
       permanent: "Permanent",
       loan: "Loan",
       loan_with_option: "Loan with Option",
+      na: "N/A",
     };
 
     return dealTypes.map(type => labels[type] || type).join(", ");
@@ -293,54 +319,7 @@ const IntelPage: React.FC = () => {
       ? new Date(report.date_of_information).toLocaleDateString("en-GB")
       : "N/A";
 
-  // Filter reports based on advanced filters
-  const getFilteredIntelReports = () => {
-    let filtered = intelReports;
-
-    if (actionFilter) {
-      filtered = filtered.filter(
-        (report) =>
-          report.action_required.toLowerCase() === actionFilter.toLowerCase(),
-      );
-    }
-
-    if (contactNameFilter) {
-      filtered = filtered.filter((report) =>
-        report.contact_name
-          .toLowerCase()
-          .includes(contactNameFilter.toLowerCase()),
-      );
-    }
-
-    if (playerNameFilter) {
-      filtered = filtered.filter((report) =>
-        report.player_name
-          .toLowerCase()
-          .includes(playerNameFilter.toLowerCase()),
-      );
-    }
-
-    if (dateFromFilter || dateToFilter) {
-      filtered = filtered.filter((report) => {
-        const reportDate = new Date(report.created_at);
-        const fromDate = dateFromFilter
-          ? new Date(dateFromFilter)
-          : new Date("1900-01-01");
-        const toDate = dateToFilter
-          ? new Date(dateToFilter)
-          : new Date("2100-12-31");
-        return reportDate >= fromDate && reportDate <= toDate;
-      });
-    }
-
-    return [...filtered].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() -
-        new Date(a.created_at).getTime(),
-    );
-  };
-
-  const filteredIntelReports = getFilteredIntelReports();
+  const filteredIntelReports = intelReports;
   const totalPages = Math.ceil(totalReports / itemsPerPage);
 
   return (
@@ -477,11 +456,7 @@ const IntelPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {Math.min(filteredIntelReports.length, itemsPerPage)} of{" "}
-            {filteredIntelReports.length} filtered results
-            {filteredIntelReports.length !== totalReports && (
-              <span> ({totalReports} total)</span>
-            )}
+            Showing {filteredIntelReports.length} on this page ({totalReports} total results)
           </small>
         </Col>
       </Row>
