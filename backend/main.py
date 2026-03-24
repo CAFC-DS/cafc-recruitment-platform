@@ -813,6 +813,7 @@ ARCHIVED_REASONS = [
     "Cost; Salary",
     "Cost; Transfer Fee",
     "Availability",
+    "Extended Contract",
     "Moved Club",
     "Scouting",
     "Data",

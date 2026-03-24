@@ -92,7 +92,7 @@ export interface StageHistoryRecord {
   description?: string;
   changedBy: number;
   changedByName?: string;
-  changedAt: string;
+  changedAt: string | null;
 }
 
 export type Stage1Reason =
@@ -108,6 +108,7 @@ export type ArchivedReason =
   | "Cost; Salary"
   | "Cost; Transfer Fee"
   | "Availability"
+  | "Extended Contract"
   | "Moved Club"
   | "Scouting"
   | "Data"

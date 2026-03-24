@@ -108,15 +108,15 @@ const StageHistoryModal: React.FC<StageHistoryModalProps> = ({
     return record.newStage === "Archived" ? "Archived" : "Stage 1";
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "";
+
     const date = new Date(dateString);
-    return date.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    if (Number.isNaN(date.getTime()) || date.getTime() === 0) {
+      return "";
+    }
+
+    return date.toLocaleDateString("en-GB");
   };
 
   const renderStageTransition = (record: StageHistoryRecord) => {
