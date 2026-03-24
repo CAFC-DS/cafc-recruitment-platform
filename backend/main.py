@@ -1035,17 +1035,19 @@ class Match(BaseModel):
 
 class IntelReport(BaseModel):
     player_id: Union[int, str]
-    contact_name: str
-    contact_organisation: str
-    date_of_information: str
+    intel_type: Optional[str] = "player_information"
+    contact_name: Optional[str] = None
+    contact_organisation: Optional[str] = None
+    date_of_information: Optional[str] = None
     confirmed_contract_expiry: Optional[str] = None
     contract_options: Optional[str] = None
-    potential_deal_types: List[str]
+    potential_deal_types: Optional[List[str]] = None
     transfer_fee: Optional[str] = None
     current_wages: Optional[str] = None
     expected_wages: Optional[str] = None
-    conversation_notes: str
-    action_required: str
+    conversation_notes: Optional[str] = None
+    recommendation: Optional[str] = None
+    notes: Optional[str] = None
 
 
 # --- Chatbot Models ---
@@ -1413,6 +1415,130 @@ def parse_whole_number_field(value: Optional[str], field_label: str) -> Optional
     if not re.fullmatch(r"\d+", normalized):
         raise HTTPException(status_code=400, detail=f"Invalid {field_label}. Whole numbers only")
     return int(normalized)
+
+
+def parse_numeric_range_field(value: Optional[str], field_label: str) -> tuple[Optional[int], Optional[int]]:
+    if value is None:
+        return None, None
+
+    normalized = value.replace(",", "").replace(" ", "").strip()
+    if not normalized:
+        return None, None
+
+    single_value_match = re.fullmatch(r"\d+", normalized)
+    if single_value_match:
+        parsed_value = int(normalized)
+        return parsed_value, parsed_value
+
+    range_match = re.fullmatch(r"(\d+)-(\d+)", normalized)
+    if not range_match:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Use a whole number or range like 6500-7500",
+        )
+
+    min_value = int(range_match.group(1))
+    max_value = int(range_match.group(2))
+    if min_value > max_value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Range start must be less than or equal to range end",
+        )
+
+    return min_value, max_value
+
+
+def format_numeric_range_for_response(
+    min_value: Optional[int],
+    max_value: Optional[int],
+    fallback_value: Optional[Any] = None,
+) -> Optional[str]:
+    if min_value is not None and max_value is not None:
+        if min_value == max_value:
+            return str(min_value)
+        return f"{min_value}-{max_value}"
+
+    if fallback_value is None:
+        return None
+
+    return str(fallback_value)
+
+
+VALID_INTEL_TYPES = {"player_information", "general_note"}
+
+
+def normalize_intel_type(value: Optional[str]) -> str:
+    normalized = (value or "player_information").strip().lower()
+    if normalized not in VALID_INTEL_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid intel_type. Must be 'player_information' or 'general_note'",
+        )
+    return normalized
+
+
+def normalize_intel_payload(report: IntelReport) -> Dict[str, Any]:
+    intel_type = normalize_intel_type(report.intel_type)
+    notes_value = (report.notes or report.conversation_notes or "").strip()
+    normalized_payload: Dict[str, Any] = {
+        "intel_type": intel_type,
+        "conversation_notes": notes_value or None,
+    }
+
+    if intel_type == "general_note":
+        if not notes_value:
+            raise HTTPException(status_code=400, detail="Notes are required for a general note")
+        if not (report.contact_name or "").strip():
+            raise HTTPException(status_code=400, detail="Contact Name is required")
+        if not (report.contact_organisation or "").strip():
+            raise HTTPException(status_code=400, detail="Contact Organisation is required")
+        if not report.date_of_information:
+            raise HTTPException(status_code=400, detail="Date of Information is required")
+
+        normalized_payload.update(
+            {
+                "contact_name": report.contact_name.strip(),
+                "contact_organisation": report.contact_organisation.strip(),
+                "date_of_information": report.date_of_information,
+                "confirmed_contract_expiry": None,
+                "contract_options": None,
+                "potential_deal_types": [],
+                "transfer_fee": None,
+                "current_wages": None,
+                "expected_wages": None,
+                "recommendation": None,
+            }
+        )
+        return normalized_payload
+
+    if not (report.contact_name or "").strip():
+        raise HTTPException(status_code=400, detail="Contact Name is required")
+    if not (report.contact_organisation or "").strip():
+        raise HTTPException(status_code=400, detail="Contact Organisation is required")
+    if not report.date_of_information:
+        raise HTTPException(status_code=400, detail="Date of Information is required")
+    if not report.potential_deal_types:
+        raise HTTPException(status_code=400, detail="At least one Potential Deal Type must be selected")
+    if not notes_value:
+        raise HTTPException(status_code=400, detail="Conversation Notes are required")
+    if not (report.recommendation or "").strip():
+        raise HTTPException(status_code=400, detail="Recommendation is required")
+
+    normalized_payload.update(
+        {
+            "contact_name": report.contact_name.strip(),
+            "contact_organisation": report.contact_organisation.strip(),
+            "date_of_information": report.date_of_information,
+            "confirmed_contract_expiry": report.confirmed_contract_expiry,
+            "contract_options": (report.contract_options or "").strip() or None,
+            "potential_deal_types": report.potential_deal_types,
+            "transfer_fee": (report.transfer_fee or "").strip() or None,
+            "current_wages": report.current_wages,
+            "expected_wages": report.expected_wages,
+            "recommendation": report.recommendation.strip(),
+        }
+    )
+    return normalized_payload
 
 
 def normalize_currency_code(value: Optional[str], field_label: str) -> Optional[str]:
@@ -7833,13 +7959,24 @@ async def get_player_profile(
         cursor.execute(scout_sql, scout_values)
         scout_reports = cursor.fetchall()
 
+        has_current_wages_min = has_column("player_information", "CURRENT_WAGES_MIN")
+        has_current_wages_max = has_column("player_information", "CURRENT_WAGES_MAX")
+        has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
+        has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
+        has_intel_type = has_column("player_information", "INTEL_TYPE")
+
         # Get intel reports
-        intel_sql = """
+        intel_sql = f"""
             SELECT pi.ID, pi.CREATED_AT, pi.CONTACT_NAME, pi.CONTACT_ORGANISATION,
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, u.USERNAME, u.FIRSTNAME, u.LASTNAME,
-                   pi.DATE_OF_INFORMATION
+                   pi.DATE_OF_INFORMATION,
+                   {"pi.CURRENT_WAGES_MIN" if has_current_wages_min else "NULL"},
+                   {"pi.CURRENT_WAGES_MAX" if has_current_wages_max else "NULL"},
+                   {"pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL"},
+                   {"pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL"},
+                   {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")}
             FROM player_information pi
             LEFT JOIN users u ON pi.USER_ID = u.ID
             WHERE pi.PLAYER_ID = %s
@@ -7948,17 +8085,19 @@ async def get_player_profile(
                     "created_at": str(row[1]),
                     "contact_name": row[2],
                     "contact_organisation": row[3],
-                    "action_required": row[4],
+                    "recommendation": row[4],
                     "conversation_notes": (
                         row[5][:100] + "..." if row[5] and len(row[5]) > 100 else row[5]
                     ),
+                    "notes": row[5],
                     "transfer_fee": row[6],
-                    "current_wages": row[7],
-                    "expected_wages": row[8],
+                    "current_wages": format_numeric_range_for_response(row[15], row[16], row[7]),
+                    "expected_wages": format_numeric_range_for_response(row[17], row[18], row[8]),
                     "confirmed_contract_expiry": str(row[9]) if row[9] else None,
                     "potential_deal_types": row[10].split(",") if row[10] else [],
                     "submitted_by": f"{row[12] or ''} {row[13] or ''}".strip() if (row[12] or row[13]) else (row[11] or "Unknown"),
                     "date_of_information": str(row[14]) if row[14] else None,
+                    "intel_type": normalize_intel_type(row[19] if len(row) > 19 else None),
                 }
                 for row in intel_reports
             ],
@@ -8790,7 +8929,7 @@ async def export_player_pdf(
                     </div>
                     <table>
                         <tr><td><strong>Contact:</strong></td><td>{intel[1]} ({intel[2]})</td></tr>
-                        <tr><td><strong>Action Required:</strong></td><td>{intel[3]}</td></tr>
+                        <tr><td><strong>Recommendation:</strong></td><td>{intel[3]}</td></tr>
                         <tr><td><strong>Transfer Fee:</strong></td><td>{intel[5] or 'Unknown'}</td></tr>
                         <tr><td><strong>Current Wages:</strong></td><td>{intel[6] or 'Unknown'}</td></tr>
                         <tr><td><strong>Expected Wages:</strong></td><td>{intel[7] or 'Unknown'}</td></tr>
@@ -8840,6 +8979,7 @@ async def create_intel_report(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        normalized_report = normalize_intel_payload(report)
 
         # Validate and resolve player_id using universal ID or dual ID lookup
         if report.player_id:
@@ -8865,15 +9005,41 @@ async def create_intel_report(
         has_user_id = has_column("player_information", "USER_ID")
         has_created_at = has_column("player_information", "CREATED_AT")
         has_data_source = has_column("player_information", "DATA_SOURCE")
+        has_current_wages_min = has_column("player_information", "CURRENT_WAGES_MIN")
+        has_current_wages_max = has_column("player_information", "CURRENT_WAGES_MAX")
+        has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
+        has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
+        has_intel_type = has_column("player_information", "INTEL_TYPE")
+
+        if not has_intel_type:
+            raise HTTPException(
+                status_code=400,
+                detail="Intel type support requires an INTEL_TYPE column on player_information",
+            )
 
         # Convert potential_deal_types list to comma-separated string
         deal_types_str = (
-            ",".join(report.potential_deal_types)
-            if report.potential_deal_types
+            ",".join(normalized_report["potential_deal_types"])
+            if normalized_report["potential_deal_types"]
             else None
         )
+        current_wages_min, current_wages_max = parse_numeric_range_field(
+            normalized_report["current_wages"], "current wages"
+        )
+        expected_wages_min, expected_wages_max = parse_numeric_range_field(
+            normalized_report["expected_wages"], "expected wages"
+        )
 
-        print (deal_types_str)
+        if normalized_report["current_wages"] and not (has_current_wages_min and has_current_wages_max):
+            raise HTTPException(
+                status_code=400,
+                detail="Current wages range support requires CURRENT_WAGES_MIN and CURRENT_WAGES_MAX columns",
+            )
+        if normalized_report["expected_wages"] and not (has_expected_wages_min and has_expected_wages_max):
+            raise HTTPException(
+                status_code=400,
+                detail="Expected wages range support requires EXPECTED_WAGES_MIN and EXPECTED_WAGES_MAX columns",
+            )
 
         # Prepare dynamic SQL
         sql_columns = ["CREATED_AT"]
@@ -8897,6 +9063,10 @@ async def create_intel_report(
             sql_values.append("%s")
             params.append(player_data_source)
 
+        sql_columns.append("INTEL_TYPE")
+        sql_values.append("%s")
+        params.append(normalized_report["intel_type"])
+
         # Add all other intel report fields
         sql_columns.extend(
             [
@@ -8907,28 +9077,53 @@ async def create_intel_report(
                 "CONTRACT_OPTIONS",
                 "POTENTIAL_DEAL_TYPE",
                 "TRANSFER_FEE",
-                "CURRENT_WAGES",
-                "EXPECTED_WAGES",
                 "CONVERSATION_NOTES",
                 "ACTION_REQUIRED",
             ]
         )
-        sql_values.extend(["%s"] * 11)
+        sql_values.extend(["%s"] * 9)
         params.extend(
             [
-                report.contact_name,
-                report.contact_organisation,
-                report.date_of_information,
-                report.confirmed_contract_expiry,
-                report.contract_options,
+                normalized_report["contact_name"],
+                normalized_report["contact_organisation"],
+                normalized_report["date_of_information"],
+                normalized_report["confirmed_contract_expiry"],
+                normalized_report["contract_options"],
                 deal_types_str,
-                report.transfer_fee,
-                report.current_wages,
-                report.expected_wages,
-                report.conversation_notes,
-                report.action_required,
+                normalized_report["transfer_fee"],
+                normalized_report["conversation_notes"],
+                normalized_report["recommendation"],
             ]
         )
+
+        if has_current_wages_min:
+            sql_columns.append("CURRENT_WAGES_MIN")
+            sql_values.append("%s")
+            params.append(current_wages_min)
+
+        if has_current_wages_max:
+            sql_columns.append("CURRENT_WAGES_MAX")
+            sql_values.append("%s")
+            params.append(current_wages_max)
+
+        if has_expected_wages_min:
+            sql_columns.append("EXPECTED_WAGES_MIN")
+            sql_values.append("%s")
+            params.append(expected_wages_min)
+
+        if has_expected_wages_max:
+            sql_columns.append("EXPECTED_WAGES_MAX")
+            sql_values.append("%s")
+            params.append(expected_wages_max)
+
+        # Keep legacy numeric columns populated for single values only.
+        sql_columns.append("CURRENT_WAGES")
+        sql_values.append("%s")
+        params.append(current_wages_min if current_wages_min is not None and current_wages_min == current_wages_max else None)
+
+        sql_columns.append("EXPECTED_WAGES")
+        sql_values.append("%s")
+        params.append(expected_wages_min if expected_wages_min is not None and expected_wages_min == expected_wages_max else None)
 
         # Construct the final SQL query
         sql = f"""
@@ -8940,6 +9135,10 @@ async def create_intel_report(
         conn.commit()
         return {"message": "Intel report submitted successfully"}
 
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
     except Exception as e:
         if conn:
             conn.rollback()
@@ -8967,6 +9166,7 @@ async def update_intel_report(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        normalized_report = normalize_intel_payload(report)
 
         # Check if the report exists
         cursor.execute(
@@ -8998,13 +9198,41 @@ async def update_intel_report(
         # Check which columns exist (using cached schema)
         has_player_id = has_column("player_information", "PLAYER_ID")
         has_data_source = has_column("player_information", "DATA_SOURCE")
+        has_current_wages_min = has_column("player_information", "CURRENT_WAGES_MIN")
+        has_current_wages_max = has_column("player_information", "CURRENT_WAGES_MAX")
+        has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
+        has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
+        has_intel_type = has_column("player_information", "INTEL_TYPE")
+
+        if not has_intel_type:
+            raise HTTPException(
+                status_code=400,
+                detail="Intel type support requires an INTEL_TYPE column on player_information",
+            )
 
         # Convert potential_deal_types list to comma-separated string
         deal_types_str = (
-            ",".join(report.potential_deal_types)
-            if report.potential_deal_types
+            ",".join(normalized_report["potential_deal_types"])
+            if normalized_report["potential_deal_types"]
             else None
         )
+        current_wages_min, current_wages_max = parse_numeric_range_field(
+            normalized_report["current_wages"], "current wages"
+        )
+        expected_wages_min, expected_wages_max = parse_numeric_range_field(
+            normalized_report["expected_wages"], "expected wages"
+        )
+
+        if normalized_report["current_wages"] and not (has_current_wages_min and has_current_wages_max):
+            raise HTTPException(
+                status_code=400,
+                detail="Current wages range support requires CURRENT_WAGES_MIN and CURRENT_WAGES_MAX columns",
+            )
+        if normalized_report["expected_wages"] and not (has_expected_wages_min and has_expected_wages_max):
+            raise HTTPException(
+                status_code=400,
+                detail="Expected wages range support requires EXPECTED_WAGES_MIN and EXPECTED_WAGES_MAX columns",
+            )
 
         # Prepare dynamic SQL for UPDATE
         update_fields = []
@@ -9020,6 +9248,9 @@ async def update_intel_report(
             update_fields.append("DATA_SOURCE = %s")
             params.append(player_data_source)
 
+        update_fields.append("INTEL_TYPE = %s")
+        params.append(normalized_report["intel_type"])
+
         # Add all other intel report fields
         update_fields.extend([
             "CONTACT_NAME = %s",
@@ -9029,24 +9260,42 @@ async def update_intel_report(
             "CONTRACT_OPTIONS = %s",
             "POTENTIAL_DEAL_TYPE = %s",
             "TRANSFER_FEE = %s",
-            "CURRENT_WAGES = %s",
-            "EXPECTED_WAGES = %s",
             "CONVERSATION_NOTES = %s",
             "ACTION_REQUIRED = %s",
         ])
         params.extend([
-            report.contact_name,
-            report.contact_organisation,
-            report.date_of_information,
-            report.confirmed_contract_expiry,
-            report.contract_options,
+            normalized_report["contact_name"],
+            normalized_report["contact_organisation"],
+            normalized_report["date_of_information"],
+            normalized_report["confirmed_contract_expiry"],
+            normalized_report["contract_options"],
             deal_types_str,
-            report.transfer_fee,
-            report.current_wages,
-            report.expected_wages,
-            report.conversation_notes,
-            report.action_required,
+            normalized_report["transfer_fee"],
+            normalized_report["conversation_notes"],
+            normalized_report["recommendation"],
         ])
+
+        if has_current_wages_min:
+            update_fields.append("CURRENT_WAGES_MIN = %s")
+            params.append(current_wages_min)
+
+        if has_current_wages_max:
+            update_fields.append("CURRENT_WAGES_MAX = %s")
+            params.append(current_wages_max)
+
+        if has_expected_wages_min:
+            update_fields.append("EXPECTED_WAGES_MIN = %s")
+            params.append(expected_wages_min)
+
+        if has_expected_wages_max:
+            update_fields.append("EXPECTED_WAGES_MAX = %s")
+            params.append(expected_wages_max)
+
+        update_fields.append("CURRENT_WAGES = %s")
+        params.append(current_wages_min if current_wages_min is not None and current_wages_min == current_wages_max else None)
+
+        update_fields.append("EXPECTED_WAGES = %s")
+        params.append(expected_wages_min if expected_wages_min is not None and expected_wages_min == expected_wages_max else None)
 
         # Add the report_id for the WHERE clause
         params.append(report_id)
@@ -9062,6 +9311,10 @@ async def update_intel_report(
         conn.commit()
         return {"message": "Intel report updated successfully"}
 
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
     except Exception as e:
         if conn:
             conn.rollback()
@@ -9125,7 +9378,7 @@ async def get_all_intel_reports(
     page: int = 1,
     limit: int = 10,
     recency_days: Optional[int] = None,
-    action_required: Optional[str] = None,
+    recommendation: Optional[str] = None,
     contact_name: Optional[str] = None,
     player_name: Optional[str] = None,
     date_from: Optional[str] = None,
@@ -9150,6 +9403,11 @@ async def get_all_intel_reports(
         has_user_id = has_column("player_information", "USER_ID")
         has_data_source_pi = has_column("player_information", "DATA_SOURCE")
         has_data_source_p = has_column("players", "DATA_SOURCE")
+        has_current_wages_min = has_column("player_information", "CURRENT_WAGES_MIN")
+        has_current_wages_max = has_column("player_information", "CURRENT_WAGES_MAX")
+        has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
+        has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
+        has_intel_type = has_column("player_information", "INTEL_TYPE")
 
         # Build JOIN clause based on whether DATA_SOURCE columns exist
         # Use DATA_SOURCE to prevent ID collisions between internal and external players
@@ -9172,7 +9430,12 @@ async def get_all_intel_reports(
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE, p.PLAYERNAME, p.POSITION, p.SQUADNAME,
-                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE, u.USERNAME, u.FIRSTNAME, u.LASTNAME
+                   p.PLAYERID, p.CAFC_PLAYER_ID, p.DATA_SOURCE, u.USERNAME, u.FIRSTNAME, u.LASTNAME,
+                   {"pi.CURRENT_WAGES_MIN" if has_current_wages_min else "NULL"},
+                   {"pi.CURRENT_WAGES_MAX" if has_current_wages_max else "NULL"},
+                   {"pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL"},
+                   {"pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL"},
+                   {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")}
             FROM player_information pi
             {join_clause}
             LEFT JOIN users u ON pi.USER_ID = u.ID
@@ -9194,9 +9457,9 @@ async def get_all_intel_reports(
             sql_params.append(recency_days)
 
         # Apply server-side filters
-        if action_required:
+        if recommendation:
             where_clauses.append("UPPER(pi.ACTION_REQUIRED) = UPPER(%s)")
-            sql_params.append(action_required)
+            sql_params.append(recommendation)
 
         if contact_name:
             where_clauses.append("UPPER(pi.CONTACT_NAME) LIKE UPPER(%s)")
@@ -9269,11 +9532,12 @@ async def get_all_intel_reports(
                     "date_of_information": str(row[2]) if row[2] else None,
                     "contact_name": row[3],
                     "contact_organisation": row[4],
-                    "action_required": row[5],
+                    "recommendation": row[5],
                     "conversation_notes": row[6],
+                    "notes": row[6],
                     "transfer_fee": row[7],
-                    "current_wages": row[8],
-                    "expected_wages": row[9],
+                    "current_wages": format_numeric_range_for_response(row[21], row[22], row[8]),
+                    "expected_wages": format_numeric_range_for_response(row[23], row[24], row[9]),
                     "confirmed_contract_expiry": str(row[10]) if row[10] else None,
                     "potential_deal_types": deal_types,
                     "player_name": row[12],
@@ -9282,6 +9546,7 @@ async def get_all_intel_reports(
                     "player_id": player_id,
                     "universal_id": universal_id,
                     "submitted_by": f"{row[19] or ''} {row[20] or ''}".strip() if (row[19] or row[20]) else (row[18] or "Unknown"),
+                    "intel_type": normalize_intel_type(row[25] if len(row) > 25 else None),
                 }
             )
 
@@ -9321,6 +9586,11 @@ async def get_single_intel_report(
         # Check which columns exist (using cached schema)
         has_player_id = has_column("player_information", "PLAYER_ID")
         has_user_id = has_column("player_information", "USER_ID")
+        has_current_wages_min = has_column("player_information", "CURRENT_WAGES_MIN")
+        has_current_wages_max = has_column("player_information", "CURRENT_WAGES_MAX")
+        has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
+        has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
+        has_intel_type = has_column("player_information", "INTEL_TYPE")
 
         if has_player_id:
             sql = """
@@ -9339,11 +9609,22 @@ async def get_single_intel_report(
                     pi.EXPECTED_WAGES,
                     pi.CONVERSATION_NOTES,
                     pi.ACTION_REQUIRED,
-                    pi.PLAYER_ID
+                    pi.PLAYER_ID,
+                    {current_wages_min_expr},
+                    {current_wages_max_expr},
+                    {expected_wages_min_expr},
+                    {expected_wages_max_expr},
+                    {intel_type_expr}
                 FROM player_information pi
                 LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
                 WHERE pi.ID = %s
-            """
+            """.format(
+                current_wages_min_expr="pi.CURRENT_WAGES_MIN" if has_current_wages_min else "NULL",
+                current_wages_max_expr="pi.CURRENT_WAGES_MAX" if has_current_wages_max else "NULL",
+                expected_wages_min_expr="pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL",
+                expected_wages_max_expr="pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL",
+                intel_type_expr="pi.INTEL_TYPE" if has_intel_type else "'player_information'",
+            )
         else:
             sql = """
                 SELECT
@@ -9359,10 +9640,21 @@ async def get_single_intel_report(
                     pi.CURRENT_WAGES,
                     pi.EXPECTED_WAGES,
                     pi.CONVERSATION_NOTES,
-                    pi.ACTION_REQUIRED
+                    pi.ACTION_REQUIRED,
+                    {current_wages_min_expr},
+                    {current_wages_max_expr},
+                    {expected_wages_min_expr},
+                    {expected_wages_max_expr},
+                    {intel_type_expr}
                 FROM player_information pi
                 WHERE pi.ID = %s
-            """
+            """.format(
+                current_wages_min_expr="pi.CURRENT_WAGES_MIN" if has_current_wages_min else "NULL",
+                current_wages_max_expr="pi.CURRENT_WAGES_MAX" if has_current_wages_max else "NULL",
+                expected_wages_min_expr="pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL",
+                expected_wages_max_expr="pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL",
+                intel_type_expr="pi.INTEL_TYPE" if has_intel_type else "'player_information'",
+            )
 
         values = (intel_id,)
 
@@ -9380,6 +9672,7 @@ async def get_single_intel_report(
         if has_player_id:
             # Split potential_deal_types back into a list
             deal_types = report_data[8].split(",") if report_data[8] else []
+            intel_type = normalize_intel_type(report_data[19] if len(report_data) > 19 else None)
 
             intel_report = {
                 "intel_id": report_data[0],
@@ -9394,15 +9687,18 @@ async def get_single_intel_report(
                 "contract_options": report_data[7],
                 "potential_deal_types": deal_types,
                 "transfer_fee": report_data[9],
-                "current_wages": str(report_data[10]) if report_data[10] else None,
-                "expected_wages": str(report_data[11]) if report_data[11] else None,
+                "current_wages": format_numeric_range_for_response(report_data[15], report_data[16], report_data[10]),
+                "expected_wages": format_numeric_range_for_response(report_data[17], report_data[18], report_data[11]),
                 "conversation_notes": report_data[12],
-                "action_required": report_data[13],
+                "notes": report_data[12],
+                "recommendation": report_data[13],
                 "player_id": report_data[14],
+                "intel_type": intel_type,
             }
         else:
             # Without PLAYER_ID column, offset indices by 1
             deal_types = report_data[7].split(",") if report_data[7] else []
+            intel_type = normalize_intel_type(report_data[17] if len(report_data) > 17 else None)
 
             intel_report = {
                 "intel_id": report_data[0],
@@ -9417,10 +9713,12 @@ async def get_single_intel_report(
                 "contract_options": report_data[6],
                 "potential_deal_types": deal_types,
                 "transfer_fee": report_data[8],
-                "current_wages": str(report_data[9]) if report_data[9] else None,
-                "expected_wages": str(report_data[10]) if report_data[10] else None,
+                "current_wages": format_numeric_range_for_response(report_data[13], report_data[14], report_data[9]),
+                "expected_wages": format_numeric_range_for_response(report_data[15], report_data[16], report_data[10]),
                 "conversation_notes": report_data[11],
-                "action_required": report_data[12],
+                "notes": report_data[11],
+                "recommendation": report_data[12],
+                "intel_type": intel_type,
             }
 
         return intel_report
@@ -12127,6 +12425,22 @@ async def get_all_lists_with_details(
         # Build filter conditions with parameterized queries to prevent SQL injection
         filter_conditions = []
         filter_params = []
+        exact_age_expr = """
+            COALESCE(
+                IFF(
+                    p.BIRTHDATE IS NULL,
+                    NULL,
+                    DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE())
+                    - IFF(TO_CHAR(CURRENT_DATE(), 'MMDD') < TO_CHAR(p.BIRTHDATE, 'MMDD'), 1, 0)
+                ),
+                IFF(
+                    ip.BIRTHDATE IS NULL,
+                    NULL,
+                    DATEDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())
+                    - IFF(TO_CHAR(CURRENT_DATE(), 'MMDD') < TO_CHAR(ip.BIRTHDATE, 'MMDD'), 1, 0)
+                )
+            )
+        """
 
         # Stage filter
         if stages:
@@ -12158,10 +12472,10 @@ async def get_all_lists_with_details(
 
         # Age filter
         if min_age is not None:
-            filter_conditions.append("(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) >= %s)")
+            filter_conditions.append(f"({exact_age_expr} >= %s)")
             filter_params.append(min_age)
         if max_age is not None:
-            filter_conditions.append("(COALESCE(TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()), TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())) <= %s)")
+            filter_conditions.append(f"({exact_age_expr} <= %s)")
             filter_params.append(max_age)
 
         # Player name filter (with accent-insensitive collation)
@@ -12191,10 +12505,7 @@ async def get_all_lists_with_details(
                 COALESCE(p.LASTNAME, ip.LASTNAME) as LASTNAME,
                 COALESCE(p.POSITION, ip.POSITION) as POSITION,
                 COALESCE(p.SQUADNAME, ip.SQUADNAME) as SQUADNAME,
-                COALESCE(
-                    TIMESTAMPDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()),
-                    TIMESTAMPDIFF(YEAR, ip.BIRTHDATE, CURRENT_DATE())
-                ) as AGE,
+                {exact_age_expr} as AGE,
                 u.USERNAME as ADDED_BY_USERNAME,
                 p.DATA_SOURCE
             FROM player_list_items pli

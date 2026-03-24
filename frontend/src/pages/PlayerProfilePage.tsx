@@ -35,7 +35,7 @@ import IntelModal from "../components/IntelModal";
 import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import { getPerformanceScoreColor, getFlagColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
+import { getPerformanceScoreColor, getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import {
   PlayerProfile,
@@ -344,23 +344,38 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   // Helper functions for intel cards
-  const formatActionRequired = (action: string) => {
+  const formatRecommendation = (recommendation?: string) => {
+    if (!recommendation) return "Not specified";
     const formatted: { [key: string]: string } = {
       "discuss urgently": "Discuss Urgently",
       "monitor": "Monitor",
       "beyond us": "Beyond Us",
       "no action": "No Action",
     };
-    return formatted[action.toLowerCase()] || action;
+    return formatted[recommendation.toLowerCase()] || recommendation;
   };
 
-  const getActionRequiredBadge = (action: string) => {
+  const getRecommendationBadge = (recommendation?: string) => {
+    const backgroundColor = getRecommendationColor(recommendation || "");
     return (
-      <span className="badge badge-neutral-grey" style={{ fontSize: "0.875rem" }}>
-        {formatActionRequired(action)}
+      <span
+        className="badge"
+        style={{
+          fontSize: "0.875rem",
+          backgroundColor,
+          color: getContrastTextColor(backgroundColor),
+          fontWeight: 600,
+        }}
+      >
+        {formatRecommendation(recommendation)}
       </span>
     );
   };
+
+  const formatIntelType = (intelType?: string) =>
+    intelType === "general_note" ? "General Note" : "Player Information";
+
+  const isGeneralNoteIntel = (intel: any) => intel?.intel_type === "general_note";
 
   const formatDealTypes = (dealTypes: string[]) => {
     if (!dealTypes || dealTypes.length === 0) return "Not specified";
@@ -382,7 +397,7 @@ const PlayerProfilePage: React.FC = () => {
   const formatIntelInformationDate = (intel: any) =>
     intel?.date_of_information
       ? new Date(intel.date_of_information).toLocaleDateString("en-GB")
-      : "N/A";
+      : "—";
 
   const sortedIntelReports = profile?.intel_reports
     ? [...profile.intel_reports].sort(
@@ -1906,13 +1921,13 @@ const PlayerProfilePage: React.FC = () => {
               </span>
               <span className="summary-stat">
                 <strong>
-                  {profile.intel_reports.filter((intel) => intel.action_required === "Discuss Urgently").length}
+                  {profile.intel_reports.filter((intel) => ((intel.recommendation || intel.action_required || "").toLowerCase() === "discuss urgently")).length}
                 </strong>{" "}
                 urgent
               </span>
               <span className="summary-stat">
                 <strong>
-                  {new Set(profile.intel_reports.map((intel) => intel.contact_name)).size}
+                  {new Set(profile.intel_reports.map((intel) => intel.contact_name).filter(Boolean)).size}
                 </strong>{" "}
                 different contacts
               </span>
@@ -1941,6 +1956,7 @@ const PlayerProfilePage: React.FC = () => {
                           <th>Contact Organisation</th>
                           <th>Contract Expiry</th>
                           <th>Deal Types</th>
+                          <th>Recommendation</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -1955,17 +1971,22 @@ const PlayerProfilePage: React.FC = () => {
                                 {formatIntelInformationDate(intel)}
                               </td>
                               <td>{intel.submitted_by || "Unknown"}</td>
-                              <td>{intel.contact_name || "N/A"}</td>
-                              <td>{intel.contact_organisation || "N/A"}</td>
+                              <td>{intel.contact_name || "—"}</td>
+                              <td>{intel.contact_organisation || "—"}</td>
                               <td>
-                                {intel.confirmed_contract_expiry
+                                {!isGeneralNoteIntel(intel) && intel.confirmed_contract_expiry
                                   ? new Date(
                                       intel.confirmed_contract_expiry,
                                     ).toLocaleDateString("en-GB")
-                                  : "Not specified"}
+                                  : "—"}
                               </td>
                               <td>
-                                {formatDealTypes(intel.potential_deal_types)}
+                                {isGeneralNoteIntel(intel) ? "—" : formatDealTypes(intel.potential_deal_types)}
+                              </td>
+                              <td>
+                                {isGeneralNoteIntel(intel)
+                                  ? "—"
+                                  : getRecommendationBadge(intel.recommendation || intel.action_required)}
                               </td>
                               <td>
                                 <div
@@ -2062,7 +2083,7 @@ const PlayerProfilePage: React.FC = () => {
                                           {intel.contact_name || "Unknown Contact"}
                                         </div>
                                         <small className="text-muted d-block">
-                                          Intel Report
+                                          {formatIntelType(intel.intel_type)}
                                         </small>
                                       </div>
                                     </Col>
@@ -2085,21 +2106,7 @@ const PlayerProfilePage: React.FC = () => {
                                     {/* Left: Organisation & Contract Info */}
                                     <Col xs={6}>
                                       <div>
-                                        {intel.transfer_fee && (
-                                          <small
-                                            className="text-muted d-block mb-1"
-                                            style={{
-                                              fontSize: "0.75rem",
-                                              lineHeight: "1.2",
-                                            }}
-                                          >
-                                            <span className="fw-semibold">
-                                              Transfer Fee:
-                                            </span>{" "}
-                                            {intel.transfer_fee}
-                                          </small>
-                                        )}
-                                        {intel.confirmed_contract_expiry && (
+                                        {isGeneralNoteIntel(intel) ? (
                                           <small
                                             className="text-muted d-block"
                                             style={{
@@ -2107,22 +2114,54 @@ const PlayerProfilePage: React.FC = () => {
                                               lineHeight: "1.2",
                                             }}
                                           >
-                                            <span className="fw-semibold">Expiry:</span>{" "}
-                                            {new Date(
-                                              intel.confirmed_contract_expiry,
-                                            ).toLocaleDateString("en-GB")}
+                                            {intel.notes || intel.conversation_notes || "—"}
                                           </small>
+                                        ) : (
+                                          <>
+                                            {intel.transfer_fee && (
+                                              <small
+                                                className="text-muted d-block mb-1"
+                                                style={{
+                                                  fontSize: "0.75rem",
+                                                  lineHeight: "1.2",
+                                                }}
+                                              >
+                                                <span className="fw-semibold">
+                                                  Transfer Fee:
+                                                </span>{" "}
+                                                {intel.transfer_fee}
+                                              </small>
+                                            )}
+                                            {intel.confirmed_contract_expiry && (
+                                              <small
+                                                className="text-muted d-block"
+                                                style={{
+                                                  fontSize: "0.75rem",
+                                                  lineHeight: "1.2",
+                                                }}
+                                              >
+                                                <span className="fw-semibold">Expiry:</span>{" "}
+                                                {new Date(
+                                                  intel.confirmed_contract_expiry,
+                                                ).toLocaleDateString("en-GB")}
+                                              </small>
+                                            )}
+                                          </>
                                         )}
                                       </div>
                                     </Col>
 
-                                    {/* Right: Action Required */}
+                                    {/* Right: Recommendation */}
                                     <Col xs={6} className="text-end">
                                       <div>
                                         <small className="text-muted fw-semibold d-block">
-                                          Action
+                                          {isGeneralNoteIntel(intel) ? "Type" : "Recommendation"}
                                         </small>
-                                        {getActionRequiredBadge(intel.action_required)}
+                                        {isGeneralNoteIntel(intel) ? (
+                                          <small className="text-muted">{formatIntelType(intel.intel_type)}</small>
+                                        ) : (
+                                          getRecommendationBadge(intel.recommendation || intel.action_required)
+                                        )}
                                       </div>
                                     </Col>
                                   </Row>
@@ -2132,12 +2171,18 @@ const PlayerProfilePage: React.FC = () => {
                                     {/* Left: Deal Info */}
                                     <Col xs={6}>
                                       <div className="d-flex align-items-center gap-1">
-                                        {intel.potential_deal_types &&
+                                        {isGeneralNoteIntel(intel) ? (
+                                          <small className="text-muted fw-semibold me-1">
+                                            General Note
+                                          </small>
+                                        ) : (
+                                          intel.potential_deal_types &&
                                           intel.potential_deal_types.length > 0 && (
                                             <small className="text-muted fw-semibold me-1">
                                               {formatDealTypes(intel.potential_deal_types)}
                                             </small>
-                                          )}
+                                          )
+                                        )}
                                       </div>
                                     </Col>
 

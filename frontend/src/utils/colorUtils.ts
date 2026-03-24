@@ -109,6 +109,25 @@ export const getFlagColor = (flagType: string): string => {
 };
 
 /**
+ * Recommendation colors for intel reports.
+ * Matches the visual intent used in the intel modal states.
+ */
+export const getRecommendationColor = (recommendation: string): string => {
+  switch (recommendation?.toLowerCase()) {
+    case "discuss urgently":
+      return "#dc3545";
+    case "monitor":
+      return "#f59e0b";
+    case "beyond us":
+      return "#6c757d";
+    case "no action":
+      return "#f8f9fa";
+    default:
+      return "#6c757d";
+  }
+};
+
+/**
  * Get text color (white/black) based on background color
  * For optimal contrast and readability
  */

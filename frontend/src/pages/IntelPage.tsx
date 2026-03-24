@@ -22,22 +22,26 @@ import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
+import { getRecommendationColor, getContrastTextColor } from "../utils/colorUtils";
 
 interface IntelReport {
   intel_id: number;
   created_at: string;
   player_name: string;
-  contact_name: string;
-  contact_organisation: string;
-  date_of_information: string;
+  contact_name: string | null;
+  contact_organisation: string | null;
+  date_of_information: string | null;
   confirmed_contract_expiry: string | null;
   contract_options: string | null;
   potential_deal_types: string[];
   transfer_fee: string | null;
   current_wages: string | null;
   expected_wages: string | null;
-  conversation_notes: string;
-  action_required: string;
+  conversation_notes: string | null;
+  notes?: string | null;
+  recommendation?: string | null;
+  action_required?: string | null;
+  intel_type?: "player_information" | "general_note";
   player_id: number | null;
   universal_id?: string;
   position?: string;
@@ -62,7 +66,7 @@ const IntelPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   // Advanced filters
-  const [actionFilter, setActionFilter] = useState("");
+  const [recommendationFilter, setRecommendationFilter] = useState("");
   const [contactNameFilter, setContactNameFilter] = useState("");
   const [playerNameFilter, setPlayerNameFilter] = useState("");
   const [dateFromFilter, setDateFromFilter] = useState("");
@@ -102,8 +106,8 @@ const IntelPage: React.FC = () => {
         }
 
         // Add server-side filters
-        if (actionFilter) {
-          params.action_required = actionFilter;
+        if (recommendationFilter) {
+          params.recommendation = recommendationFilter;
         }
         if (contactNameFilter) {
           params.contact_name = contactNameFilter;
@@ -136,7 +140,7 @@ const IntelPage: React.FC = () => {
     [
       recencyFilter,
       itemsPerPage,
-      actionFilter,
+      recommendationFilter,
       contactNameFilter,
       playerNameFilter,
       dateFromFilter,
@@ -240,7 +244,7 @@ const IntelPage: React.FC = () => {
   }, [
     token,
     recencyFilter,
-    actionFilter,
+    recommendationFilter,
     contactNameFilter,
     playerNameFilter,
     dateFromFilter,
@@ -275,20 +279,38 @@ const IntelPage: React.FC = () => {
     setShowIntelReportModal(true);
   };
 
-  const formatActionRequired = (action: string) => {
+  const formatRecommendation = (recommendation?: string | null) => {
+    if (!recommendation) return "Not specified";
     const formatted: { [key: string]: string } = {
       "discuss urgently": "Discuss Urgently",
       "monitor": "Monitor",
       "beyond us": "Beyond Us",
       "no action": "No Action",
     };
-    return formatted[action.toLowerCase()] || action;
+    return formatted[recommendation.toLowerCase()] || recommendation;
   };
 
-  const getActionRequiredBadge = (action: string) => {
+  const formatIntelType = (intelType?: string) =>
+    intelType === "general_note" ? "General Note" : "Player Information";
+
+  const isGeneralNote = (report: IntelReport) => report.intel_type === "general_note";
+
+  const renderRecommendationCell = (report: IntelReport) =>
+    isGeneralNote(report) ? "—" : getRecommendationBadge(report.recommendation || report.action_required);
+
+  const getRecommendationBadge = (recommendation?: string | null) => {
+    const backgroundColor = getRecommendationColor(recommendation || "");
     return (
-      <span className="badge badge-neutral-grey" style={{ fontSize: "0.875rem" }}>
-        {formatActionRequired(action)}
+      <span
+        className="badge"
+        style={{
+          fontSize: "0.875rem",
+          backgroundColor,
+          color: getContrastTextColor(backgroundColor),
+          fontWeight: 600,
+        }}
+      >
+        {formatRecommendation(recommendation)}
       </span>
     );
   };
@@ -478,7 +500,7 @@ const IntelPage: React.FC = () => {
         </Card.Header>
         <Collapse in={showFilters}>
           <Card.Body className="filter-section-improved">
-            {/* Row 1: Player Name, Contact Name, Action Required */}
+            {/* Row 1: Player Name, Contact Name, Recommendation */}
             <Row className="mb-3">
               <Col md={4}>
                 <Form.Group>
@@ -507,12 +529,12 @@ const IntelPage: React.FC = () => {
               <Col md={4}>
                 <Form.Group>
                   <Form.Label className="small fw-bold">
-                    Action Required
+                    Recommendation
                   </Form.Label>
                   <Form.Select
                     size="sm"
-                    value={actionFilter}
-                    onChange={(e) => setActionFilter(e.target.value)}
+                    value={recommendationFilter}
+                    onChange={(e) => setRecommendationFilter(e.target.value)}
                   >
                     <option value="">All</option>
                     <option value="beyond us">Beyond Us</option>
@@ -558,7 +580,7 @@ const IntelPage: React.FC = () => {
                     variant="outline-secondary"
                     size="sm"
                     onClick={() => {
-                      setActionFilter("");
+                      setRecommendationFilter("");
                       setContactNameFilter("");
                       setPlayerNameFilter("");
                       setDateFromFilter("");
@@ -598,6 +620,7 @@ const IntelPage: React.FC = () => {
                     <th>Contact Organisation</th>
                     <th>Contract Expiry</th>
                     <th>Deal Types</th>
+                    <th>Recommendation</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -636,18 +659,19 @@ const IntelPage: React.FC = () => {
                         )}
                       </td>
                       <td>{report.submitted_by || "Unknown"}</td>
-                      <td>{report.contact_name}</td>
-                      <td>{report.contact_organisation}</td>
+                      <td>{report.contact_name || "—"}</td>
+                      <td>{report.contact_organisation || "—"}</td>
                       <td>
-                        {report.confirmed_contract_expiry
+                        {!isGeneralNote(report) && report.confirmed_contract_expiry
                           ? new Date(
                               report.confirmed_contract_expiry,
                             ).toLocaleDateString("en-GB")
-                          : "Not specified"}
+                          : "—"}
                       </td>
                       <td>
-                        {formatDealTypes(report.potential_deal_types)}
+                        {isGeneralNote(report) ? "—" : formatDealTypes(report.potential_deal_types)}
                       </td>
+                      <td>{renderRecommendationCell(report)}</td>
                       <td>
                         <div
                           className="btn-group"
@@ -751,7 +775,7 @@ const IntelPage: React.FC = () => {
                               </div>
                             )}
                             <small className="text-muted d-block">
-                              Intel Report
+                              {formatIntelType(report.intel_type)}
                             </small>
                           </div>
                         </Col>
@@ -760,7 +784,7 @@ const IntelPage: React.FC = () => {
                         <Col xs={6} className="text-end">
                           <div>
                             <small className="text-muted d-block">
-                              {report.contact_name}
+                              {report.contact_name || "N/A"}
                             </small>
                             <small className="text-muted d-block">
                               {formatReportDate(report)}
@@ -774,19 +798,7 @@ const IntelPage: React.FC = () => {
                         {/* Left: Contact Info */}
                         <Col xs={6}>
                           <div>
-                            <small
-                              className="text-muted d-block mb-1"
-                              style={{
-                                fontSize: "0.75rem",
-                                lineHeight: "1.2",
-                              }}
-                            >
-                              <span className="fw-semibold">
-                                Organisation:
-                              </span>{" "}
-                              {report.contact_organisation}
-                            </small>
-                            {report.confirmed_contract_expiry && (
+                            {isGeneralNote(report) ? (
                               <small
                                 className="text-muted d-block"
                                 style={{
@@ -794,22 +806,48 @@ const IntelPage: React.FC = () => {
                                   lineHeight: "1.2",
                                 }}
                               >
-                                <span className="fw-semibold">Expiry:</span>{" "}
-                                {new Date(
-                                  report.confirmed_contract_expiry,
-                                ).toLocaleDateString("en-GB")}
+                                {report.notes || report.conversation_notes || "—"}
                               </small>
+                            ) : (
+                              <>
+                                <small
+                                  className="text-muted d-block mb-1"
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    lineHeight: "1.2",
+                                  }}
+                                >
+                                  <span className="fw-semibold">Organisation:</span>{" "}
+                                  {report.contact_organisation || "N/A"}
+                                </small>
+                                {report.confirmed_contract_expiry && (
+                                  <small
+                                    className="text-muted d-block"
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      lineHeight: "1.2",
+                                    }}
+                                  >
+                                    <span className="fw-semibold">Expiry:</span>{" "}
+                                    {new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")}
+                                  </small>
+                                )}
+                              </>
                             )}
                           </div>
                         </Col>
 
-                        {/* Right: Action Required */}
+                        {/* Right: Recommendation */}
                         <Col xs={6} className="text-end">
                           <div>
                             <small className="text-muted fw-semibold d-block">
-                              Action
+                              {isGeneralNote(report) ? "Type" : "Recommendation"}
                             </small>
-                            {getActionRequiredBadge(report.action_required)}
+                            {isGeneralNote(report) ? (
+                              <small className="text-muted">{formatIntelType(report.intel_type)}</small>
+                            ) : (
+                              getRecommendationBadge(report.recommendation || report.action_required)
+                            )}
                           </div>
                         </Col>
                       </Row>
@@ -819,12 +857,18 @@ const IntelPage: React.FC = () => {
                         {/* Left: Deal Info */}
                         <Col xs={6}>
                           <div className="d-flex align-items-center gap-1">
-                            {report.potential_deal_types &&
+                            {isGeneralNote(report) ? (
+                              <small className="text-muted fw-semibold me-1">
+                                General Note
+                              </small>
+                            ) : (
+                              report.potential_deal_types &&
                               report.potential_deal_types.length > 0 && (
                                 <small className="text-muted fw-semibold me-1">
                                   {formatDealTypes(report.potential_deal_types)}
                                 </small>
-                              )}
+                              )
+                            )}
                           </div>
                         </Col>
 
