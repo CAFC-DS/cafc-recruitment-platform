@@ -25,7 +25,8 @@ import { getPlayerProfilePath } from "../utils/playerNavigation";
 import { getRecommendationColor, getContrastTextColor } from "../utils/colorUtils";
 
 interface IntelReport {
-  intel_id: number;
+  intel_id?: number | null;
+  id?: number | null;
   created_at: string;
   player_name: string;
   contact_name: string | null;
@@ -341,6 +342,8 @@ const IntelPage: React.FC = () => {
       ? new Date(report.date_of_information).toLocaleDateString("en-GB")
       : "N/A";
 
+  const getIntelReportId = (report: IntelReport) => report.intel_id ?? report.id ?? null;
+
   const filteredIntelReports = intelReports;
   const totalPages = Math.ceil(totalReports / itemsPerPage);
 
@@ -634,82 +637,86 @@ const IntelPage: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredIntelReports.map((report) => (
-                    <tr key={report.intel_id}>
-                      <td>
-                        {formatReportDate(report)}
-                      </td>
-                      <td>
-                        {formatInformationDate(report)}
-                      </td>
-                      <td>
-                        {report.player_id ? (
-                          <a
-                            href={getPlayerProfilePath(report as any)}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              navigate(getPlayerProfilePath(report as any));
-                            }}
-                            style={{ textDecoration: "none", color: "#0d6efd", cursor: "pointer" }}
-                          >
-                            {report.player_name}
-                          </a>
-                        ) : (
-                          <span>{report.player_name || "N/A"}</span>
-                        )}
-                      </td>
-                      <td>{report.submitted_by || "Unknown"}</td>
-                      <td>{report.contact_name || "—"}</td>
-                      <td>{report.contact_organisation || "—"}</td>
-                      <td>
-                        {!isGeneralNote(report) && report.confirmed_contract_expiry
-                          ? new Date(
-                              report.confirmed_contract_expiry,
-                            ).toLocaleDateString("en-GB")
-                          : "—"}
-                      </td>
-                      <td>
-                        {isGeneralNote(report) ? "—" : formatDealTypes(report.potential_deal_types)}
-                      </td>
-                      <td>{renderRecommendationCell(report)}</td>
-                      <td>
-                        <div
-                          className="btn-group"
-                          style={{ justifyContent: "center" }}
-                        >
-                          <Button
-                            size="sm"
-                            onClick={() => handleViewIntelReport(report.intel_id)}
-                            title="View Intel Report"
-                            className="btn-action-circle btn-action-view"
-                          >
-                            👁️
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleEditReport(report.intel_id)}
-                            disabled={loadingReportId === report.intel_id}
-                            title="Edit"
-                            className="btn-action-circle btn-action-edit"
-                          >
-                            {loadingReportId === report.intel_id ? (
-                              <Spinner as="span" animation="border" size="sm" />
+                    filteredIntelReports.map((report) => {
+                      const reportId = getIntelReportId(report);
+                      const isActionLoading =
+                        reportId !== null && loadingReportId === reportId;
+
+                      return (
+                        <tr key={reportId ?? `intel-report-${report.created_at}-${report.player_name}`}>
+                          <td>{formatReportDate(report)}</td>
+                          <td>{formatInformationDate(report)}</td>
+                          <td>
+                            {report.player_id ? (
+                              <a
+                                href={getPlayerProfilePath(report as any)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  navigate(getPlayerProfilePath(report as any));
+                                }}
+                                style={{
+                                  textDecoration: "none",
+                                  color: "#0d6efd",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {report.player_name}
+                              </a>
                             ) : (
-                              "✏️"
+                              <span>{report.player_name || "N/A"}</span>
                             )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleDeleteReport(report.intel_id)}
-                            title="Delete"
-                            className="btn-action-circle btn-action-delete"
-                          >
-                            🗑️
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )))}
+                          </td>
+                          <td>{report.submitted_by || "Unknown"}</td>
+                          <td>{report.contact_name || "—"}</td>
+                          <td>{report.contact_organisation || "—"}</td>
+                          <td>
+                            {!isGeneralNote(report) && report.confirmed_contract_expiry
+                              ? new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")
+                              : "—"}
+                          </td>
+                          <td>
+                            {isGeneralNote(report) ? "—" : formatDealTypes(report.potential_deal_types)}
+                          </td>
+                          <td>{renderRecommendationCell(report)}</td>
+                          <td>
+                            <div className="btn-group" style={{ justifyContent: "center" }}>
+                              <Button
+                                size="sm"
+                                onClick={() => reportId !== null && handleViewIntelReport(reportId)}
+                                disabled={reportId === null}
+                                title="View Intel Report"
+                                className="btn-action-circle btn-action-view"
+                              >
+                                👁️
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => reportId !== null && handleEditReport(reportId)}
+                                disabled={reportId === null || isActionLoading}
+                                title="Edit"
+                                className="btn-action-circle btn-action-edit"
+                              >
+                                {isActionLoading ? (
+                                  <Spinner as="span" animation="border" size="sm" />
+                                ) : (
+                                  "✏️"
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => reportId !== null && handleDeleteReport(reportId)}
+                                disabled={reportId === null}
+                                title="Delete"
+                                className="btn-action-circle btn-action-delete"
+                              >
+                                🗑️
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </Table>
             </div>
@@ -724,12 +731,17 @@ const IntelPage: React.FC = () => {
                   </div>
                 </Col>
               ) : (
-                filteredIntelReports.map((report) => (
+                filteredIntelReports.map((report) => {
+                  const reportId = getIntelReportId(report);
+                  const isActionLoading =
+                    reportId !== null && loadingReportId === reportId;
+
+                  return (
                 <Col
                   sm={6}
                   md={4}
                   lg={3}
-                  key={report.intel_id}
+                  key={reportId ?? `intel-card-${report.created_at}-${report.player_name}`}
                   className="mb-4"
                 >
                   <Card
@@ -878,9 +890,8 @@ const IntelPage: React.FC = () => {
                             <Button
                               size="sm"
                               className="btn-action-circle btn-action-view"
-                              onClick={() =>
-                                handleViewIntelReport(report.intel_id)
-                              }
+                              onClick={() => reportId !== null && handleViewIntelReport(reportId)}
+                              disabled={reportId === null}
                               title="View Report"
                             >
                               👁️
@@ -889,10 +900,10 @@ const IntelPage: React.FC = () => {
                               size="sm"
                               className="btn-action-circle btn-action-edit"
                               title="Edit"
-                              onClick={() => handleEditReport(report.intel_id)}
-                              disabled={loadingReportId === report.intel_id}
+                              onClick={() => reportId !== null && handleEditReport(reportId)}
+                              disabled={reportId === null || isActionLoading}
                             >
-                              {loadingReportId === report.intel_id ? (
+                              {isActionLoading ? (
                                 <Spinner
                                   as="span"
                                   animation="border"
@@ -906,9 +917,8 @@ const IntelPage: React.FC = () => {
                               size="sm"
                               className="btn-action-circle btn-action-delete"
                               title="Delete"
-                              onClick={() =>
-                                handleDeleteReport(report.intel_id)
-                              }
+                              onClick={() => reportId !== null && handleDeleteReport(reportId)}
+                              disabled={reportId === null}
                             >
                               🗑️
                             </Button>
@@ -918,7 +928,9 @@ const IntelPage: React.FC = () => {
                     </Card.Body>
                   </Card>
                 </Col>
-              )))}
+                  );
+                })
+              )}
             </Row>
           )}
 

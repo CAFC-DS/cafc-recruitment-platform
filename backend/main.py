@@ -230,6 +230,8 @@ def load_table_schemas():
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        ensure_player_stage_history_table(cursor)
+        ensure_player_stage_history_table(cursor)
 
         # Load schemas for frequently-checked tables
         tables_to_cache = [
@@ -269,6 +271,13 @@ def has_column(table_name: str, column_name: str) -> bool:
     """Check if a table has a specific column using cached schema"""
     columns = get_table_columns(table_name)
     return column_name in columns
+
+
+def get_next_table_id(cursor, table_name: str) -> int:
+    """Generate the next integer ID for legacy tables that do not auto-increment."""
+    cursor.execute(f"SELECT COALESCE(MAX(ID), 0) + 1 FROM {table_name}")
+    next_id = cursor.fetchone()
+    return int(next_id[0]) if next_id and next_id[0] is not None else 1
 
 
 def refresh_table_schema(table_name: str):
@@ -812,6 +821,74 @@ ARCHIVED_REASONS = [
     "Suitability",
     "Medical"
 ]
+
+
+def ensure_player_stage_history_table(cursor):
+    """Create player_stage_history table and indexes if needed."""
+    try:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS player_stage_history (
+                ID INTEGER AUTOINCREMENT,
+                LIST_ITEM_ID INTEGER NOT NULL,
+                LIST_ID INTEGER NOT NULL,
+                PLAYER_ID INTEGER,
+                OLD_STAGE VARCHAR(100),
+                NEW_STAGE VARCHAR(100) NOT NULL,
+                REASON VARCHAR(255) NOT NULL,
+                DESCRIPTION VARCHAR(2000),
+                CHANGED_BY INTEGER NOT NULL,
+                CHANGED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (ID),
+                FOREIGN KEY (LIST_ITEM_ID) REFERENCES player_list_items(ID),
+                FOREIGN KEY (LIST_ID) REFERENCES player_lists(ID),
+                FOREIGN KEY (CHANGED_BY) REFERENCES users(ID)
+            )
+        """
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_psh_list_item_id ON player_stage_history(LIST_ITEM_ID)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_psh_list_id ON player_stage_history(LIST_ID)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_psh_player_id ON player_stage_history(PLAYER_ID)"
+        )
+    except Exception as e:
+        logging.debug(f"player_stage_history table/indexes may already exist: {e}")
+
+
+def insert_player_stage_history_record(
+    cursor,
+    list_item_id: int,
+    list_id: int,
+    player_id: Optional[int],
+    old_stage: Optional[str],
+    new_stage: str,
+    changed_by: int,
+    reason: Optional[str] = None,
+    description: Optional[str] = None,
+    changed_at: Optional[datetime] = None,
+):
+    cursor.execute(
+        """
+        INSERT INTO player_stage_history
+        (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY, CHANGED_AT)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP))
+    """,
+        (
+            list_item_id,
+            list_id,
+            player_id,
+            old_stage,
+            new_stage,
+            reason or "",
+            description,
+            changed_by,
+            changed_at,
+        ),
+    )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -9001,6 +9078,7 @@ async def create_intel_report(
 
         
         # Check which columns exist (using cached schema)
+        has_id = has_column("player_information", "ID")
         has_player_id = has_column("player_information", "PLAYER_ID")
         has_user_id = has_column("player_information", "USER_ID")
         has_created_at = has_column("player_information", "CREATED_AT")
@@ -9045,6 +9123,11 @@ async def create_intel_report(
         sql_columns = ["CREATED_AT"]
         sql_values = ["%s"]
         params = [datetime.utcnow()]
+
+        if has_id:
+            sql_columns.insert(0, "ID")
+            sql_values.insert(0, "%s")
+            params.insert(0, get_next_table_id(cursor, "player_information"))
 
         # Add fields based on the report and table structure
         if has_player_id:
@@ -9131,9 +9214,14 @@ async def create_intel_report(
             VALUES ({', '.join(sql_values)})
         """
 
+        inserted_report_id = params[0] if has_id else None
+
         cursor.execute(sql, tuple(params))
         conn.commit()
-        return {"message": "Intel report submitted successfully"}
+        return {
+            "message": "Intel report submitted successfully",
+            "intel_id": inserted_report_id,
+        }
 
     except HTTPException:
         if conn:
@@ -13066,33 +13154,7 @@ async def add_player_to_list(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Create player_stage_history table if it doesn't exist (lazy initialization)
-        try:
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS player_stage_history (
-                    ID INTEGER AUTOINCREMENT,
-                    LIST_ITEM_ID INTEGER NOT NULL,
-                    LIST_ID INTEGER NOT NULL,
-                    PLAYER_ID INTEGER,
-                    OLD_STAGE VARCHAR(100),
-                    NEW_STAGE VARCHAR(100) NOT NULL,
-                    REASON VARCHAR(255) NOT NULL,
-                    DESCRIPTION VARCHAR(2000),
-                    CHANGED_BY INTEGER NOT NULL,
-                    CHANGED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (ID),
-                    FOREIGN KEY (LIST_ITEM_ID) REFERENCES player_list_items(ID),
-                    FOREIGN KEY (LIST_ID) REFERENCES player_lists(ID),
-                    FOREIGN KEY (CHANGED_BY) REFERENCES users(ID)
-                )
-            """
-            )
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_item_id ON player_stage_history(LIST_ITEM_ID)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_list_id ON player_stage_history(LIST_ID)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_psh_player_id ON player_stage_history(PLAYER_ID)")
-        except Exception as e:
-            logging.debug(f"player_stage_history table/indexes may already exist: {e}")
+        ensure_player_stage_history_table(cursor)
 
         # Check if list exists
         cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
@@ -13163,22 +13225,16 @@ async def add_player_to_list(
         list_item_id = cursor.fetchone()[0]
 
         # Insert stage history record for initial addition
-        cursor.execute(
-            """
-            INSERT INTO player_stage_history
-            (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-            (
-                list_item_id,
-                list_id,
-                player_data.player_id or player_data.cafc_player_id,
-                None,  # No old stage for initial addition
-                player_data.stage or "Stage 1",
-                player_data.reason,
-                player_data.description,
-                current_user.id,
-            ),
+        insert_player_stage_history_record(
+            cursor=cursor,
+            list_item_id=list_item_id,
+            list_id=list_id,
+            player_id=player_data.player_id or player_data.cafc_player_id,
+            old_stage=None,
+            new_stage=player_data.stage or "Stage 1",
+            reason=player_data.reason,
+            description=player_data.description,
+            changed_by=current_user.id,
         )
 
         # Update list timestamp
@@ -13406,24 +13462,17 @@ async def update_player_stage(
             (stage_data.stage, item_id, list_id),
         )
 
-        # Insert history record if moving to Stage 1, Archived, or auto-advanced to Stage 2
-        if stage_data.stage in ["Stage 1", "Archived"] or (stage_data.stage == "Stage 2" and stage_data.reason in STAGE_2_AUTO_ADVANCE_REASONS):
-            cursor.execute(
-                """
-                INSERT INTO player_stage_history
-                (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-                (
-                    item_id,
-                    list_id,
-                    player_id,
-                    old_stage,
-                    stage_data.stage,
-                    stage_data.reason,
-                    stage_data.description,
-                    current_user.id,
-                ),
+        if old_stage != stage_data.stage:
+            insert_player_stage_history_record(
+                cursor=cursor,
+                list_item_id=item_id,
+                list_id=list_id,
+                player_id=player_id,
+                old_stage=old_stage,
+                new_stage=stage_data.stage,
+                reason=stage_data.reason,
+                description=stage_data.description,
+                changed_by=current_user.id,
             )
 
         # Update list timestamp
@@ -13558,26 +13607,17 @@ async def bulk_update_player_stages(
                 (target_stage, item_id, list_id),
             )
 
-            # Insert history record using same conditions as single-update endpoint
-            if target_stage in ["Stage 1", "Archived"] or (
-                target_stage == "Stage 2" and reason in STAGE_2_AUTO_ADVANCE_REASONS
-            ):
-                cursor.execute(
-                    """
-                    INSERT INTO player_stage_history
-                    (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                    (
-                        item_id,
-                        list_id,
-                        player_id,
-                        old_stage,
-                        target_stage,
-                        reason,
-                        description,
-                        current_user.id,
-                    ),
+            if old_stage != target_stage:
+                insert_player_stage_history_record(
+                    cursor=cursor,
+                    list_item_id=item_id,
+                    list_id=list_id,
+                    player_id=player_id,
+                    old_stage=old_stage,
+                    new_stage=target_stage,
+                    reason=reason,
+                    description=description,
+                    changed_by=current_user.id,
                 )
 
             updated_count += 1

@@ -399,6 +399,8 @@ const PlayerProfilePage: React.FC = () => {
       ? new Date(intel.date_of_information).toLocaleDateString("en-GB")
       : "—";
 
+  const getIntelReportId = (intel: any) => intel?.intel_id ?? intel?.id ?? null;
+
   const sortedIntelReports = profile?.intel_reports
     ? [...profile.intel_reports].sort(
         (a: any, b: any) =>
@@ -1962,8 +1964,12 @@ const PlayerProfilePage: React.FC = () => {
                       </thead>
                       <tbody>
                         {sortedIntelReports.map((intel) => {
+                          const intelReportId = getIntelReportId(intel);
+                          const isActionLoading =
+                            intelReportId !== null && loadingReportId === intelReportId;
+
                           return (
-                            <tr key={intel.intel_id}>
+                            <tr key={intelReportId ?? `intel-report-${intel.created_at}-${intel.contact_name}`}>
                               <td>
                                 {formatIntelReportDate(intel)}
                               </td>
@@ -1996,9 +2002,12 @@ const PlayerProfilePage: React.FC = () => {
                                   <Button
                                     size="sm"
                                     onClick={() => {
-                                      setSelectedIntelId(intel.intel_id);
-                                      setShowIntelModal(true);
+                                      if (intelReportId !== null) {
+                                        setSelectedIntelId(intelReportId);
+                                        setShowIntelModal(true);
+                                      }
                                     }}
+                                    disabled={intelReportId === null}
                                     title="View Intel Report"
                                     className="btn-action-circle btn-action-view"
                                   >
@@ -2006,12 +2015,12 @@ const PlayerProfilePage: React.FC = () => {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    onClick={() => handleEditIntelReport(intel.intel_id)}
-                                    disabled={loadingReportId === intel.intel_id}
+                                    onClick={() => intelReportId !== null && handleEditIntelReport(intelReportId)}
+                                    disabled={intelReportId === null || isActionLoading}
                                     title="Edit"
                                     className="btn-action-circle btn-action-edit"
                                   >
-                                    {loadingReportId === intel.intel_id ? (
+                                    {isActionLoading ? (
                                       <Spinner as="span" animation="border" size="sm" />
                                     ) : (
                                       "✏️"
@@ -2019,7 +2028,8 @@ const PlayerProfilePage: React.FC = () => {
                                   </Button>
                                   <Button
                                     size="sm"
-                                    onClick={() => handleDeleteIntelReport(intel.intel_id)}
+                                    onClick={() => intelReportId !== null && handleDeleteIntelReport(intelReportId)}
+                                    disabled={intelReportId === null}
                                     title="Delete"
                                     className="btn-action-circle btn-action-delete"
                                   >
@@ -2044,9 +2054,13 @@ const PlayerProfilePage: React.FC = () => {
                   }}>
                       <Row>
                         {sortedIntelReports.map((intel) => {
+                          const intelReportId = getIntelReportId(intel);
+                          const isActionLoading =
+                            intelReportId !== null && loadingReportId === intelReportId;
+
                           return (
                             <Col
-                              key={intel.intel_id}
+                              key={intelReportId ?? `intel-card-${intel.created_at}-${intel.contact_name}`}
                               className="mb-4"
                               xs={12}
                               sm={6}
@@ -2193,9 +2207,12 @@ const PlayerProfilePage: React.FC = () => {
                                           size="sm"
                                           className="btn-action-circle btn-action-view"
                                           onClick={() => {
-                                            setSelectedIntelId(intel.intel_id);
-                                            setShowIntelModal(true);
+                                            if (intelReportId !== null) {
+                                              setSelectedIntelId(intelReportId);
+                                              setShowIntelModal(true);
+                                            }
                                           }}
+                                          disabled={intelReportId === null}
                                           title="View Report"
                                         >
                                           👁️
@@ -2204,10 +2221,10 @@ const PlayerProfilePage: React.FC = () => {
                                           size="sm"
                                           className="btn-action-circle btn-action-edit"
                                           title="Edit"
-                                          onClick={() => handleEditIntelReport(intel.intel_id)}
-                                          disabled={loadingReportId === intel.intel_id}
+                                          onClick={() => intelReportId !== null && handleEditIntelReport(intelReportId)}
+                                          disabled={intelReportId === null || isActionLoading}
                                         >
-                                          {loadingReportId === intel.intel_id ? (
+                                          {isActionLoading ? (
                                             <Spinner
                                               as="span"
                                               animation="border"
@@ -2221,9 +2238,8 @@ const PlayerProfilePage: React.FC = () => {
                                           size="sm"
                                           className="btn-action-circle btn-action-delete"
                                           title="Delete"
-                                          onClick={() =>
-                                            handleDeleteIntelReport(intel.intel_id)
-                                          }
+                                          onClick={() => intelReportId !== null && handleDeleteIntelReport(intelReportId)}
+                                          disabled={intelReportId === null}
                                         >
                                           🗑️
                                         </Button>
