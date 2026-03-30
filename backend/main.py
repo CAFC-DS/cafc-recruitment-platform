@@ -585,6 +585,30 @@ def invalidate_cache(cache_key: str):
         del _cache_expiry[cache_key]
 
 
+def invalidate_cache_by_prefix(prefixes: list[str]):
+    """Invalidate all cache entries whose keys start with any provided prefix."""
+    keys_to_delete = [
+        cache_key
+        for cache_key in list(_data_cache.keys())
+        if any(cache_key.startswith(prefix) for prefix in prefixes)
+    ]
+
+    for cache_key in keys_to_delete:
+        invalidate_cache(cache_key)
+
+
+def invalidate_scout_report_caches():
+    """Clear derived scout report caches after scout report mutations."""
+    invalidate_cache_by_prefix(
+        [
+            "recent_reports_",
+            "top_attributes_",
+            "player_scout_reports_",
+            "player_position_counts_",
+        ]
+    )
+
+
 def _create_new_connection():
     """Create a new Snowflake connection"""
     pkb = get_private_key()
@@ -5426,6 +5450,7 @@ async def create_scout_report(
             )
 
         conn.commit()
+        invalidate_scout_report_caches()
 
         return {
             "message": "Scout report submitted successfully",
@@ -5639,6 +5664,7 @@ async def create_scout_reports_batch(
 
         # Commit the transaction
         conn.commit()
+        invalidate_scout_report_caches()
 
         return {
             "message": f"Successfully created {len(created_report_ids)} scout reports",
@@ -5830,6 +5856,7 @@ async def update_scout_report(
             )
 
         conn.commit()
+        invalidate_scout_report_caches()
         return {"message": "Scout report updated successfully", "report_id": report_id}
 
     except HTTPException:
@@ -5880,6 +5907,7 @@ async def delete_scout_report(
         cursor.execute("DELETE FROM scout_reports WHERE ID = %s", (report_id,))
 
         conn.commit()
+        invalidate_scout_report_caches()
         return {"message": "Scout report deleted successfully"}
 
     except HTTPException:
@@ -7846,6 +7874,7 @@ async def mark_report_viewed(
         )
 
         conn.commit()
+        invalidate_cache_by_prefix(["recent_reports_"])
         return {"success": True, "message": "Report marked as viewed"}
 
     except Exception as e:
@@ -7936,6 +7965,7 @@ async def mark_all_reports_viewed(current_user: User = Depends(get_current_user)
 
         cursor.execute(merge_sql, merge_params)
         conn.commit()
+        invalidate_cache_by_prefix(["recent_reports_"])
 
         logging.info(f"Marked {len(report_ids)} reports as viewed for user {current_user.username} (ID: {current_user.id})")
 
