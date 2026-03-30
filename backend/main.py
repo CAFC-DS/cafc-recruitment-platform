@@ -7002,7 +7002,9 @@ async def get_recent_scout_reports(
 
         # Apply recency filter
         if recency_days is not None and recency_days > 0:
-            where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_TIMESTAMP())")
+            # Match /scout_reports/all so "Last 7 Days" uses whole calendar days,
+            # not an exact rolling 7 x 24 hour window from the current time.
+            where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
             sql_params.append(recency_days)
 
         # Construct WHERE clause
@@ -7199,7 +7201,8 @@ async def get_top_attribute_reports(
 
         # Apply recency filter
         if recency_days is not None and recency_days > 0:
-            where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_TIMESTAMP())")
+            # Match /scout_reports/all so dashboard widgets use day boundaries.
+            where_clauses.append("sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())")
             sql_params.append(recency_days)
 
         # Construct WHERE clause
