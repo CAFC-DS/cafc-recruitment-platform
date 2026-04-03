@@ -74,6 +74,7 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
       "discuss urgently": "Discuss Urgently",
       monitor: "Monitor",
       "beyond us": "Beyond Us",
+      "unavailable": "Unavailable",
       "no action": "No Action",
     };
     return formatted[recommendation.toLowerCase()] || recommendation;

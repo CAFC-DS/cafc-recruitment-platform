@@ -62,6 +62,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
 
   const recommendationOptions = [
     { value: "beyond us", label: "Beyond Us" },
+    { value: "unavailable", label: "Unavailable" },
     { value: "discuss urgently", label: "Discuss Urgently" },
     { value: "monitor", label: "Monitor" },
     { value: "no action", label: "No Action" },

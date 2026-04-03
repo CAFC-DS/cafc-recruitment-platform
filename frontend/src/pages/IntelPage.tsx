@@ -286,6 +286,7 @@ const IntelPage: React.FC = () => {
       "discuss urgently": "Discuss Urgently",
       "monitor": "Monitor",
       "beyond us": "Beyond Us",
+      "unavailable": "Unavailable",
       "no action": "No Action",
     };
     return formatted[recommendation.toLowerCase()] || recommendation;
@@ -541,6 +542,7 @@ const IntelPage: React.FC = () => {
                   >
                     <option value="">All</option>
                     <option value="beyond us">Beyond Us</option>
+                    <option value="unavailable">Unavailable</option>
                     <option value="discuss urgently">Discuss Urgently</option>
                     <option value="monitor">Monitor</option>
                     <option value="no action">No Action</option>

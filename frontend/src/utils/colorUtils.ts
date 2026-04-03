@@ -119,6 +119,7 @@ export const getRecommendationColor = (recommendation: string): string => {
     case "monitor":
       return "#f59e0b";
     case "beyond us":
+    case "unavailable":
       return "#6c757d";
     case "no action":
       return "#f8f9fa";

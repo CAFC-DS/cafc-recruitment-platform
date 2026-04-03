@@ -37,6 +37,7 @@ import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getPerformanceScoreColor, getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
+import { getStageBgColor, getStageTextColor } from "../styles/playerLists.theme";
 import {
   PlayerProfile,
   PlayerAttributes,
@@ -350,6 +351,7 @@ const PlayerProfilePage: React.FC = () => {
       "discuss urgently": "Discuss Urgently",
       "monitor": "Monitor",
       "beyond us": "Beyond Us",
+      "unavailable": "Unavailable",
       "no action": "No Action",
     };
     return formatted[recommendation.toLowerCase()] || recommendation;
@@ -1132,16 +1134,6 @@ const PlayerProfilePage: React.FC = () => {
                 <Col md={6}>
                   {(() => {
                     const avgScore = calculateAveragePerformanceScore();
-                    const getStageColor = (stage: string) => {
-                      switch (stage) {
-                        case "Stage 1": return "#6c757d";
-                        case "Stage 2": return "#0dcaf0";
-                        case "Stage 3": return "#ffc107";
-                        case "Stage 4": return "#198754";
-                        case "Archived": return "#dc3545";
-                        default: return "#6c757d";
-                      }
-                    };
 
                     return (
                       <div className="info-group">
@@ -1181,8 +1173,8 @@ const PlayerProfilePage: React.FC = () => {
                                     key={index}
                                     className="badge stage-badge"
                                     style={{
-                                      backgroundColor: getStageColor(stageInfo.stage),
-                                      color: "white",
+                                      backgroundColor: getStageBgColor(stageInfo.stage),
+                                      color: getStageTextColor(stageInfo.stage),
                                       fontWeight: "500",
                                       fontSize: "0.8rem",
                                       padding: "0.3rem 0.6rem",
@@ -1197,8 +1189,8 @@ const PlayerProfilePage: React.FC = () => {
                                 <span
                                   className="badge stage-badge"
                                   style={{
-                                    backgroundColor: "#dc3545",
-                                    color: "white",
+                                    backgroundColor: getStageBgColor("Archived"),
+                                    color: getStageTextColor("Archived"),
                                     fontWeight: "500",
                                     fontSize: "0.8rem",
                                     padding: "0.3rem 0.6rem",
