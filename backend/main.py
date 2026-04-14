@@ -1944,6 +1944,14 @@ def build_recommendation_select():
         """
     else:
         avg_performance_expr = "NULL"
+
+    # Check if new columns exist
+    has_recommended_position = recommendation_column_exists("player_recommendations", "RECOMMENDED_POSITION")
+    has_player_dob = recommendation_column_exists("player_recommendations", "PLAYER_DATE_OF_BIRTH")
+
+    recommended_position_expr = "pr.RECOMMENDED_POSITION" if has_recommended_position else "NULL"
+    player_dob_expr = "pr.PLAYER_DATE_OF_BIRTH" if has_player_dob else "NULL"
+
     return """
         SELECT
             pr.ID,
@@ -1985,7 +1993,9 @@ def build_recommendation_select():
             u.LASTNAME,
             su.USERNAME,
             su.FIRSTNAME,
-            su.LASTNAME
+            su.LASTNAME,
+            {recommended_position_expr} AS RECOMMENDED_POSITION,
+            {player_dob_expr} AS PLAYER_DATE_OF_BIRTH
         FROM player_recommendations pr
         LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
@@ -1997,6 +2007,8 @@ def build_recommendation_select():
         expected_wages_amount_expr=expected_wages_amount_expr,
         expected_wages_currency_expr=expected_wages_currency_expr,
         avg_performance_expr=avg_performance_expr,
+        recommended_position_expr=recommended_position_expr,
+        player_dob_expr=player_dob_expr,
     )
 
 
@@ -2019,6 +2031,17 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         if transfer_fee_amount is not None
         else legacy_transfer_fee
     )
+
+    # Calculate age from date of birth
+    player_age = None
+    if row[41] and row[41]:  # PLAYER_DATE_OF_BIRTH
+        try:
+            from datetime import date
+            dob = row[41] if isinstance(row[41], date) else datetime.strptime(str(row[41]), "%Y-%m-%d").date()
+            today = date.today()
+            player_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        except:
+            player_age = None
 
     base_data = {
         "id": row[0],
@@ -2047,6 +2070,9 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agent_email": row[3],
         "agent_number": row[4],
         "avg_performance_score": format_decimal(row[33]),
+        "recommended_position": row[40],
+        "player_date_of_birth": serialize_datetime(row[41]),
+        "player_age": player_age,
     }
 
     if not include_internal:
@@ -2725,6 +2751,10 @@ async def list_internal_recommendations(
     created_from: Optional[str] = None,
     created_to: Optional[str] = None,
     player_name: Optional[str] = None,
+    position: Optional[str] = None,
+    deal_type: Optional[str] = None,
+    sort_by: Optional[str] = Query(None, description="Column to sort by"),
+    sort_order: Optional[str] = Query("desc", description="asc or desc"),
     page: int = 1,
     page_size: int = 25,
     current_user: User = Depends(require_internal_user),
@@ -2734,6 +2764,22 @@ async def list_internal_recommendations(
     page_size = min(max(page_size, 1), 100)
     if status_filter:
         validate_recommendation_status(status_filter)
+
+    # Validate sort parameters
+    allowed_sort_columns = {
+        "player_name": "pr.PLAYER_NAME",
+        "date": "pr.DATE",
+        "status": "pr.STATUS",
+        "agent_name": "pr.AGENT_NAME",
+        "agency": "pr.AGENCY",
+        "created_at": "pr.CREATED_AT",
+        "position": "pr.RECOMMENDED_POSITION",
+        "age": "pr.PLAYER_DATE_OF_BIRTH",
+    }
+
+    sort_order = sort_order.lower() if sort_order else "desc"
+    if sort_order not in ["asc", "desc"]:
+        sort_order = "desc"
 
     conn = None
     try:
@@ -2757,6 +2803,12 @@ async def list_internal_recommendations(
         if player_name:
             where_clauses.append("pr.PLAYER_NAME ILIKE %s")
             params.append(f"%{player_name}%")
+        if position:
+            where_clauses.append("pr.RECOMMENDED_POSITION ILIKE %s")
+            params.append(f"%{position}%")
+        if deal_type:
+            where_clauses.append("pr.POTENTIAL_DEAL_TYPE ILIKE %s")
+            params.append(f"%{deal_type}%")
 
         where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
@@ -2766,12 +2818,18 @@ async def list_internal_recommendations(
         )
         total = cursor.fetchone()[0]
 
+        # Build ORDER BY clause
+        order_by_sql = " ORDER BY pr.CREATED_AT DESC, pr.ID DESC"
+        if sort_by and sort_by in allowed_sort_columns:
+            order_by_sql = f" ORDER BY {allowed_sort_columns[sort_by]} {sort_order.upper()}, pr.ID {sort_order.upper()}"
+
         query_params = list(params)
         query_params.extend([page_size, (page - 1) * page_size])
         cursor.execute(
             build_recommendation_select()
             + where_sql
-            + " ORDER BY pr.CREATED_AT DESC, pr.ID DESC LIMIT %s OFFSET %s",
+            + order_by_sql
+            + " LIMIT %s OFFSET %s",
             query_params,
         )
 

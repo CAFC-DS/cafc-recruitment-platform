@@ -63,6 +63,9 @@ export interface Recommendation {
   agent_email?: string;
   agent_number?: string;
   avg_performance_score?: number | null;
+  recommended_position?: string;
+  player_date_of_birth?: string;
+  player_age?: number;
 }
 
 export interface RecommendationStatusHistory {

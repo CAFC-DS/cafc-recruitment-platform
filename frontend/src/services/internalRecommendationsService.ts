@@ -15,6 +15,10 @@ export const internalRecommendationsService = {
     created_from?: string;
     created_to?: string;
     player_name?: string;
+    position?: string;
+    deal_type?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
     page?: number;
     page_size?: number;
   }) {
