@@ -2032,17 +2032,6 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         else legacy_transfer_fee
     )
 
-    # Calculate age from date of birth
-    player_age = None
-    if row[41] and row[41]:  # PLAYER_DATE_OF_BIRTH
-        try:
-            from datetime import date
-            dob = row[41] if isinstance(row[41], date) else datetime.strptime(str(row[41]), "%Y-%m-%d").date()
-            today = date.today()
-            player_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-        except:
-            player_age = None
-
     base_data = {
         "id": row[0],
         "player_name": row[6],
@@ -2072,7 +2061,6 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "avg_performance_score": format_decimal(row[33]),
         "recommended_position": row[40],
         "player_date_of_birth": serialize_datetime(row[41]),
-        "player_age": player_age,
     }
 
     if not include_internal:
