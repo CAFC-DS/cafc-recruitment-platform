@@ -3,6 +3,7 @@ import {
   AgentPlayerSearchResult,
   AgentProfile,
   AgentRegisterPayload,
+  AgentStatus,
   Recommendation,
   RecommendationFormValues,
   RecommendationStatusHistory,
@@ -41,11 +42,7 @@ export const agentRecommendationsService = {
   },
 
   async submit(values: RecommendationFormValues) {
-    const response = await axiosInstance.post<Recommendation>('/agents/recommendations', toFormData(values), {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await axiosInstance.post<Recommendation>('/agents/recommendations', toFormData(values));
     return response.data;
   },
 
@@ -63,6 +60,13 @@ export const agentRecommendationsService = {
 
   async getStatusHistory(id: number) {
     const response = await axiosInstance.get<RecommendationStatusHistory[]>(`/agents/recommendations/${id}/status-history`);
+    return response.data;
+  },
+
+  async updateAgentStatus(id: number, newAgentStatus: AgentStatus) {
+    const response = await axiosInstance.patch<Recommendation>(`/agents/recommendations/${id}/agent-status`, {
+      new_agent_status: newAgentStatus,
+    });
     return response.data;
   },
 };

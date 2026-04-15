@@ -5,6 +5,12 @@ export type RecommendationStatus =
   | 'Added to Emerging Talent Process'
   | 'Not Currently under Consideration';
 
+export type AgentStatus =
+  | 'Active'
+  | 'No Longer Available'
+  | 'Player Not Interested'
+  | 'Withdrawn';
+
 export type AgreementType =
   | 'Player Agreement/Mandate'
   | 'Club Mandate'
@@ -39,6 +45,8 @@ export interface AgentProfile {
 export interface Recommendation {
   id: number;
   player_name: string;
+  player_date_of_birth?: string;
+  recommended_position?: string | string[];
   transfermarkt_link?: string;
   agreement_type?: string;
   confirmed_contract_expiry?: string;
@@ -47,9 +55,13 @@ export interface Recommendation {
   transfer_fee?: string;
   transfer_fee_amount?: number;
   transfer_fee_currency?: string;
-  current_wages_per_week?: number;
+  current_wages_per_week?: number | string;
+  current_wages_per_week_min?: number;
+  current_wages_per_week_max?: number;
   current_wages_currency?: string;
-  expected_wages_per_week?: number;
+  expected_wages_per_week?: number | string;
+  expected_wages_per_week_min?: number;
+  expected_wages_per_week_max?: number;
   expected_wages_currency?: string;
   additional_information?: string;
   supporting_file_name?: string;
@@ -63,8 +75,8 @@ export interface Recommendation {
   agent_email?: string;
   agent_number?: string;
   avg_performance_score?: number | null;
-  recommended_position?: string;
-  player_date_of_birth?: string;
+  agent_status: AgentStatus;
+  agent_status_updated_at?: string;
 }
 
 export interface RecommendationStatusHistory {

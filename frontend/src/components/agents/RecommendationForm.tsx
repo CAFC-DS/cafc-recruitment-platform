@@ -81,6 +81,11 @@ const formatWholePounds = (value: string) => {
 
 const normalizeWholePounds = (value: string) => value.replace(/\D/g, '');
 
+const validateWageInput = (value: string) => {
+  // Allow only digits and hyphens for banding (e.g., 12000-20000)
+  return value.replace(/[^\d-]/g, '');
+};
+
 function MultiSelectDropdown<T extends string>({
   label,
   values,
@@ -142,14 +147,6 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
   const formattedTransferFee = useMemo(
     () => formatWholePounds(values.transfer_fee),
     [values.transfer_fee],
-  );
-  const formattedCurrentWages = useMemo(
-    () => formatWholePounds(values.current_wages_per_week),
-    [values.current_wages_per_week],
-  );
-  const formattedExpectedWages = useMemo(
-    () => formatWholePounds(values.expected_wages_per_week),
-    [values.expected_wages_per_week],
   );
 
   useEffect(() => {
@@ -446,7 +443,6 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               inputMode="numeric"
               value={formattedTransferFee}
               onChange={(event) => onChange('transfer_fee', normalizeWholePounds(event.target.value))}
-              placeholder="50,000"
             />
             <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
               Required only when potential deal type includes Permanent Transfer.
@@ -457,21 +453,25 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             <input
               className="agent-portal-input"
               inputMode="numeric"
-              value={formattedCurrentWages}
-              onChange={(event) => onChange('current_wages_per_week', normalizeWholePounds(event.target.value))}
-              placeholder="12,500"
+              value={values.current_wages_per_week}
+              onChange={(event) => onChange('current_wages_per_week', validateWageInput(event.target.value))}
             />
+            <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+              Enter a single value (e.g., 12000) or a range (e.g., 12000-20000)
+            </div>
           </div>
           <div>
             <label className="agent-portal-label">Expected Wages (Per Week - P/W, GBP) *</label>
             <input
               className="agent-portal-input"
               inputMode="numeric"
-              value={formattedExpectedWages}
-              onChange={(event) => onChange('expected_wages_per_week', normalizeWholePounds(event.target.value))}
-              placeholder="18,000"
+              value={values.expected_wages_per_week}
+              onChange={(event) => onChange('expected_wages_per_week', validateWageInput(event.target.value))}
               required
             />
+            <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+              Enter a single value (e.g., 18000) or a range (e.g., 15000-20000)
+            </div>
           </div>
           <div className="full-span">
             <div className="agent-portal-meta" style={{ marginBottom: '0.5rem' }}>

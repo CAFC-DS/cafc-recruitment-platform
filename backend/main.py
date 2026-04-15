@@ -287,7 +287,9 @@ def refresh_table_schema(table_name: str):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         cursor.execute(f"DESCRIBE TABLE {table_name}")
-        TABLE_SCHEMA_CACHE[table_name.lower()] = [col[0] for col in cursor.fetchall()]
+        TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in cursor.fetchall()]
+        print(f"✅ Refreshed schema cache for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
+        print(f"DEBUG: Columns for {table_name}: {TABLE_SCHEMA_CACHE[table_name]}")
     except Exception as e:
         logging.warning(f"Could not refresh schema cache for {table_name}: {e}")
     finally:
@@ -752,6 +754,13 @@ RECOMMENDATION_STATUSES = [
     "Not Currently under Consideration",
 ]
 
+AGENT_STATUSES = [
+    "Active",
+    "No Longer Available",
+    "Player Not Interested",
+    "Withdrawn",
+]
+
 ALLOWED_AGREEMENT_TYPES = [
     "Player Agreement/Mandate",
     "Club Mandate",
@@ -1007,6 +1016,8 @@ class AgentPlayerSearchResult(BaseModel):
 class RecommendationResponse(BaseModel):
     id: int
     player_name: str
+    player_date_of_birth: Optional[str] = None
+    recommended_position: Optional[str] = None
     transfermarkt_link: Optional[str] = None
     agreement_type: Optional[str] = None
     confirmed_contract_expiry: Optional[str] = None
@@ -1015,9 +1026,13 @@ class RecommendationResponse(BaseModel):
     transfer_fee: Optional[str] = None
     transfer_fee_amount: Optional[float] = None
     transfer_fee_currency: Optional[str] = None
-    current_wages_per_week: Optional[float] = None
+    current_wages_per_week: Optional[Union[float, str]] = None
+    current_wages_per_week_min: Optional[float] = None
+    current_wages_per_week_max: Optional[float] = None
     current_wages_currency: Optional[str] = None
-    expected_wages_per_week: Optional[float] = None
+    expected_wages_per_week: Optional[Union[float, str]] = None
+    expected_wages_per_week_min: Optional[float] = None
+    expected_wages_per_week_max: Optional[float] = None
     expected_wages_currency: Optional[str] = None
     additional_information: Optional[str] = None
     supporting_file_name: Optional[str] = None
@@ -1031,6 +1046,8 @@ class RecommendationResponse(BaseModel):
     agent_email: Optional[str] = None
     agent_number: Optional[str] = None
     avg_performance_score: Optional[float] = None
+    agent_status: str = "Active"
+    agent_status_updated_at: Optional[str] = None
 
 
 class RecommendationStatusHistoryResponse(BaseModel):
@@ -1059,6 +1076,10 @@ class RecommendationStatusUpdateRequest(BaseModel):
 
 class RecommendationNotesUpdateRequest(BaseModel):
     internal_notes: str
+
+
+class AgentStatusUpdateRequest(BaseModel):
+    new_agent_status: str
 
 
 class PasswordResetRequest(BaseModel):
@@ -1391,9 +1412,17 @@ RECOMMENDATION_OPTIONAL_COLUMNS = {
         "TRANSFER_FEE_AMOUNT",
         "TRANSFER_FEE_CURRENCY",
         "CURRENT_WAGES_AMOUNT",
+        "CURRENT_WAGES_MIN",
+        "CURRENT_WAGES_MAX",
         "CURRENT_WAGES_CURRENCY",
         "EXPECTED_WAGES_AMOUNT",
+        "EXPECTED_WAGES_MIN",
+        "EXPECTED_WAGES_MAX",
         "EXPECTED_WAGES_CURRENCY",
+        "RECOMMENDED_POSITION",
+        "PLAYER_DATE_OF_BIRTH",
+        "AGENT_STATUS",
+        "AGENT_STATUS_UPDATED_AT",
     ]
 }
 
@@ -1404,6 +1433,8 @@ def validate_recommendation_schema_ready():
         load_table_schemas()
 
     for table_name, required_columns in RECOMMENDATION_REQUIRED_COLUMNS.items():
+        if table_name not in TABLE_SCHEMA_CACHE or not TABLE_SCHEMA_CACHE.get(table_name):
+            refresh_table_schema(table_name)
         columns = get_table_columns(table_name)
         if not columns:
             raise HTTPException(
@@ -1424,7 +1455,8 @@ def validate_recommendation_schema_ready():
 
 def recommendation_column_exists(table_name: str, column_name: str) -> bool:
     columns = get_table_columns(table_name)
-    return column_name in columns
+    exists = column_name in columns
+    return exists
 
 
 def serialize_datetime(value) -> Optional[str]:
@@ -1456,6 +1488,14 @@ def validate_recommendation_status(status_value: str):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid status. Must be one of: {', '.join(RECOMMENDATION_STATUSES)}",
+        )
+
+
+def validate_agent_status(status_value: str):
+    if status_value not in AGENT_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid agent status. Must be one of: {', '.join(AGENT_STATUSES)}",
         )
 
 
@@ -1564,6 +1604,41 @@ def format_numeric_range_for_response(
         return None
 
     return str(fallback_value)
+
+
+def parse_wage_field(value: Optional[str], field_label: str) -> tuple[Optional[int], Optional[int]]:
+    """Parse wage field that can be a single value or a range (e.g., '12000' or '12000-20000').
+    Returns a tuple of (min_value, max_value)."""
+    if value is None:
+        return None, None
+
+    normalized = value.replace(",", "").replace(" ", "").strip()
+    if not normalized:
+        return None, None
+
+    # Check if it's a single value
+    single_value_match = re.fullmatch(r"\d+", normalized)
+    if single_value_match:
+        parsed_value = int(normalized)
+        return parsed_value, parsed_value
+
+    # Check if it's a range
+    range_match = re.fullmatch(r"(\d+)-(\d+)", normalized)
+    if not range_match:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Use a whole number or range like 6500-7500",
+        )
+
+    min_value = int(range_match.group(1))
+    max_value = int(range_match.group(2))
+    if min_value > max_value:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Range start must be less than or equal to range end",
+        )
+
+    return min_value, max_value
 
 
 VALID_INTEL_TYPES = {"player_information", "general_note"}
@@ -1878,6 +1953,8 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
 
 
 def build_recommendation_select():
+    refresh_table_schema("player_recommendations")
+
     transfer_fee_amount_expr = (
         "pr.TRANSFER_FEE_AMOUNT"
         if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_AMOUNT")
@@ -1888,20 +1965,42 @@ def build_recommendation_select():
         if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_CURRENCY")
         else "NULL"
     )
-    current_wages_amount_expr = (
-        "pr.CURRENT_WAGES_AMOUNT"
-        if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_AMOUNT")
-        else "NULL"
+    current_wages_amount_exists = recommendation_column_exists("player_recommendations", "CURRENT_WAGES_AMOUNT")
+    expected_wages_amount_exists = recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_AMOUNT")
+    current_wages_legacy_expr = (
+        "COALESCE(pr.CURRENT_WAGES_AMOUNT, TRY_TO_NUMBER(pr.CURRENT_WAGES))"
+        if current_wages_amount_exists
+        else "TRY_TO_NUMBER(pr.CURRENT_WAGES)"
+    )
+    expected_wages_legacy_expr = (
+        "COALESCE(pr.EXPECTED_WAGES_AMOUNT, TRY_TO_NUMBER(pr.EXPECTED_WAGES))"
+        if expected_wages_amount_exists
+        else "TRY_TO_NUMBER(pr.EXPECTED_WAGES)"
+    )
+    current_wages_min_expr = (
+        f"COALESCE(pr.CURRENT_WAGES_MIN, {current_wages_legacy_expr})"
+        if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_MIN")
+        else current_wages_legacy_expr
+    )
+    current_wages_max_expr = (
+        f"COALESCE(pr.CURRENT_WAGES_MAX, {current_wages_legacy_expr})"
+        if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_MAX")
+        else current_wages_legacy_expr
     )
     current_wages_currency_expr = (
         "pr.CURRENT_WAGES_CURRENCY"
         if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_CURRENCY")
         else "NULL"
     )
-    expected_wages_amount_expr = (
-        "pr.EXPECTED_WAGES_AMOUNT"
-        if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_AMOUNT")
-        else "NULL"
+    expected_wages_min_expr = (
+        f"COALESCE(pr.EXPECTED_WAGES_MIN, {expected_wages_legacy_expr})"
+        if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_MIN")
+        else expected_wages_legacy_expr
+    )
+    expected_wages_max_expr = (
+        f"COALESCE(pr.EXPECTED_WAGES_MAX, {expected_wages_legacy_expr})"
+        if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_MAX")
+        else expected_wages_legacy_expr
     )
     expected_wages_currency_expr = (
         "pr.EXPECTED_WAGES_CURRENCY"
@@ -1945,12 +2044,15 @@ def build_recommendation_select():
     else:
         avg_performance_expr = "NULL"
 
-    # Check if new columns exist
     has_recommended_position = recommendation_column_exists("player_recommendations", "RECOMMENDED_POSITION")
     has_player_dob = recommendation_column_exists("player_recommendations", "PLAYER_DATE_OF_BIRTH")
+    has_agent_status = recommendation_column_exists("player_recommendations", "AGENT_STATUS")
+    has_agent_status_updated_at = recommendation_column_exists("player_recommendations", "AGENT_STATUS_UPDATED_AT")
 
     recommended_position_expr = "pr.RECOMMENDED_POSITION" if has_recommended_position else "NULL"
     player_dob_expr = "pr.PLAYER_DATE_OF_BIRTH" if has_player_dob else "NULL"
+    agent_status_expr = "pr.AGENT_STATUS" if has_agent_status else "'Active'"
+    agent_status_updated_at_expr = "pr.AGENT_STATUS_UPDATED_AT" if has_agent_status_updated_at else "NULL"
 
     return """
         SELECT
@@ -1967,13 +2069,13 @@ def build_recommendation_select():
             pr.CONTRACT_OPTIONS,
             pr.POTENTIAL_DEAL_TYPE,
             pr.TRANSFER_FEE,
-            pr.CURRENT_WAGES,
-            pr.EXPECTED_WAGES,
             {transfer_fee_amount_expr} AS TRANSFER_FEE_AMOUNT,
             {transfer_fee_currency_expr} AS TRANSFER_FEE_CURRENCY,
-            {current_wages_amount_expr} AS CURRENT_WAGES_AMOUNT,
+            {current_wages_min_expr} AS CURRENT_WAGES_MIN,
+            {current_wages_max_expr} AS CURRENT_WAGES_MAX,
             {current_wages_currency_expr} AS CURRENT_WAGES_CURRENCY,
-            {expected_wages_amount_expr} AS EXPECTED_WAGES_AMOUNT,
+            {expected_wages_min_expr} AS EXPECTED_WAGES_MIN,
+            {expected_wages_max_expr} AS EXPECTED_WAGES_MAX,
             {expected_wages_currency_expr} AS EXPECTED_WAGES_CURRENCY,
             pr.ADDITIONAL_INFO,
             pr.SUBMITTED_BY_USER_ID,
@@ -1995,34 +2097,43 @@ def build_recommendation_select():
             su.FIRSTNAME,
             su.LASTNAME,
             {recommended_position_expr} AS RECOMMENDED_POSITION,
-            {player_dob_expr} AS PLAYER_DATE_OF_BIRTH
+            {player_dob_expr} AS PLAYER_DATE_OF_BIRTH,
+            {agent_status_expr} AS AGENT_STATUS,
+            {agent_status_updated_at_expr} AS AGENT_STATUS_UPDATED_AT
         FROM player_recommendations pr
         LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
-        current_wages_amount_expr=current_wages_amount_expr,
+        current_wages_min_expr=current_wages_min_expr,
+        current_wages_max_expr=current_wages_max_expr,
         current_wages_currency_expr=current_wages_currency_expr,
-        expected_wages_amount_expr=expected_wages_amount_expr,
+        expected_wages_min_expr=expected_wages_min_expr,
+        expected_wages_max_expr=expected_wages_max_expr,
         expected_wages_currency_expr=expected_wages_currency_expr,
         avg_performance_expr=avg_performance_expr,
         recommended_position_expr=recommended_position_expr,
         player_dob_expr=player_dob_expr,
+        agent_status_expr=agent_status_expr,
+        agent_status_updated_at_expr=agent_status_updated_at_expr,
     )
 
 
 def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
     submitted_by_name = " ".join(part for part in [row[35], row[36]] if part) or row[34]
     status_updated_by_name = " ".join(part for part in [row[38], row[39]] if part) or row[37]
-    transfer_fee_amount = format_decimal(row[15])
-    transfer_fee_currency = row[16]
-    current_wages_amount = format_decimal(row[17])
-    current_wages_currency = row[18]
-    expected_wages_amount = format_decimal(row[19])
+    transfer_fee_amount = format_decimal(row[13])
+    transfer_fee_currency = row[14]
+    current_wages_min = row[15]
+    current_wages_max = row[16]
+    current_wages_currency = row[17]
+    expected_wages_min = row[18]
+    expected_wages_max = row[19]
     expected_wages_currency = row[20]
-    current_wages_value = current_wages_amount if current_wages_amount is not None else format_decimal(row[13])
-    expected_wages_value = expected_wages_amount if expected_wages_amount is not None else format_decimal(row[14])
+
+    current_wages_value = format_numeric_range_for_response(current_wages_min, current_wages_max)
+    expected_wages_value = format_numeric_range_for_response(expected_wages_min, expected_wages_max)
     current_wages_currency_value = (current_wages_currency or "GBP") if current_wages_value is not None else None
     expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None
@@ -2035,6 +2146,8 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     base_data = {
         "id": row[0],
         "player_name": row[6],
+        "player_date_of_birth": serialize_datetime(row[41]),
+        "recommended_position": row[40],
         "transfermarkt_link": row[7],
         "agreement_type": row[8],
         "confirmed_contract_expiry": serialize_datetime(row[9]),
@@ -2044,8 +2157,12 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "transfer_fee_amount": transfer_fee_amount,
         "transfer_fee_currency": transfer_fee_currency,
         "current_wages_per_week": current_wages_value,
+        "current_wages_per_week_min": format_decimal(current_wages_min),
+        "current_wages_per_week_max": format_decimal(current_wages_max),
         "current_wages_currency": current_wages_currency_value,
         "expected_wages_per_week": expected_wages_value,
+        "expected_wages_per_week_min": format_decimal(expected_wages_min),
+        "expected_wages_per_week_max": format_decimal(expected_wages_max),
         "expected_wages_currency": expected_wages_currency_value,
         "additional_information": row[21],
         "supporting_file_name": row[30],
@@ -2059,8 +2176,8 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agent_email": row[3],
         "agent_number": row[4],
         "avg_performance_score": format_decimal(row[33]),
-        "recommended_position": row[40],
-        "player_date_of_birth": serialize_datetime(row[41]),
+        "agent_status": row[42] or "Active",
+        "agent_status_updated_at": serialize_datetime(row[43]),
     }
 
     if not include_internal:
@@ -2494,7 +2611,11 @@ async def create_agent_recommendation(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         profile = get_agent_profile_row(cursor, current_user.id)
-        normalized_agent_number = validate_agent_number(agent_number)
+        fallback_agent_number = (
+            validate_agent_number(agent_number)
+            if not profile or not profile[4]
+            else None
+        )
         normalized_agreement_type = validate_recommendation_multi_option(
             agreement_type, ALLOWED_AGREEMENT_TYPES, "agreement type"
         )
@@ -2505,10 +2626,10 @@ async def create_agent_recommendation(
             potential_deal_type, ALLOWED_POTENTIAL_DEAL_TYPES, "potential deal type"
         )
         normalized_transfer_fee_amount = parse_whole_number_field(transfer_fee, "transfer fee")
-        normalized_current_wages = parse_whole_number_field(
+        normalized_current_wages_min, normalized_current_wages_max = parse_wage_field(
             current_wages_per_week, "current wages"
         )
-        normalized_expected_wages = parse_whole_number_field(
+        normalized_expected_wages_min, normalized_expected_wages_max = parse_wage_field(
             expected_wages_per_week, "expected wages"
         )
         normalized_transfer_fee_currency = normalize_currency_selection(
@@ -2525,15 +2646,15 @@ async def create_agent_recommendation(
         )
         if normalized_transfer_fee_amount is not None and not normalized_transfer_fee_currency:
             normalized_transfer_fee_currency = "GBP"
-        if normalized_current_wages is not None and not normalized_current_wages_currency:
+        if normalized_current_wages_min is not None and not normalized_current_wages_currency:
             normalized_current_wages_currency = "GBP"
-        if normalized_expected_wages is not None and not normalized_expected_wages_currency:
+        if normalized_expected_wages_min is not None and not normalized_expected_wages_currency:
             normalized_expected_wages_currency = "GBP"
         if normalized_transfer_fee_amount is None:
             normalized_transfer_fee_currency = None
-        if normalized_current_wages is None:
+        if normalized_current_wages_min is None:
             normalized_current_wages_currency = None
-        if normalized_expected_wages is None:
+        if normalized_expected_wages_min is None:
             normalized_expected_wages_currency = None
         if not submission_date:
             raise HTTPException(status_code=400, detail="Submission date is required")
@@ -2551,7 +2672,7 @@ async def create_agent_recommendation(
             raise HTTPException(status_code=400, detail="Contract options are required")
         if not normalized_potential_deal_type:
             raise HTTPException(status_code=400, detail="Potential deal type is required")
-        if normalized_expected_wages is None:
+        if normalized_expected_wages_min is None:
             raise HTTPException(status_code=400, detail="Expected wages are required")
         selected_deal_types = [part.strip() for part in normalized_potential_deal_type.split(",")] if normalized_potential_deal_type else []
         if "Permanent Transfer" in selected_deal_types and normalized_transfer_fee_amount is None:
@@ -2559,29 +2680,13 @@ async def create_agent_recommendation(
         resolved_agent_name = profile[1] if profile and profile[1] else agent_name.strip()
         resolved_agency = profile[2] if profile and profile[2] else (agency.strip() if agency else None)
         resolved_agent_email = profile[3] if profile and profile[3] else (current_user.email or agent_email.strip().lower())
-        resolved_agent_number = profile[4] if profile and profile[4] else normalized_agent_number
+        resolved_agent_number = profile[4] if profile and profile[4] else fallback_agent_number
         confirmed_expiry = datetime.strptime(confirmed_contract_expiry, "%Y-%m-%d").date() if confirmed_contract_expiry else None
         submitted_date = datetime.strptime(submission_date, "%Y-%m-%d").date() if submission_date else datetime.utcnow().date()
         player_dob = datetime.strptime(player_date_of_birth, "%Y-%m-%d").date() if player_date_of_birth else None
         normalized_additional_information = additional_information
-        position_note = (
-            f"Recommended Position: {normalized_recommended_position}"
-            if normalized_recommended_position
-            else None
-        )
-        if player_dob:
-            dob_note = f"Player DOB: {player_dob.isoformat()}"
-            if normalized_additional_information and normalized_additional_information.strip():
-                normalized_additional_information = f"{dob_note}\\n{normalized_additional_information.strip()}"
-            else:
-                normalized_additional_information = dob_note
 
         recommendation_columns = get_table_columns("player_recommendations")
-        if position_note and "RECOMMENDED_POSITION" not in recommendation_columns:
-            if normalized_additional_information and normalized_additional_information.strip():
-                normalized_additional_information = f"{position_note}\n{normalized_additional_information.strip()}"
-            else:
-                normalized_additional_information = position_note
         insert_columns = [
             "AGENT_NAME",
             "AGENCY",
@@ -2619,9 +2724,9 @@ async def create_agent_recommendation(
             normalized_contract_option,
             normalized_potential_deal_type,
             str(normalized_transfer_fee_amount) if normalized_transfer_fee_amount is not None else None,
-            normalized_current_wages,
-            normalized_expected_wages,
-                normalized_additional_information,
+            normalized_current_wages_min,
+            normalized_expected_wages_min,
+            normalized_additional_information,
             current_user.id,
             "Submitted",
             datetime.utcnow(),
@@ -2634,9 +2739,13 @@ async def create_agent_recommendation(
         optional_amount_currency_pairs = [
             ("TRANSFER_FEE_AMOUNT", normalized_transfer_fee_amount),
             ("TRANSFER_FEE_CURRENCY", normalized_transfer_fee_currency),
-            ("CURRENT_WAGES_AMOUNT", normalized_current_wages),
+            ("CURRENT_WAGES_AMOUNT", normalized_current_wages_min),
+            ("CURRENT_WAGES_MIN", normalized_current_wages_min),
+            ("CURRENT_WAGES_MAX", normalized_current_wages_max),
             ("CURRENT_WAGES_CURRENCY", normalized_current_wages_currency),
-            ("EXPECTED_WAGES_AMOUNT", normalized_expected_wages),
+            ("EXPECTED_WAGES_AMOUNT", normalized_expected_wages_min),
+            ("EXPECTED_WAGES_MIN", normalized_expected_wages_min),
+            ("EXPECTED_WAGES_MAX", normalized_expected_wages_max),
             ("EXPECTED_WAGES_CURRENCY", normalized_expected_wages_currency),
         ]
         for optional_column, optional_value in optional_amount_currency_pairs:
@@ -2647,6 +2756,10 @@ async def create_agent_recommendation(
         if "RECOMMENDED_POSITION" in recommendation_columns:
             insert_columns.append("RECOMMENDED_POSITION")
             insert_values.append(normalized_recommended_position)
+
+        if "PLAYER_DATE_OF_BIRTH" in recommendation_columns and player_dob:
+            insert_columns.append("PLAYER_DATE_OF_BIRTH")
+            insert_values.append(player_dob)
 
         placeholders = ", ".join(["%s"] * len(insert_columns))
         cursor.execute(
@@ -2673,9 +2786,14 @@ async def create_agent_recommendation(
 
         detail_row = fetch_recommendation_detail(cursor, recommendation_id)
         return serialize_recommendation_row(detail_row)
-    except ValueError:
+    except HTTPException:
         if conn:
             conn.rollback()
+        raise
+    except ValueError as e:
+        if conn:
+            conn.rollback()
+        logging.warning(f"Invalid recommendation field: {e}")
         raise HTTPException(status_code=400, detail="Invalid numeric or date field")
     except Exception as e:
         if conn:
@@ -2724,6 +2842,47 @@ async def get_agent_recommendation_history(
             conn.close()
 
 
+@app.patch("/agents/recommendations/{recommendation_id}/agent-status", response_model=RecommendationResponse)
+async def update_agent_recommendation_status(
+    recommendation_id: int,
+    payload: AgentStatusUpdateRequest,
+    current_user: User = Depends(require_agent_user),
+):
+    validate_recommendation_schema_ready()
+    validate_agent_status(payload.new_agent_status)
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row or row[22] != current_user.id:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+
+        changed_at = datetime.utcnow()
+        cursor.execute(
+            """
+            UPDATE player_recommendations
+            SET AGENT_STATUS = %s, AGENT_STATUS_UPDATED_AT = %s, UPDATED_AT = %s
+            WHERE ID = %s
+        """,
+            (payload.new_agent_status, changed_at, changed_at, recommendation_id),
+        )
+
+        conn.commit()
+        updated_row = fetch_recommendation_detail(cursor, recommendation_id)
+        return serialize_recommendation_row(updated_row)
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to update agent status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update agent status")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/agents/recommendations/{recommendation_id}/supporting-file")
 async def download_agent_recommendation_supporting_file(
     recommendation_id: int, current_user: User = Depends(require_agent_user)
@@ -2762,7 +2921,6 @@ async def list_internal_recommendations(
         "agency": "pr.AGENCY",
         "created_at": "pr.CREATED_AT",
         "position": "pr.RECOMMENDED_POSITION",
-        "age": "pr.PLAYER_DATE_OF_BIRTH",
     }
 
     sort_order = sort_order.lower() if sort_order else "desc"

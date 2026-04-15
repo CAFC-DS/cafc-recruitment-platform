@@ -7,6 +7,18 @@ import { AgentProfile, RecommendationFormValues } from '../../types/recommendati
 
 const getToday = () => new Date().toISOString().slice(0, 10);
 
+const getSubmitErrorMessage = (err: any) => {
+  const detail = err?.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => item?.msg || item?.message)
+      .filter(Boolean)
+      .join(', ') || 'Failed to submit recommendation';
+  }
+  return 'Failed to submit recommendation';
+};
+
 const AgentSubmitPage: React.FC = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<AgentProfile | null>(null);
@@ -67,12 +79,10 @@ const AgentSubmitPage: React.FC = () => {
     event.preventDefault();
     const requiredAgentFields = [
       values.agent_name,
-      values.agency,
       values.agent_email,
-      values.agent_number,
     ];
     if (requiredAgentFields.some((field) => !field || !field.trim())) {
-      setError('Your agent profile is incomplete. Please contact support to update missing account details.');
+      setError('Your agent profile is missing your name or email. Please contact support to update your account details.');
       return;
     }
     if (!values.submission_date) {
@@ -128,7 +138,7 @@ const AgentSubmitPage: React.FC = () => {
       navigate(`/agents/submissions/${recommendation.id}`);
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.detail || 'Failed to submit recommendation');
+      setError(getSubmitErrorMessage(err));
     } finally {
       setLoading(false);
     }

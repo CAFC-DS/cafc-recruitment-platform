@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SubmissionStatusBadge, { AgentStatusBadge } from '../agents/SubmissionStatusBadge';
 import { RecommendationStatus, RecommendationStatusHistory } from '../../types/recommendations';
 
 interface ExpandableRowProps {
@@ -36,7 +37,9 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
               </h6>
               <div className="mb-2">
                 <span className="text-muted small">Date of Birth:</span>
-                <span className="ms-2">{recommendation.player_date_of_birth || '-'}</span>
+                <span className="ms-2">
+                  {recommendation.player_date_of_birth ? new Date(recommendation.player_date_of_birth).toLocaleDateString() : '-'}
+                </span>
               </div>
               <div className="mb-2">
                 <span className="text-muted small">Contract Expiry:</span>
@@ -50,6 +53,14 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                 <span className="text-muted small">Agreement Type:</span>
                 <span className="ms-2">{recommendation.agreement_type || '-'}</span>
               </div>
+              <div className="mb-2">
+                <span className="text-muted small">Recommended Position:</span>
+                <span className="ms-2">
+                  {Array.isArray(recommendation.recommended_position)
+                    ? (recommendation.recommended_position.length ? recommendation.recommended_position.join(', ') : '-')
+                    : (recommendation.recommended_position?.split(',').map((p: string) => p.trim()).filter((p: string) => p).join(', ') || '-')}
+                </span>
+              </div>
 
               <h6 className="text-uppercase fw-bold mb-3 mt-4" style={{ fontSize: '0.75rem', letterSpacing: '0.1em' }}>
                 Agent Details
@@ -62,6 +73,18 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                 <span className="text-muted small">Phone:</span>
                 <span className="ms-2">{recommendation.agent_number || '-'}</span>
               </div>
+              <div className="mb-2">
+                <span className="text-muted small">Availability Status:</span>
+                <span className="ms-2">
+                  <AgentStatusBadge status={recommendation.agent_status} />
+                </span>
+              </div>
+              {recommendation.agent_status_updated_at && (
+                <div className="mb-2">
+                  <span className="text-muted small">Status Updated:</span>
+                  <span className="ms-2">{new Date(recommendation.agent_status_updated_at).toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Status & Notes */}
@@ -70,27 +93,31 @@ const ExpandableRow: React.FC<ExpandableRowProps> = ({
                 Review
               </h6>
 
-              {/* Status Dropdown */}
               <div className="mb-3">
-                <label className="form-label fw-bold small">Status</label>
-                <select
-                  className="form-select"
-                  value={recommendation.status}
-                  onChange={(e) => onStatusChange(e.target.value as RecommendationStatus)}
-                  disabled={updatingStatus}
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-                {updatingStatus && (
-                  <div className="text-muted small mt-1">
-                    <div className="spinner-border spinner-border-sm me-1" role="status"></div>
-                    Updating status...
-                  </div>
-                )}
+                <label className="form-label fw-bold small">Current Status</label>
+                <div className="mb-2">
+                  <SubmissionStatusBadge status={recommendation.status} />
+                </div>
+                <div className="d-flex align-items-center gap-2">
+                  <select
+                    className="form-select form-select-sm"
+                    value={recommendation.status}
+                    onChange={(e) => onStatusChange(e.target.value as RecommendationStatus)}
+                    disabled={updatingStatus}
+                    style={{ maxWidth: '200px' }}
+                  >
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                  {updatingStatus && (
+                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                      <span className="visually-hidden">Updating...</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Internal Notes */}

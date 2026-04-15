@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
+import SubmissionStatusBadge, { AgentStatusBadge } from '../components/agents/SubmissionStatusBadge';
 import DealTypeBadges from '../components/recommendations/DealTypeBadges';
 import ExpandableRow from '../components/recommendations/ExpandableRow';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
@@ -31,8 +31,9 @@ const formatAmount = (amount?: number, currency?: string, fallback?: string) => 
   return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')}`;
 };
 
-const formatWeeklyAmount = (amount?: number, currency?: string) => {
+const formatWeeklyAmount = (amount?: number | string, currency?: string) => {
   if (amount === undefined || amount === null) return '-';
+  if (typeof amount === 'string') return `${currency || 'GBP'} ${amount} p/w`;
   return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')} p/w`;
 };
 
@@ -75,6 +76,16 @@ const ExternalRecommendationsListPage: React.FC = () => {
     if (filters.created_to) count++;
     return count;
   }, [filters]);
+
+  const formatRecommendedPositions = (recommendedPosition?: string | string[] | null) => {
+    if (!recommendedPosition || (Array.isArray(recommendedPosition) && recommendedPosition.length === 0)) return '-';
+    if (Array.isArray(recommendedPosition)) {
+      return recommendedPosition.length ? recommendedPosition.join(', ') : '-';
+    }
+    // Handle comma-separated string from backend
+    const positions = recommendedPosition.split(',').map(p => p.trim()).filter(p => p);
+    return positions.length ? positions.join(', ') : '-';
+  };
 
   const load = async (nextFilters = filters) => {
     try {
@@ -332,33 +343,43 @@ const ExternalRecommendationsListPage: React.FC = () => {
                     <tr>
                       <th style={{ width: '30px' }}></th>
                       <SortableHeader column="player_name" label="Name" />
+                      <SortableHeader column="player_date_of_birth" label="DOB" />
                       <SortableHeader column="position" label="Recommended Position" />
                       <SortableHeader column="date" label="Date" />
                       <SortableHeader column="agent_name" label="Recommended By" />
                       <SortableHeader column="agency" label="Agency" />
                       <SortableHeader column="status" label="Status" />
+                      <th>Agent Status</th>
                       <th>Deal Type</th>
                       <th className="text-end">Fee</th>
                       <th className="text-end">Current Salary</th>
                       <th className="text-end">Expected Salary</th>
+                      <th style={{ width: '110px' }}>Review</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loading ? (
-                      <tr><td colSpan={11} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
+                      <tr><td colSpan={14} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
                     ) : items.length === 0 ? (
-                      <tr><td colSpan={11} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
+                      <tr><td colSpan={14} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
                     ) : (
                       <>
                         {items.map((item) => {
                           const isExpanded = expandedRows.has(item.id);
                           return (
                             <React.Fragment key={item.id}>
-                              <tr style={{ cursor: 'pointer' }}>
-                                <td onClick={() => toggleRowExpansion(item.id)}>
-                                  <i className={`bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} text-muted`} style={{ fontSize: '0.9rem' }}></i>
+                              <tr>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-link p-0 text-decoration-none"
+                                    onClick={() => toggleRowExpansion(item.id)}
+                                    aria-label={isExpanded ? 'Collapse review' : 'Expand review'}
+                                  >
+                                    <i className={`bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} text-muted`} style={{ fontSize: '0.9rem' }}></i>
+                                  </button>
                                 </td>
-                                <td onClick={() => toggleRowExpansion(item.id)}>
+                                <td>
                                   <div className="d-flex align-items-center gap-2">
                                     <span className="fw-bold">{item.player_name}</span>
                                     {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
@@ -375,32 +396,47 @@ const ExternalRecommendationsListPage: React.FC = () => {
                                     ) : null}
                                   </div>
                                 </td>
-                                <td onClick={() => toggleRowExpansion(item.id)}>
-                                  {item.recommended_position ? (
+                                <td className="text-muted small">
+                                  {item.player_date_of_birth ? new Date(item.player_date_of_birth).toLocaleDateString() : '-'}
+                                </td>
+                                <td>
+                                  {formatRecommendedPositions(item.recommended_position) !== '-' ? (
                                     <span className="badge bg-primary bg-opacity-10 text-primary border border-primary" style={{ fontSize: '0.75rem' }}>
-                                      {item.recommended_position}
+                                      {formatRecommendedPositions(item.recommended_position)}
                                     </span>
                                   ) : (
                                     <span className="text-muted">-</span>
                                   )}
                                 </td>
-                                <td onClick={() => toggleRowExpansion(item.id)} className="text-muted small">{item.submission_date ? new Date(item.submission_date).toLocaleDateString() : '-'}</td>
-                                <td onClick={() => toggleRowExpansion(item.id)}>{item.agent_name || '-'}</td>
-                                <td onClick={() => toggleRowExpansion(item.id)}>{item.agency || '-'}</td>
-                                <td onClick={() => toggleRowExpansion(item.id)}>
+                                <td className="text-muted small">{item.submission_date ? new Date(item.submission_date).toLocaleDateString() : '-'}</td>
+                                <td>{item.agent_name || '-'}</td>
+                                <td>{item.agency || '-'}</td>
+                                <td>
                                   <SubmissionStatusBadge status={item.status} />
                                 </td>
-                                <td onClick={() => toggleRowExpansion(item.id)}>
+                                <td>
+                                  <AgentStatusBadge status={item.agent_status} />
+                                </td>
+                                <td>
                                   <DealTypeBadges dealTypes={item.potential_deal_type || ''} />
                                 </td>
-                                <td onClick={() => toggleRowExpansion(item.id)} className="text-end">{formatAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)}</td>
-                                <td onClick={() => toggleRowExpansion(item.id)} className="text-end">{formatWeeklyAmount(item.current_wages_per_week, item.current_wages_currency)}</td>
-                                <td onClick={() => toggleRowExpansion(item.id)} className="text-end">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
+                                <td className="text-end">{formatAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)}</td>
+                                <td className="text-end">{formatWeeklyAmount(item.current_wages_per_week, item.current_wages_currency)}</td>
+                                <td className="text-end">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => toggleRowExpansion(item.id)}
+                                  >
+                                    {isExpanded ? 'Close' : 'Review'}
+                                  </button>
+                                </td>
                               </tr>
                               {isExpanded && (
                                 <ExpandableRow
                                   recommendation={item}
-                                  colSpan={11}
+                                  colSpan={14}
                                   statuses={meta.statuses}
                                   statusHistory={statusHistoryMap.get(item.id) || []}
                                   onStatusChange={(newStatus) => handleStatusChange(item, newStatus)}
