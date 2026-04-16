@@ -8,8 +8,8 @@ const getApiUrl = () => {
     return process.env.REACT_APP_API_URL || 'https://cafc-recruitment-platform-production.up.railway.app';
   }
 
-  // In development, use localhost
-  return process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  // In development, use the local FastAPI backend.
+  return process.env.REACT_APP_API_URL || 'http://localhost:8000';
 };
 
 const axiosInstance = axios.create({

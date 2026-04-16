@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Card, Col, Collapse, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import SubmissionStatusBadge, { AgentStatusBadge } from '../components/agents/SubmissionStatusBadge';
 import DealTypeBadges from '../components/recommendations/DealTypeBadges';
-import ExpandableRow from '../components/recommendations/ExpandableRow';
+import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
 import { getPerformanceScoreColor } from '../utils/colorUtils';
 import {
@@ -26,42 +27,103 @@ interface RecommendationFilterState {
   sort_order: 'asc' | 'desc';
 }
 
-const formatAmount = (amount?: number, currency?: string, fallback?: string) => {
-  if (amount === undefined || amount === null) return fallback || '-';
-  return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')}`;
+const defaultFilters: RecommendationFilterState = {
+  status: '',
+  agent_user_id: '',
+  created_from: '',
+  created_to: '',
+  player_name: '',
+  position: '',
+  deal_type: '',
+  page: 1,
+  page_size: 25,
+  sort_by: 'created_at',
+  sort_order: 'desc',
+};
+
+const formatNumberToken = (value: string) => {
+  const trimmed = value.trim();
+  return /^\d+$/.test(trimmed) ? Number(trimmed).toLocaleString('en-GB') : trimmed;
 };
 
 const formatWeeklyAmount = (amount?: number | string, currency?: string) => {
-  if (amount === undefined || amount === null) return '-';
-  if (typeof amount === 'string') return `${currency || 'GBP'} ${amount} p/w`;
-  return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')} p/w`;
+  if (amount === undefined || amount === null || amount === '') return '-';
+  const displayAmount = typeof amount === 'string'
+    ? amount.split('-').map(formatNumberToken).join('-')
+    : Math.round(amount).toLocaleString('en-GB');
+  return `${currency || 'GBP'} ${displayAmount} p/w`;
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-GB');
+};
+
+const calculateAge = (dateOfBirth?: string | null) => {
+  if (!dateOfBirth) return '-';
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return '-';
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDifference = today.getMonth() - dob.getMonth();
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age >= 0 ? String(age) : '-';
+};
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('en-GB');
+};
+
+const formatRecommendedPositions = (recommendedPosition?: string | string[] | null) => {
+  if (!recommendedPosition || (Array.isArray(recommendedPosition) && recommendedPosition.length === 0)) return '-';
+  if (Array.isArray(recommendedPosition)) {
+    return recommendedPosition.length ? recommendedPosition.join(', ') : '-';
+  }
+  const positions = recommendedPosition.split(',').map((position) => position.trim()).filter(Boolean);
+  return positions.length ? positions.join(', ') : '-';
+};
+
+const getPlayerProfilePath = (item: InternalRecommendation) => {
+  if (item.linked_player_data_source === 'internal' && item.linked_cafc_player_id) {
+    return `/player-profile/${item.linked_cafc_player_id}`;
+  }
+  if (item.linked_cafc_player_id && !item.linked_player_id) {
+    return `/player-profile/${item.linked_cafc_player_id}`;
+  }
+  if (item.linked_player_id) {
+    return `/player/${item.linked_player_id}`;
+  }
+  return null;
 };
 
 const ExternalRecommendationsListPage: React.FC = () => {
-  const [filters, setFilters] = useState<RecommendationFilterState>({
-    status: '',
-    agent_user_id: '',
-    created_from: '',
-    created_to: '',
-    player_name: '',
-    position: '',
-    deal_type: '',
-    page: 1,
-    page_size: 25,
-    sort_by: 'created_at',
-    sort_order: 'desc',
-  });
+  const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingNotes, setSavingNotes] = useState<number | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<InternalRecommendation | null>(null);
+  const [historyRecommendation, setHistoryRecommendation] = useState<InternalRecommendation | null>(null);
   const [statusHistoryMap, setStatusHistoryMap] = useState<Map<number, RecommendationStatusHistory[]>>(new Map());
+  const [loadingHistoryIds, setLoadingHistoryIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
+  const [modalMessage, setModalMessage] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const hasLoadedOnce = useRef(false);
+  const previousListControlKey = useRef(`${filters.page}|${filters.sort_by}|${filters.sort_order}`);
+  const pendingFilterEdit = useRef(false);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / filters.page_size)), [total, filters.page_size]);
 
@@ -77,25 +139,11 @@ const ExternalRecommendationsListPage: React.FC = () => {
     return count;
   }, [filters]);
 
-  const formatRecommendedPositions = (recommendedPosition?: string | string[] | null) => {
-    if (!recommendedPosition || (Array.isArray(recommendedPosition) && recommendedPosition.length === 0)) return '-';
-    if (Array.isArray(recommendedPosition)) {
-      return recommendedPosition.length ? recommendedPosition.join(', ') : '-';
-    }
-    // Handle comma-separated string from backend
-    const positions = recommendedPosition.split(',').map(p => p.trim()).filter(p => p);
-    return positions.length ? positions.join(', ') : '-';
-  };
-
   const load = async (nextFilters = filters) => {
     try {
       setLoading(true);
       setError(null);
-      const [metaResponse, listResponse] = await Promise.all([
-        meta.statuses.length ? Promise.resolve(meta) : internalRecommendationsService.getFiltersMeta(),
-        internalRecommendationsService.list(nextFilters),
-      ]);
-      setMeta(metaResponse);
+      const listResponse = await internalRecommendationsService.list(nextFilters);
       setItems(listResponse.items);
       setTotal(listResponse.total);
     } catch (err) {
@@ -106,40 +154,104 @@ const ExternalRecommendationsListPage: React.FC = () => {
     }
   };
 
-  const loadStatusHistory = async (itemId: number) => {
+  const updateFilters = (partialFilters: Partial<RecommendationFilterState>) => {
+    pendingFilterEdit.current = true;
+    setFilters((current) => ({
+      ...current,
+      ...partialFilters,
+      page: 1,
+    }));
+  };
+
+  const loadStatusHistory = async (itemId: number, forceRefresh = false, errorTarget: 'history' | 'modal' = 'history') => {
+    if (!forceRefresh && statusHistoryMap.has(itemId)) return;
     try {
+      setLoadingHistoryIds((current) => new Set(current).add(itemId));
       const history = await internalRecommendationsService.getStatusHistory(itemId);
       setStatusHistoryMap((prev) => new Map(prev).set(itemId, history));
     } catch (err) {
       console.error(err);
-      setError('Failed to load status history');
+      if (errorTarget === 'modal') {
+        setModalError('Failed to load status history');
+      } else {
+        setHistoryError('Failed to load status history');
+      }
+    } finally {
+      setLoadingHistoryIds((current) => {
+        const next = new Set(current);
+        next.delete(itemId);
+        return next;
+      });
     }
   };
 
   useEffect(() => {
-    load(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.page, filters.sort_by, filters.sort_order]);
+    const initialise = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [metaResponse, listResponse] = await Promise.all([
+          internalRecommendationsService.getFiltersMeta(),
+          internalRecommendationsService.list(filters),
+        ]);
+        setMeta(metaResponse);
+        setItems(listResponse.items);
+        setTotal(listResponse.total);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load external recommendations');
+      } finally {
+        hasLoadedOnce.current = true;
+        setLoading(false);
+      }
+    };
 
-  const applyFilters = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const nextFilters = { ...filters, page: 1 };
-    setFilters(nextFilters);
-    await load(nextFilters);
-  };
+    initialise();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!hasLoadedOnce.current) return;
+
+    const currentListControlKey = `${filters.page}|${filters.sort_by}|${filters.sort_order}`;
+    const listControlsChanged = previousListControlKey.current !== currentListControlKey;
+    previousListControlKey.current = currentListControlKey;
+
+    if (listControlsChanged && !pendingFilterEdit.current) {
+      load(filters);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      pendingFilterEdit.current = false;
+      load(filters);
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.status,
+    filters.agent_user_id,
+    filters.created_from,
+    filters.created_to,
+    filters.player_name,
+    filters.position,
+    filters.deal_type,
+    filters.page_size,
+    filters.page,
+    filters.sort_by,
+    filters.sort_order,
+  ]);
 
   const clearFilters = () => {
-    setFilters({
-      ...filters,
-      status: '',
-      agent_user_id: '',
-      created_from: '',
-      created_to: '',
-      player_name: '',
-      position: '',
-      deal_type: '',
-      page: 1,
-    });
+    const nextFilters = {
+      ...defaultFilters,
+      page_size: filters.page_size,
+      sort_by: filters.sort_by,
+      sort_order: filters.sort_order,
+    };
+    pendingFilterEdit.current = true;
+    setFilters(nextFilters);
   };
 
   const handleSort = (column: string) => {
@@ -150,44 +262,54 @@ const ExternalRecommendationsListPage: React.FC = () => {
     }));
   };
 
-  const toggleRowExpansion = async (id: number) => {
-    setExpandedRows((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        // Load status history when expanding
-        if (!statusHistoryMap.has(id)) {
-          loadStatusHistory(id);
-        }
-      }
-      return next;
-    });
+  const openReviewModal = async (item: InternalRecommendation) => {
+    setSelectedRecommendation(item);
+    setModalMessage(null);
+    setModalError(null);
+  };
+
+  const openHistoryModal = async (item: InternalRecommendation) => {
+    setHistoryRecommendation(item);
+    setHistoryError(null);
+    await loadStatusHistory(item.id);
+  };
+
+  const closeReviewModal = () => {
+    setSelectedRecommendation(null);
+    setModalMessage(null);
+    setModalError(null);
+  };
+
+  const closeHistoryModal = () => {
+    setHistoryRecommendation(null);
+    setHistoryError(null);
+  };
+
+  const updateSelectedRecommendation = (updatedItem: InternalRecommendation) => {
+    setItems((current) => current.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem } : item)));
+    setSelectedRecommendation((current) => (current?.id === updatedItem.id ? { ...current, ...updatedItem } : current));
   };
 
   const handleStatusChange = async (item: InternalRecommendation, newStatus: RecommendationStatus) => {
+    if (item.status === newStatus) return;
     try {
       setUpdatingStatus(item.id);
       setError(null);
       setBanner(null);
+      setModalError(null);
+      setModalMessage(null);
       const response = await internalRecommendationsService.updateStatus(item.id, newStatus);
-
-      // Update the item in the list
-      setItems((current) =>
-        current.map((i) => (i.id === item.id ? { ...i, status: newStatus } : i))
-      );
-
-      // Update status history
+      updateSelectedRecommendation(response.item);
       if (response.item.status_history) {
         setStatusHistoryMap((prev) => new Map(prev).set(item.id, response.item.status_history || []));
+      } else {
+        await loadStatusHistory(item.id, true, 'modal');
       }
-
-      setBanner(response.warning || 'Status updated successfully');
+      setModalMessage(response.warning || 'Status updated successfully');
       await load(filters);
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.detail || 'Failed to update status');
+      setModalError(err?.response?.data?.detail || 'Failed to update status');
     } finally {
       setUpdatingStatus(null);
     }
@@ -198,18 +320,15 @@ const ExternalRecommendationsListPage: React.FC = () => {
       setSavingNotes(item.id);
       setError(null);
       setBanner(null);
-      await internalRecommendationsService.updateNotes(item.id, notes);
-
-      // Update the item in the list
-      setItems((current) =>
-        current.map((i) => (i.id === item.id ? { ...i, internal_notes: notes } : i))
-      );
-
-      setBanner('Internal notes saved');
+      setModalError(null);
+      setModalMessage(null);
+      const updatedItem = await internalRecommendationsService.updateNotes(item.id, notes);
+      updateSelectedRecommendation(updatedItem);
+      setModalMessage('Internal notes saved');
       await load(filters);
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.detail || 'Failed to save notes');
+      setModalError(err?.response?.data?.detail || 'Failed to save notes');
     } finally {
       setSavingNotes(null);
     }
@@ -218,17 +337,17 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const SortableHeader: React.FC<{ column: string; label: string; className?: string }> = ({ column, label, className }) => {
     const isActive = filters.sort_by === column;
     return (
-      <th className={className} onClick={() => handleSort(column)} style={{ cursor: 'pointer', userSelect: 'none' }}>
-        <div className="d-flex align-items-center gap-1">
+      <th className={className} onClick={() => handleSort(column)}>
+        <div className="external-recommendations-sort-header">
           <span>{label}</span>
           {isActive ? (
             filters.sort_order === 'asc' ? (
-              <i className="bi bi-chevron-up" style={{ fontSize: '0.7rem' }}></i>
+              <i className="bi bi-chevron-up"></i>
             ) : (
-              <i className="bi bi-chevron-down" style={{ fontSize: '0.7rem' }}></i>
+              <i className="bi bi-chevron-down"></i>
             )
           ) : (
-            <i className="bi bi-chevron-expand text-muted" style={{ fontSize: '0.6rem', opacity: 0.4 }}></i>
+            <i className="bi bi-chevron-expand text-muted"></i>
           )}
         </div>
       </th>
@@ -256,221 +375,307 @@ const ExternalRecommendationsListPage: React.FC = () => {
       {banner ? <div className="alert alert-success alert-dismissible fade show"><i className="bi bi-check-circle me-2"></i>{banner}<button type="button" className="btn-close" onClick={() => setBanner(null)}></button></div> : null}
       {error ? <div className="alert alert-danger alert-dismissible fade show"><i className="bi bi-exclamation-triangle me-2"></i>{error}<button type="button" className="btn-close" onClick={() => setError(null)}></button></div> : null}
 
-      <div className="row g-4">
-        <div className="col-12">
-          <div className="agent-portal-card">
-            <div className="agent-portal-card-body">
-              <form onSubmit={applyFilters}>
-                <div className="agent-portal-filter-bar mb-3">
-                  <div>
-                    <label className="agent-portal-label">Name</label>
-                    <input className="agent-portal-input" value={filters.player_name} onChange={(e) => setFilters((current) => ({ ...current, player_name: e.target.value }))} placeholder="Search by name..." />
-                  </div>
-                  <div>
-                    <label className="agent-portal-label">Status</label>
-                    <select className="agent-portal-select" value={filters.status} onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value as RecommendationStatus | '' }))}>
-                      <option value="">All statuses</option>
-                      {meta.statuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="agent-portal-label">From</label>
-                    <input type="date" className="agent-portal-input" value={filters.created_from} onChange={(e) => setFilters((current) => ({ ...current, created_from: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="agent-portal-label">To</label>
-                    <input type="date" className="agent-portal-input" value={filters.created_to} onChange={(e) => setFilters((current) => ({ ...current, created_to: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="agent-portal-label">Page Size</label>
-                    <select className="agent-portal-select" value={filters.page_size} onChange={(e) => setFilters((current) => ({ ...current, page_size: Number(e.target.value), page: 1 }))}>
-                      {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-                    </select>
-                  </div>
-                  <div className="agent-portal-inline-actions" style={{ alignSelf: 'end', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      className={`btn ${showAdvancedFilters ? 'btn-secondary' : 'btn-outline-secondary'}`}
-                      onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                    >
-                      <i className="bi bi-funnel me-1"></i>
-                      Advanced
-                      {activeFilterCount > 0 && <span className="badge bg-danger ms-2">{activeFilterCount}</span>}
-                    </button>
-                    <button className="btn btn-primary" type="submit">
-                      <i className="bi bi-search me-1"></i>
-                      Apply
-                    </button>
-                  </div>
-                </div>
+      <div className="agent-portal-card">
+        <div className="agent-portal-card-body">
+          <div className="external-recommendations-toolbar">
+            <div>
+              <div className="external-recommendations-result-title">Recommendation shortlist</div>
+              <div className="external-recommendations-result-copy">
+                {total} total recommendation{total !== 1 ? 's' : ''} • Page {filters.page} of {totalPages}
+              </div>
+            </div>
+          </div>
 
-                {showAdvancedFilters && (
-                  <div className="agent-portal-filter-bar mb-3 p-3 bg-light rounded">
-                    <div>
-                      <label className="agent-portal-label">Recommended By</label>
-                      <select className="agent-portal-select" value={filters.agent_user_id} onChange={(e) => setFilters((current) => ({ ...current, agent_user_id: e.target.value }))}>
+          <Card className="mb-3">
+            <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
+              <div className="d-flex justify-content-between align-items-center">
+                <h6 className="mb-0 text-white">
+                  Advanced Filters
+                  {activeFilterCount > 0 ? <span className="badge bg-light text-dark ms-2">{activeFilterCount}</span> : null}
+                </h6>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  style={{ color: 'white', borderColor: 'white' }}
+                >
+                  {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+                </Button>
+              </div>
+            </Card.Header>
+            <Collapse in={showFilters}>
+              <Card.Body className="filter-section-improved">
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Player Name</Form.Label>
+                      <Form.Control
+                        size="sm"
+                        type="text"
+                        value={filters.player_name}
+                        onChange={(event) => updateFilters({ player_name: event.target.value })}
+                        placeholder="Enter player name"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Review Status</Form.Label>
+                      <Form.Select
+                        size="sm"
+                        value={filters.status}
+                        onChange={(event) => updateFilters({ status: event.target.value as RecommendationStatus | '' })}
+                      >
+                        <option value="">All statuses</option>
+                        {meta.statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Recommended By</Form.Label>
+                      <Form.Select
+                        size="sm"
+                        value={filters.agent_user_id}
+                        onChange={(event) => updateFilters({ agent_user_id: event.target.value })}
+                      >
                         <option value="">All agents</option>
                         {meta.agents.map((agent) => <option key={agent.user_id} value={agent.user_id}>{agent.label}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="agent-portal-label">Position</label>
-                      <input className="agent-portal-input" value={filters.position} onChange={(e) => setFilters((current) => ({ ...current, position: e.target.value }))} placeholder="e.g. CM, RW..." />
-                    </div>
-                    <div>
-                      <label className="agent-portal-label">Deal Type</label>
-                      <select className="agent-portal-select" value={filters.deal_type} onChange={(e) => setFilters((current) => ({ ...current, deal_type: e.target.value }))}>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Position</Form.Label>
+                      <Form.Control
+                        size="sm"
+                        type="text"
+                        value={filters.position}
+                        onChange={(event) => updateFilters({ position: event.target.value })}
+                        placeholder="e.g. CM, RW"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Deal Type</Form.Label>
+                      <Form.Select
+                        size="sm"
+                        value={filters.deal_type}
+                        onChange={(event) => updateFilters({ deal_type: event.target.value })}
+                      >
                         <option value="">All deal types</option>
                         <option value="Free">Free</option>
                         <option value="Permanent Transfer">Permanent Transfer</option>
                         <option value="Loan">Loan</option>
                         <option value="Loan with Option">Loan with Option</option>
-                      </select>
-                    </div>
-                    <div className="agent-portal-inline-actions" style={{ alignSelf: 'end' }}>
-                      <button type="button" className="btn btn-outline-danger btn-sm" onClick={clearFilters}>
-                        <i className="bi bi-x-circle me-1"></i>
-                        Clear All
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </form>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Page Size</Form.Label>
+                      <Form.Select
+                        size="sm"
+                        value={filters.page_size}
+                        onChange={(event) => updateFilters({ page_size: Number(event.target.value) })}
+                      >
+                        {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
 
-              <div className="table-responsive" style={{ maxHeight: '70vh', overflow: 'auto' }}>
-                <table className="table table-hover align-middle mb-0">
-                  <thead className="sticky-top" style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                    <tr>
-                      <th style={{ width: '30px' }}></th>
-                      <SortableHeader column="player_name" label="Name" />
-                      <SortableHeader column="player_date_of_birth" label="DOB" />
-                      <SortableHeader column="position" label="Recommended Position" />
-                      <SortableHeader column="date" label="Date" />
-                      <SortableHeader column="agent_name" label="Recommended By" />
-                      <SortableHeader column="agency" label="Agency" />
-                      <SortableHeader column="status" label="Status" />
-                      <th>Agent Status</th>
-                      <th>Deal Type</th>
-                      <th className="text-end">Fee</th>
-                      <th className="text-end">Current Salary</th>
-                      <th className="text-end">Expected Salary</th>
-                      <th style={{ width: '110px' }}>Review</th>
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Date Range</Form.Label>
+                      <div className="range-inputs">
+                        <Form.Control
+                          size="sm"
+                          type="date"
+                          value={filters.created_from}
+                          onChange={(event) => updateFilters({ created_from: event.target.value })}
+                        />
+                        <span className="range-separator">to</span>
+                        <Form.Control
+                          size="sm"
+                          type="date"
+                          value={filters.created_to}
+                          onChange={(event) => updateFilters({ created_to: event.target.value })}
+                        />
+                      </div>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
+                      <Button variant="outline-secondary" size="sm" onClick={clearFilters} className="w-100">
+                        Clear All Filters
+                      </Button>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
+                      <div className="text-muted small">
+                        Showing {items.length} on this page ({total} total results)
+                        {activeFilterCount > 0 ? ` • ${activeFilterCount} active filter${activeFilterCount > 1 ? 's' : ''}` : ''}
+                      </div>
+                    </Form.Group>
+                  </Col>
+                </Row>
+              </Card.Body>
+            </Collapse>
+          </Card>
+
+          <div className="external-recommendations-table-wrap">
+            <table className="table table-hover align-middle mb-0 external-recommendations-table">
+              <thead>
+                <tr>
+                  <SortableHeader column="player_name" label="Player" className="col-name" />
+                  <SortableHeader column="position" label="Position" className="col-position" />
+                  <th className="col-age">Age</th>
+                  <SortableHeader column="date" label="Submitted" className="col-date" />
+                  <SortableHeader column="agent_name" label="Agent" className="col-agent" />
+                  <SortableHeader column="status" label="Review Status" className="col-status" />
+                  <th className="col-status">Agent Status</th>
+                  <th className="col-deal">Deal Type</th>
+                  <th className="col-money">Expected Salary</th>
+                  <th className="col-actions">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
+                ) : items.length === 0 ? (
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
+                ) : (
+                  items.map((item) => (
+                    <tr key={item.id}>
+                      <td className="cell-name">
+                        <div className="external-recommendations-player-cell">
+                          {getPlayerProfilePath(item) ? (
+                            <Link className="fw-bold text-truncate" to={getPlayerProfilePath(item) || '#'} title="Open player profile">
+                              {item.player_name}
+                            </Link>
+                          ) : (
+                            <span className="fw-bold text-truncate">{item.player_name}</span>
+                          )}
+                          {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
+                            <span
+                              className="external-recommendations-score-badge"
+                              style={{
+                                backgroundColor: getPerformanceScoreColor(item.avg_performance_score),
+                                color: item.avg_performance_score >= 7 ? '#ffffff' : '#111827',
+                              }}
+                            >
+                              {item.avg_performance_score.toFixed(1)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="cell-position" title={formatRecommendedPositions(item.recommended_position)}>
+                        {formatRecommendedPositions(item.recommended_position)}
+                      </td>
+                      <td className="cell-age">{calculateAge(item.player_date_of_birth)}</td>
+                      <td className="cell-date">{formatDate(item.submission_date)}</td>
+                      <td className="cell-agent" title={item.agent_name || '-'}>
+                        {item.agent_name || '-'}
+                      </td>
+                      <td className="cell-status"><SubmissionStatusBadge status={item.status} /></td>
+                      <td className="cell-status"><AgentStatusBadge status={item.agent_status} /></td>
+                      <td><DealTypeBadges dealTypes={item.potential_deal_type || ''} /></td>
+                      <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
+                      <td className="cell-actions">
+                        <div className="external-recommendations-action-stack">
+                          <Button size="sm" variant="outline-dark" onClick={() => openReviewModal(item)}>
+                            Review
+                          </Button>
+                          <Button size="sm" variant="outline-secondary" onClick={() => openHistoryModal(item)}>
+                            History
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr><td colSpan={14} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
-                    ) : items.length === 0 ? (
-                      <tr><td colSpan={14} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
-                    ) : (
-                      <>
-                        {items.map((item) => {
-                          const isExpanded = expandedRows.has(item.id);
-                          return (
-                            <React.Fragment key={item.id}>
-                              <tr>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-link p-0 text-decoration-none"
-                                    onClick={() => toggleRowExpansion(item.id)}
-                                    aria-label={isExpanded ? 'Collapse review' : 'Expand review'}
-                                  >
-                                    <i className={`bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} text-muted`} style={{ fontSize: '0.9rem' }}></i>
-                                  </button>
-                                </td>
-                                <td>
-                                  <div className="d-flex align-items-center gap-2">
-                                    <span className="fw-bold">{item.player_name}</span>
-                                    {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
-                                      <span
-                                        className="badge rounded-pill"
-                                        style={{
-                                          backgroundColor: getPerformanceScoreColor(item.avg_performance_score),
-                                          color: item.avg_performance_score >= 7 ? '#ffffff' : '#111827',
-                                          fontSize: '0.7rem',
-                                        }}
-                                      >
-                                        {item.avg_performance_score.toFixed(1)}
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                </td>
-                                <td className="text-muted small">
-                                  {item.player_date_of_birth ? new Date(item.player_date_of_birth).toLocaleDateString() : '-'}
-                                </td>
-                                <td>
-                                  {formatRecommendedPositions(item.recommended_position) !== '-' ? (
-                                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary" style={{ fontSize: '0.75rem' }}>
-                                      {formatRecommendedPositions(item.recommended_position)}
-                                    </span>
-                                  ) : (
-                                    <span className="text-muted">-</span>
-                                  )}
-                                </td>
-                                <td className="text-muted small">{item.submission_date ? new Date(item.submission_date).toLocaleDateString() : '-'}</td>
-                                <td>{item.agent_name || '-'}</td>
-                                <td>{item.agency || '-'}</td>
-                                <td>
-                                  <SubmissionStatusBadge status={item.status} />
-                                </td>
-                                <td>
-                                  <AgentStatusBadge status={item.agent_status} />
-                                </td>
-                                <td>
-                                  <DealTypeBadges dealTypes={item.potential_deal_type || ''} />
-                                </td>
-                                <td className="text-end">{formatAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)}</td>
-                                <td className="text-end">{formatWeeklyAmount(item.current_wages_per_week, item.current_wages_currency)}</td>
-                                <td className="text-end">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => toggleRowExpansion(item.id)}
-                                  >
-                                    {isExpanded ? 'Close' : 'Review'}
-                                  </button>
-                                </td>
-                              </tr>
-                              {isExpanded && (
-                                <ExpandableRow
-                                  recommendation={item}
-                                  colSpan={14}
-                                  statuses={meta.statuses}
-                                  statusHistory={statusHistoryMap.get(item.id) || []}
-                                  onStatusChange={(newStatus) => handleStatusChange(item, newStatus)}
-                                  onSaveNotes={(notes) => handleSaveNotes(item, notes)}
-                                  updatingStatus={updatingStatus === item.id}
-                                  savingNotes={savingNotes === item.id}
-                                />
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-                <span className="text-muted small">
-                  Page {filters.page} of {totalPages} • {total} total recommendation{total !== 1 ? 's' : ''}
-                </span>
-                <div className="btn-group">
-                  <button className="btn btn-outline-secondary btn-sm" disabled={filters.page === 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}>
-                    <i className="bi bi-chevron-left"></i> Previous
-                  </button>
-                  <button className="btn btn-outline-secondary btn-sm" disabled={filters.page >= totalPages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>
-                    Next <i className="bi bi-chevron-right"></i>
-                  </button>
-                </div>
-              </div>
+          <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <span className="text-muted small">
+              Showing {items.length} on this page ({total} total)
+            </span>
+            <div className="btn-group">
+              <Button variant="outline-secondary" size="sm" disabled={filters.page === 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}>
+                <i className="bi bi-chevron-left"></i> Previous
+              </Button>
+              <Button variant="outline-secondary" size="sm" disabled={filters.page >= totalPages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>
+                Next <i className="bi bi-chevron-right"></i>
+              </Button>
             </div>
           </div>
         </div>
       </div>
+
+      <RecommendationReviewModal
+        show={Boolean(selectedRecommendation)}
+        recommendation={selectedRecommendation}
+        statuses={meta.statuses}
+        updatingStatus={selectedRecommendation ? updatingStatus === selectedRecommendation.id : false}
+        savingNotes={selectedRecommendation ? savingNotes === selectedRecommendation.id : false}
+        message={modalMessage}
+        error={modalError}
+        onHide={closeReviewModal}
+        onStatusChange={handleStatusChange}
+        onSaveNotes={handleSaveNotes}
+      />
+
+      <Modal show={Boolean(historyRecommendation)} onHide={closeHistoryModal} size="lg" centered scrollable>
+        <Modal.Header closeButton style={{ backgroundColor: '#000000', color: 'white' }} className="modal-header-dark">
+          <Modal.Title>Status History{historyRecommendation ? ` for ${historyRecommendation.player_name}` : ''}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {historyError ? <div className="alert alert-danger">{historyError}</div> : null}
+          {historyRecommendation && loadingHistoryIds.has(historyRecommendation.id) ? (
+            <div className="text-muted small d-flex align-items-center gap-2">
+              <Spinner animation="border" size="sm" />
+              Loading history...
+            </div>
+          ) : historyRecommendation && (statusHistoryMap.get(historyRecommendation.id) || []).length > 0 ? (
+            <div className="external-history-table-wrap">
+              <table className="table align-middle mb-0 external-history-table">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Changed By</th>
+                    <th>Changed At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(statusHistoryMap.get(historyRecommendation.id) || []).map((entry) => (
+                    <tr key={entry.id}>
+                      <td><SubmissionStatusBadge status={entry.new_status} /></td>
+                      <td>{entry.changed_by_name || '-'}</td>
+                      <td>{formatDateTime(entry.changed_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="external-review-empty-history">No status changes yet.</div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeHistoryModal}>Close</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

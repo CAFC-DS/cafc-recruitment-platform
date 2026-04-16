@@ -38,7 +38,7 @@ const AgentSubmitPage: React.FC = () => {
     transfermarkt_link: '',
     agreement_type: [],
     confirmed_contract_expiry: '',
-    contract_options: ['None'],
+    contract_options: [],
     potential_deal_type: [],
     transfer_fee: '',
     current_wages_per_week: '',

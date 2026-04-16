@@ -62,7 +62,7 @@ const SharedReportPage: React.FC = () => {
 
       try {
         const baseURL =
-          process.env.REACT_APP_API_URL || "http://localhost:3001";
+          process.env.REACT_APP_API_URL || "http://localhost:8000";
         const response = await axios.get(`${baseURL}/public/report/${token}`);
         setReport(response.data);
       } catch (err: any) {

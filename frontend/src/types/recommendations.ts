@@ -45,6 +45,9 @@ export interface AgentProfile {
 export interface Recommendation {
   id: number;
   player_name: string;
+  linked_player_id?: number | null;
+  linked_cafc_player_id?: number | null;
+  linked_player_data_source?: string | null;
   player_date_of_birth?: string;
   recommended_position?: string | string[];
   transfermarkt_link?: string;

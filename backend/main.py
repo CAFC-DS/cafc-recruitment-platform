@@ -469,7 +469,12 @@ else:
         allow_origins=[
             "http://localhost:3000",
             "http://localhost:3001",
+            "http://localhost:3002",
+            "http://localhost:3003",
             "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:3002",
+            "http://127.0.0.1:3003",
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -1016,6 +1021,9 @@ class AgentPlayerSearchResult(BaseModel):
 class RecommendationResponse(BaseModel):
     id: int
     player_name: str
+    linked_player_id: Optional[int] = None
+    linked_cafc_player_id: Optional[int] = None
+    linked_player_data_source: Optional[str] = None
     player_date_of_birth: Optional[str] = None
     recommended_position: Optional[str] = None
     transfermarkt_link: Optional[str] = None
@@ -2014,6 +2022,8 @@ def build_recommendation_select():
     has_players_playername = recommendation_column_exists("players", "PLAYERNAME")
     has_players_playerid = recommendation_column_exists("players", "PLAYERID")
     has_players_cafc_id = recommendation_column_exists("players", "CAFC_PLAYER_ID")
+    has_players_birthdate = recommendation_column_exists("players", "BIRTHDATE")
+    has_players_data_source = recommendation_column_exists("players", "DATA_SOURCE")
 
     if has_sr_perf and has_players_playername and (
         (has_sr_player_id and has_players_playerid)
@@ -2050,7 +2060,61 @@ def build_recommendation_select():
     has_agent_status_updated_at = recommendation_column_exists("player_recommendations", "AGENT_STATUS_UPDATED_AT")
 
     recommended_position_expr = "pr.RECOMMENDED_POSITION" if has_recommended_position else "NULL"
-    player_dob_expr = "pr.PLAYER_DATE_OF_BIRTH" if has_player_dob else "NULL"
+    matched_player_id_expr = "NULL"
+    matched_cafc_player_id_expr = "NULL"
+    matched_data_source_expr = "NULL"
+    matched_player_dob_expr = "NULL"
+    if has_players_playername:
+        if has_players_playerid:
+            matched_player_id_expr = """
+                (
+                    SELECT MIN(p.PLAYERID)
+                    FROM players p
+                    WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+                )
+            """
+        if has_players_cafc_id:
+            matched_cafc_player_id_expr = """
+                (
+                    SELECT MIN(p.CAFC_PLAYER_ID)
+                    FROM players p
+                    WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+                )
+            """
+        if has_players_data_source and has_players_cafc_id:
+            matched_data_source_expr = """
+                (
+                    SELECT CASE
+                        WHEN MIN(p.CAFC_PLAYER_ID) IS NOT NULL THEN 'internal'
+                        ELSE MIN(p.DATA_SOURCE)
+                    END
+                    FROM players p
+                    WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+                )
+            """
+        elif has_players_data_source:
+            matched_data_source_expr = """
+                (
+                    SELECT MIN(p.DATA_SOURCE)
+                    FROM players p
+                    WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+                )
+            """
+        if has_players_birthdate:
+            matched_player_dob_expr = """
+                (
+                    SELECT MIN(p.BIRTHDATE)
+                    FROM players p
+                    WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+                )
+            """
+
+    if has_player_dob and has_players_birthdate and has_players_playername:
+        player_dob_expr = f"COALESCE(pr.PLAYER_DATE_OF_BIRTH, {matched_player_dob_expr})"
+    elif has_player_dob:
+        player_dob_expr = "pr.PLAYER_DATE_OF_BIRTH"
+    else:
+        player_dob_expr = matched_player_dob_expr
     agent_status_expr = "pr.AGENT_STATUS" if has_agent_status else "'Active'"
     agent_status_updated_at_expr = "pr.AGENT_STATUS_UPDATED_AT" if has_agent_status_updated_at else "NULL"
 
@@ -2099,7 +2163,10 @@ def build_recommendation_select():
             {recommended_position_expr} AS RECOMMENDED_POSITION,
             {player_dob_expr} AS PLAYER_DATE_OF_BIRTH,
             {agent_status_expr} AS AGENT_STATUS,
-            {agent_status_updated_at_expr} AS AGENT_STATUS_UPDATED_AT
+            {agent_status_updated_at_expr} AS AGENT_STATUS_UPDATED_AT,
+            {matched_player_id_expr} AS LINKED_PLAYER_ID,
+            {matched_cafc_player_id_expr} AS LINKED_CAFC_PLAYER_ID,
+            {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE
         FROM player_recommendations pr
         LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
@@ -2117,6 +2184,9 @@ def build_recommendation_select():
         player_dob_expr=player_dob_expr,
         agent_status_expr=agent_status_expr,
         agent_status_updated_at_expr=agent_status_updated_at_expr,
+        matched_player_id_expr=matched_player_id_expr,
+        matched_cafc_player_id_expr=matched_cafc_player_id_expr,
+        matched_data_source_expr=matched_data_source_expr,
     )
 
 
@@ -2147,6 +2217,9 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "id": row[0],
         "player_name": row[6],
         "player_date_of_birth": serialize_datetime(row[41]),
+        "linked_player_id": row[44],
+        "linked_cafc_player_id": row[45],
+        "linked_player_data_source": row[46],
         "recommended_position": row[40],
         "transfermarkt_link": row[7],
         "agreement_type": row[8],
