@@ -12,10 +12,11 @@ const AGENT_STATUSES: AgentStatus[] = [
   'Withdrawn',
 ];
 
-const formatCurrency = (value?: number | string, currency?: string) => {
+const formatCurrency = (value?: number | string, currency?: string, basis?: string) => {
   if (value === undefined || value === null) return '-';
-  if (typeof value === 'string') return `${currency || 'GBP'} ${value} p/w`;
-  return `${currency || 'GBP'} ${Math.round(value).toLocaleString('en-GB')} p/w`;
+  const basisLabel = basis ? ` ${basis.toLowerCase()}` : '';
+  if (typeof value === 'string') return `${currency || 'GBP'} ${value} p/w${basisLabel}`;
+  return `${currency || 'GBP'} ${Math.round(value).toLocaleString('en-GB')} p/w${basisLabel}`;
 };
 
 const formatAmountCurrency = (amount?: number, currency?: string, fallback?: string) => {
@@ -109,8 +110,8 @@ const AgentSubmissionDetailPage: React.FC = () => {
                   ['Agreement type', item.agreement_type || '-'],
                   ['Potential deal type', item.potential_deal_type || '-'],
                   ['Transfer fee', formatAmountCurrency(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)],
-                  ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency)],
-                  ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency)],
+                  ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency, item.wage_basis || item.current_wages_basis)],
+                  ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)],
                   ['Contract expiry', item.confirmed_contract_expiry ? new Date(item.confirmed_contract_expiry).toLocaleDateString() : '-'],
                   ['Transfermarkt link', item.transfermarkt_link || '-'],
                   ['Contract options', item.contract_options || '-'],

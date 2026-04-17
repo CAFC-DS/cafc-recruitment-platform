@@ -2626,7 +2626,9 @@ span.badge.badge-neutral-grey {
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
-  overflow: hidden;
+  max-height: min(320px, 45vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .agent-select-option {
@@ -2656,6 +2658,51 @@ span.badge.badge-neutral-grey {
 
 .agent-select-check {
   font-weight: 800;
+}
+
+.agent-wage-basis-field {
+  align-self: start;
+}
+
+.agent-wage-basis-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  min-height: 52px;
+  border: 1.5px solid #d7dee8;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 0.25rem;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+}
+
+.agent-wage-basis-option {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-weight: 800;
+  letter-spacing: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.agent-wage-basis-option:hover,
+.agent-wage-basis-option:focus {
+  outline: none;
+  color: #111827;
+  border-color: #cbd5e1;
+}
+
+.agent-wage-basis-option.active {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+.agent-wage-values-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
 .agent-player-search-root {
@@ -3346,6 +3393,10 @@ span.badge.badge-neutral-grey {
 
   .agent-portal-form-grid.agent-portal-form-grid-3,
   .agent-portal-form-grid.agent-portal-form-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-wage-values-row {
     grid-template-columns: 1fr;
   }
 }

@@ -6,6 +6,7 @@ import {
   ContractOption,
   PotentialDealType,
   RecommendationFormValues,
+  WageBasis,
 } from '../../types/recommendations';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 
@@ -41,6 +42,8 @@ const POTENTIAL_DEAL_OPTIONS: PotentialDealType[] = [
   'Loan',
   'Loan with Option',
 ];
+
+const WAGE_BASIS_OPTIONS: WageBasis[] = ['Gross', 'Net'];
 
 const RECOMMENDED_POSITION_OPTIONS = [
   'GK',
@@ -85,6 +88,53 @@ const validateWageInput = (value: string) => {
   // Allow only digits and hyphens for banding (e.g., 12000-20000)
   return value.replace(/[^\d-]/g, '');
 };
+
+const WageInputGroup: React.FC<{
+  label: string;
+  required?: boolean;
+  value: string;
+  onValueChange: (value: string) => void;
+}> = ({ label, required = false, value, onValueChange }) => (
+  <div>
+    <label className="agent-portal-label">{label}{required ? ' *' : ''}</label>
+    <input
+      className="agent-portal-input"
+      inputMode="numeric"
+      value={value}
+      onChange={(event) => onValueChange(validateWageInput(event.target.value))}
+      required={required}
+    />
+    <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+      Enter a single value or range, for example 12000 or 12000-20000.
+    </div>
+  </div>
+);
+
+const WageBasisToggle: React.FC<{
+  value: WageBasis;
+  onChange: (value: WageBasis) => void;
+}> = ({ value, onChange }) => (
+  <div className="agent-wage-basis-field">
+    <label className="agent-portal-label">Wage Basis</label>
+    <div className="agent-wage-basis-toggle" role="radiogroup" aria-label="Wage basis">
+      {WAGE_BASIS_OPTIONS.map((option) => (
+        <button
+          key={option}
+          type="button"
+          className={`agent-wage-basis-option${value === option ? ' active' : ''}`}
+          onClick={() => onChange(option)}
+          role="radio"
+          aria-checked={value === option}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+    <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+      Applies to both current and expected wages. Use Gross unless the figures are quoted as Net.
+    </div>
+  </div>
+);
 
 function MultiSelectDropdown<T extends string>({
   label,
@@ -148,6 +198,12 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
     () => formatWholePounds(values.transfer_fee),
     [values.transfer_fee],
   );
+  const wageBasis = values.wage_basis || values.expected_wages_basis || values.current_wages_basis || 'Gross';
+  const updateWageBasis = (nextBasis: WageBasis) => {
+    onChange('wage_basis', nextBasis);
+    onChange('current_wages_basis', nextBasis);
+    onChange('expected_wages_basis', nextBasis);
+  };
 
   useEffect(() => {
     if (isManualPlayerEntry || playerSearchQuery.trim().length < 2) {
@@ -422,13 +478,18 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               required
             />
           </div>
-          <MultiSelectDropdown
-            label="Contract Options *"
-            values={values.contract_options}
-            options={CONTRACT_OPTION_OPTIONS}
-            placeholder="Select contract options"
-            onChange={(nextValues) => onChange('contract_options', nextValues)}
-          />
+          <div>
+            <MultiSelectDropdown
+              label="Contract Options *"
+              values={values.contract_options}
+              options={CONTRACT_OPTION_OPTIONS}
+              placeholder="Select contract options"
+              onChange={(nextValues) => onChange('contract_options', nextValues)}
+            />
+            <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+              Does either the club or the player hold a contract option?
+            </div>
+          </div>
           <MultiSelectDropdown
             label="Potential Deal Type *"
             values={values.potential_deal_type}
@@ -448,30 +509,21 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
               Required only when potential deal type includes Permanent Transfer.
             </div>
           </div>
-          <div>
-            <label className="agent-portal-label">Current Wages (Per Week - P/W, GBP)</label>
-            <input
-              className="agent-portal-input"
-              inputMode="numeric"
-              value={values.current_wages_per_week}
-              onChange={(event) => onChange('current_wages_per_week', validateWageInput(event.target.value))}
-            />
-            <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
-              Enter a single value (e.g., 12000) or a range (e.g., 12000-20000)
-            </div>
+          <div className="full-span">
+            <WageBasisToggle value={wageBasis} onChange={updateWageBasis} />
           </div>
-          <div>
-            <label className="agent-portal-label">Expected Wages (Per Week - P/W, GBP) *</label>
-            <input
-              className="agent-portal-input"
-              inputMode="numeric"
-              value={values.expected_wages_per_week}
-              onChange={(event) => onChange('expected_wages_per_week', validateWageInput(event.target.value))}
-              required
+          <div className="full-span agent-wage-values-row">
+            <WageInputGroup
+              label="Current Wages (Per Week - P/W, GBP)"
+              value={values.current_wages_per_week}
+              onValueChange={(nextValue) => onChange('current_wages_per_week', nextValue)}
             />
-            <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
-              Enter a single value (e.g., 18000) or a range (e.g., 15000-20000)
-            </div>
+            <WageInputGroup
+              label="Expected Wages (Per Week - P/W, GBP)"
+              required
+              value={values.expected_wages_per_week}
+              onValueChange={(nextValue) => onChange('expected_wages_per_week', nextValue)}
+            />
           </div>
           <div className="full-span">
             <div className="agent-portal-meta" style={{ marginBottom: '0.5rem' }}>

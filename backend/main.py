@@ -818,6 +818,11 @@ ALLOWED_CURRENCY_CODES = [
     "USD",
 ]
 
+ALLOWED_WAGE_BASIS = [
+    "Gross",
+    "Net",
+]
+
 RECOMMENDATION_MAX_FILE_SIZE = 15 * 1024 * 1024
 RECOMMENDATION_ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"}
 RECOMMENDATION_ALLOWED_CONTENT_TYPES = {
@@ -1038,10 +1043,13 @@ class RecommendationResponse(BaseModel):
     current_wages_per_week_min: Optional[float] = None
     current_wages_per_week_max: Optional[float] = None
     current_wages_currency: Optional[str] = None
+    wage_basis: Optional[str] = None
+    current_wages_basis: Optional[str] = None
     expected_wages_per_week: Optional[Union[float, str]] = None
     expected_wages_per_week_min: Optional[float] = None
     expected_wages_per_week_max: Optional[float] = None
     expected_wages_currency: Optional[str] = None
+    expected_wages_basis: Optional[str] = None
     additional_information: Optional[str] = None
     supporting_file_name: Optional[str] = None
     created_at: Optional[str] = None
@@ -1427,6 +1435,7 @@ RECOMMENDATION_OPTIONAL_COLUMNS = {
         "EXPECTED_WAGES_MIN",
         "EXPECTED_WAGES_MAX",
         "EXPECTED_WAGES_CURRENCY",
+        "WAGE_BASIS",
         "RECOMMENDED_POSITION",
         "PLAYER_DATE_OF_BIRTH",
         "AGENT_STATUS",
@@ -1747,6 +1756,18 @@ def normalize_currency_selection(selected_currency: Optional[str], field_label: 
     return selected
 
 
+def normalize_wage_basis_selection(selected_basis: Optional[str], field_label: str) -> Optional[str]:
+    if not selected_basis:
+        return None
+    selected = selected_basis.strip().title()
+    if selected and selected not in ALLOWED_WAGE_BASIS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid {field_label}. Must be one of: {', '.join(ALLOWED_WAGE_BASIS)}",
+        )
+    return selected
+
+
 def get_private_stage_name() -> str:
     if not RECOMMENDATION_UPLOADS_ENABLED:
         raise HTTPException(status_code=404, detail="Supporting file uploads are disabled")
@@ -2015,6 +2036,14 @@ def build_recommendation_select():
         if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_CURRENCY")
         else "NULL"
     )
+    wage_basis_sources = []
+    if recommendation_column_exists("player_recommendations", "WAGE_BASIS"):
+        wage_basis_sources.append("pr.WAGE_BASIS")
+    if recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_BASIS"):
+        wage_basis_sources.append("pr.EXPECTED_WAGES_BASIS")
+    if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_BASIS"):
+        wage_basis_sources.append("pr.CURRENT_WAGES_BASIS")
+    wage_basis_expr = f"COALESCE({', '.join(wage_basis_sources)})" if wage_basis_sources else "NULL"
     has_sr_perf = recommendation_column_exists("scout_reports", "PERFORMANCE_SCORE")
     has_sr_player_id = recommendation_column_exists("scout_reports", "PLAYER_ID")
     has_sr_cafc_player_id = recommendation_column_exists("scout_reports", "CAFC_PLAYER_ID")
@@ -2166,7 +2195,8 @@ def build_recommendation_select():
             {agent_status_updated_at_expr} AS AGENT_STATUS_UPDATED_AT,
             {matched_player_id_expr} AS LINKED_PLAYER_ID,
             {matched_cafc_player_id_expr} AS LINKED_CAFC_PLAYER_ID,
-            {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE
+            {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
+            {wage_basis_expr} AS WAGE_BASIS
         FROM player_recommendations pr
         LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
@@ -2179,6 +2209,7 @@ def build_recommendation_select():
         expected_wages_min_expr=expected_wages_min_expr,
         expected_wages_max_expr=expected_wages_max_expr,
         expected_wages_currency_expr=expected_wages_currency_expr,
+        wage_basis_expr=wage_basis_expr,
         avg_performance_expr=avg_performance_expr,
         recommended_position_expr=recommended_position_expr,
         player_dob_expr=player_dob_expr,
@@ -2206,6 +2237,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     expected_wages_value = format_numeric_range_for_response(expected_wages_min, expected_wages_max)
     current_wages_currency_value = (current_wages_currency or "GBP") if current_wages_value is not None else None
     expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
+    wage_basis = row[47] if len(row) > 47 else None
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None
     display_transfer_fee = (
         f"{transfer_fee_currency or 'GBP'} {int(transfer_fee_amount):,}"
@@ -2233,10 +2265,13 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "current_wages_per_week_min": format_decimal(current_wages_min),
         "current_wages_per_week_max": format_decimal(current_wages_max),
         "current_wages_currency": current_wages_currency_value,
+        "wage_basis": wage_basis,
+        "current_wages_basis": wage_basis,
         "expected_wages_per_week": expected_wages_value,
         "expected_wages_per_week_min": format_decimal(expected_wages_min),
         "expected_wages_per_week_max": format_decimal(expected_wages_max),
         "expected_wages_currency": expected_wages_currency_value,
+        "expected_wages_basis": wage_basis,
         "additional_information": row[21],
         "supporting_file_name": row[30],
         "created_at": serialize_datetime(row[27]),
@@ -2669,8 +2704,11 @@ async def create_agent_recommendation(
     transfer_fee_currency: Optional[str] = Form(None),
     current_wages_per_week: Optional[str] = Form(None),
     current_wages_currency: Optional[str] = Form(None),
+    wage_basis: Optional[str] = Form(None),
+    current_wages_basis: Optional[str] = Form(None),
     expected_wages_per_week: Optional[str] = Form(None),
     expected_wages_currency: Optional[str] = Form(None),
+    expected_wages_basis: Optional[str] = Form(None),
     additional_information: Optional[str] = Form(None),
     supporting_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(require_agent_user),
@@ -2714,6 +2752,9 @@ async def create_agent_recommendation(
         normalized_expected_wages_currency = normalize_currency_selection(
             expected_wages_currency, "expected wages currency"
         )
+        normalized_wage_basis = normalize_wage_basis_selection(
+            wage_basis or expected_wages_basis or current_wages_basis, "wage basis"
+        )
         normalized_recommended_position = validate_recommendation_multi_option(
             recommended_position, ALLOWED_RECOMMENDED_POSITIONS, "recommended position"
         )
@@ -2723,12 +2764,16 @@ async def create_agent_recommendation(
             normalized_current_wages_currency = "GBP"
         if normalized_expected_wages_min is not None and not normalized_expected_wages_currency:
             normalized_expected_wages_currency = "GBP"
+        if (normalized_current_wages_min is not None or normalized_expected_wages_min is not None) and not normalized_wage_basis:
+            normalized_wage_basis = "Gross"
         if normalized_transfer_fee_amount is None:
             normalized_transfer_fee_currency = None
         if normalized_current_wages_min is None:
             normalized_current_wages_currency = None
         if normalized_expected_wages_min is None:
             normalized_expected_wages_currency = None
+        if normalized_current_wages_min is None and normalized_expected_wages_min is None:
+            normalized_wage_basis = None
         if not submission_date:
             raise HTTPException(status_code=400, detail="Submission date is required")
         if not player_name or not player_name.strip():
@@ -2820,6 +2865,7 @@ async def create_agent_recommendation(
             ("EXPECTED_WAGES_MIN", normalized_expected_wages_min),
             ("EXPECTED_WAGES_MAX", normalized_expected_wages_max),
             ("EXPECTED_WAGES_CURRENCY", normalized_expected_wages_currency),
+            ("WAGE_BASIS", normalized_wage_basis),
         ]
         for optional_column, optional_value in optional_amount_currency_pairs:
             if optional_column in recommendation_columns:

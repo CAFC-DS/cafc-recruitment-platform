@@ -36,12 +36,12 @@ const formatAmount = (amount?: number, currency?: string, fallback?: string) => 
   return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')}`;
 };
 
-const formatWeeklyAmount = (amount?: number | string, currency?: string) => {
+const formatWeeklyAmount = (amount?: number | string, currency?: string, basis?: string) => {
   if (amount === undefined || amount === null || amount === '') return '-';
   const displayAmount = typeof amount === 'string'
     ? amount.split('-').map(formatNumberToken).join('-')
     : Math.round(amount).toLocaleString('en-GB');
-  return `${currency || 'GBP'} ${displayAmount} p/w`;
+  return `${currency || 'GBP'} ${displayAmount} p/w${basis ? ` ${basis.toLowerCase()}` : ''}`;
 };
 
 const formatRecommendedPositions = (recommendedPosition?: string | string[] | null) => {
@@ -51,6 +51,19 @@ const formatRecommendedPositions = (recommendedPosition?: string | string[] | nu
   }
   const positions = recommendedPosition.split(',').map((position) => position.trim()).filter(Boolean);
   return positions.length ? positions.join(', ') : '-';
+};
+
+const formatWageBasis = (recommendation: InternalRecommendation) => {
+  if (recommendation.wage_basis) return recommendation.wage_basis;
+
+  const currentBasis = recommendation.current_wages_basis;
+  const expectedBasis = recommendation.expected_wages_basis;
+
+  if (currentBasis && expectedBasis && currentBasis !== expectedBasis) {
+    return `Current: ${currentBasis}, Expected: ${expectedBasis}`;
+  }
+
+  return expectedBasis || currentBasis || '-';
 };
 
 const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
@@ -126,6 +139,7 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
             {detail('Deal Type', recommendation.potential_deal_type || '-')}
             {detail('Agreement Type', recommendation.agreement_type || '-')}
             {detail('Transfer Fee', formatAmount(recommendation.transfer_fee_amount, recommendation.transfer_fee_currency, recommendation.transfer_fee))}
+            {detail('Wage Basis', formatWageBasis(recommendation))}
             {detail('Current Wages', formatWeeklyAmount(recommendation.current_wages_per_week, recommendation.current_wages_currency))}
             {detail('Expected Wages', formatWeeklyAmount(recommendation.expected_wages_per_week, recommendation.expected_wages_currency))}
             {detail('Contract Expiry', formatDate(recommendation.confirmed_contract_expiry))}

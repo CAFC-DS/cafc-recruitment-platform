@@ -32,6 +32,8 @@ export type PotentialDealType =
   | 'Loan'
   | 'Loan with Option';
 
+export type WageBasis = 'Gross' | 'Net';
+
 export interface AgentProfile {
   user_id: number;
   firstname?: string;
@@ -62,10 +64,13 @@ export interface Recommendation {
   current_wages_per_week_min?: number;
   current_wages_per_week_max?: number;
   current_wages_currency?: string;
+  wage_basis?: WageBasis;
+  current_wages_basis?: WageBasis;
   expected_wages_per_week?: number | string;
   expected_wages_per_week_min?: number;
   expected_wages_per_week_max?: number;
   expected_wages_currency?: string;
+  expected_wages_basis?: WageBasis;
   additional_information?: string;
   supporting_file_name?: string;
   created_at?: string;
@@ -135,7 +140,10 @@ export interface RecommendationFormValues {
   potential_deal_type: PotentialDealType[];
   transfer_fee: string;
   current_wages_per_week: string;
+  wage_basis: WageBasis;
+  current_wages_basis: WageBasis;
   expected_wages_per_week: string;
+  expected_wages_basis: WageBasis;
   additional_information: string;
 }
 

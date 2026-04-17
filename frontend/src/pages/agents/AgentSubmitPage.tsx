@@ -42,7 +42,10 @@ const AgentSubmitPage: React.FC = () => {
     potential_deal_type: [],
     transfer_fee: '',
     current_wages_per_week: '',
+    wage_basis: 'Gross',
+    current_wages_basis: 'Gross',
     expected_wages_per_week: '',
+    expected_wages_basis: 'Gross',
     additional_information: '',
   });
 

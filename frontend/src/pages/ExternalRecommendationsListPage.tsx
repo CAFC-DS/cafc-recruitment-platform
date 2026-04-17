@@ -46,12 +46,12 @@ const formatNumberToken = (value: string) => {
   return /^\d+$/.test(trimmed) ? Number(trimmed).toLocaleString('en-GB') : trimmed;
 };
 
-const formatWeeklyAmount = (amount?: number | string, currency?: string) => {
+const formatWeeklyAmount = (amount?: number | string, currency?: string, basis?: string) => {
   if (amount === undefined || amount === null || amount === '') return '-';
   const displayAmount = typeof amount === 'string'
     ? amount.split('-').map(formatNumberToken).join('-')
     : Math.round(amount).toLocaleString('en-GB');
-  return `${currency || 'GBP'} ${displayAmount} p/w`;
+  return `${currency || 'GBP'} ${displayAmount} p/w${basis ? ` ${basis.toLowerCase()}` : ''}`;
 };
 
 const formatDate = (value?: string | null) => {
@@ -589,7 +589,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       <td className="cell-status"><SubmissionStatusBadge status={item.status} /></td>
                       <td className="cell-status"><AgentStatusBadge status={item.agent_status} /></td>
                       <td><DealTypeBadges dealTypes={item.potential_deal_type || ''} /></td>
-                      <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency)}</td>
+                      <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)}</td>
                       <td className="cell-actions">
                         <div className="external-recommendations-action-stack">
                           <Button size="sm" variant="outline-dark" onClick={() => openReviewModal(item)}>
