@@ -2043,7 +2043,12 @@ def build_recommendation_select():
         wage_basis_sources.append("pr.EXPECTED_WAGES_BASIS")
     if recommendation_column_exists("player_recommendations", "CURRENT_WAGES_BASIS"):
         wage_basis_sources.append("pr.CURRENT_WAGES_BASIS")
-    wage_basis_expr = f"COALESCE({', '.join(wage_basis_sources)})" if wage_basis_sources else "NULL"
+    if len(wage_basis_sources) == 1:
+        wage_basis_expr = wage_basis_sources[0]
+    elif wage_basis_sources:
+        wage_basis_expr = f"COALESCE({', '.join(wage_basis_sources)})"
+    else:
+        wage_basis_expr = "NULL"
     has_sr_perf = recommendation_column_exists("scout_reports", "PERFORMANCE_SCORE")
     has_sr_player_id = recommendation_column_exists("scout_reports", "PLAYER_ID")
     has_sr_cafc_player_id = recommendation_column_exists("scout_reports", "CAFC_PLAYER_ID")
