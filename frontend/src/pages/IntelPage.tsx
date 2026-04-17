@@ -310,6 +310,9 @@ const IntelPage: React.FC = () => {
           backgroundColor,
           color: getContrastTextColor(backgroundColor),
           fontWeight: 600,
+          display: "inline-flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
         }}
       >
         {formatRecommendation(recommendation)}
@@ -739,197 +742,162 @@ const IntelPage: React.FC = () => {
                     reportId !== null && loadingReportId === reportId;
 
                   return (
-                <Col
-                  sm={6}
-                  md={4}
-                  lg={3}
-                  key={reportId ?? `intel-card-${report.created_at}-${report.player_name}`}
-                  className="mb-4"
-                >
-                  <Card
-                    className="h-100 shadow-sm hover-card"
-                    style={{
-                      borderRadius: "8px",
-                      border: "1px solid #dee2e6",
-                      position: "relative",
-                    }}
-                  >
-                    <Card.Body className="p-3">
-                      {/* Top Row - 2 columns */}
-                      <Row className="mb-3 pb-2 border-bottom">
-                        {/* Left: Player Info */}
-                        <Col xs={6}>
-                          <div>
-                            {report.player_id ? (
-                              <a
-                              href={getPlayerProfilePath(report as any)}
-                              className="text-decoration-none fw-bold d-block mb-1"
-                              style={{
-                                color: "#212529",
-                                fontSize: "1rem",
-                                textAlign: "left",
-                                cursor: "pointer",
-                              }}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                navigate(getPlayerProfilePath(report as any));
-                              }}
-                            >
-                                {report.player_name}
-                              </a>
-                            ) : (
-                              <div
-                                className="fw-bold d-block mb-1"
-                                style={{
-                                  color: "#212529",
-                                  fontSize: "1rem",
-                                }}
-                              >
-                                {report.player_name}
-                              </div>
-                            )}
-                            <small className="text-muted d-block">
-                              {formatIntelType(report.intel_type)}
-                            </small>
-                          </div>
-                        </Col>
-
-                        {/* Right: Date Info */}
-                        <Col xs={6} className="text-end">
-                          <div>
-                            <small className="text-muted d-block">
-                              {report.contact_name || "N/A"}
-                            </small>
-                            <small className="text-muted d-block">
-                              {formatReportDate(report)}
-                            </small>
-                          </div>
-                        </Col>
-                      </Row>
-
-                      {/* Middle Row - 2 columns */}
-                      <Row className="mb-3 pb-2 border-bottom">
-                        {/* Left: Contact Info */}
-                        <Col xs={6}>
-                          <div>
-                            {isGeneralNote(report) ? (
-                              <small
-                                className="text-muted d-block"
-                                style={{
-                                  fontSize: "0.75rem",
-                                  lineHeight: "1.2",
-                                }}
-                              >
-                                {report.notes || report.conversation_notes || "—"}
-                              </small>
-                            ) : (
-                              <>
-                                <small
-                                  className="text-muted d-block mb-1"
+                    <Col
+                      sm={6}
+                      md={4}
+                      lg={3}
+                      key={reportId ?? `intel-card-${report.created_at}-${report.player_name}`}
+                      className="mb-4"
+                    >
+                      <Card
+                        className="h-100 shadow-sm hover-card"
+                        style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                      >
+                        <Card.Body className="p-3">
+                          <Row className="mb-3 pb-2 border-bottom">
+                            <Col xs={6}>
+                              <div>
+                              {report.player_id ? (
+                                <a
+                                  href={getPlayerProfilePath(report as any)}
+                                  className="text-decoration-none fw-bold d-block mb-1"
                                   style={{
-                                    fontSize: "0.75rem",
-                                    lineHeight: "1.2",
+                                    color: "#212529",
+                                    fontSize: "1rem",
+                                    textAlign: "left",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    navigate(getPlayerProfilePath(report as any));
                                   }}
                                 >
-                                  <span className="fw-semibold">Organisation:</span>{" "}
-                                  {report.contact_organisation || "N/A"}
-                                </small>
-                                {report.confirmed_contract_expiry && (
-                                  <small
-                                    className="text-muted d-block"
-                                    style={{
-                                      fontSize: "0.75rem",
-                                      lineHeight: "1.2",
-                                    }}
-                                  >
-                                    <span className="fw-semibold">Expiry:</span>{" "}
-                                    {new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")}
-                                  </small>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </Col>
-
-                        {/* Right: Recommendation */}
-                        <Col xs={6} className="text-end">
-                          <div>
-                            <small className="text-muted fw-semibold d-block">
-                              {isGeneralNote(report) ? "Type" : "Recommendation"}
-                            </small>
-                            {isGeneralNote(report) ? (
-                              <small className="text-muted">{formatIntelType(report.intel_type)}</small>
-                            ) : (
-                              getRecommendationBadge(report.recommendation || report.action_required)
-                            )}
-                          </div>
-                        </Col>
-                      </Row>
-
-                      {/* Bottom Row - Tags and Actions */}
-                      <Row className="align-items-center">
-                        {/* Left: Deal Info */}
-                        <Col xs={6}>
-                          <div className="d-flex align-items-center gap-1">
-                            {isGeneralNote(report) ? (
-                              <small className="text-muted fw-semibold me-1">
-                                General Note
-                              </small>
-                            ) : (
-                              report.potential_deal_types &&
-                              report.potential_deal_types.length > 0 && (
-                                <small className="text-muted fw-semibold me-1">
-                                  {formatDealTypes(report.potential_deal_types)}
-                                </small>
-                              )
-                            )}
-                          </div>
-                        </Col>
-
-                        {/* Right: Actions */}
-                        <Col xs={6} className="text-end">
-                          <div className="d-flex justify-content-end gap-1">
-                            <Button
-                              size="sm"
-                              className="btn-action-circle btn-action-view"
-                              onClick={() => reportId !== null && handleViewIntelReport(reportId)}
-                              disabled={reportId === null}
-                              title="View Report"
-                            >
-                              👁️
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="btn-action-circle btn-action-edit"
-                              title="Edit"
-                              onClick={() => reportId !== null && handleEditReport(reportId)}
-                              disabled={reportId === null || isActionLoading}
-                            >
-                              {isActionLoading ? (
-                                <Spinner
-                                  as="span"
-                                  animation="border"
-                                  size="sm"
-                                />
+                                  {report.player_name || "N/A"}
+                                </a>
                               ) : (
-                                "✏️"
+                                <div
+                                  className="fw-bold d-block mb-1"
+                                  style={{
+                                    color: "#212529",
+                                    fontSize: "1rem",
+                                    textAlign: "left",
+                                  }}
+                                >
+                                  {report.player_name || "N/A"}
+                                </div>
                               )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="btn-action-circle btn-action-delete"
-                              title="Delete"
-                              onClick={() => reportId !== null && handleDeleteReport(reportId)}
-                              disabled={reportId === null}
-                            >
-                              🗑️
-                            </Button>
-                          </div>
-                        </Col>
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                </Col>
+                                <small className="text-muted d-block">
+                                  {formatIntelType(report.intel_type)}
+                                </small>
+                                <small className="text-muted d-block">
+                                  Info Date: {formatInformationDate(report)}
+                                </small>
+                              </div>
+                            </Col>
+
+                            <Col xs={6} className="text-end">
+                              <div>
+                                <small className="text-muted d-block">
+                                  {report.submitted_by || "Unknown"}
+                                </small>
+                                <small className="text-muted d-block">
+                                  Report Date: {formatReportDate(report)}
+                                </small>
+                              </div>
+                            </Col>
+                          </Row>
+
+                          <Row className="mb-3 pb-2 border-bottom">
+                            <Col xs={6}>
+                              <div>
+                                <small
+                                  className="text-muted d-block mb-1"
+                                  style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                >
+                                  <span className="fw-semibold">Contact:</span>{" "}
+                                  {report.contact_name || "—"}
+                                </small>
+                                <small
+                                  className="text-muted d-block"
+                                  style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                >
+                                  <span className="fw-semibold">Organisation:</span>{" "}
+                                  {report.contact_organisation || "—"}
+                                </small>
+                              </div>
+                            </Col>
+
+                            <Col xs={6} className="text-end">
+                              <div>
+                                <small className="text-muted fw-semibold d-block">
+                                  {isGeneralNote(report) ? "Type" : "Recommendation"}
+                                </small>
+                              {isGeneralNote(report) ? (
+                                  <small className="text-muted intel-card-nowrap">{formatIntelType(report.intel_type)}</small>
+                              ) : (
+                                getRecommendationBadge(report.recommendation || report.action_required)
+                              )}
+                              </div>
+                            </Col>
+                          </Row>
+
+                          <Row className="align-items-center">
+                            <Col xs={6}>
+                              <div>
+                                <small
+                                  className="text-muted d-block mb-1"
+                                  style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                >
+                                  <span className="fw-semibold">Deal Types:</span>{" "}
+                                  {isGeneralNote(report) ? "—" : formatDealTypes(report.potential_deal_types)}
+                                </small>
+                                <small
+                                  className="text-muted d-block"
+                                  style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                >
+                                  <span className="fw-semibold">Contract Expiry:</span>{" "}
+                                  {!isGeneralNote(report) && report.confirmed_contract_expiry
+                                    ? new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")
+                                    : "—"}
+                                </small>
+                              </div>
+                            </Col>
+
+                            <Col xs={6} className="text-end">
+                              <div className="d-flex justify-content-end gap-1">
+                              <Button
+                                size="sm"
+                                className="btn-action-circle btn-action-view"
+                                onClick={() => reportId !== null && handleViewIntelReport(reportId)}
+                                disabled={reportId === null}
+                                title="View Report"
+                              >
+                                👁️
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="btn-action-circle btn-action-edit"
+                                title="Edit"
+                                onClick={() => reportId !== null && handleEditReport(reportId)}
+                                disabled={reportId === null || isActionLoading}
+                              >
+                                {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : "✏️"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="btn-action-circle btn-action-delete"
+                                title="Delete"
+                                onClick={() => reportId !== null && handleDeleteReport(reportId)}
+                                disabled={reportId === null}
+                              >
+                                🗑️
+                              </Button>
+                              </div>
+                            </Col>
+                          </Row>
+                        </Card.Body>
+                      </Card>
+                    </Col>
                   );
                 })
               )}

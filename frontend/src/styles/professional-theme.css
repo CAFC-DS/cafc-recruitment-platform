@@ -1266,6 +1266,12 @@ body {
   color: #ffffff !important;
 }
 
+.intel-card-nowrap,
+.intel-recommendation-nowrap,
+.intel-recommendation-nowrap.badge {
+  white-space: nowrap;
+}
+
 /* ================================
    ENHANCED NAVBAR STYLING
    ================================ */

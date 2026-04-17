@@ -367,6 +367,9 @@ const PlayerProfilePage: React.FC = () => {
           backgroundColor,
           color: getContrastTextColor(backgroundColor),
           fontWeight: 600,
+          display: "inline-flex",
+          alignItems: "center",
+          whiteSpace: "nowrap",
         }}
       >
         {formatRecommendation(recommendation)}
@@ -2066,16 +2069,10 @@ const PlayerProfilePage: React.FC = () => {
                             >
                               <Card
                                 className="h-100 shadow-sm hover-card"
-                                style={{
-                                  borderRadius: "8px",
-                                  border: "1px solid #dee2e6",
-                                  position: "relative",
-                                }}
+                                style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
                               >
                                 <Card.Body className="p-3">
-                                  {/* Top Row - 2 columns */}
                                   <Row className="mb-3 pb-2 border-bottom">
-                                    {/* Left: Contact Info */}
                                     <Col xs={6}>
                                       <div>
                                         <div
@@ -2086,155 +2083,119 @@ const PlayerProfilePage: React.FC = () => {
                                             textAlign: "left",
                                           }}
                                         >
-                                          {intel.contact_name || "Unknown Contact"}
+                                          {intel.player_name || profile?.player_name || profile?.name || "N/A"}
                                         </div>
                                         <small className="text-muted d-block">
                                           {formatIntelType(intel.intel_type)}
                                         </small>
+                                        <small className="text-muted d-block">
+                                          Info Date: {formatIntelInformationDate(intel)}
+                                        </small>
                                       </div>
                                     </Col>
 
-                                    {/* Right: Date Info */}
                                     <Col xs={6} className="text-end">
                                       <div>
                                         <small className="text-muted d-block">
-                                          {intel.contact_organisation || "N/A"}
+                                          {intel.submitted_by || "Unknown"}
                                         </small>
                                         <small className="text-muted d-block">
-                                          {formatIntelReportDate(intel)}
+                                          Report Date: {formatIntelReportDate(intel)}
                                         </small>
                                       </div>
                                     </Col>
                                   </Row>
 
-                                  {/* Middle Row - 2 columns */}
                                   <Row className="mb-3 pb-2 border-bottom">
-                                    {/* Left: Organisation & Contract Info */}
                                     <Col xs={6}>
                                       <div>
-                                        {isGeneralNoteIntel(intel) ? (
-                                          <small
-                                            className="text-muted d-block"
-                                            style={{
-                                              fontSize: "0.75rem",
-                                              lineHeight: "1.2",
-                                            }}
-                                          >
-                                            {intel.notes || intel.conversation_notes || "—"}
-                                          </small>
-                                        ) : (
-                                          <>
-                                            {intel.transfer_fee && (
-                                              <small
-                                                className="text-muted d-block mb-1"
-                                                style={{
-                                                  fontSize: "0.75rem",
-                                                  lineHeight: "1.2",
-                                                }}
-                                              >
-                                                <span className="fw-semibold">
-                                                  Transfer Fee:
-                                                </span>{" "}
-                                                {intel.transfer_fee}
-                                              </small>
-                                            )}
-                                            {intel.confirmed_contract_expiry && (
-                                              <small
-                                                className="text-muted d-block"
-                                                style={{
-                                                  fontSize: "0.75rem",
-                                                  lineHeight: "1.2",
-                                                }}
-                                              >
-                                                <span className="fw-semibold">Expiry:</span>{" "}
-                                                {new Date(
-                                                  intel.confirmed_contract_expiry,
-                                                ).toLocaleDateString("en-GB")}
-                                              </small>
-                                            )}
-                                          </>
-                                        )}
+                                        <small
+                                          className="text-muted d-block mb-1"
+                                          style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                        >
+                                          <span className="fw-semibold">Contact:</span>{" "}
+                                          {intel.contact_name || "—"}
+                                        </small>
+                                        <small
+                                          className="text-muted d-block"
+                                          style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                        >
+                                          <span className="fw-semibold">Organisation:</span>{" "}
+                                          {intel.contact_organisation || "—"}
+                                        </small>
                                       </div>
                                     </Col>
 
-                                    {/* Right: Recommendation */}
                                     <Col xs={6} className="text-end">
                                       <div>
                                         <small className="text-muted fw-semibold d-block">
                                           {isGeneralNoteIntel(intel) ? "Type" : "Recommendation"}
                                         </small>
-                                        {isGeneralNoteIntel(intel) ? (
-                                          <small className="text-muted">{formatIntelType(intel.intel_type)}</small>
-                                        ) : (
-                                          getRecommendationBadge(intel.recommendation || intel.action_required)
-                                        )}
+                                      {isGeneralNoteIntel(intel) ? (
+                                          <small className="text-muted intel-card-nowrap">{formatIntelType(intel.intel_type)}</small>
+                                      ) : (
+                                        getRecommendationBadge(intel.recommendation || intel.action_required)
+                                      )}
                                       </div>
                                     </Col>
                                   </Row>
 
-                                  {/* Bottom Row - Tags and Actions */}
                                   <Row className="align-items-center">
-                                    {/* Left: Deal Info */}
                                     <Col xs={6}>
-                                      <div className="d-flex align-items-center gap-1">
-                                        {isGeneralNoteIntel(intel) ? (
-                                          <small className="text-muted fw-semibold me-1">
-                                            General Note
-                                          </small>
-                                        ) : (
-                                          intel.potential_deal_types &&
-                                          intel.potential_deal_types.length > 0 && (
-                                            <small className="text-muted fw-semibold me-1">
-                                              {formatDealTypes(intel.potential_deal_types)}
-                                            </small>
-                                          )
-                                        )}
+                                      <div>
+                                        <small
+                                          className="text-muted d-block mb-1"
+                                          style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                        >
+                                          <span className="fw-semibold">Deal Types:</span>{" "}
+                                          {isGeneralNoteIntel(intel) ? "—" : formatDealTypes(intel.potential_deal_types)}
+                                        </small>
+                                        <small
+                                          className="text-muted d-block"
+                                          style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
+                                        >
+                                          <span className="fw-semibold">Contract Expiry:</span>{" "}
+                                          {!isGeneralNoteIntel(intel) && intel.confirmed_contract_expiry
+                                            ? new Date(intel.confirmed_contract_expiry).toLocaleDateString("en-GB")
+                                            : "—"}
+                                        </small>
                                       </div>
                                     </Col>
 
-                                    {/* Right: Actions */}
                                     <Col xs={6} className="text-end">
                                       <div className="d-flex justify-content-end gap-1">
-                                        <Button
-                                          size="sm"
-                                          className="btn-action-circle btn-action-view"
-                                          onClick={() => {
-                                            if (intelReportId !== null) {
-                                              setSelectedIntelId(intelReportId);
-                                              setShowIntelModal(true);
-                                            }
-                                          }}
-                                          disabled={intelReportId === null}
-                                          title="View Report"
-                                        >
-                                          👁️
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          className="btn-action-circle btn-action-edit"
-                                          title="Edit"
-                                          onClick={() => intelReportId !== null && handleEditIntelReport(intelReportId)}
-                                          disabled={intelReportId === null || isActionLoading}
-                                        >
-                                          {isActionLoading ? (
-                                            <Spinner
-                                              as="span"
-                                              animation="border"
-                                              size="sm"
-                                            />
-                                          ) : (
-                                            "✏️"
-                                          )}
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          className="btn-action-circle btn-action-delete"
-                                          title="Delete"
-                                          onClick={() => intelReportId !== null && handleDeleteIntelReport(intelReportId)}
-                                          disabled={intelReportId === null}
-                                        >
-                                          🗑️
-                                        </Button>
+                                      <Button
+                                        size="sm"
+                                        className="btn-action-circle btn-action-view"
+                                        onClick={() => {
+                                          if (intelReportId !== null) {
+                                            setSelectedIntelId(intelReportId);
+                                            setShowIntelModal(true);
+                                          }
+                                        }}
+                                        disabled={intelReportId === null}
+                                        title="View Report"
+                                      >
+                                        👁️
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        className="btn-action-circle btn-action-edit"
+                                        title="Edit"
+                                        onClick={() => intelReportId !== null && handleEditIntelReport(intelReportId)}
+                                        disabled={intelReportId === null || isActionLoading}
+                                      >
+                                        {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : "✏️"}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        className="btn-action-circle btn-action-delete"
+                                        title="Delete"
+                                        onClick={() => intelReportId !== null && handleDeleteIntelReport(intelReportId)}
+                                        disabled={intelReportId === null}
+                                      >
+                                        🗑️
+                                      </Button>
                                       </div>
                                     </Col>
                                   </Row>
