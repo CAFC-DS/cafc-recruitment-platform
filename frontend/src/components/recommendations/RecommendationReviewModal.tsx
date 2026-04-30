@@ -10,13 +10,11 @@ interface RecommendationReviewModalProps {
   show: boolean;
   recommendation: InternalRecommendation | null;
   statuses: RecommendationStatus[];
-  updatingStatus: boolean;
-  savingNotes: boolean;
+  savingReview: boolean;
   message: string | null;
   error: string | null;
   onHide: () => void;
-  onStatusChange: (recommendation: InternalRecommendation, newStatus: RecommendationStatus) => void;
-  onSaveNotes: (recommendation: InternalRecommendation, notes: string) => void;
+  onSubmitReview: (recommendation: InternalRecommendation, newStatus: RecommendationStatus, sharedNotes: string) => void;
 }
 
 const formatDate = (value?: string | null) => {
@@ -31,7 +29,18 @@ const formatNumberToken = (value: string) => {
   return /^\d+$/.test(trimmed) ? Number(trimmed).toLocaleString('en-GB') : trimmed;
 };
 
-const formatAmount = (amount?: number, currency?: string, fallback?: string) => {
+const formatAmount = (
+  amount?: number,
+  currency?: string,
+  fallback?: string,
+  minAmount?: number,
+  maxAmount?: number,
+) => {
+  if (minAmount !== undefined && minAmount !== null && maxAmount !== undefined && maxAmount !== null) {
+    const minLabel = Math.round(minAmount).toLocaleString('en-GB');
+    const maxLabel = Math.round(maxAmount).toLocaleString('en-GB');
+    return `${currency || 'GBP'} ${minLabel}${minAmount === maxAmount ? '' : `-${maxLabel}`}`;
+  }
   if (amount === undefined || amount === null) return fallback || '-';
   return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')}`;
 };
@@ -70,23 +79,25 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
   show,
   recommendation,
   statuses,
-  updatingStatus,
-  savingNotes,
+  savingReview,
   message,
   error,
   onHide,
-  onStatusChange,
-  onSaveNotes,
+  onSubmitReview,
 }) => {
+  const [statusDraft, setStatusDraft] = useState<RecommendationStatus>('Submitted');
   const [notesDraft, setNotesDraft] = useState('');
 
   useEffect(() => {
-    setNotesDraft(recommendation?.internal_notes || '');
-  }, [recommendation?.id, recommendation?.internal_notes]);
+    setStatusDraft(recommendation?.status || 'Submitted');
+    setNotesDraft(recommendation?.shared_notes || '');
+  }, [recommendation?.id, recommendation?.status, recommendation?.shared_notes]);
 
   if (!recommendation) {
     return null;
   }
+
+  const isDirty = statusDraft !== recommendation.status || notesDraft !== (recommendation.shared_notes || '');
 
   const detail = (label: string, value: React.ReactNode) => (
     <div className="external-review-detail">
@@ -138,7 +149,13 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
           <div className="external-review-detail-grid">
             {detail('Deal Type', recommendation.potential_deal_type || '-')}
             {detail('Agreement Type', recommendation.agreement_type || '-')}
-            {detail('Transfer Fee', formatAmount(recommendation.transfer_fee_amount, recommendation.transfer_fee_currency, recommendation.transfer_fee))}
+            {detail('Transfer Fee', formatAmount(
+              recommendation.transfer_fee_amount,
+              recommendation.transfer_fee_currency,
+              recommendation.transfer_fee,
+              recommendation.transfer_fee_min,
+              recommendation.transfer_fee_max,
+            ))}
             {detail('Wage Basis', formatWageBasis(recommendation))}
             {detail('Current Wages', formatWeeklyAmount(recommendation.current_wages_per_week, recommendation.current_wages_currency))}
             {detail('Expected Wages', formatWeeklyAmount(recommendation.expected_wages_per_week, recommendation.expected_wages_currency))}
@@ -169,35 +186,35 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
                 <Form.Label className="small fw-bold">Review Status</Form.Label>
                 <div className="d-flex align-items-center gap-2">
                   <Form.Select
-                    value={recommendation.status}
-                    disabled={updatingStatus}
-                    onChange={(event) => onStatusChange(recommendation, event.target.value as RecommendationStatus)}
+                    value={statusDraft}
+                    disabled={savingReview}
+                    onChange={(event) => setStatusDraft(event.target.value as RecommendationStatus)}
                   >
                     {statuses.map((status) => (
                       <option key={status} value={status}>{status}</option>
                     ))}
                   </Form.Select>
-                  {updatingStatus ? <Spinner animation="border" size="sm" /> : null}
+                  {savingReview ? <Spinner animation="border" size="sm" /> : null}
                 </div>
               </Form.Group>
               <div className="text-muted small">
-                Use this to move the recommendation through the internal review workflow.
+                Select the next review status, then submit to apply your review changes.
               </div>
             </div>
           </Col>
           <Col lg={7}>
             <div className="external-review-section">
               <div className="external-review-section-heading">
-                <h6>Internal Notes</h6>
+                <h6>Shared Notes</h6>
               </div>
               <Form.Group className="mb-0">
-                <Form.Label className="small fw-bold">Notes for staff</Form.Label>
+                <Form.Label className="small fw-bold">Notes visible to the agent</Form.Label>
                 <Form.Control
                   as="textarea"
                   rows={6}
                   value={notesDraft}
                   onChange={(event) => setNotesDraft(event.target.value)}
-                  placeholder="Add internal notes here..."
+                  placeholder="Add notes the agent can read..."
                 />
               </Form.Group>
             </div>
@@ -216,21 +233,21 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
         </div>
       </Modal.Body>
       <Modal.Footer>
-        <Button variant="secondary" onClick={onHide} disabled={savingNotes || updatingStatus}>
+        <Button variant="secondary" onClick={onHide} disabled={savingReview}>
           Close
         </Button>
         <Button
           variant="primary"
-          onClick={() => onSaveNotes(recommendation, notesDraft)}
-          disabled={savingNotes}
+          onClick={() => onSubmitReview(recommendation, statusDraft, notesDraft)}
+          disabled={savingReview || !isDirty}
         >
-          {savingNotes ? (
+          {savingReview ? (
             <>
               <Spinner animation="border" size="sm" className="me-2" />
-              Saving...
+              Saving review...
             </>
           ) : (
-            'Save Notes'
+            'Submit Review'
           )}
         </Button>
       </Modal.Footer>

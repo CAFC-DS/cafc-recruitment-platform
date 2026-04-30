@@ -24,6 +24,15 @@ const formatAmountCurrency = (amount?: number, currency?: string, fallback?: str
   return `${currency || 'GBP'} ${Math.round(amount).toLocaleString('en-GB')}`;
 };
 
+const formatTransferFee = (item: Recommendation) => {
+  if (item.transfer_fee_min !== undefined && item.transfer_fee_min !== null && item.transfer_fee_max !== undefined && item.transfer_fee_max !== null) {
+    const minLabel = Math.round(item.transfer_fee_min).toLocaleString('en-GB');
+    const maxLabel = Math.round(item.transfer_fee_max).toLocaleString('en-GB');
+    return `${item.transfer_fee_currency || 'GBP'} ${minLabel}${item.transfer_fee_min === item.transfer_fee_max ? '' : `-${maxLabel}`}`;
+  }
+  return formatAmountCurrency(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee);
+};
+
 const AgentSubmissionDetailPage: React.FC = () => {
   const { id } = useParams();
   const [item, setItem] = useState<Recommendation | null>(null);
@@ -109,7 +118,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
                   ['Last updated', item.status_updated_at ? new Date(item.status_updated_at).toLocaleString() : '-'],
                   ['Agreement type', item.agreement_type || '-'],
                   ['Potential deal type', item.potential_deal_type || '-'],
-                  ['Transfer fee', formatAmountCurrency(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee)],
+                  ['Transfer fee', formatTransferFee(item)],
                   ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency, item.wage_basis || item.current_wages_basis)],
                   ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)],
                   ['Contract expiry', item.confirmed_contract_expiry ? new Date(item.confirmed_contract_expiry).toLocaleDateString() : '-'],
@@ -161,6 +170,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
+
             </div>
           </section>
 
@@ -168,7 +178,22 @@ const AgentSubmissionDetailPage: React.FC = () => {
             <div className="agent-portal-card-body">
               <div className="agent-portal-section-title">Internal Review Status</div>
               <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
-                Internal scouting notes remain hidden. This view only shows status progression recorded against your submission.
+                Track the status progression recorded against your submission and any shared notes left by the club.
+              </div>
+              <div
+                className="agent-portal-surface-muted"
+                style={{
+                  marginBottom: '1rem',
+                  borderLeft: '4px solid #c1121f',
+                  background: 'linear-gradient(180deg, #fff7ed 0%, #ffffff 100%)',
+                }}
+              >
+                <div className="agent-portal-label" style={{ color: '#9a3412', marginBottom: '0.4rem' }}>
+                  Shared Notes From The Club
+                </div>
+                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                  {item.shared_notes || 'No shared notes yet.'}
+                </div>
               </div>
               <div className="agent-portal-review-stack">
                 {history.length === 0 ? (

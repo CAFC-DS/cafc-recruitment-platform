@@ -4,7 +4,7 @@
 This test release ships with:
 - agent registration and login
 - agent submission and tracking
-- internal status management and internal notes
+- internal status management and shared agent-visible notes
 - status history
 
 This test release does not ship with:
@@ -28,5 +28,5 @@ The existing Snowflake connection variables remain required.
 
 ## Security checks
 - Agents should only access `/agents/*` pages.
-- Agents should never see `internal_notes` in API responses.
+- Shared review notes should be visible to the submitting agent.
 - Supporting file routes should not be used in this release.

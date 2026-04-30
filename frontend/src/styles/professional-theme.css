@@ -817,6 +817,93 @@ body {
   color: var(--color-text-muted, #6b7280);
 }
 
+.flow-history-feed {
+  position: relative;
+  padding-left: 0.5rem;
+}
+
+.flow-history-feed::before {
+  content: "";
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.92rem;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(185, 28, 28, 0.18), rgba(107, 114, 128, 0.12));
+}
+
+.flow-history-item {
+  position: relative;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1rem 1rem 0;
+}
+
+.flow-history-item:not(:last-child) {
+  border-bottom: 1px solid rgba(229, 231, 235, 0.9);
+}
+
+.flow-history-marker {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  margin-top: 0.32rem;
+  border-radius: 999px;
+  background: var(--flow-accent, #b91c1c);
+  box-shadow: 0 0 0 4px #ffffff;
+}
+
+.flow-history-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.flow-history-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.flow-history-date {
+  color: var(--color-text-muted, #6b7280);
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+
+.flow-history-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.flow-history-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bs-gray-900, #111827);
+  line-height: 1.35;
+}
+
+.flow-history-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.flow-history-meta-item {
+  color: var(--color-text-muted, #6b7280);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
 /* Responsive horizontal timeline */
 @media (max-width: 768px) {
   .timeline-summary-compact {
@@ -837,6 +924,19 @@ body {
 
   .summary-stat {
     font-size: 0.85rem;
+  }
+
+  .flow-history-item {
+    gap: 0.85rem;
+    padding-right: 0;
+  }
+
+  .flow-history-topline {
+    margin-bottom: 0.55rem;
+  }
+
+  .flow-history-title {
+    font-size: 0.95rem;
   }
 }
 
@@ -883,6 +983,18 @@ body {
 
 [data-bs-theme="dark"] .horizontal-timeline-section > div::-webkit-scrollbar-thumb:hover {
   background: #6b7280;
+}
+
+[data-bs-theme="dark"] .flow-history-feed::before {
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.18), rgba(156, 163, 175, 0.12));
+}
+
+[data-bs-theme="dark"] .flow-history-marker {
+  box-shadow: 0 0 0 4px var(--color-surface, #111827);
+}
+
+[data-bs-theme="dark"] .flow-history-item:not(:last-child) {
+  border-bottom-color: rgba(75, 85, 99, 0.9);
 }
 
 /* Compact Attributes Styles - DEPRECATED (removed from layout) */

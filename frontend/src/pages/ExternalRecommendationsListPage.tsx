@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Col, Collapse, Form, Modal, Row, Spinner } from 'react-bootstrap';
+import { Button, Card, Col, Collapse, Form, Modal, Row, Spinner, Toast, ToastContainer } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import SubmissionStatusBadge, { AgentStatusBadge } from '../components/agents/SubmissionStatusBadge';
 import DealTypeBadges from '../components/recommendations/DealTypeBadges';
@@ -109,8 +109,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [savingNotes, setSavingNotes] = useState<number | null>(null);
-  const [updatingStatus, setUpdatingStatus] = useState<number | null>(null);
+  const [savingReview, setSavingReview] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<InternalRecommendation | null>(null);
   const [historyRecommendation, setHistoryRecommendation] = useState<InternalRecommendation | null>(null);
@@ -121,6 +120,9 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [modalMessage, setModalMessage] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVariant, setToastVariant] = useState<'success' | 'danger'>('success');
   const hasLoadedOnce = useRef(false);
   const previousListControlKey = useRef(`${filters.page}|${filters.sort_by}|${filters.sort_order}`);
   const pendingFilterEdit = useRef(false);
@@ -290,47 +292,30 @@ const ExternalRecommendationsListPage: React.FC = () => {
     setSelectedRecommendation((current) => (current?.id === updatedItem.id ? { ...current, ...updatedItem } : current));
   };
 
-  const handleStatusChange = async (item: InternalRecommendation, newStatus: RecommendationStatus) => {
-    if (item.status === newStatus) return;
+  const handleSubmitReview = async (item: InternalRecommendation, newStatus: RecommendationStatus, sharedNotes: string) => {
     try {
-      setUpdatingStatus(item.id);
+      setSavingReview(item.id);
       setError(null);
       setBanner(null);
       setModalError(null);
       setModalMessage(null);
-      const response = await internalRecommendationsService.updateStatus(item.id, newStatus);
+      const response = await internalRecommendationsService.saveReview(item.id, newStatus, sharedNotes);
       updateSelectedRecommendation(response.item);
       if (response.item.status_history) {
         setStatusHistoryMap((prev) => new Map(prev).set(item.id, response.item.status_history || []));
       } else {
         await loadStatusHistory(item.id, true, 'modal');
       }
-      setModalMessage(response.warning || 'Status updated successfully');
       await load(filters);
+      setToastMessage(response.warning || 'Review changes saved successfully');
+      setToastVariant('success');
+      setShowToast(true);
+      closeReviewModal();
     } catch (err: any) {
       console.error(err);
-      setModalError(err?.response?.data?.detail || 'Failed to update status');
+      setModalError(err?.response?.data?.detail || 'Failed to save review');
     } finally {
-      setUpdatingStatus(null);
-    }
-  };
-
-  const handleSaveNotes = async (item: InternalRecommendation, notes: string) => {
-    try {
-      setSavingNotes(item.id);
-      setError(null);
-      setBanner(null);
-      setModalError(null);
-      setModalMessage(null);
-      const updatedItem = await internalRecommendationsService.updateNotes(item.id, notes);
-      updateSelectedRecommendation(updatedItem);
-      setModalMessage('Internal notes saved');
-      await load(filters);
-    } catch (err: any) {
-      console.error(err);
-      setModalError(err?.response?.data?.detail || 'Failed to save notes');
-    } finally {
-      setSavingNotes(null);
+      setSavingReview(null);
     }
   };
 
@@ -627,13 +612,11 @@ const ExternalRecommendationsListPage: React.FC = () => {
         show={Boolean(selectedRecommendation)}
         recommendation={selectedRecommendation}
         statuses={meta.statuses}
-        updatingStatus={selectedRecommendation ? updatingStatus === selectedRecommendation.id : false}
-        savingNotes={selectedRecommendation ? savingNotes === selectedRecommendation.id : false}
+        savingReview={selectedRecommendation ? savingReview === selectedRecommendation.id : false}
         message={modalMessage}
         error={modalError}
         onHide={closeReviewModal}
-        onStatusChange={handleStatusChange}
-        onSaveNotes={handleSaveNotes}
+        onSubmitReview={handleSubmitReview}
       />
 
       <Modal show={Boolean(historyRecommendation)} onHide={closeHistoryModal} size="lg" centered scrollable>
@@ -676,6 +659,25 @@ const ExternalRecommendationsListPage: React.FC = () => {
           <Button variant="secondary" onClick={closeHistoryModal}>Close</Button>
         </Modal.Footer>
       </Modal>
+
+      <ToastContainer position="top-end" className="p-3" style={{ position: 'fixed', zIndex: 9999 }}>
+        <Toast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          delay={3000}
+          autohide
+          bg={toastVariant}
+        >
+          <Toast.Header>
+            <strong className="me-auto">
+              {toastVariant === 'success' ? 'Success' : 'Error'}
+            </strong>
+          </Toast.Header>
+          <Toast.Body className={toastVariant === 'danger' ? 'text-white' : ''}>
+            {toastMessage}
+          </Toast.Body>
+        </Toast>
+      </ToastContainer>
     </div>
   );
 };

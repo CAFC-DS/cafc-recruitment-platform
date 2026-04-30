@@ -1039,6 +1039,8 @@ class RecommendationResponse(BaseModel):
     transfer_fee: Optional[str] = None
     transfer_fee_amount: Optional[float] = None
     transfer_fee_currency: Optional[str] = None
+    transfer_fee_min: Optional[float] = None
+    transfer_fee_max: Optional[float] = None
     current_wages_per_week: Optional[Union[float, str]] = None
     current_wages_per_week_min: Optional[float] = None
     current_wages_per_week_max: Optional[float] = None
@@ -1064,6 +1066,7 @@ class RecommendationResponse(BaseModel):
     avg_performance_score: Optional[float] = None
     agent_status: str = "Active"
     agent_status_updated_at: Optional[str] = None
+    shared_notes: Optional[str] = None
 
 
 class RecommendationStatusHistoryResponse(BaseModel):
@@ -1078,7 +1081,6 @@ class RecommendationStatusHistoryResponse(BaseModel):
 class InternalRecommendationResponse(RecommendationResponse):
     submitted_by_user_id: Optional[int] = None
     submitted_by_username: Optional[str] = None
-    internal_notes: Optional[str] = None
     status_updated_by: Optional[int] = None
     status_updated_by_name: Optional[str] = None
     supporting_file_content_type: Optional[str] = None
@@ -1088,10 +1090,16 @@ class InternalRecommendationResponse(RecommendationResponse):
 
 class RecommendationStatusUpdateRequest(BaseModel):
     new_status: str
+    shared_notes: Optional[str] = None
 
 
 class RecommendationNotesUpdateRequest(BaseModel):
-    internal_notes: str
+    shared_notes: str
+
+
+class RecommendationReviewUpdateRequest(BaseModel):
+    new_status: str
+    shared_notes: str
 
 
 class AgentStatusUpdateRequest(BaseModel):
@@ -1427,6 +1435,8 @@ RECOMMENDATION_OPTIONAL_COLUMNS = {
     "player_recommendations": [
         "TRANSFER_FEE_AMOUNT",
         "TRANSFER_FEE_CURRENCY",
+        "TRANSFER_FEE_MIN",
+        "TRANSFER_FEE_MAX",
         "CURRENT_WAGES_AMOUNT",
         "CURRENT_WAGES_MIN",
         "CURRENT_WAGES_MAX",
@@ -1656,6 +1666,14 @@ def parse_wage_field(value: Optional[str], field_label: str) -> tuple[Optional[i
         )
 
     return min_value, max_value
+
+
+def derive_range_amount(min_value: Optional[int], max_value: Optional[int]) -> Optional[int]:
+    if min_value is None or max_value is None:
+        return None
+    if min_value != max_value:
+        return None
+    return min_value
 
 
 VALID_INTEL_TYPES = {"player_information", "general_note"}
@@ -1984,15 +2002,30 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
 def build_recommendation_select():
     refresh_table_schema("player_recommendations")
 
+    transfer_fee_amount_exists = recommendation_column_exists("player_recommendations", "TRANSFER_FEE_AMOUNT")
+    transfer_fee_amount_base_expr = "pr.TRANSFER_FEE_AMOUNT" if transfer_fee_amount_exists else "NULL"
+    transfer_fee_legacy_expr = (
+        f"COALESCE({transfer_fee_amount_base_expr}, TRY_TO_NUMBER(pr.TRANSFER_FEE))"
+        if transfer_fee_amount_exists
+        else "TRY_TO_NUMBER(pr.TRANSFER_FEE)"
+    )
     transfer_fee_amount_expr = (
-        "pr.TRANSFER_FEE_AMOUNT"
-        if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_AMOUNT")
-        else "NULL"
+        transfer_fee_legacy_expr
     )
     transfer_fee_currency_expr = (
         "pr.TRANSFER_FEE_CURRENCY"
         if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_CURRENCY")
         else "NULL"
+    )
+    transfer_fee_min_expr = (
+        f"COALESCE(pr.TRANSFER_FEE_MIN, {transfer_fee_legacy_expr})"
+        if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_MIN")
+        else transfer_fee_legacy_expr
+    )
+    transfer_fee_max_expr = (
+        f"COALESCE(pr.TRANSFER_FEE_MAX, {transfer_fee_legacy_expr})"
+        if recommendation_column_exists("player_recommendations", "TRANSFER_FEE_MAX")
+        else transfer_fee_legacy_expr
     )
     current_wages_amount_exists = recommendation_column_exists("player_recommendations", "CURRENT_WAGES_AMOUNT")
     expected_wages_amount_exists = recommendation_column_exists("player_recommendations", "EXPECTED_WAGES_AMOUNT")
@@ -2169,6 +2202,8 @@ def build_recommendation_select():
             pr.TRANSFER_FEE,
             {transfer_fee_amount_expr} AS TRANSFER_FEE_AMOUNT,
             {transfer_fee_currency_expr} AS TRANSFER_FEE_CURRENCY,
+            {transfer_fee_min_expr} AS TRANSFER_FEE_MIN,
+            {transfer_fee_max_expr} AS TRANSFER_FEE_MAX,
             {current_wages_min_expr} AS CURRENT_WAGES_MIN,
             {current_wages_max_expr} AS CURRENT_WAGES_MAX,
             {current_wages_currency_expr} AS CURRENT_WAGES_CURRENCY,
@@ -2208,6 +2243,8 @@ def build_recommendation_select():
     """.format(
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
+        transfer_fee_min_expr=transfer_fee_min_expr,
+        transfer_fee_max_expr=transfer_fee_max_expr,
         current_wages_min_expr=current_wages_min_expr,
         current_wages_max_expr=current_wages_max_expr,
         current_wages_currency_expr=current_wages_currency_expr,
@@ -2227,37 +2264,41 @@ def build_recommendation_select():
 
 
 def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
-    submitted_by_name = " ".join(part for part in [row[35], row[36]] if part) or row[34]
-    status_updated_by_name = " ".join(part for part in [row[38], row[39]] if part) or row[37]
+    submitted_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
+    status_updated_by_name = " ".join(part for part in [row[40], row[41]] if part) or row[39]
     transfer_fee_amount = format_decimal(row[13])
     transfer_fee_currency = row[14]
-    current_wages_min = row[15]
-    current_wages_max = row[16]
-    current_wages_currency = row[17]
-    expected_wages_min = row[18]
-    expected_wages_max = row[19]
-    expected_wages_currency = row[20]
+    transfer_fee_min = row[15]
+    transfer_fee_max = row[16]
+    current_wages_min = row[17]
+    current_wages_max = row[18]
+    current_wages_currency = row[19]
+    expected_wages_min = row[20]
+    expected_wages_max = row[21]
+    expected_wages_currency = row[22]
 
+    transfer_fee_value = format_numeric_range_for_response(transfer_fee_min, transfer_fee_max)
     current_wages_value = format_numeric_range_for_response(current_wages_min, current_wages_max)
     expected_wages_value = format_numeric_range_for_response(expected_wages_min, expected_wages_max)
     current_wages_currency_value = (current_wages_currency or "GBP") if current_wages_value is not None else None
     expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
-    wage_basis = row[47] if len(row) > 47 else None
+    wage_basis = row[49] if len(row) > 49 else None
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None
+    display_transfer_fee_value = transfer_fee_value or legacy_transfer_fee
     display_transfer_fee = (
-        f"{transfer_fee_currency or 'GBP'} {int(transfer_fee_amount):,}"
-        if transfer_fee_amount is not None
-        else legacy_transfer_fee
+        f"{transfer_fee_currency or 'GBP'} {'-'.join(f'{int(part):,}' for part in display_transfer_fee_value.split('-'))}"
+        if display_transfer_fee_value and re.fullmatch(r"\d+(?:-\d+)?", display_transfer_fee_value)
+        else display_transfer_fee_value
     )
 
     base_data = {
         "id": row[0],
         "player_name": row[6],
-        "player_date_of_birth": serialize_datetime(row[41]),
-        "linked_player_id": row[44],
-        "linked_cafc_player_id": row[45],
-        "linked_player_data_source": row[46],
-        "recommended_position": row[40],
+        "player_date_of_birth": serialize_datetime(row[43]),
+        "linked_player_id": row[46],
+        "linked_cafc_player_id": row[47],
+        "linked_player_data_source": row[48],
+        "recommended_position": row[42],
         "transfermarkt_link": row[7],
         "agreement_type": row[8],
         "confirmed_contract_expiry": serialize_datetime(row[9]),
@@ -2266,6 +2307,8 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "transfer_fee": display_transfer_fee,
         "transfer_fee_amount": transfer_fee_amount,
         "transfer_fee_currency": transfer_fee_currency,
+        "transfer_fee_min": format_decimal(transfer_fee_min),
+        "transfer_fee_max": format_decimal(transfer_fee_max),
         "current_wages_per_week": current_wages_value,
         "current_wages_per_week_min": format_decimal(current_wages_min),
         "current_wages_per_week_max": format_decimal(current_wages_max),
@@ -2277,20 +2320,21 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "expected_wages_per_week_max": format_decimal(expected_wages_max),
         "expected_wages_currency": expected_wages_currency_value,
         "expected_wages_basis": wage_basis,
-        "additional_information": row[21],
-        "supporting_file_name": row[30],
-        "created_at": serialize_datetime(row[27]),
-        "updated_at": serialize_datetime(row[28]),
+        "additional_information": row[23],
+        "supporting_file_name": row[32],
+        "created_at": serialize_datetime(row[29]),
+        "updated_at": serialize_datetime(row[30]),
         "submission_date": serialize_datetime(row[5]),
-        "status": row[23],
-        "status_updated_at": serialize_datetime(row[24]),
+        "status": row[25],
+        "status_updated_at": serialize_datetime(row[26]),
         "agent_name": row[1],
         "agency": row[2],
         "agent_email": row[3],
         "agent_number": row[4],
-        "avg_performance_score": format_decimal(row[33]),
-        "agent_status": row[42] or "Active",
-        "agent_status_updated_at": serialize_datetime(row[43]),
+        "avg_performance_score": format_decimal(row[35]),
+        "agent_status": row[44] or "Active",
+        "agent_status_updated_at": serialize_datetime(row[45]),
+        "shared_notes": row[28],
     }
 
     if not include_internal:
@@ -2298,13 +2342,12 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
 
     return InternalRecommendationResponse(
         **base_data,
-        submitted_by_user_id=row[22],
+        submitted_by_user_id=row[24],
         submitted_by_username=submitted_by_name,
-        internal_notes=row[26],
-        status_updated_by=row[25],
+        status_updated_by=row[27],
         status_updated_by_name=status_updated_by_name,
-        supporting_file_content_type=row[31],
-        supporting_file_size_bytes=row[32],
+        supporting_file_content_type=row[33],
+        supporting_file_size_bytes=row[34],
         status_history=status_history or [],
     )
 
@@ -2741,7 +2784,12 @@ async def create_agent_recommendation(
         normalized_potential_deal_type = validate_recommendation_multi_option(
             potential_deal_type, ALLOWED_POTENTIAL_DEAL_TYPES, "potential deal type"
         )
-        normalized_transfer_fee_amount = parse_whole_number_field(transfer_fee, "transfer fee")
+        normalized_transfer_fee_min, normalized_transfer_fee_max = parse_numeric_range_field(
+            transfer_fee, "transfer fee"
+        )
+        normalized_transfer_fee_amount = derive_range_amount(
+            normalized_transfer_fee_min, normalized_transfer_fee_max
+        )
         normalized_current_wages_min, normalized_current_wages_max = parse_wage_field(
             current_wages_per_week, "current wages"
         )
@@ -2763,7 +2811,7 @@ async def create_agent_recommendation(
         normalized_recommended_position = validate_recommendation_multi_option(
             recommended_position, ALLOWED_RECOMMENDED_POSITIONS, "recommended position"
         )
-        if normalized_transfer_fee_amount is not None and not normalized_transfer_fee_currency:
+        if normalized_transfer_fee_min is not None and not normalized_transfer_fee_currency:
             normalized_transfer_fee_currency = "GBP"
         if normalized_current_wages_min is not None and not normalized_current_wages_currency:
             normalized_current_wages_currency = "GBP"
@@ -2771,7 +2819,7 @@ async def create_agent_recommendation(
             normalized_expected_wages_currency = "GBP"
         if (normalized_current_wages_min is not None or normalized_expected_wages_min is not None) and not normalized_wage_basis:
             normalized_wage_basis = "Gross"
-        if normalized_transfer_fee_amount is None:
+        if normalized_transfer_fee_min is None:
             normalized_transfer_fee_currency = None
         if normalized_current_wages_min is None:
             normalized_current_wages_currency = None
@@ -2798,7 +2846,7 @@ async def create_agent_recommendation(
         if normalized_expected_wages_min is None:
             raise HTTPException(status_code=400, detail="Expected wages are required")
         selected_deal_types = [part.strip() for part in normalized_potential_deal_type.split(",")] if normalized_potential_deal_type else []
-        if "Permanent Transfer" in selected_deal_types and normalized_transfer_fee_amount is None:
+        if "Permanent Transfer" in selected_deal_types and normalized_transfer_fee_min is None:
             raise HTTPException(status_code=400, detail="Transfer fee is required for permanent transfer")
         resolved_agent_name = profile[1] if profile and profile[1] else agent_name.strip()
         resolved_agency = profile[2] if profile and profile[2] else (agency.strip() if agency else None)
@@ -2846,7 +2894,7 @@ async def create_agent_recommendation(
             confirmed_expiry,
             normalized_contract_option,
             normalized_potential_deal_type,
-            str(normalized_transfer_fee_amount) if normalized_transfer_fee_amount is not None else None,
+            format_numeric_range_for_response(normalized_transfer_fee_min, normalized_transfer_fee_max),
             normalized_current_wages_min,
             normalized_expected_wages_min,
             normalized_additional_information,
@@ -2862,6 +2910,8 @@ async def create_agent_recommendation(
         optional_amount_currency_pairs = [
             ("TRANSFER_FEE_AMOUNT", normalized_transfer_fee_amount),
             ("TRANSFER_FEE_CURRENCY", normalized_transfer_fee_currency),
+            ("TRANSFER_FEE_MIN", normalized_transfer_fee_min),
+            ("TRANSFER_FEE_MAX", normalized_transfer_fee_max),
             ("CURRENT_WAGES_AMOUNT", normalized_current_wages_min),
             ("CURRENT_WAGES_MIN", normalized_current_wages_min),
             ("CURRENT_WAGES_MAX", normalized_current_wages_max),
@@ -2939,7 +2989,7 @@ async def get_agent_recommendation_detail(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         row = fetch_recommendation_detail(cursor, recommendation_id)
-        if not row or row[22] != current_user.id:
+        if not row or row[24] != current_user.id:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         return serialize_recommendation_row(row)
     finally:
@@ -2957,7 +3007,7 @@ async def get_agent_recommendation_history(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         row = fetch_recommendation_detail(cursor, recommendation_id)
-        if not row or row[22] != current_user.id:
+        if not row or row[24] != current_user.id:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=False)
         return history
@@ -2979,7 +3029,7 @@ async def update_agent_recommendation_status(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         row = fetch_recommendation_detail(cursor, recommendation_id)
-        if not row or row[22] != current_user.id:
+        if not row or row[24] != current_user.id:
             raise HTTPException(status_code=404, detail="Recommendation not found")
 
         changed_at = datetime.utcnow()
@@ -3213,7 +3263,7 @@ async def update_internal_recommendation_status(
         if not row:
             raise HTTPException(status_code=404, detail="Recommendation not found")
 
-        previous_status = row[23]
+        previous_status = row[25]
         changed_at = datetime.utcnow()
         if previous_status != payload.new_status:
             cursor.execute(
@@ -3227,13 +3277,21 @@ async def update_internal_recommendation_status(
             cursor.execute(
                 """
                 UPDATE player_recommendations
-                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, UPDATED_AT = %s
+                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, INTERNAL_NOTES = %s, UPDATED_AT = %s
                 WHERE ID = %s
             """,
-                (payload.new_status, changed_at, current_user.id, changed_at, recommendation_id),
+                (payload.new_status, changed_at, current_user.id, payload.shared_notes, changed_at, recommendation_id),
             )
-
-            conn.commit()
+        elif payload.shared_notes is not None:
+            cursor.execute(
+                """
+                UPDATE player_recommendations
+                SET INTERNAL_NOTES = %s, UPDATED_AT = %s
+                WHERE ID = %s
+            """,
+                (payload.shared_notes, changed_at, recommendation_id),
+            )
+        conn.commit()
         updated_row = fetch_recommendation_detail(cursor, recommendation_id)
         history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
         return {
@@ -3269,7 +3327,7 @@ async def update_internal_recommendation_notes(
             SET INTERNAL_NOTES = %s, UPDATED_AT = %s
             WHERE ID = %s
         """,
-            (payload.internal_notes, datetime.utcnow(), recommendation_id),
+            (payload.shared_notes, datetime.utcnow(), recommendation_id),
         )
         conn.commit()
         row = fetch_recommendation_detail(cursor, recommendation_id)
@@ -3287,6 +3345,19 @@ async def update_internal_recommendation_notes(
     finally:
         if conn:
             conn.close()
+
+
+@app.patch("/internal/recommendations/{recommendation_id}/review")
+async def update_internal_recommendation_review(
+    recommendation_id: int,
+    payload: RecommendationReviewUpdateRequest,
+    current_user: User = Depends(require_internal_user),
+):
+    return await update_internal_recommendation_status(
+        recommendation_id,
+        RecommendationStatusUpdateRequest(new_status=payload.new_status, shared_notes=payload.shared_notes),
+        current_user,
+    )
 
 
 @app.get("/internal/recommendations/{recommendation_id}/status-history", response_model=List[RecommendationStatusHistoryResponse])
@@ -8324,6 +8395,277 @@ class PlayerNote(BaseModel):
 
 
 # PlayerPipelineStatus removed - will be added later
+
+
+def build_flow_history_actor_name(first_name, last_name, username) -> Optional[str]:
+    return " ".join(part for part in [first_name, last_name] if part) or username or None
+
+
+def format_flow_history_deal_type(deal_type: Optional[str]) -> Optional[str]:
+    if not deal_type:
+        return None
+
+    labels = {
+        "free": "Free Transfer",
+        "permanent": "Permanent",
+        "loan": "Loan",
+        "loan_with_option": "Loan With Option",
+        "na": "N/A",
+    }
+    return labels.get(deal_type.lower(), deal_type)
+
+
+@app.get("/players/{player_id}/flow-history")
+async def get_player_flow_history(
+    player_id: str, current_user: User = Depends(get_current_user)
+):
+    cache_key = f"player_flow_history_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
+
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        external_player_id = player_data[0]
+        cafc_player_id = player_data[1]
+        player_name = player_data[2]
+        player_dob = player_data[5]
+        actual_player_id = external_player_id if data_source == "external" else cafc_player_id
+
+        events = []
+
+        def append_event(event_at, **payload):
+            events.append(
+                {
+                    **payload,
+                    "event_at": serialize_datetime(event_at),
+                    "_sort_at": event_at,
+                }
+            )
+
+        if get_table_columns("player_list_items"):
+            try:
+                cursor.execute(
+                    """
+                    SELECT
+                        pli.ID,
+                        pli.LIST_ID,
+                        pl.LIST_NAME,
+                        pli.STAGE,
+                        pli.CREATED_AT,
+                        u.FIRSTNAME,
+                        u.LASTNAME,
+                        u.USERNAME
+                    FROM player_list_items pli
+                    LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+                    LEFT JOIN users u ON pli.ADDED_BY = u.ID
+                    WHERE pli.PLAYER_ID = %s OR pli.CAFC_PLAYER_ID = %s
+                    ORDER BY pli.CREATED_AT DESC
+                """,
+                    (external_player_id, cafc_player_id),
+                )
+                for row in cursor.fetchall():
+                    actor_name = build_flow_history_actor_name(row[5], row[6], row[7])
+                    stage_label = row[3] or "Stage 1"
+                    append_event(
+                        row[4],
+                        id=f"list_added_{row[0]}",
+                        event_type="list_added",
+                        title=f"Added to {row[2] or 'Player List'}",
+                        subtitle=f"Entered at {stage_label}",
+                        actor_name=actor_name,
+                        source_table="PLAYER_LIST_ITEMS",
+                        list_name=row[2],
+                        new_stage=stage_label,
+                    )
+            except Exception as e:
+                logging.warning(f"Could not build player flow list events for {player_id}: {e}")
+
+        if get_table_columns("player_stage_history"):
+            try:
+                cursor.execute(
+                    """
+                    SELECT
+                        psh.ID,
+                        pl.LIST_NAME,
+                        psh.OLD_STAGE,
+                        psh.NEW_STAGE,
+                        psh.REASON,
+                        psh.DESCRIPTION,
+                        psh.CHANGED_AT,
+                        u.FIRSTNAME,
+                        u.LASTNAME,
+                        u.USERNAME
+                    FROM player_stage_history psh
+                    LEFT JOIN player_lists pl ON psh.LIST_ID = pl.ID
+                    LEFT JOIN users u ON psh.CHANGED_BY = u.ID
+                    WHERE psh.PLAYER_ID = %s
+                    ORDER BY psh.CHANGED_AT DESC
+                """,
+                    (actual_player_id,),
+                )
+                for row in cursor.fetchall():
+                    actor_name = build_flow_history_actor_name(row[7], row[8], row[9])
+                    old_stage = row[2]
+                    new_stage = row[3]
+                    stage_transition = (
+                        f"{old_stage or 'Unassigned'} → {new_stage}"
+                        if old_stage
+                        else f"Moved to {new_stage}"
+                    )
+                    append_event(
+                        row[6],
+                        id=f"stage_changed_{row[0]}",
+                        event_type="stage_changed",
+                        title=stage_transition,
+                        subtitle=f"{row[1] or 'Player List'}{f' · {row[4]}' if row[4] else ''}",
+                        actor_name=actor_name,
+                        source_table="PLAYER_STAGE_HISTORY",
+                        list_name=row[1],
+                        old_stage=old_stage,
+                        new_stage=new_stage,
+                        reason=row[4],
+                        description=row[5],
+                    )
+            except Exception as e:
+                logging.warning(f"Could not build player flow stage events for {player_id}: {e}")
+
+        if get_table_columns("player_recommendations"):
+            try:
+                recommendation_select = build_recommendation_select()
+                cursor.execute(
+                    f"""
+                    WITH recommendation_feed AS (
+                        {recommendation_select}
+                    )
+                    SELECT *
+                    FROM recommendation_feed rf
+                    WHERE
+                        (rf.LINKED_PLAYER_ID = %s)
+                        OR (rf.LINKED_CAFC_PLAYER_ID = %s)
+                        OR (
+                            NORMALIZE_TEXT_UDF(rf.PLAYER_NAME) = NORMALIZE_TEXT_UDF(%s)
+                            AND (
+                                %s IS NULL
+                                OR rf.PLAYER_DATE_OF_BIRTH IS NULL
+                                OR rf.PLAYER_DATE_OF_BIRTH = %s
+                            )
+                        )
+                    ORDER BY rf.CREATED_AT DESC
+                """,
+                    (external_player_id, cafc_player_id, player_name, player_dob, player_dob),
+                )
+                recommendation_rows = cursor.fetchall()
+
+                for row in recommendation_rows:
+                    recommendation_id = row[0]
+                    agent_name = row[1]
+                    agency = row[2]
+                    submitted_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
+                    submission_at = row[29] or row[5]
+                    deal_type = format_flow_history_deal_type(row[11])
+                    recommendation_status = row[25]
+                    agent_status = row[44] or "Active"
+                    agent_status_updated_at = row[45]
+
+                    submit_parts = [part for part in [agent_name, agency, deal_type] if part]
+                    append_event(
+                        submission_at,
+                        id=f"recommendation_submitted_{recommendation_id}",
+                        event_type="recommendation_submitted",
+                        title="External recommendation submitted",
+                        subtitle=" · ".join(submit_parts) if submit_parts else "Agent recommendation received",
+                        actor_name=submitted_by_name,
+                        source_table="PLAYER_RECOMMENDATIONS",
+                        recommendation_status=recommendation_status,
+                        agent_status=agent_status,
+                        agent_name=agent_name,
+                        agency=agency,
+                        description=row[23],
+                    )
+
+                    if get_table_columns("status_history"):
+                        try:
+                            status_history = fetch_recommendation_status_history(
+                                cursor,
+                                recommendation_id,
+                                include_actor_names=True,
+                            )
+                            for history_item in status_history:
+                                changed_at = history_item.changed_at
+                                append_event(
+                                    datetime.fromisoformat(changed_at) if changed_at else None,
+                                    id=f"recommendation_status_changed_{history_item.id}",
+                                    event_type="recommendation_status_changed",
+                                    title=f"Recommendation review updated to {history_item.new_status}",
+                                    subtitle=" → ".join(
+                                        part
+                                        for part in [history_item.old_status, history_item.new_status]
+                                        if part
+                                    ),
+                                    actor_name=history_item.changed_by_name,
+                                    source_table="STATUS_HISTORY",
+                                    recommendation_status=history_item.new_status,
+                                    agent_status=agent_status,
+                                    agent_name=agent_name,
+                                    agency=agency,
+                                )
+                        except Exception as e:
+                            logging.warning(
+                                f"Could not build recommendation status history for player {player_id}, recommendation {recommendation_id}: {e}"
+                            )
+
+                    if agent_status_updated_at:
+                        append_event(
+                            agent_status_updated_at,
+                            id=f"recommendation_agent_status_changed_{recommendation_id}",
+                            event_type="recommendation_agent_status_changed",
+                            title=f"Agent availability marked as {agent_status}",
+                            subtitle=" · ".join(part for part in [agent_name, agency] if part) or "Agent update",
+                            actor_name=agent_name or agency,
+                            source_table="PLAYER_RECOMMENDATIONS",
+                            recommendation_status=recommendation_status,
+                            agent_status=agent_status,
+                            agent_name=agent_name,
+                            agency=agency,
+                        )
+            except Exception as e:
+                logging.warning(f"Could not build recommendation flow history for {player_id}: {e}")
+
+        events.sort(
+            key=lambda event: (
+                event["_sort_at"] is not None,
+                event["_sort_at"] or datetime.min,
+            ),
+            reverse=True,
+        )
+
+        response = {
+            "player_id": player_id,
+            "total_events": len(events),
+            "events": [{k: v for k, v in event.items() if k != "_sort_at"} for event in events],
+        }
+        set_cache(cache_key, response, expiry_minutes=5)
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching player flow history: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.get("/players/{player_id}/profile")
