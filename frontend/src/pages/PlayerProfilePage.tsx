@@ -42,6 +42,8 @@ import {
   PlayerProfile,
   PlayerAttributes,
   AttributeData,
+  PlayerFlowHistoryResponse,
+  FlowHistoryEvent,
 } from "../types/Player";
 
 ChartJS.register(
@@ -188,6 +190,89 @@ const getReportTypeBadge = (
   }
 };
 
+const getFlowHistoryEventLabel = (eventType: FlowHistoryEvent["event_type"]) => {
+  const labels: Record<FlowHistoryEvent["event_type"], string> = {
+    list_added: "List Added",
+    stage_changed: "Stage Change",
+    recommendation_submitted: "Recommendation",
+    recommendation_status_changed: "Review Update",
+    recommendation_agent_status_changed: "Agent Update",
+  };
+
+  return labels[eventType] || "Flow Event";
+};
+
+const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"]) => {
+  const styles: Record<FlowHistoryEvent["event_type"], React.CSSProperties> = {
+    list_added: {
+      backgroundColor: "#e8f7ee",
+      color: "#166534",
+      border: "1px solid #bbf7d0",
+    },
+    stage_changed: {
+      backgroundColor: "#eef2ff",
+      color: "#3730a3",
+      border: "1px solid #c7d2fe",
+    },
+    recommendation_submitted: {
+      backgroundColor: "#fff4e5",
+      color: "#9a3412",
+      border: "1px solid #fed7aa",
+    },
+    recommendation_status_changed: {
+      backgroundColor: "#ecfeff",
+      color: "#155e75",
+      border: "1px solid #a5f3fc",
+    },
+    recommendation_agent_status_changed: {
+      backgroundColor: "#f5f3ff",
+      color: "#6b21a8",
+      border: "1px solid #ddd6fe",
+    },
+  };
+
+  return styles[eventType] || styles.list_added;
+};
+
+const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"]) => {
+  const colors: Record<FlowHistoryEvent["event_type"], string> = {
+    list_added: "#b91c1c",
+    stage_changed: "#374151",
+    recommendation_submitted: "#d97706",
+    recommendation_status_changed: "#0f766e",
+    recommendation_agent_status_changed: "#6d28d9",
+  };
+
+  return colors[eventType] || "#b91c1c";
+};
+
+const formatFlowHistoryTimestamp = (value?: string | null) =>
+  value ? new Date(value).toLocaleString("en-GB") : "Unknown date";
+
+const getFlowHistoryContext = (event: FlowHistoryEvent) => {
+  if (event.event_type === "list_added") {
+    return [event.list_name, event.actor_name].filter(Boolean).join(" · ");
+  }
+
+  if (event.event_type === "stage_changed") {
+    return [event.list_name, event.reason, event.actor_name].filter(Boolean).join(" · ");
+  }
+
+  if (event.event_type === "recommendation_submitted") {
+    return [event.agent_name, event.agency].filter(Boolean).join(" · ");
+  }
+
+  if (event.event_type === "recommendation_status_changed") {
+    return [event.agent_name, event.agency, event.actor_name].filter(Boolean).join(" · ");
+  }
+
+  if (event.event_type === "recommendation_agent_status_changed") {
+    return [event.agent_name, event.agency].filter(Boolean).join(" · ");
+  }
+
+  return [event.list_name, event.actor_name].filter(Boolean).join(" · ");
+};
+
 const PlayerProfilePage: React.FC = () => {
   const { playerId, cafcPlayerId } = useParams<{
     playerId?: string;
@@ -203,10 +288,14 @@ const PlayerProfilePage: React.FC = () => {
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
     useState<ScoutReportsData | null>(null);
+  const [flowHistoryData, setFlowHistoryData] =
+    useState<PlayerFlowHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [attributesLoading, setAttributesLoading] = useState(true);
   const [scoutReportsLoading, setScoutReportsLoading] = useState(true);
+  const [flowHistoryLoading, setFlowHistoryLoading] = useState(true);
   const [error, setError] = useState("");
+  const [flowHistoryError, setFlowHistoryError] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showIntelModal, setShowIntelModal] = useState(false);
@@ -263,6 +352,7 @@ const PlayerProfilePage: React.FC = () => {
   const [currentReportPage, setCurrentReportPage] = useState(0);
 
   // Collapsible sections
+  const [flowHistoryExpanded, setFlowHistoryExpanded] = useState(true);
   const [scoutingHistoryExpanded, setScoutingHistoryExpanded] = useState(true);
   const [intelExpanded, setIntelExpanded] = useState(true);
   const [attributeBreakdownExpanded, setAttributeBreakdownExpanded] = useState(true);
@@ -880,6 +970,7 @@ const PlayerProfilePage: React.FC = () => {
       fetchPlayerProfile();
       fetchPlayerAttributes();
       fetchScoutReports();
+      fetchFlowHistory();
       fetchPositionCounts();
       fetchPlayerStages();
     }
@@ -949,6 +1040,27 @@ const PlayerProfilePage: React.FC = () => {
       // Don't set main error - scout reports are optional
     } finally {
       setScoutReportsLoading(false);
+    }
+  };
+
+  const fetchFlowHistory = async () => {
+    if (!actualPlayerId) {
+      setFlowHistoryLoading(false);
+      return;
+    }
+
+    try {
+      setFlowHistoryLoading(true);
+      setFlowHistoryError("");
+      const response = await axiosInstance.get(
+        `/players/${actualPlayerId}/flow-history`,
+      );
+      setFlowHistoryData(response.data);
+    } catch (error: any) {
+      console.error("Error fetching flow history:", error);
+      setFlowHistoryError("Failed to load flow history");
+    } finally {
+      setFlowHistoryLoading(false);
     }
   };
 
@@ -1060,6 +1172,15 @@ const PlayerProfilePage: React.FC = () => {
     } finally {
       setAddingNote(false);
     }
+  };
+
+  const flowHistoryEvents = flowHistoryData?.events || [];
+  const flowHistorySummary = {
+    listAdds: flowHistoryEvents.filter((event) => event.event_type === "list_added").length,
+    stageChanges: flowHistoryEvents.filter((event) => event.event_type === "stage_changed").length,
+    recommendationEvents: flowHistoryEvents.filter((event) =>
+      event.event_type.startsWith("recommendation_"),
+    ).length,
   };
 
   if (loading) {
@@ -1273,6 +1394,140 @@ const PlayerProfilePage: React.FC = () => {
 
         {/* Reports Sections - Full Width Stacked Layout */}
         <div className="mt-4 mb-4">
+          <div className="mb-4">
+            <div className="horizontal-timeline-section mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <div className="d-flex align-items-center gap-2">
+                  <h4 className="section-title mb-0">🔄 Flow History</h4>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => setFlowHistoryExpanded(!flowHistoryExpanded)}
+                    style={{
+                      textDecoration: "none",
+                      color: "#666",
+                      fontSize: "1.2rem",
+                      padding: "0",
+                    }}
+                    title={flowHistoryExpanded ? "Collapse" : "Expand"}
+                  >
+                    {flowHistoryExpanded ? "▲" : "▼"}
+                  </Button>
+                </div>
+              </div>
+
+              {flowHistoryLoading ? (
+                <div className="text-center py-3">
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Loading flow history...
+                </div>
+              ) : flowHistoryError ? (
+                <Alert variant="warning" className="mb-0">
+                  {flowHistoryError}
+                </Alert>
+              ) : flowHistoryEvents.length > 0 ? (
+                <>
+                  <div
+                    className="timeline-summary-compact mb-3"
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <span className="summary-stat">
+                      <strong>{flowHistoryData?.total_events || flowHistoryEvents.length}</strong> flow event{(flowHistoryData?.total_events || flowHistoryEvents.length) !== 1 ? "s" : ""}
+                    </span>
+                    <span className="summary-stat">
+                      <strong>{flowHistorySummary.listAdds}</strong> list additions
+                    </span>
+                    <span className="summary-stat">
+                      <strong>{flowHistorySummary.stageChanges}</strong> stage changes
+                    </span>
+                    <span className="summary-stat">
+                      <strong>{flowHistorySummary.recommendationEvents}</strong> recommendation updates
+                    </span>
+                  </div>
+
+                  <Collapse in={flowHistoryExpanded}>
+                    <div>
+                      <div
+                        className="flow-history-feed"
+                        style={{
+                          maxHeight: "420px",
+                          overflowY: "auto",
+                          overflowX: "hidden",
+                          paddingRight: "10px",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {flowHistoryEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            className="flow-history-item"
+                            style={{
+                              ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type),
+                            }}
+                          >
+                            <div className="flow-history-marker" />
+                            <div className="flow-history-content">
+                              <div className="flow-history-topline">
+                                <span
+                                  className="badge"
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    fontWeight: 600,
+                                    ...getFlowHistoryBadgeStyle(event.event_type),
+                                  }}
+                                >
+                                  {getFlowHistoryEventLabel(event.event_type)}
+                                </span>
+                                <span className="flow-history-date">
+                                  {formatFlowHistoryTimestamp(event.event_at)}
+                                </span>
+                              </div>
+
+                              <div className="flow-history-title-row">
+                                <h5 className="flow-history-title mb-0">{event.title}</h5>
+                                {event.new_stage && (
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      backgroundColor: getStageBgColor(event.new_stage),
+                                      color: getStageTextColor(event.new_stage),
+                                      border: "1px solid rgba(0,0,0,0.08)",
+                                      fontSize: "0.72rem",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {event.new_stage}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flow-history-meta">
+                                {getFlowHistoryContext(event) && (
+                                  <span className="flow-history-meta-item">
+                                    {getFlowHistoryContext(event)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Collapse>
+                </>
+              ) : (
+                <div className="empty-state-compact">
+                  <p>No flow history available yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Scouting History Section - Full Width */}
           <div className="mb-4">
             {/* Recent Scouting History */}

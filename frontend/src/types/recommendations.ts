@@ -60,6 +60,8 @@ export interface Recommendation {
   transfer_fee?: string;
   transfer_fee_amount?: number;
   transfer_fee_currency?: string;
+  transfer_fee_min?: number;
+  transfer_fee_max?: number;
   current_wages_per_week?: number | string;
   current_wages_per_week_min?: number;
   current_wages_per_week_max?: number;
@@ -85,6 +87,7 @@ export interface Recommendation {
   avg_performance_score?: number | null;
   agent_status: AgentStatus;
   agent_status_updated_at?: string;
+  shared_notes?: string;
 }
 
 export interface RecommendationStatusHistory {
@@ -99,7 +102,6 @@ export interface RecommendationStatusHistory {
 export interface InternalRecommendation extends Recommendation {
   submitted_by_user_id?: number;
   submitted_by_username?: string;
-  internal_notes?: string;
   status_updated_by?: number;
   status_updated_by_name?: string;
   supporting_file_content_type?: string;

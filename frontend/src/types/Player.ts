@@ -56,6 +56,36 @@ export interface PlayerProfile extends Player {
   notes?: any[];
 }
 
+export interface FlowHistoryEvent {
+  id: string;
+  event_type:
+    | "list_added"
+    | "stage_changed"
+    | "recommendation_submitted"
+    | "recommendation_status_changed"
+    | "recommendation_agent_status_changed";
+  event_at: string | null;
+  title: string;
+  subtitle?: string | null;
+  actor_name?: string | null;
+  source_table: string;
+  list_name?: string | null;
+  old_stage?: string | null;
+  new_stage?: string | null;
+  reason?: string | null;
+  description?: string | null;
+  recommendation_status?: string | null;
+  agent_status?: string | null;
+  agent_name?: string | null;
+  agency?: string | null;
+}
+
+export interface PlayerFlowHistoryResponse {
+  player_id: string;
+  total_events: number;
+  events: FlowHistoryEvent[];
+}
+
 // Interface for player search results
 export interface PlayerSearchResult extends Player {
   // Search-specific fields can be added here

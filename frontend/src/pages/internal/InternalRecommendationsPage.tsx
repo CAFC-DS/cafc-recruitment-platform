@@ -55,7 +55,7 @@ const InternalRecommendationsPage: React.FC = () => {
         const refreshed = listResponse.items.find((item) => item.id === selected.id);
         if (refreshed) {
           setSelected(refreshed);
-          setNotesDraft(refreshed.internal_notes || '');
+          setNotesDraft(refreshed.shared_notes || '');
         }
       }
     } catch (err) {
@@ -73,7 +73,7 @@ const InternalRecommendationsPage: React.FC = () => {
 
   useEffect(() => {
     if (selected) {
-      setNotesDraft(selected.internal_notes || '');
+      setNotesDraft(selected.shared_notes || '');
     }
   }, [selected]);
 
@@ -88,7 +88,7 @@ const InternalRecommendationsPage: React.FC = () => {
     try {
       const detail = await internalRecommendationsService.getDetail(item.id);
       setSelected(detail);
-      setNotesDraft(detail.internal_notes || '');
+      setNotesDraft(detail.shared_notes || '');
     } catch (err) {
       console.error(err);
       setError('Failed to load recommendation detail');
@@ -117,7 +117,7 @@ const InternalRecommendationsPage: React.FC = () => {
       setSavingNotes(true);
       const updated = await internalRecommendationsService.updateNotes(selected.id, notesDraft);
       setSelected(updated);
-      setBanner('Internal notes saved');
+      setBanner('Shared notes saved');
       await load(filters);
     } catch (err: any) {
       console.error(err);
@@ -286,7 +286,7 @@ const InternalRecommendationsPage: React.FC = () => {
             <div className="card-header cafc-section-header-black">Review Panel</div>
             <div className="card-body">
               {!selected ? (
-                <div className="agent-portal-empty">Select a recommendation to review status history, update status, and save internal notes.</div>
+                <div className="agent-portal-empty">Select a recommendation to review status history, update status, and save shared notes.</div>
               ) : (
                 <div className="agent-portal-review-stack">
                   <div>
@@ -308,9 +308,9 @@ const InternalRecommendationsPage: React.FC = () => {
                   </div>
 
                   <div className="agent-portal-info-card">
-                    <label className="agent-portal-label">Internal Notes</label>
+                    <label className="agent-portal-label">Shared Notes</label>
                     <textarea className="agent-portal-textarea" rows={6} value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} />
-                    <button className="btn btn-dark btn-sm mt-3" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? 'Saving...' : 'Save Notes'}</button>
+                    <button className="btn btn-dark btn-sm mt-3" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? 'Saving...' : 'Save Shared Notes'}</button>
                   </div>
 
                   <div>

@@ -46,9 +46,17 @@ export const internalRecommendationsService = {
     return response.data;
   },
 
-  async updateNotes(id: number, internalNotes: string) {
+  async saveReview(id: number, newStatus: RecommendationStatus, sharedNotes: string) {
+    const response = await axiosInstance.patch<InternalStatusUpdateResponse>(`/internal/recommendations/${id}/review`, {
+      new_status: newStatus,
+      shared_notes: sharedNotes,
+    });
+    return response.data;
+  },
+
+  async updateNotes(id: number, sharedNotes: string) {
     const response = await axiosInstance.patch<InternalRecommendation>(`/internal/recommendations/${id}/notes`, {
-      internal_notes: internalNotes,
+      shared_notes: sharedNotes,
     });
     return response.data;
   },

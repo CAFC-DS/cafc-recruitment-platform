@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AgentPlayerSearchResult,
   AgentProfile,
@@ -74,15 +74,6 @@ interface MultiSelectDropdownProps<T extends string> {
   placeholder: string;
   onChange: (values: T[]) => void;
 }
-
-const formatWholePounds = (value: string) => {
-  if (!value) return '';
-  const digitsOnly = value.replace(/\D/g, '');
-  if (!digitsOnly) return '';
-  return Number(digitsOnly).toLocaleString('en-GB');
-};
-
-const normalizeWholePounds = (value: string) => value.replace(/\D/g, '');
 
 const validateWageInput = (value: string) => {
   // Allow only digits and hyphens for banding (e.g., 12000-20000)
@@ -193,11 +184,6 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
-
-  const formattedTransferFee = useMemo(
-    () => formatWholePounds(values.transfer_fee),
-    [values.transfer_fee],
-  );
   const wageBasis = values.wage_basis || values.expected_wages_basis || values.current_wages_basis || 'Gross';
   const updateWageBasis = (nextBasis: WageBasis) => {
     onChange('wage_basis', nextBasis);
@@ -502,11 +488,11 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
             <input
               className="agent-portal-input"
               inputMode="numeric"
-              value={formattedTransferFee}
-              onChange={(event) => onChange('transfer_fee', normalizeWholePounds(event.target.value))}
+              value={values.transfer_fee}
+              onChange={(event) => onChange('transfer_fee', validateWageInput(event.target.value))}
             />
             <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
-              Required only when potential deal type includes Permanent Transfer.
+              Enter a single value or range, for example 500000 or 500000-750000. Required only when potential deal type includes Permanent Transfer.
             </div>
           </div>
           <div className="full-span">
