@@ -241,6 +241,9 @@ def load_table_schemas():
             "player_information",
             "player_notes",
             "matches",
+            "player_lists",
+            "player_list_items",
+            "player_stage_history",
             "player_recommendations",
             "agent_profiles",
             "status_history",
@@ -8429,6 +8432,11 @@ async def get_player_flow_history(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+
+        # These tables are optional in some environments and may not be present
+        # in older in-memory schema caches if they were created after startup.
+        refresh_table_schema("player_list_items")
+        refresh_table_schema("player_stage_history")
 
         player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
         if not player_data:

@@ -112,6 +112,22 @@ const AgentSubmissionDetailPage: React.FC = () => {
                 </div>
               </div>
 
+              <div
+                className="agent-portal-surface-muted"
+                style={{
+                  marginBottom: '1.25rem',
+                  borderLeft: '4px solid #c1121f',
+                  background: 'linear-gradient(180deg, #fff7ed 0%, #ffffff 100%)',
+                }}
+              >
+                <div className="agent-portal-label" style={{ color: '#9a3412', marginBottom: '0.4rem' }}>
+                  Shared Notes From The Club
+                </div>
+                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                  {item.shared_notes || 'No shared notes yet.'}
+                </div>
+              </div>
+
               <div className="agent-portal-info-grid">
                 {[
                   ['Submitted date', item.created_at ? new Date(item.created_at).toLocaleString() : '-'],
@@ -178,22 +194,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
             <div className="agent-portal-card-body">
               <div className="agent-portal-section-title">Internal Review Status</div>
               <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
-                Track the status progression recorded against your submission and any shared notes left by the club.
-              </div>
-              <div
-                className="agent-portal-surface-muted"
-                style={{
-                  marginBottom: '1rem',
-                  borderLeft: '4px solid #c1121f',
-                  background: 'linear-gradient(180deg, #fff7ed 0%, #ffffff 100%)',
-                }}
-              >
-                <div className="agent-portal-label" style={{ color: '#9a3412', marginBottom: '0.4rem' }}>
-                  Shared Notes From The Club
-                </div>
-                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
-                  {item.shared_notes || 'No shared notes yet.'}
-                </div>
+                Track the status progression recorded against your submission.
               </div>
               <div className="agent-portal-review-stack">
                 {history.length === 0 ? (
