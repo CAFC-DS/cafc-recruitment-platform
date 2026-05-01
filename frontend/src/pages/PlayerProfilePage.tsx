@@ -273,6 +273,30 @@ const getFlowHistoryContext = (event: FlowHistoryEvent) => {
   return [event.list_name, event.actor_name].filter(Boolean).join(" · ");
 };
 
+const getFlowHistorySnapshot = (event: FlowHistoryEvent) => {
+  if (event.event_type === "stage_changed") {
+    return [event.old_stage ? `From ${event.old_stage}` : null, event.reason].filter(Boolean).join(" · ");
+  }
+
+  if (event.event_type === "list_added") {
+    return event.list_name || event.subtitle || "";
+  }
+
+  if (event.event_type === "recommendation_submitted") {
+    return [event.agent_name, event.agency].filter(Boolean).join(" · ");
+  }
+
+  if (event.event_type === "recommendation_status_changed") {
+    return event.subtitle || event.recommendation_status || "";
+  }
+
+  if (event.event_type === "recommendation_agent_status_changed") {
+    return event.agent_status ? `Availability: ${event.agent_status}` : "";
+  }
+
+  return event.subtitle || "";
+};
+
 const PlayerProfilePage: React.FC = () => {
   const { playerId, cafcPlayerId } = useParams<{
     playerId?: string;
@@ -290,6 +314,7 @@ const PlayerProfilePage: React.FC = () => {
     useState<ScoutReportsData | null>(null);
   const [flowHistoryData, setFlowHistoryData] =
     useState<PlayerFlowHistoryResponse | null>(null);
+  const [selectedFlowHistoryEventId, setSelectedFlowHistoryEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [attributesLoading, setAttributesLoading] = useState(true);
   const [scoutReportsLoading, setScoutReportsLoading] = useState(true);
@@ -1056,6 +1081,7 @@ const PlayerProfilePage: React.FC = () => {
         `/players/${actualPlayerId}/flow-history`,
       );
       setFlowHistoryData(response.data);
+      setSelectedFlowHistoryEventId(null);
     } catch (error: any) {
       console.error("Error fetching flow history:", error);
       setFlowHistoryError("Failed to load flow history");
@@ -1174,7 +1200,13 @@ const PlayerProfilePage: React.FC = () => {
     }
   };
 
-  const flowHistoryEvents = flowHistoryData?.events || [];
+  const flowHistoryEvents = [...(flowHistoryData?.events || [])].sort((a, b) => {
+    const aTime = a.event_at ? new Date(a.event_at).getTime() : 0;
+    const bTime = b.event_at ? new Date(b.event_at).getTime() : 0;
+    return aTime - bTime;
+  });
+  const selectedFlowHistoryEvent =
+    flowHistoryEvents.find((event) => event.id === selectedFlowHistoryEventId) || null;
   const flowHistorySummary = {
     listAdds: flowHistoryEvents.filter((event) => event.event_type === "list_added").length,
     stageChanges: flowHistoryEvents.filter((event) => event.event_type === "stage_changed").length,
@@ -1453,70 +1485,119 @@ const PlayerProfilePage: React.FC = () => {
                   <Collapse in={flowHistoryExpanded}>
                     <div>
                       <div
-                        className="flow-history-feed"
+                        className="flow-history-rail-shell"
                         style={{
-                          maxHeight: "420px",
-                          overflowY: "auto",
-                          overflowX: "hidden",
-                          paddingRight: "10px",
-                          marginBottom: "0.25rem",
+                          marginBottom: "1rem",
                         }}
                       >
-                        {flowHistoryEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            className="flow-history-item"
-                            style={{
-                              ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type),
-                            }}
-                          >
-                            <div className="flow-history-marker" />
-                            <div className="flow-history-content">
-                              <div className="flow-history-topline">
+                        <div className="flow-history-rail">
+                          <div className="flow-history-rail-track" />
+                          <div className="flow-history-rail-scroll">
+                            {flowHistoryEvents.map((event) => {
+                              const isSelected = selectedFlowHistoryEvent?.id === event.id;
+                              return (
+                                <button
+                                  key={event.id}
+                                  type="button"
+                                  className={`flow-history-node ${isSelected ? 'is-selected' : ''}`}
+                                  onClick={() =>
+                                    setSelectedFlowHistoryEventId((current) =>
+                                      current === event.id ? null : event.id,
+                                    )
+                                  }
+                                  style={{
+                                    ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type),
+                                  }}
+                                >
+                                  <div className="flow-history-node-dot" />
+                                  <div className="flow-history-node-date">
+                                    {event.event_at
+                                      ? new Date(event.event_at).toLocaleDateString("en-GB", {
+                                          day: "2-digit",
+                                          month: "short",
+                                        })
+                                      : "Unknown"}
+                                  </div>
+                                  <div className="flow-history-node-title">{event.title}</div>
+                                  <div className="flow-history-node-meta">
+                                    {getFlowHistoryEventLabel(event.event_type)}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {selectedFlowHistoryEvent ? (
+                        <div
+                          className="flow-history-detail-card"
+                          style={{
+                            ["--flow-accent" as any]: getFlowHistoryAccentColor(selectedFlowHistoryEvent.event_type),
+                          }}
+                        >
+                          <div className="flow-history-detail-header">
+                            <div>
+                              <div className="flow-history-detail-kicker">
                                 <span
                                   className="badge"
                                   style={{
-                                    fontSize: "0.7rem",
+                                    fontSize: "0.72rem",
                                     fontWeight: 600,
-                                    ...getFlowHistoryBadgeStyle(event.event_type),
+                                    ...getFlowHistoryBadgeStyle(selectedFlowHistoryEvent.event_type),
                                   }}
                                 >
-                                  {getFlowHistoryEventLabel(event.event_type)}
-                                </span>
-                                <span className="flow-history-date">
-                                  {formatFlowHistoryTimestamp(event.event_at)}
+                                  {getFlowHistoryEventLabel(selectedFlowHistoryEvent.event_type)}
                                 </span>
                               </div>
+                              <h5 className="flow-history-detail-title mb-0">
+                                {selectedFlowHistoryEvent.title}
+                              </h5>
+                            </div>
+                            <div className="flow-history-detail-date">
+                              {formatFlowHistoryTimestamp(selectedFlowHistoryEvent.event_at)}
+                            </div>
+                          </div>
 
-                              <div className="flow-history-title-row">
-                                <h5 className="flow-history-title mb-0">{event.title}</h5>
-                                {event.new_stage && (
+                          <div className="flow-history-detail-grid">
+                            {getFlowHistorySnapshot(selectedFlowHistoryEvent) ? (
+                              <div className="flow-history-detail-panel">
+                                <div className="flow-history-detail-label">Snapshot</div>
+                                <div className="flow-history-detail-value">
+                                  {getFlowHistorySnapshot(selectedFlowHistoryEvent)}
+                                </div>
+                              </div>
+                            ) : null}
+                            {getFlowHistoryContext(selectedFlowHistoryEvent) ? (
+                              <div className="flow-history-detail-panel">
+                                <div className="flow-history-detail-label">Context</div>
+                                <div className="flow-history-detail-value">
+                                  {getFlowHistoryContext(selectedFlowHistoryEvent)}
+                                </div>
+                              </div>
+                            ) : null}
+                            {selectedFlowHistoryEvent.new_stage ? (
+                              <div className="flow-history-detail-panel">
+                                <div className="flow-history-detail-label">Stage</div>
+                                <div className="flow-history-detail-value">
                                   <span
                                     className="badge"
                                     style={{
-                                      backgroundColor: getStageBgColor(event.new_stage),
-                                      color: getStageTextColor(event.new_stage),
+                                      backgroundColor: getStageBgColor(selectedFlowHistoryEvent.new_stage),
+                                      color: getStageTextColor(selectedFlowHistoryEvent.new_stage),
                                       border: "1px solid rgba(0,0,0,0.08)",
                                       fontSize: "0.72rem",
                                       fontWeight: 600,
                                     }}
                                   >
-                                    {event.new_stage}
+                                    {selectedFlowHistoryEvent.new_stage}
                                   </span>
-                                )}
+                                </div>
                               </div>
-
-                              <div className="flow-history-meta">
-                                {getFlowHistoryContext(event) && (
-                                  <span className="flow-history-meta-item">
-                                    {getFlowHistoryContext(event)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                            ) : null}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                   </Collapse>
                 </>
