@@ -1,16 +1,14 @@
 import React from 'react';
 import { AgentStatus, RecommendationStatus } from '../../types/recommendations';
-
-const statusClassMap: Record<string, string> = {
-  Submitted: 'agent-status-submitted',
-  'Under Review': 'agent-status-under-review',
-  'Added to Scouting Process': 'agent-status-shortlisted',
-  'Added to Emerging Talent Process': 'agent-status-signed',
-  'Not Currently under Consideration': 'agent-status-not-for-us',
-};
+import { getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
 
 const SubmissionStatusBadge: React.FC<{ status: RecommendationStatus }> = ({ status }) => {
-  return <span className={`agent-status-badge ${statusClassMap[status] || 'agent-status-archived'}`}>{status}</span>;
+  const config = getRecommendationStatusConfig(status);
+  return (
+    <span className={`agent-status-badge ${config.badgeClassName || 'agent-status-archived'}`}>
+      {config.displayLabel}
+    </span>
+  );
 };
 
 const agentStatusClassMap: Record<AgentStatus, string> = {

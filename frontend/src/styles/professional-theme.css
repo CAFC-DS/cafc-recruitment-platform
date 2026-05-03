@@ -2664,9 +2664,12 @@ span.badge.badge-neutral-grey {
 .agent-status-submitted { background: #111827; color: #fff; }
 .agent-status-under-review { background: #fef3c7; color: #92400e; }
 .agent-status-watching { background: #dbeafe; color: #1d4ed8; }
-.agent-status-shortlisted { background: #dcfce7; color: #166534; }
-.agent-status-not-for-us { background: #fee2e2; color: #b91c1c; }
-.agent-status-signed { background: #ede9fe; color: #6d28d9; }
+.agent-status-shortlisted,
+.agent-status-scouting { background: #dcfce7; color: #166534; }
+.agent-status-not-for-us,
+.agent-status-not-under-consideration { background: #fee2e2; color: #b91c1c; }
+.agent-status-signed,
+.agent-status-emerging-talent { background: #ede9fe; color: #6d28d9; }
 .agent-status-archived { background: #e5e7eb; color: #374151; }
 
 .agent-status-pill-stack {
@@ -3096,6 +3099,12 @@ span.badge.badge-neutral-grey {
   letter-spacing: -0.03em;
 }
 
+.agent-portal-kpi-value-small {
+  font-size: 1.15rem;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
 .agent-portal-kpi-copy {
   color: #64748b;
   font-size: 0.95rem;
@@ -3112,6 +3121,246 @@ span.badge.badge-neutral-grey {
   padding: 2rem;
   text-align: center;
   color: #64748b;
+}
+
+.agent-portal-kpi-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.agent-portal-status-note {
+  max-width: 360px;
+  border: 1px solid #fde68a;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fffdf0 0%, #ffffff 100%);
+  color: #713f12;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 1rem 1.1rem;
+}
+
+.agent-portal-status-journey {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.agent-portal-stage-card {
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 1rem;
+}
+
+.agent-portal-stage-step {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.agent-portal-stage-title {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.agent-portal-stage-copy {
+  color: #334155;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.agent-portal-submission-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.agent-portal-submission-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #fff;
+  padding: 1.2rem;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.05);
+}
+
+.agent-portal-submission-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.agent-portal-submission-title {
+  color: #111827;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.agent-portal-submission-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.agent-portal-submission-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.agent-portal-submission-meta-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.agent-portal-submission-meta-item {
+  display: grid;
+  gap: 0.2rem;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.agent-portal-submission-meta-label {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.agent-portal-detail-hero {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+}
+
+.agent-portal-current-status-card {
+  border: 1px solid #f5d0d3;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fff8f8 0%, #ffffff 100%);
+  padding: 1.35rem;
+}
+
+.agent-portal-step-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 0.35rem 0.75rem;
+  text-transform: uppercase;
+}
+
+.agent-portal-current-status-title {
+  margin: 0.9rem 0 0.6rem;
+  color: #111827;
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.agent-portal-detail-callouts {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1.15rem;
+}
+
+.agent-portal-process-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  background: #fff;
+  padding: 1.35rem;
+}
+
+.agent-portal-progress-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.agent-portal-progress-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.agent-portal-progress-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.agent-portal-progress-item.complete .agent-portal-progress-marker {
+  border-color: #bbf7d0;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.agent-portal-progress-item.current .agent-portal-progress-marker {
+  border-color: #fecdd3;
+  background: #b32627;
+  color: #ffffff;
+  box-shadow: 0 0 0 6px rgba(179, 38, 39, 0.1);
+}
+
+.agent-portal-progress-item.upcoming .agent-portal-progress-marker {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.agent-portal-progress-title {
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-bottom: 0.2rem;
+}
+
+.agent-portal-notes-panel {
+  border-left: 4px solid #c1121f;
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+}
+
+.agent-portal-history-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.agent-portal-history-title {
+  color: #111827;
+  font-size: 0.96rem;
+  font-weight: 800;
+  line-height: 1.4;
+  margin-bottom: 0.25rem;
 }
 
 .page-lists-cafc .btn-link {
@@ -3602,7 +3851,12 @@ span.badge.badge-neutral-grey {
   .agent-portal-form-grid,
   .agent-portal-info-grid,
   .agent-portal-detail-grid,
-  .agent-portal-filter-bar {
+  .agent-portal-filter-bar,
+  .agent-portal-kpi-grid,
+  .agent-portal-status-journey,
+  .agent-portal-submission-grid,
+  .agent-portal-detail-hero,
+  .agent-portal-detail-callouts {
     grid-template-columns: 1fr;
   }
 
@@ -3613,5 +3867,11 @@ span.badge.badge-neutral-grey {
 
   .agent-wage-values-row {
     grid-template-columns: 1fr;
+  }
+
+  .agent-portal-submission-header,
+  .agent-portal-submission-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

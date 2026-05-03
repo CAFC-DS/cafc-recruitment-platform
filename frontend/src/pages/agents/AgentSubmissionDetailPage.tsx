@@ -1,9 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import SubmissionStatusBadge, { AgentStatusBadge } from '../../components/agents/SubmissionStatusBadge';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { AgentStatus, Recommendation, RecommendationStatusHistory } from '../../types/recommendations';
+import {
+  getRecommendationStatusConfig,
+  getRecommendationStatusStep,
+  REVIEW_STATUS_ORDER,
+} from '../../utils/agentRecommendationStatus';
 
 const AGENT_STATUSES: AgentStatus[] = [
   'Active',
@@ -11,6 +16,12 @@ const AGENT_STATUSES: AgentStatus[] = [
   'Player Not Interested',
   'Withdrawn',
 ];
+
+const formatDateTime = (value?: string | null) =>
+  value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+
+const formatDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString('en-GB', { dateStyle: 'medium' }) : '-';
 
 const formatCurrency = (value?: number | string, currency?: string, basis?: string) => {
   if (value === undefined || value === null) return '-';
@@ -25,7 +36,12 @@ const formatAmountCurrency = (amount?: number, currency?: string, fallback?: str
 };
 
 const formatTransferFee = (item: Recommendation) => {
-  if (item.transfer_fee_min !== undefined && item.transfer_fee_min !== null && item.transfer_fee_max !== undefined && item.transfer_fee_max !== null) {
+  if (
+    item.transfer_fee_min !== undefined &&
+    item.transfer_fee_min !== null &&
+    item.transfer_fee_max !== undefined &&
+    item.transfer_fee_max !== null
+  ) {
     const minLabel = Math.round(item.transfer_fee_min).toLocaleString('en-GB');
     const maxLabel = Math.round(item.transfer_fee_max).toLocaleString('en-GB');
     return `${item.transfer_fee_currency || 'GBP'} ${minLabel}${item.transfer_fee_min === item.transfer_fee_max ? '' : `-${maxLabel}`}`;
@@ -46,6 +62,8 @@ const AgentSubmissionDetailPage: React.FC = () => {
     const load = async () => {
       try {
         if (!id) return;
+        setLoading(true);
+        setError(null);
         const recommendationId = Number(id);
         const [detail, statusHistory] = await Promise.all([
           agentRecommendationsService.getDetail(recommendationId),
@@ -80,8 +98,26 @@ const AgentSubmissionDetailPage: React.FC = () => {
     }
   };
 
+  const currentStatusConfig = useMemo(
+    () => getRecommendationStatusConfig(item?.status),
+    [item?.status],
+  );
+
+  const currentStatusStep = useMemo(
+    () => getRecommendationStatusStep(item?.status),
+    [item?.status],
+  );
+
   return (
-    <AgentPortalShell title="Submission Detail" subtitle="View your submitted recommendation and update its availability.">
+    <AgentPortalShell
+      title="Submission Detail"
+      subtitle="A clearer view of the player’s review stage, what it means and what happens next."
+      actions={
+        <Link to="/agents/dashboard" className="agent-portal-button-secondary">
+          Back to dashboard
+        </Link>
+      }
+    >
       {loading ? (
         <div className="agent-portal-card">
           <div className="agent-portal-card-body">
@@ -89,57 +125,106 @@ const AgentSubmissionDetailPage: React.FC = () => {
           </div>
         </div>
       ) : null}
-      {successMessage ? <div className="agent-portal-banner agent-portal-banner-success" style={{ marginBottom: '1rem' }}>{successMessage}</div> : null}
+
+      {successMessage ? (
+        <div className="agent-portal-banner agent-portal-banner-success" style={{ marginBottom: '1rem' }}>
+          {successMessage}
+        </div>
+      ) : null}
       {error ? <div className="agent-portal-banner">{error}</div> : null}
+
       {!loading && !error && item ? (
-        <div className="agent-portal-detail-grid">
+        <div className="agent-portal-review-stack">
           <section className="agent-portal-card">
             <div className="agent-portal-card-body">
               <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                 <div>
                   <div className="agent-portal-section-title">{item.player_name}</div>
-                  <div className="agent-portal-section-copy">Submitted recommendation record and commercial details.</div>
+                  <div className="agent-portal-section-copy">
+                    Track the current club review stage and keep the player’s availability up to date.
+                  </div>
                 </div>
                 <div className="agent-status-pill-stack">
                   <div className="agent-status-pill-group">
-                    <span className="agent-status-pill-label">Review</span>
+                    <span className="agent-status-pill-label">Club review</span>
                     <SubmissionStatusBadge status={item.status} />
                   </div>
                   <div className="agent-status-pill-group">
-                    <span className="agent-status-pill-label">Availability</span>
+                    <span className="agent-status-pill-label">Player availability</span>
                     <AgentStatusBadge status={item.agent_status} />
                   </div>
                 </div>
               </div>
 
-              <div
-                className="agent-portal-surface-muted"
-                style={{
-                  marginBottom: '1.25rem',
-                  borderLeft: '4px solid #c1121f',
-                  background: 'linear-gradient(180deg, #fff7ed 0%, #ffffff 100%)',
-                }}
-              >
-                <div className="agent-portal-label" style={{ color: '#9a3412', marginBottom: '0.4rem' }}>
-                  Shared Notes From The Club
+              <div className="agent-portal-detail-hero">
+                <div className="agent-portal-current-status-card">
+                  <div className="agent-portal-step-chip">
+                    Step {Math.max(currentStatusStep + 1, 1)} of {REVIEW_STATUS_ORDER.length}
+                  </div>
+                  <h2 className="agent-portal-current-status-title">{currentStatusConfig.title}</h2>
+                  <p className="agent-portal-meta" style={{ color: '#111827' }}>
+                    {currentStatusConfig.summary}
+                  </p>
+                  <div className="agent-portal-detail-callouts">
+                    <div className="agent-portal-info-card">
+                      <div className="agent-portal-label">What the club is doing</div>
+                      <div className="agent-portal-meta" style={{ color: '#111827' }}>
+                        {currentStatusConfig.clubAction}
+                      </div>
+                    </div>
+                    <div className="agent-portal-info-card">
+                      <div className="agent-portal-label">What happens next</div>
+                      <div className="agent-portal-meta" style={{ color: '#111827' }}>
+                        {currentStatusConfig.nextStep}
+                      </div>
+                    </div>
+                    <div className="agent-portal-info-card">
+                      <div className="agent-portal-label">What you should do</div>
+                      <div className="agent-portal-meta" style={{ color: '#111827' }}>
+                        {currentStatusConfig.agentAction}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
-                  {item.shared_notes || 'No shared notes yet.'}
+
+                <div className="agent-portal-process-card">
+                  <div className="agent-portal-section-title">Review journey</div>
+                  <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
+                    Completed steps are marked, your current step is highlighted, and future steps stay visible so the process is easier to follow.
+                  </div>
+
+                  <div className="agent-portal-progress-list">
+                    {REVIEW_STATUS_ORDER.map((status, index) => {
+                      const config = getRecommendationStatusConfig(status);
+                      const stepState =
+                        index < currentStatusStep
+                          ? 'complete'
+                          : index === currentStatusStep
+                            ? 'current'
+                            : 'upcoming';
+
+                      return (
+                        <div key={status} className={`agent-portal-progress-item ${stepState}`}>
+                          <div className="agent-portal-progress-marker" aria-hidden="true">
+                            {index < currentStatusStep ? '✓' : index + 1}
+                          </div>
+                          <div>
+                            <div className="agent-portal-progress-title">{config.displayLabel}</div>
+                            <div className="agent-portal-meta">{config.dashboardHint}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              <div className="agent-portal-info-grid">
+              <div className="agent-portal-info-grid" style={{ marginTop: '1.5rem' }}>
                 {[
-                  ['Submitted date', item.created_at ? new Date(item.created_at).toLocaleString() : '-'],
-                  ['Last updated', item.status_updated_at ? new Date(item.status_updated_at).toLocaleString() : '-'],
-                  ['Agreement type', item.agreement_type || '-'],
+                  ['Submitted', formatDateTime(item.created_at)],
+                  ['Last club update', formatDateTime(item.status_updated_at || item.created_at)],
                   ['Potential deal type', item.potential_deal_type || '-'],
-                  ['Transfer fee', formatTransferFee(item)],
-                  ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency, item.wage_basis || item.current_wages_basis)],
-                  ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)],
-                  ['Contract expiry', item.confirmed_contract_expiry ? new Date(item.confirmed_contract_expiry).toLocaleDateString() : '-'],
-                  ['Transfermarkt link', item.transfermarkt_link || '-'],
-                  ['Contract options', item.contract_options || '-'],
+                  ['Agreement type', item.agreement_type || '-'],
                 ].map(([label, value]) => (
                   <div key={label} className="agent-portal-info-card">
                     <div className="agent-portal-label">{label}</div>
@@ -147,72 +232,126 @@ const AgentSubmissionDetailPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          </section>
 
-              <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
-                <div className="agent-portal-label">Additional Information</div>
-                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
-                  {item.additional_information || 'No additional information provided.'}
+          <div className="agent-portal-detail-grid">
+            <section className="agent-portal-card">
+              <div className="agent-portal-card-body">
+                <div className="agent-portal-section-title">Player and deal details</div>
+                <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
+                  Key commercial and profile information from the original submission.
+                </div>
+
+                <div className="agent-portal-info-grid">
+                  {[
+                    ['Date of birth', formatDate(item.player_date_of_birth)],
+                    ['Recommended position', Array.isArray(item.recommended_position) ? item.recommended_position.join(', ') : item.recommended_position || '-'],
+                    ['Transfer fee', formatTransferFee(item)],
+                    ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency, item.wage_basis || item.current_wages_basis)],
+                    ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)],
+                    ['Contract expiry', formatDate(item.confirmed_contract_expiry)],
+                    ['Contract options', item.contract_options || '-'],
+                    ['Transfermarkt link', item.transfermarkt_link || '-'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="agent-portal-info-card">
+                      <div className="agent-portal-label">{label}</div>
+                      <div className="agent-portal-meta" style={{ color: '#111827', wordBreak: 'break-word' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
+                  <div className="agent-portal-label">Additional information provided</div>
+                  <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                    {item.additional_information || 'No additional information provided.'}
+                  </div>
+                </div>
+
+                <div
+                  className="agent-portal-surface-muted agent-portal-notes-panel"
+                  style={{ marginTop: '1.5rem' }}
+                >
+                  <div className="agent-portal-label">Shared notes from the club</div>
+                  <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                    {item.shared_notes || 'No shared notes yet.'}
+                  </div>
                 </div>
               </div>
+            </section>
 
-              <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
-                <div className="agent-portal-label">Player Availability</div>
-                <div className="agent-portal-meta" style={{ marginBottom: '0.75rem', color: '#111827' }}>
-                  Update the availability status of this recommendation. This helps the club understand if the player is still available.
+            <section className="agent-portal-card">
+              <div className="agent-portal-card-body">
+                <div className="agent-portal-section-title">Availability and history</div>
+                <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
+                  Keep the player’s market status current and review the timeline of club status changes.
                 </div>
-                <div className="d-flex align-items-center gap-2">
-                  <select
-                    className="form-select form-select-sm"
-                    value={item.agent_status}
-                    onChange={(e) => handleAgentStatusChange(e.target.value as AgentStatus)}
-                    disabled={updatingAgentStatus}
-                    style={{ maxWidth: '250px' }}
-                  >
-                    {AGENT_STATUSES.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                  {updatingAgentStatus && (
-                    <div className="spinner-border spinner-border-sm text-primary" role="status">
-                      <span className="visually-hidden">Updating...</span>
+
+                <div className="agent-portal-surface-muted" style={{ marginBottom: '1rem' }}>
+                  <div className="agent-portal-label">Player availability</div>
+                  <div className="agent-portal-meta" style={{ marginBottom: '0.75rem', color: '#111827' }}>
+                    Update this if the player becomes unavailable, loses interest or is withdrawn from consideration.
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <select
+                      className="agent-portal-select"
+                      value={item.agent_status}
+                      onChange={(e) => handleAgentStatusChange(e.target.value as AgentStatus)}
+                      disabled={updatingAgentStatus}
+                      style={{ maxWidth: '280px' }}
+                    >
+                      {AGENT_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    {updatingAgentStatus ? (
+                      <div className="spinner-border spinner-border-sm text-primary" role="status">
+                        <span className="visually-hidden">Updating...</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {item.agent_status_updated_at ? (
+                    <div className="agent-portal-meta" style={{ marginTop: '0.5rem' }}>
+                      Last availability update: {formatDateTime(item.agent_status_updated_at)}
                     </div>
+                  ) : null}
+                </div>
+
+                <div className="agent-portal-section-title" style={{ marginBottom: '0.75rem' }}>
+                  Club status history
+                </div>
+                <div className="agent-portal-review-stack">
+                  {history.length === 0 ? (
+                    <div className="agent-portal-empty">
+                      No status changes have been recorded yet. The submission remains in its opening stage.
+                    </div>
+                  ) : (
+                    history.map((entry) => {
+                      const entryConfig = getRecommendationStatusConfig(entry.new_status);
+                      return (
+                        <div key={entry.id} className="agent-portal-history-card">
+                          <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                            <SubmissionStatusBadge status={entry.new_status} />
+                            <div className="agent-portal-meta">{formatDateTime(entry.changed_at)}</div>
+                          </div>
+                          <div className="agent-portal-history-title">{entryConfig.title}</div>
+                          {entry.old_status ? (
+                            <div className="agent-portal-meta">
+                              Moved from {getRecommendationStatusConfig(entry.old_status).displayLabel}
+                            </div>
+                          ) : (
+                            <div className="agent-portal-meta">Initial submission status</div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
-                {item.agent_status_updated_at && (
-                  <div className="agent-portal-meta" style={{ marginTop: '0.5rem' }}>
-                    Last updated: {new Date(item.agent_status_updated_at).toLocaleString()}
-                  </div>
-                )}
               </div>
-
-            </div>
-          </section>
-
-          <section className="agent-portal-card">
-            <div className="agent-portal-card-body">
-              <div className="agent-portal-section-title">Internal Review Status</div>
-              <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
-                Track the status progression recorded against your submission.
-              </div>
-              <div className="agent-portal-review-stack">
-                {history.length === 0 ? (
-                  <div className="agent-portal-empty">No status changes yet. Your submission remains at its initial state.</div>
-                ) : (
-                  history.map((entry) => (
-                    <div key={entry.id} className="agent-portal-surface-muted">
-                      <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', marginBottom: '0.45rem' }}>
-                        <div style={{ fontWeight: 800, color: '#111827' }}>{entry.new_status}</div>
-                        <div className="agent-portal-meta">{new Date(entry.changed_at).toLocaleString()}</div>
-                      </div>
-                      {entry.old_status ? <div className="agent-portal-meta">Updated from {entry.old_status}</div> : null}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       ) : null}
     </AgentPortalShell>
