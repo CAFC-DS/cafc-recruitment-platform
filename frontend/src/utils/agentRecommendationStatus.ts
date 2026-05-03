@@ -19,6 +19,11 @@ type ReviewStatusConfig = {
   agentAction: string;
   dashboardHint: string;
   isTerminal?: boolean;
+  color: {
+    bg: string;
+    text: string;
+    border: string;
+  };
 };
 
 const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
@@ -32,6 +37,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     nextStep: 'If the submission matches an immediate need, the status will move to Under Review.',
     agentAction: 'No action is needed from you right now unless the club asks for more detail.',
     dashboardHint: 'Added to the hold list and queued for review.',
+    color: { bg: '#111827', text: '#ffffff', border: '#111827' },
   },
   'Under Review': {
     badgeClassName: 'agent-status-under-review',
@@ -43,28 +49,31 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     nextStep: 'The player may move into either the Emerging Talent Process or the Scouting Process if the profile meets the threshold.',
     agentAction: 'Keep availability information current so the club is working from the latest picture.',
     dashboardHint: 'Being assessed against the club’s internal criteria.',
+    color: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
   },
   'Added to Emerging Talent Process': {
     badgeClassName: 'agent-status-emerging-talent',
     displayLabel: 'Added to Emerging Talent Process',
     shortLabel: 'Emerging Talent',
     title: 'Added to the Emerging Talent longlist',
-    summary: 'The player has met the required criteria and is now in the Emerging Talent process for further video and or live assessment.',
+    summary: 'The player has met the required criteria and is now in the Emerging Talent process for further video and live assessment.',
     clubAction: 'The recruitment team is continuing assessment through longer-term talent tracking.',
     nextStep: 'If the player continues to impress, the club may deepen live and video work or request more information.',
     agentAction: 'Keep the player’s situation updated in case availability or contract context changes.',
     dashboardHint: 'On the Emerging Talent longlist for further assessment.',
+    color: { bg: '#ede9fe', text: '#6d28d9', border: '#8b5cf6' },
   },
   'Added to Scouting Process': {
     badgeClassName: 'agent-status-scouting',
-    displayLabel: 'Added to Scouting Process',
-    shortLabel: 'Scouting Process',
-    title: 'Added to the First Team scouting longlist',
-    summary: 'The player has met the required criteria and is now in the First Team scouting process for deeper video and live assessment.',
+    displayLabel: 'Added to First Team Scouting Process',
+    shortLabel: 'First Team Scouting',
+    title: 'Added to the First Team longlist',
+    summary: 'The player has met the required criteria and is now in the First Team process for further video and live assessment.',
     clubAction: 'The scouting team is gathering further evidence, with a minimum expectation of two live matches before a senior decision.',
     nextStep: 'If the reports meet the required standard, a member of the senior recruitment team may contact you for more information.',
     agentAction: 'Make sure your availability status remains accurate and be ready to respond if the senior team gets in touch.',
-    dashboardHint: 'In deeper First Team scouting assessment.',
+    dashboardHint: 'On the First Team longlist for further assessment.',
+    color: { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
   },
   'Not Currently under Consideration': {
     badgeClassName: 'agent-status-not-under-consideration',
@@ -77,6 +86,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     agentAction: 'No further action is required on this submission.',
     dashboardHint: 'Archived and not under active consideration.',
     isTerminal: true,
+    color: { bg: '#fee2e2', text: '#b91c1c', border: '#f87171' },
   },
 };
 

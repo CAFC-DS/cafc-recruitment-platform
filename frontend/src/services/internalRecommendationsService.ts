@@ -1,5 +1,7 @@
 import axiosInstance from '../axiosInstance';
 import {
+  InternalBulkStatusUpdateItem,
+  InternalBulkStatusUpdateResponse,
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
   InternalRecommendationsResponse,
@@ -42,6 +44,13 @@ export const internalRecommendationsService = {
   async updateStatus(id: number, newStatus: RecommendationStatus) {
     const response = await axiosInstance.patch<InternalStatusUpdateResponse>(`/internal/recommendations/${id}/status`, {
       new_status: newStatus,
+    });
+    return response.data;
+  },
+
+  async bulkUpdateStatus(updates: InternalBulkStatusUpdateItem[]) {
+    const response = await axiosInstance.patch<InternalBulkStatusUpdateResponse>('/internal/recommendations/status/bulk', {
+      updates,
     });
     return response.data;
   },

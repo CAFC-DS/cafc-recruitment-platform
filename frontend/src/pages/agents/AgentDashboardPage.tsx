@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import SubmissionStatusBadge from '../../components/agents/SubmissionStatusBadge';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
-import { Recommendation, RecommendationStatus } from '../../types/recommendations';
+import { Recommendation } from '../../types/recommendations';
 import {
   getRecommendationStatusConfig,
   REVIEW_STATUS_ORDER,
@@ -50,16 +50,6 @@ const AgentDashboardPage: React.FC = () => {
     if (!sortedItems.length) return 'No submissions yet';
     return formatDateTime(sortedItems[0].status_updated_at || sortedItems[0].created_at);
   }, [sortedItems]);
-
-  const statusCounts = useMemo(() => {
-    return items.reduce(
-      (counts, item) => {
-        counts[item.status] = (counts[item.status] || 0) + 1;
-        return counts;
-      },
-      {} as Record<RecommendationStatus, number>,
-    );
-  }, [items]);
 
   const activeReviewCount = useMemo(
     () => items.filter((item) => item.status !== 'Not Currently under Consideration').length,
@@ -141,7 +131,7 @@ const AgentDashboardPage: React.FC = () => {
               <div>
                 <div className="agent-portal-section-title">Your submissions</div>
                 <div className="agent-portal-section-copy">
-                  Each card shows the player’s current stage, a plain-language explanation and the last movement on the file.
+                  A simple table view of your submissions and their current status.
                 </div>
               </div>
             </div>
@@ -153,59 +143,50 @@ const AgentDashboardPage: React.FC = () => {
               items.length === 0 ? (
                 <div className="agent-portal-empty">No submissions yet.</div>
               ) : (
-                <div className="agent-portal-submission-list">
-                  {sortedItems.map((item) => {
-                    const config = getRecommendationStatusConfig(item.status);
-                    return (
-                      <article key={item.id} className="agent-portal-submission-card">
-                        <div className="agent-portal-submission-header">
-                          <div>
-                            <div className="agent-portal-submission-title">{item.player_name}</div>
-                            <div className="agent-portal-meta">
-                              {item.potential_deal_type || 'Deal type not provided'}
-                              {item.agreement_type ? ` • ${item.agreement_type}` : ''}
-                            </div>
-                          </div>
-                          <SubmissionStatusBadge status={item.status} />
-                        </div>
-
-                        <div className="agent-portal-submission-grid">
-                          <div className="agent-portal-info-card">
-                            <div className="agent-portal-label">What is happening now</div>
-                            <div className="agent-portal-meta" style={{ color: '#111827' }}>
-                              {config.summary}
-                            </div>
-                          </div>
-                          <div className="agent-portal-info-card">
-                            <div className="agent-portal-label">What to expect next</div>
-                            <div className="agent-portal-meta" style={{ color: '#111827' }}>
-                              {config.nextStep}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="agent-portal-submission-footer">
-                          <div className="agent-portal-submission-meta-group">
-                            <div className="agent-portal-submission-meta-item">
-                              <span className="agent-portal-submission-meta-label">Submitted</span>
-                              <span>{formatDate(item.created_at)}</span>
-                            </div>
-                            <div className="agent-portal-submission-meta-item">
-                              <span className="agent-portal-submission-meta-label">Last updated</span>
-                              <span>{formatDateTime(item.status_updated_at || item.created_at)}</span>
-                            </div>
-                            <div className="agent-portal-submission-meta-item">
-                              <span className="agent-portal-submission-meta-label">Status count</span>
-                              <span>{statusCounts[item.status] || 0} in this stage</span>
-                            </div>
-                          </div>
-                          <Link to={`/agents/submissions/${item.id}`} className="agent-portal-button-secondary">
-                            View full submission
-                          </Link>
-                        </div>
-                      </article>
-                    );
-                  })}
+                <div className="table-responsive agent-portal-table-wrap">
+                  <table className="table table-striped table-hover table-compact mb-0 agent-dashboard-table">
+                    <thead className="table-dark">
+                      <tr>
+                        <th>Player</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                        <th>Submitted</th>
+                        <th>Last Updated</th>
+                        <th className="text-end">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedItems.map((item) => {
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <div style={{ fontWeight: 700, color: '#111827' }}>{item.player_name}</div>
+                              <div className="agent-portal-meta">{item.agreement_type || 'Agreement type not provided'}</div>
+                            </td>
+                            <td className="text-center">
+                              <SubmissionStatusBadge status={item.status} />
+                            </td>
+                            <td>
+                              <div className="agent-portal-meta" style={{ color: '#111827', maxWidth: 260 }}>
+                                {item.shared_notes
+                                  ? item.shared_notes.length > 120
+                                    ? `${item.shared_notes.slice(0, 120)}...`
+                                    : item.shared_notes
+                                  : 'No notes shared yet.'}
+                              </div>
+                            </td>
+                            <td>{formatDate(item.created_at)}</td>
+                            <td>{formatDateTime(item.status_updated_at || item.created_at)}</td>
+                            <td className="text-end">
+                              <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
+                                View
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )
             ) : null}

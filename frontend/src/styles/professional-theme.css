@@ -3123,6 +3123,46 @@ span.badge.badge-neutral-grey {
   color: #64748b;
 }
 
+.agent-portal-table-wrap {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.agent-dashboard-table {
+  margin-bottom: 0;
+}
+
+.agent-dashboard-table thead th {
+  vertical-align: middle;
+}
+
+.agent-dashboard-table tbody td {
+  vertical-align: middle;
+}
+
+.agent-dashboard-table .btn-link {
+  color: #b32627;
+  font-weight: 700;
+}
+
+.agent-dashboard-table .btn-link:hover {
+  color: #8f1b1c;
+}
+
+.agent-recommendation-status-select {
+  min-height: 40px;
+  width: auto;
+  max-width: 100%;
+  appearance: auto;
+}
+
+.agent-recommendation-status-select:focus {
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.16) !important;
+}
+
 .agent-portal-kpi-grid {
   display: grid;
   gap: 1rem;
@@ -3412,7 +3452,7 @@ span.badge.badge-neutral-grey {
 .external-recommendations-table {
   width: 100%;
   min-width: 0;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -3435,13 +3475,13 @@ span.badge.badge-neutral-grey {
 .external-recommendations-table td,
 .external-recommendations-table th {
   white-space: nowrap;
-  padding: 0.6rem 0.72rem;
+  padding: 0.5rem 0.62rem;
   border-right: 1px solid #edf2f7;
 }
 
 .external-recommendations-table td {
-  line-height: 1.35;
-  font-size: 0.88rem;
+  line-height: 1.3;
+  font-size: 0.85rem;
   color: #1f2937;
   border-top: 1px solid #eef2f7;
 }
@@ -3457,6 +3497,10 @@ span.badge.badge-neutral-grey {
 
 .external-recommendations-table tbody tr:hover td {
   background: #f4f8ff;
+}
+
+.external-recommendations-row-pending td {
+  background: rgba(245, 158, 11, 0.08) !important;
 }
 
 .external-recommendations-table tbody tr.is-selected td {
@@ -3551,15 +3595,24 @@ span.badge.badge-neutral-grey {
   min-width: 0;
 }
 
+.external-recommendations-pending-copy {
+  margin-top: 0.35rem;
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .external-recommendations-table .col-name { width: 15%; }
 .external-recommendations-table .col-position { width: 8%; }
 .external-recommendations-table .col-age { width: 5%; }
 .external-recommendations-table .col-date { width: 8%; }
 .external-recommendations-table .col-agent { width: 9%; }
-.external-recommendations-table .col-status { width: 13%; }
-.external-recommendations-table .col-deal { width: 9%; }
-.external-recommendations-table .col-money { width: 11%; }
-.external-recommendations-table .col-actions { width: 9%; }
+.external-recommendations-table .col-status { width: 15%; }
+.external-recommendations-table .col-deal { width: 8%; }
+.external-recommendations-table .col-money { width: 10%; }
+.external-recommendations-table .col-actions { width: 8%; }
 
 .external-recommendations-table .cell-position,
 .external-recommendations-table .cell-agent {
@@ -3572,6 +3625,25 @@ span.badge.badge-neutral-grey {
   color: #334155;
   font-weight: 600;
   text-align: center;
+}
+
+.external-recommendations-status-select {
+  display: inline-block;
+  width: auto;
+  min-width: 220px;
+  max-width: 250px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.1;
+  padding: 0.14rem 1.65rem 0.14rem 0.62rem;
+  min-height: 30px;
+  height: 30px;
+  box-shadow: none;
+}
+
+.external-recommendations-status-select:focus {
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.16);
 }
 
 .external-recommendations-player-cell a {
@@ -3587,6 +3659,7 @@ span.badge.badge-neutral-grey {
 
 .external-recommendations-table .cell-status {
   min-width: 0;
+  white-space: normal;
 }
 
 .external-recommendations-table .cell-status .badge,
@@ -3612,12 +3685,12 @@ span.badge.badge-neutral-grey {
 
 .external-recommendations-action-stack .btn {
   width: auto;
-  min-width: 68px;
-  padding-top: 0.22rem;
-  padding-bottom: 0.22rem;
+  min-width: 60px;
+  padding-top: 0.16rem;
+  padding-bottom: 0.16rem;
   padding-right: 0.45rem;
   padding-left: 0.45rem;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   line-height: 1.25;
 }
 

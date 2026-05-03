@@ -5,6 +5,7 @@ import SubmissionStatusBadge, { AgentStatusBadge } from '../components/agents/Su
 import DealTypeBadges from '../components/recommendations/DealTypeBadges';
 import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
+import { getRecommendationStatusConfig } from '../utils/agentRecommendationStatus';
 import { getPerformanceScoreColor } from '../utils/colorUtils';
 import {
   InternalRecommendation,
@@ -117,6 +118,8 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [loadingHistoryIds, setLoadingHistoryIds] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
+  const [pendingStatusChanges, setPendingStatusChanges] = useState<Map<number, RecommendationStatus>>(new Map());
+  const [savingPendingStatusChanges, setSavingPendingStatusChanges] = useState(false);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -290,6 +293,59 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const updateSelectedRecommendation = (updatedItem: InternalRecommendation) => {
     setItems((current) => current.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem } : item)));
     setSelectedRecommendation((current) => (current?.id === updatedItem.id ? { ...current, ...updatedItem } : current));
+  };
+
+  const queueStatusChange = (recommendationId: number, currentStatus: RecommendationStatus, newStatus: RecommendationStatus) => {
+    setPendingStatusChanges((current) => {
+      const next = new Map(current);
+      if (newStatus === currentStatus) {
+        next.delete(recommendationId);
+      } else {
+        next.set(recommendationId, newStatus);
+      }
+      return next;
+    });
+  };
+
+  const discardPendingStatusChanges = () => {
+    setPendingStatusChanges(new Map());
+  };
+
+  const savePendingStatusChanges = async () => {
+    if (!pendingStatusChanges.size) return;
+    try {
+      setSavingPendingStatusChanges(true);
+      setError(null);
+      setBanner(null);
+      const updates = Array.from(pendingStatusChanges.entries()).map(([recommendationId, newStatus]) => ({
+        recommendation_id: recommendationId,
+        new_status: newStatus,
+      }));
+      const response = await internalRecommendationsService.bulkUpdateStatus(updates);
+      const failedIds = new Set(response.failures.map((failure) => failure.recommendation_id));
+      setPendingStatusChanges((current) => {
+        const next = new Map<number, RecommendationStatus>();
+        current.forEach((status, recommendationId) => {
+          if (failedIds.has(recommendationId)) {
+            next.set(recommendationId, status);
+          }
+        });
+        return next;
+      });
+      await load(filters);
+      setToastMessage(
+        response.failed
+          ? `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}. ${response.failed} failed.`
+          : `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}.`,
+      );
+      setToastVariant(response.failed ? 'danger' : 'success');
+      setShowToast(true);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.response?.data?.detail || 'Failed to save status changes');
+    } finally {
+      setSavingPendingStatusChanges(false);
+    }
   };
 
   const handleSubmitReview = async (item: InternalRecommendation, newStatus: RecommendationStatus, sharedNotes: string) => {
@@ -539,8 +595,16 @@ const ExternalRecommendationsListPage: React.FC = () => {
                 ) : items.length === 0 ? (
                   <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
                 ) : (
-                  items.map((item) => (
-                    <tr key={item.id}>
+                  items.map((item) => {
+                    const queuedStatus = pendingStatusChanges.get(item.id);
+                    const displayedStatus = queuedStatus || item.status;
+                    const hasPendingStatusChange = Boolean(queuedStatus);
+                    const statusConfig = getRecommendationStatusConfig(displayedStatus);
+                    return (
+                    <tr
+                      key={item.id}
+                      className={hasPendingStatusChange ? 'external-recommendations-row-pending' : undefined}
+                    >
                       <td className="cell-name">
                         <div className="external-recommendations-player-cell">
                           {getPlayerProfilePath(item) ? (
@@ -562,6 +626,9 @@ const ExternalRecommendationsListPage: React.FC = () => {
                             </span>
                           ) : null}
                         </div>
+                        {hasPendingStatusChange ? (
+                          <div className="external-recommendations-pending-copy">Unsaved review status change</div>
+                        ) : null}
                       </td>
                       <td className="cell-position" title={formatRecommendedPositions(item.recommended_position)}>
                         {formatRecommendedPositions(item.recommended_position)}
@@ -571,7 +638,23 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       <td className="cell-agent" title={item.agent_name || '-'}>
                         {item.agent_name || '-'}
                       </td>
-                      <td className="cell-status"><SubmissionStatusBadge status={item.status} /></td>
+                      <td className="cell-status">
+                        <Form.Select
+                          size="sm"
+                          value={displayedStatus}
+                          onChange={(event) => queueStatusChange(item.id, item.status, event.target.value as RecommendationStatus)}
+                          disabled={savingPendingStatusChanges}
+                          className="external-recommendations-status-select"
+                          style={{
+                            backgroundColor: statusConfig.color.bg,
+                            color: statusConfig.color.text,
+                            borderColor: hasPendingStatusChange ? '#f59e0b' : statusConfig.color.border,
+                            borderWidth: hasPendingStatusChange ? '2px' : '1px',
+                          }}
+                        >
+                          {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).displayLabel}</option>)}
+                        </Form.Select>
+                      </td>
                       <td className="cell-status"><AgentStatusBadge status={item.agent_status} /></td>
                       <td><DealTypeBadges dealTypes={item.potential_deal_type || ''} /></td>
                       <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)}</td>
@@ -586,7 +669,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  )})
                 )}
               </tbody>
             </table>
@@ -678,6 +761,37 @@ const ExternalRecommendationsListPage: React.FC = () => {
           </Toast.Body>
         </Toast>
       </ToastContainer>
+
+      {pendingStatusChanges.size > 0 ? (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '30px',
+            right: '30px',
+            zIndex: 1000,
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'center',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            borderRadius: '16px',
+            backgroundColor: '#ffffff',
+            padding: '12px 16px',
+            border: '2px solid #111827',
+          }}
+        >
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#374151' }}>
+            {pendingStatusChanges.size} unsaved change{pendingStatusChanges.size > 1 ? 's' : ''}
+          </span>
+          <Button variant="outline-secondary" size="sm" onClick={discardPendingStatusChanges} disabled={savingPendingStatusChanges}>
+            Discard
+          </Button>
+          <Button variant="dark" size="sm" onClick={savePendingStatusChanges} disabled={savingPendingStatusChanges}>
+            {savingPendingStatusChanges
+              ? 'Saving...'
+              : `Save ${pendingStatusChanges.size} Change${pendingStatusChanges.size > 1 ? 's' : ''}`}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 };

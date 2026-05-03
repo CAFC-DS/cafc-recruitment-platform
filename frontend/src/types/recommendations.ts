@@ -126,6 +126,21 @@ export interface InternalStatusUpdateResponse {
   warning?: string | null;
 }
 
+export interface InternalBulkStatusUpdateResponse {
+  requested: number;
+  updated: number;
+  failed: number;
+  failures: Array<{
+    recommendation_id: number;
+    reason: string;
+  }>;
+}
+
+export interface InternalBulkStatusUpdateItem {
+  recommendation_id: number;
+  new_status: RecommendationStatus;
+}
+
 export interface RecommendationFormValues {
   agent_name: string;
   agency: string;

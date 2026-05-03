@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
-import SubmissionStatusBadge from '../../components/agents/SubmissionStatusBadge';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { Recommendation } from '../../types/recommendations';
 import { getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
@@ -71,7 +70,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
   return (
     <AgentPortalShell
       title="Submission Detail"
-      subtitle="A clearer view of the player’s review stage, what it means and what happens next."
+      subtitle="One clear view of the current status, your submitted information and any notes shared by the club."
       actions={
         <Link to="/agents/dashboard" className="agent-portal-button-secondary">
           Back to dashboard
@@ -88,97 +87,67 @@ const AgentSubmissionDetailPage: React.FC = () => {
       {error ? <div className="agent-portal-banner">{error}</div> : null}
 
       {!loading && !error && item ? (
-        <div className="agent-portal-review-stack">
-          <section className="agent-portal-card">
-            <div className="agent-portal-card-body">
-              <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                <div>
-                  <div className="agent-portal-section-title">{item.player_name}</div>
-                  <div className="agent-portal-section-copy">
-                    A simplified view of the current review status, your submitted details and any notes shared by the club.
-                  </div>
-                </div>
-                <SubmissionStatusBadge status={item.status} />
-              </div>
-
-              <div className="agent-portal-current-status-card">
-                <div className="agent-portal-label">Current status</div>
-                <h2 className="agent-portal-current-status-title">{currentStatusConfig.title}</h2>
-                <p className="agent-portal-meta" style={{ color: '#111827' }}>
-                  {currentStatusConfig.summary}
-                </p>
-                <div className="agent-portal-detail-callouts agent-portal-detail-callouts-compact">
-                  <div className="agent-portal-info-card">
-                    <div className="agent-portal-label">What happens next</div>
-                    <div className="agent-portal-meta" style={{ color: '#111827' }}>
-                      {currentStatusConfig.nextStep}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="agent-portal-info-grid" style={{ marginTop: '1.5rem' }}>
-                {[
-                  ['Submitted', formatDateTime(item.created_at)],
-                  ['Last club update', formatDateTime(item.status_updated_at || item.created_at)],
-                  ['Potential deal type', item.potential_deal_type || '-'],
-                  ['Agreement type', item.agreement_type || '-'],
-                ].map(([label, value]) => (
-                  <div key={label} className="agent-portal-info-card">
-                    <div className="agent-portal-label">{label}</div>
-                    <div className="agent-portal-meta" style={{ color: '#111827' }}>{value}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="agent-portal-card">
-            <div className="agent-portal-card-body">
-              <div className="agent-portal-section-title">Submission details</div>
-              <div className="agent-portal-section-copy" style={{ marginBottom: '1rem' }}>
-                The original information submitted for this player.
-              </div>
-
-              <div className="agent-portal-info-grid">
-                {[
-                  ['Date of birth', formatDate(item.player_date_of_birth)],
-                  ['Recommended position', Array.isArray(item.recommended_position) ? item.recommended_position.join(', ') : item.recommended_position || '-'],
-                  ['Potential deal type', item.potential_deal_type || '-'],
-                  ['Agreement type', item.agreement_type || '-'],
-                  ['Transfer fee', formatTransferFee(item)],
-                  ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency, item.wage_basis || item.current_wages_basis)],
-                  ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)],
-                  ['Contract expiry', formatDate(item.confirmed_contract_expiry)],
-                  ['Contract options', item.contract_options || '-'],
-                  ['Transfermarkt link', item.transfermarkt_link || '-'],
-                ].map(([label, value]) => (
-                  <div key={label} className="agent-portal-info-card">
-                    <div className="agent-portal-label">{label}</div>
-                    <div className="agent-portal-meta" style={{ color: '#111827', wordBreak: 'break-word' }}>{value}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
-                <div className="agent-portal-label">Additional information provided</div>
-                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
-                  {item.additional_information || 'No additional information provided.'}
-                </div>
-              </div>
-
-              <div
-                className="agent-portal-surface-muted agent-portal-notes-panel"
-                style={{ marginTop: '1.5rem' }}
-              >
-                <div className="agent-portal-label">Shared notes from the club</div>
-                <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
-                  {item.shared_notes || 'No shared notes yet.'}
+        <section className="agent-portal-card">
+          <div className="agent-portal-card-body">
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div>
+                <div className="agent-portal-section-title">{item.player_name}</div>
+                <div className="agent-portal-section-copy">
+                  A simplified view of the current review status, your submitted details and any notes shared by the club.
                 </div>
               </div>
             </div>
-          </section>
-        </div>
+
+            <div className="agent-portal-current-status-card">
+              <div className="agent-portal-label">Current status</div>
+              <h2 className="agent-portal-current-status-title" style={{ marginBottom: '0.35rem' }}>
+                {currentStatusConfig.displayLabel}
+              </h2>
+              <p className="agent-portal-meta" style={{ color: '#111827' }}>
+                {currentStatusConfig.summary}
+              </p>
+            </div>
+
+            <div className="agent-portal-info-grid" style={{ marginTop: '1.5rem' }}>
+              {[
+                ['Submitted', formatDateTime(item.created_at)],
+                ['Last club update', formatDateTime(item.status_updated_at || item.created_at)],
+                ['Potential deal type', item.potential_deal_type || '-'],
+                ['Agreement type', item.agreement_type || '-'],
+                ['Date of birth', formatDate(item.player_date_of_birth)],
+                ['Recommended position', Array.isArray(item.recommended_position) ? item.recommended_position.join(', ') : item.recommended_position || '-'],
+                ['Transfer fee', formatTransferFee(item)],
+                ['Current wages', formatCurrency(item.current_wages_per_week, item.current_wages_currency, item.wage_basis || item.current_wages_basis)],
+                ['Expected wages', formatCurrency(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)],
+                ['Contract expiry', formatDate(item.confirmed_contract_expiry)],
+                ['Contract options', item.contract_options || '-'],
+                ['Transfermarkt link', item.transfermarkt_link || '-'],
+              ].map(([label, value]) => (
+                <div key={label} className="agent-portal-info-card">
+                  <div className="agent-portal-label">{label}</div>
+                  <div className="agent-portal-meta" style={{ color: '#111827', wordBreak: 'break-word' }}>{value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
+              <div className="agent-portal-label">Additional information provided</div>
+              <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                {item.additional_information || 'No additional information provided.'}
+              </div>
+            </div>
+
+            <div
+              className="agent-portal-surface-muted agent-portal-notes-panel"
+              style={{ marginTop: '1.5rem' }}
+            >
+              <div className="agent-portal-label">Shared notes from the club</div>
+              <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+                {item.shared_notes || 'No shared notes yet.'}
+              </div>
+            </div>
+          </div>
+        </section>
       ) : null}
     </AgentPortalShell>
   );

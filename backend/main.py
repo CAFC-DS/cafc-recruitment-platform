@@ -1096,6 +1096,15 @@ class RecommendationStatusUpdateRequest(BaseModel):
     shared_notes: Optional[str] = None
 
 
+class BulkRecommendationStatusUpdateItem(BaseModel):
+    recommendation_id: int
+    new_status: str
+
+
+class BulkRecommendationStatusUpdateRequest(BaseModel):
+    updates: List[BulkRecommendationStatusUpdateItem]
+
+
 class RecommendationNotesUpdateRequest(BaseModel):
     shared_notes: str
 
@@ -3308,6 +3317,82 @@ async def update_internal_recommendation_status(
             conn.rollback()
         logging.exception(f"Failed to update recommendation status: {e}")
         raise HTTPException(status_code=500, detail="Failed to update recommendation status")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.patch("/internal/recommendations/status/bulk")
+async def bulk_update_internal_recommendation_status(
+    payload: BulkRecommendationStatusUpdateRequest,
+    current_user: User = Depends(require_internal_user),
+):
+    validate_recommendation_schema_ready()
+    if not payload.updates:
+        raise HTTPException(status_code=400, detail="No status updates provided")
+
+    conn = None
+    failures = []
+    updated_count = 0
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        changed_at = datetime.utcnow()
+        deduped_updates = list(
+            {
+                update.recommendation_id: update
+                for update in payload.updates
+            }.values()
+        )
+
+        for update in deduped_updates:
+            recommendation_id = update.recommendation_id
+            validate_recommendation_status(update.new_status)
+            row = fetch_recommendation_detail(cursor, recommendation_id)
+            if not row:
+                failures.append(
+                    {
+                        "recommendation_id": recommendation_id,
+                        "reason": "Recommendation not found",
+                    }
+                )
+                continue
+
+            previous_status = row[25]
+            if previous_status != update.new_status:
+                cursor.execute(
+                    """
+                    INSERT INTO status_history (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
+                    VALUES (%s, %s, %s, %s, %s)
+                """,
+                    (recommendation_id, previous_status, update.new_status, current_user.id, changed_at),
+                )
+
+                cursor.execute(
+                    """
+                    UPDATE player_recommendations
+                    SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, UPDATED_AT = %s
+                    WHERE ID = %s
+                """,
+                    (update.new_status, changed_at, current_user.id, changed_at, recommendation_id),
+                )
+
+            updated_count += 1
+
+        conn.commit()
+        return {
+            "requested": len(deduped_updates),
+            "updated": updated_count,
+            "failed": len(failures),
+            "failures": failures,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to bulk update recommendation status: {e}")
+        raise HTTPException(status_code=500, detail="Failed to bulk update recommendation status")
     finally:
         if conn:
             conn.close()
