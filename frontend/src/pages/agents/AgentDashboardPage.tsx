@@ -119,13 +119,11 @@ const AgentDashboardPage: React.FC = () => {
             </div>
 
             <div className="agent-portal-status-journey">
-              {REVIEW_STATUS_ORDER.map((status, index) => {
+              {REVIEW_STATUS_ORDER.map((status) => {
                 const config = getRecommendationStatusConfig(status);
                 return (
                   <article key={status} className="agent-portal-stage-card">
-                    <div className="agent-portal-stage-step">Step {index + 1}</div>
                     <SubmissionStatusBadge status={status} />
-                    <h3 className="agent-portal-stage-title">{config.title}</h3>
                     <p className="agent-portal-meta">{config.summary}</p>
                     <div className="agent-portal-stage-copy">
                       <strong>What this usually means:</strong> {config.dashboardHint}
