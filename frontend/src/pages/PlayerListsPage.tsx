@@ -559,6 +559,29 @@ const PlayerListsPage: React.FC = () => {
     return result;
   }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived, playerFavorites, playerDecisions]);
 
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      "Stage 1": 0,
+      "Stage 2": 0,
+      "Stage 3": 0,
+      "Stage 4": 0,
+      Archived: 0,
+    };
+
+    mergedPlayers.forEach((player) => {
+      if (pendingRemovals.has(player.item_id)) {
+        return;
+      }
+
+      const stage = pendingStageChanges.get(player.item_id) || player.stage || "Stage 1";
+      if (stage in counts) {
+        counts[stage] += 1;
+      }
+    });
+
+    return counts;
+  }, [mergedPlayers, pendingStageChanges, pendingRemovals]);
+
   // Handlers
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -1197,6 +1220,7 @@ const PlayerListsPage: React.FC = () => {
             includeFlagReports={includeFlagReports}
             onIncludeFlagReportsChange={setIncludeFlagReports}
             competitionOptions={competitionOptions}
+            stageCounts={stageCounts}
           />
 
           {/* Actions Container */}

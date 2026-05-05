@@ -28,6 +28,7 @@ interface AdvancedFiltersProps {
   includeFlagReports: boolean;
   onIncludeFlagReportsChange: (include: boolean) => void;
   competitionOptions: string[];
+  stageCounts?: Partial<Record<string, number>>;
 }
 
 const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
@@ -45,6 +46,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   includeFlagReports,
   onIncludeFlagReportsChange,
   competitionOptions,
+  stageCounts = {},
 }) => {
   return (
     <Card className="mb-3">
@@ -261,7 +263,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         <Form.Check
                           type="checkbox"
                           id={`stage-${stage}`}
-                          label={stage}
+                          label={`${stage} (${stageCounts[stage] ?? 0})`}
                           checked={filters.stages.includes(stage)}
                           onChange={(e) => {
                             if (e.target.checked) {

@@ -439,6 +439,32 @@ const KanbanPage: React.FC = () => {
     }));
   }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection, playerFavorites, playerDecisions]);
 
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      "Stage 1": 0,
+      "Stage 2": 0,
+      "Stage 3": 0,
+      "Stage 4": 0,
+      Archived: 0,
+    };
+
+    visibleLists.forEach((list) => {
+      list.players.forEach((player) => {
+        if (pendingRemovals.has(player.item_id)) {
+          return;
+        }
+
+        const pendingChange = pendingStageChanges.get(player.item_id);
+        const stage = pendingChange ? pendingChange.toStage : (player.stage || "Stage 1");
+        if (stage in counts) {
+          counts[stage] += 1;
+        }
+      });
+    });
+
+    return counts;
+  }, [visibleLists, pendingStageChanges, pendingRemovals]);
+
   /**
    * Fetch batch memberships when stage columns change
    * This eliminates N+1 queries - one batch request instead of one per player
@@ -1253,6 +1279,7 @@ const KanbanPage: React.FC = () => {
             includeFlagReports={includeFlagReports}
             onIncludeFlagReportsChange={setIncludeFlagReports}
             competitionOptions={competitionOptions}
+            stageCounts={stageCounts}
           />
 
           {/* Actions Container */}

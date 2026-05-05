@@ -220,13 +220,20 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       if (fixtureContextStr) {
         try {
           const context = JSON.parse(fixtureContextStr);
-          setFixtureDate(context.fixtureDate || "");
-          setSelectedMatch(context.matchId || "");
+          const restoredFixtureDate = context.fixtureDate || "";
+          const restoredMatchId = context.matchId ? context.matchId.toString() : "";
+
+          setFixtureDate(restoredFixtureDate);
+          setSelectedMatch(restoredMatchId);
+          setFormData((current) => ({
+            ...current,
+            selectedMatch: restoredMatchId,
+          }));
           setFixtureContextSaved(true);
 
           // Fetch matches if we have a fixture date
-          if (context.fixtureDate) {
-            axiosInstance.get(`/matches/date?fixture_date=${context.fixtureDate}`)
+          if (restoredFixtureDate) {
+            axiosInstance.get(`/matches/date?fixture_date=${restoredFixtureDate}`)
               .then(response => {
                 const sortedMatches = response.data.sort((a: any, b: any) => {
                   const matchA = `${a.home_team} vs ${a.away_team}`.toLowerCase();
