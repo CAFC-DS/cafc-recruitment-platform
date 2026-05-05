@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Alert, Button, Form, Spinner } from 'react-bootstrap';
 import axios from 'axios';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
 import { useAuth } from '../../App';
@@ -15,8 +17,7 @@ const AgentRegisterPage: React.FC = () => {
     agency: '',
     email: '',
     password: '',
-    calling_code: '+44',
-    phone_local: '',
+    agent_number: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,13 +25,19 @@ const AgentRegisterPage: React.FC = () => {
   const handleChange = (field: string, value: string) =>
     setForm((current) => ({
       ...current,
-      [field]: field === 'phone_local' ? value.replace(/\D/g, '') : value,
+      [field]: value,
+    }));
+
+  const handlePhoneChange = (value?: string) =>
+    setForm((current) => ({
+      ...current,
+      agent_number: value || '',
     }));
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const composedPhone = form.phone_local.trim() ? `${form.calling_code}${form.phone_local.trim()}` : '';
-    if (composedPhone && !/^\+[1-9]\d{6,14}$/.test(composedPhone)) {
+    const normalizedPhone = form.agent_number.trim();
+    if (normalizedPhone && !isValidPhoneNumber(normalizedPhone)) {
       setError('Phone number must be in international format (e.g. +447700900123)');
       return;
     }
@@ -42,7 +49,7 @@ const AgentRegisterPage: React.FC = () => {
         password: form.password,
         agent_name: form.agent_name,
         agency: form.agency,
-        agent_number: composedPhone || undefined,
+        agent_number: normalizedPhone || undefined,
       });
       const tokenResponse = await axiosInstance.post(
         '/token',
@@ -113,34 +120,17 @@ const AgentRegisterPage: React.FC = () => {
                 </div>
                 <div className="col-12">
                   <Form.Label className="agent-auth-label">Phone number</Form.Label>
-                  <div className="d-flex gap-2">
-                    <Form.Select
-                      className="agent-auth-input"
-                      style={{ maxWidth: 130 }}
-                      value={form.calling_code}
-                      onChange={(e) => handleChange('calling_code', e.target.value)}
-                    >
-                      <option value="+1">+1</option>
-                      <option value="+33">+33</option>
-                      <option value="+34">+34</option>
-                      <option value="+39">+39</option>
-                      <option value="+44">+44</option>
-                      <option value="+49">+49</option>
-                      <option value="+351">+351</option>
-                      <option value="+61">+61</option>
-                      <option value="+90">+90</option>
-                    </Form.Select>
-                    <Form.Control
-                      className="agent-auth-input"
-                      value={form.phone_local}
-                      onChange={(e) => handleChange('phone_local', e.target.value)}
-                      inputMode="tel"
-                      pattern="[0-9]*"
-                      placeholder="7700900123"
-                    />
-                  </div>
+                  <PhoneInput
+                    defaultCountry="GB"
+                    international
+                    countryCallingCodeEditable={false}
+                    placeholder="Enter phone number"
+                    value={form.agent_number || undefined}
+                    onChange={handlePhoneChange}
+                    className="agent-auth-phone-input"
+                  />
                   <div style={{ color: '#64748B', fontSize: '0.82rem', marginTop: '0.45rem' }}>
-                    Stored as international format: {form.calling_code}{form.phone_local || '...'}
+                    Stored as international format: {form.agent_number || '+44...'}
                   </div>
                 </div>
               </div>

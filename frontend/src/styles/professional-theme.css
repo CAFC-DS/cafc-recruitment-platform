@@ -2449,6 +2449,64 @@ span.badge.badge-neutral-grey {
   outline: none;
 }
 
+.agent-auth-phone-input {
+  --PhoneInputCountryFlag-height: 1rem;
+  --PhoneInputCountryFlag-borderWidth: 1px;
+  --PhoneInputCountrySelectArrow-width: 0.45rem;
+  --PhoneInputCountrySelect-marginRight: 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  padding: 0.2rem 0.9rem;
+  background: #fff;
+}
+
+.agent-auth-phone-input:focus-within {
+  border-color: #cc0000;
+  box-shadow: 0 0 0 0.2rem rgba(204, 0, 0, 0.12);
+}
+
+.agent-auth-phone-input .PhoneInputCountry {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.agent-auth-phone-input .PhoneInputCountrySelect {
+  border: none;
+  background: transparent;
+  font-size: 0.92rem;
+  color: #0f172a;
+  padding-right: 0.35rem;
+}
+
+.agent-auth-phone-input .PhoneInputCountrySelect:focus {
+  outline: none;
+}
+
+.agent-auth-phone-input .PhoneInputCountryIcon {
+  flex: 0 0 auto;
+}
+
+.agent-auth-phone-input .PhoneInputCountryIconImg {
+  display: block;
+}
+
+.agent-auth-phone-input .PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.agent-auth-phone-input .PhoneInputInput:focus {
+  outline: none;
+}
+
 .agent-auth-button,
 .agent-portal-button-primary {
   background: #cc0000;
