@@ -14526,15 +14526,30 @@ async def update_stage_history_reason(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Fetch the history record to validate it belongs to this item/list and get the stage
+        # Resolve the player for the current list item so history follows the player even
+        # if they were removed and re-added to the same list under a new item ID.
         cursor.execute(
             """
-            SELECT psh.ID, psh.NEW_STAGE
-            FROM player_stage_history psh
-            JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID
-            WHERE psh.ID = %s AND psh.LIST_ITEM_ID = %s AND psh.LIST_ID = %s
+            SELECT COALESCE(PLAYER_ID, CAFC_PLAYER_ID)
+            FROM player_list_items
+            WHERE ID = %s AND LIST_ID = %s
         """,
-            (history_id, item_id, list_id),
+            (item_id, list_id),
+        )
+        item_row = cursor.fetchone()
+        if not item_row or not item_row[0]:
+            raise HTTPException(status_code=404, detail="Player not found in list")
+
+        player_id = item_row[0]
+
+        # Fetch the history record to validate it belongs to this player/list and get the stage
+        cursor.execute(
+            """
+            SELECT ID, NEW_STAGE
+            FROM player_stage_history
+            WHERE ID = %s AND LIST_ID = %s AND PLAYER_ID = %s
+        """,
+            (history_id, list_id, player_id),
         )
         record = cursor.fetchone()
         if not record:
@@ -14601,16 +14616,20 @@ async def get_player_stage_history(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        # Check if item exists in the list
+        # Resolve the player for the current list item so history follows the player even
+        # if they were removed and re-added to the same list under a new item ID.
         cursor.execute(
             """
-            SELECT ID FROM player_list_items
+            SELECT COALESCE(PLAYER_ID, CAFC_PLAYER_ID)
+            FROM player_list_items
             WHERE ID = %s AND LIST_ID = %s
         """,
             (item_id, list_id),
         )
-        if not cursor.fetchone():
+        item_row = cursor.fetchone()
+        if not item_row or not item_row[0]:
             raise HTTPException(status_code=404, detail="Player not found in list")
+        player_id = item_row[0]
 
         # Get stage history with user names
         cursor.execute(
@@ -14629,10 +14648,10 @@ async def get_player_stage_history(
                 ) as CHANGED_BY_NAME
             FROM player_stage_history psh
             LEFT JOIN users u ON psh.CHANGED_BY = u.ID
-            WHERE psh.LIST_ITEM_ID = %s
-            ORDER BY psh.CHANGED_AT DESC
+            WHERE psh.LIST_ID = %s AND psh.PLAYER_ID = %s
+            ORDER BY psh.CHANGED_AT DESC NULLS LAST, psh.ID DESC
         """,
-            (item_id,),
+            (list_id, player_id),
         )
 
         history_records = []
