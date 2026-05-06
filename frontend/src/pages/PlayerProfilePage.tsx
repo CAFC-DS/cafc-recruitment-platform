@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -1010,6 +1010,44 @@ const PlayerProfilePage: React.FC = () => {
     }
   }, [profile]);
 
+  const profileDisplayName = useMemo(() => {
+    if (!profile) {
+      return { firstLine: "", secondLine: "" };
+    }
+
+    const firstName = profile.first_name?.trim() || "";
+    const lastName = profile.last_name?.trim() || "";
+
+    if (firstName || lastName) {
+      return {
+        firstLine: firstName,
+        secondLine: lastName,
+      };
+    }
+
+    const fallbackName =
+      profile.player_name?.trim() ||
+      profile.name?.trim() ||
+      profile.full_name?.trim() ||
+      profile.fullname?.trim() ||
+      profile.playername?.trim() ||
+      "";
+
+    if (!fallbackName) {
+      return { firstLine: "", secondLine: "" };
+    }
+
+    const nameParts = fallbackName.split(/\s+/).filter(Boolean);
+    if (nameParts.length === 1) {
+      return { firstLine: nameParts[0], secondLine: "" };
+    }
+
+    return {
+      firstLine: nameParts.slice(0, -1).join(" "),
+      secondLine: nameParts[nameParts.length - 1],
+    };
+  }, [profile]);
+
   const fetchPlayerProfile = async () => {
     if (!actualPlayerId) {
       setError("No player ID provided");
@@ -1255,9 +1293,9 @@ const PlayerProfilePage: React.FC = () => {
               {/* Player Name */}
               <div className="player-name-section mb-4">
                 <div className="player-name-line">
-                  <span className="player-firstname">{profile.first_name}</span>
+                  <span className="player-firstname">{profileDisplayName.firstLine}</span>
                 </div>
-                <h1 className="player-lastname">{profile.last_name}</h1>
+                <h1 className="player-lastname">{profileDisplayName.secondLine}</h1>
               </div>
 
               {/* Two Column Info Layout */}
