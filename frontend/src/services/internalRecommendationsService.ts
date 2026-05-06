@@ -19,6 +19,10 @@ export const internalRecommendationsService = {
     player_name?: string;
     position?: string;
     deal_type?: string;
+    transfer_fee_min?: string;
+    transfer_fee_max?: string;
+    expected_salary_min?: string;
+    expected_salary_max?: string;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
     page?: number;

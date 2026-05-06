@@ -3086,6 +3086,10 @@ async def list_internal_recommendations(
     player_name: Optional[str] = None,
     position: Optional[str] = None,
     deal_type: Optional[str] = None,
+    transfer_fee_min: Optional[float] = None,
+    transfer_fee_max: Optional[float] = None,
+    expected_salary_min: Optional[float] = None,
+    expected_salary_max: Optional[float] = None,
     sort_by: Optional[str] = Query(None, description="Column to sort by"),
     sort_order: Optional[str] = Query("desc", description="asc or desc"),
     page: int = 1,
@@ -3100,13 +3104,13 @@ async def list_internal_recommendations(
 
     # Validate sort parameters
     allowed_sort_columns = {
-        "player_name": "pr.PLAYER_NAME",
-        "date": "pr.DATE",
-        "status": "pr.STATUS",
-        "agent_name": "pr.AGENT_NAME",
-        "agency": "pr.AGENCY",
-        "created_at": "pr.CREATED_AT",
-        "position": "pr.RECOMMENDED_POSITION",
+        "player_name": "rec.PLAYER_NAME",
+        "date": "rec.DATE",
+        "status": "rec.STATUS",
+        "agent_name": "rec.AGENT_NAME",
+        "agency": "rec.AGENCY",
+        "created_at": "rec.CREATED_AT",
+        "position": "rec.RECOMMENDED_POSITION",
     }
 
     sort_order = sort_order.lower() if sort_order else "desc"
@@ -3121,44 +3125,57 @@ async def list_internal_recommendations(
         params: List[Any] = []
 
         if status_filter:
-            where_clauses.append("pr.STATUS = %s")
+            where_clauses.append("rec.STATUS = %s")
             params.append(status_filter)
         if agent_user_id:
-            where_clauses.append("pr.SUBMITTED_BY_USER_ID = %s")
+            where_clauses.append("rec.SUBMITTED_BY_USER_ID = %s")
             params.append(agent_user_id)
         if created_from:
-            where_clauses.append("pr.CREATED_AT >= %s")
+            where_clauses.append("rec.CREATED_AT >= %s")
             params.append(created_from)
         if created_to:
-            where_clauses.append("pr.CREATED_AT <= %s")
+            where_clauses.append("rec.CREATED_AT <= %s")
             params.append(created_to)
         if player_name:
-            where_clauses.append("pr.PLAYER_NAME ILIKE %s")
+            where_clauses.append("rec.PLAYER_NAME ILIKE %s")
             params.append(f"%{player_name}%")
         if position:
-            where_clauses.append("pr.RECOMMENDED_POSITION ILIKE %s")
+            where_clauses.append("rec.RECOMMENDED_POSITION ILIKE %s")
             params.append(f"%{position}%")
         if deal_type:
-            where_clauses.append("pr.POTENTIAL_DEAL_TYPE ILIKE %s")
+            where_clauses.append("rec.POTENTIAL_DEAL_TYPE ILIKE %s")
             params.append(f"%{deal_type}%")
+        if transfer_fee_min is not None:
+            where_clauses.append("rec.TRANSFER_FEE_MIN >= %s")
+            params.append(transfer_fee_min)
+        if transfer_fee_max is not None:
+            where_clauses.append("rec.TRANSFER_FEE_MAX <= %s")
+            params.append(transfer_fee_max)
+        if expected_salary_min is not None:
+            where_clauses.append("rec.EXPECTED_WAGES_MIN >= %s")
+            params.append(expected_salary_min)
+        if expected_salary_max is not None:
+            where_clauses.append("rec.EXPECTED_WAGES_MAX <= %s")
+            params.append(expected_salary_max)
 
         where_sql = f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+        recommendations_subquery = f"({build_recommendation_select()}) rec"
 
         cursor.execute(
-            "SELECT COUNT(*) FROM player_recommendations pr" + where_sql,
+            "SELECT COUNT(*) FROM " + recommendations_subquery + where_sql,
             params,
         )
         total = cursor.fetchone()[0]
 
         # Build ORDER BY clause
-        order_by_sql = " ORDER BY pr.CREATED_AT DESC, pr.ID DESC"
+        order_by_sql = " ORDER BY rec.CREATED_AT DESC, rec.ID DESC"
         if sort_by and sort_by in allowed_sort_columns:
-            order_by_sql = f" ORDER BY {allowed_sort_columns[sort_by]} {sort_order.upper()}, pr.ID {sort_order.upper()}"
+            order_by_sql = f" ORDER BY {allowed_sort_columns[sort_by]} {sort_order.upper()}, rec.ID {sort_order.upper()}"
 
         query_params = list(params)
         query_params.extend([page_size, (page - 1) * page_size])
         cursor.execute(
-            build_recommendation_select()
+            "SELECT * FROM " + recommendations_subquery
             + where_sql
             + order_by_sql
             + " LIMIT %s OFFSET %s",

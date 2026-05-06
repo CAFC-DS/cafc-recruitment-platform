@@ -22,6 +22,10 @@ interface RecommendationFilterState {
   player_name: string;
   position: string;
   deal_type: string;
+  transfer_fee_min: string;
+  transfer_fee_max: string;
+  expected_salary_min: string;
+  expected_salary_max: string;
   page: number;
   page_size: number;
   sort_by: string;
@@ -36,6 +40,10 @@ const defaultFilters: RecommendationFilterState = {
   player_name: '',
   position: '',
   deal_type: '',
+  transfer_fee_min: '',
+  transfer_fee_max: '',
+  expected_salary_min: '',
+  expected_salary_max: '',
   page: 1,
   page_size: 25,
   sort_by: 'created_at',
@@ -53,6 +61,20 @@ const formatWeeklyAmount = (amount?: number | string, currency?: string, basis?:
     ? amount.split('-').map(formatNumberToken).join('-')
     : Math.round(amount).toLocaleString('en-GB');
   return `${currency || 'GBP'} ${displayAmount} p/w${basis ? ` ${basis.toLowerCase()}` : ''}`;
+};
+
+const formatTransferFeeAmount = (
+  amount?: number | string,
+  currency?: string,
+  fallback?: string | null,
+) => {
+  if (amount === undefined || amount === null || amount === '') {
+    return fallback || '-';
+  }
+  const displayAmount = typeof amount === 'string'
+    ? amount.split('-').map(formatNumberToken).join('-')
+    : Math.round(amount).toLocaleString('en-GB');
+  return `${currency || 'GBP'} ${displayAmount}`;
 };
 
 const formatDate = (value?: string | null) => {
@@ -141,6 +163,10 @@ const ExternalRecommendationsListPage: React.FC = () => {
     if (filters.deal_type) count++;
     if (filters.created_from) count++;
     if (filters.created_to) count++;
+    if (filters.transfer_fee_min) count++;
+    if (filters.transfer_fee_max) count++;
+    if (filters.expected_salary_min) count++;
+    if (filters.expected_salary_max) count++;
     return count;
   }, [filters]);
 
@@ -242,6 +268,10 @@ const ExternalRecommendationsListPage: React.FC = () => {
     filters.player_name,
     filters.position,
     filters.deal_type,
+    filters.transfer_fee_min,
+    filters.transfer_fee_max,
+    filters.expected_salary_min,
+    filters.expected_salary_max,
     filters.page_size,
     filters.page,
     filters.sort_by,
@@ -553,6 +583,61 @@ const ExternalRecommendationsListPage: React.FC = () => {
                   </Col>
                   <Col md={4}>
                     <Form.Group>
+                      <Form.Label className="small fw-bold">Transfer Fee</Form.Label>
+                      <div className="range-inputs">
+                        <Form.Control
+                          size="sm"
+                          type="number"
+                          min="0"
+                          step="1000"
+                          value={filters.transfer_fee_min}
+                          onChange={(event) => updateFilters({ transfer_fee_min: event.target.value })}
+                          placeholder="Min"
+                        />
+                        <span className="range-separator">to</span>
+                        <Form.Control
+                          size="sm"
+                          type="number"
+                          min="0"
+                          step="1000"
+                          value={filters.transfer_fee_max}
+                          onChange={(event) => updateFilters({ transfer_fee_max: event.target.value })}
+                          placeholder="Max"
+                        />
+                      </div>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold">Expected Salary</Form.Label>
+                      <div className="range-inputs">
+                        <Form.Control
+                          size="sm"
+                          type="number"
+                          min="0"
+                          step="1000"
+                          value={filters.expected_salary_min}
+                          onChange={(event) => updateFilters({ expected_salary_min: event.target.value })}
+                          placeholder="Min p/w"
+                        />
+                        <span className="range-separator">to</span>
+                        <Form.Control
+                          size="sm"
+                          type="number"
+                          min="0"
+                          step="1000"
+                          value={filters.expected_salary_max}
+                          onChange={(event) => updateFilters({ expected_salary_max: event.target.value })}
+                          placeholder="Max p/w"
+                        />
+                      </div>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group>
                       <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
                       <Button variant="outline-secondary" size="sm" onClick={clearFilters} className="w-100">
                         Clear All Filters
@@ -585,15 +670,16 @@ const ExternalRecommendationsListPage: React.FC = () => {
                   <SortableHeader column="status" label="Review Status" className="col-status" />
                   <th className="col-status">Agent Status</th>
                   <th className="col-deal">Deal Type</th>
+                  <th className="col-money">Transfer Fee</th>
                   <th className="col-money">Expected Salary</th>
                   <th className="col-actions">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
+                  <tr><td colSpan={11} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
+                  <tr><td colSpan={11} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
                 ) : (
                   items.map((item) => {
                     const queuedStatus = pendingStatusChanges.get(item.id);
@@ -657,6 +743,13 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       </td>
                       <td className="cell-status"><AgentStatusBadge status={item.agent_status} /></td>
                       <td><DealTypeBadges dealTypes={item.potential_deal_type || ''} /></td>
+                      <td className="cell-money">
+                        {formatTransferFeeAmount(
+                          item.transfer_fee_amount,
+                          item.transfer_fee_currency,
+                          item.transfer_fee,
+                        )}
+                      </td>
                       <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)}</td>
                       <td className="cell-actions">
                         <div className="external-recommendations-action-stack">
