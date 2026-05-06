@@ -353,6 +353,21 @@ const ExternalRecommendationsListPage: React.FC = () => {
       }));
       const response = await internalRecommendationsService.bulkUpdateStatus(updates);
       const failedIds = new Set(response.failures.map((failure) => failure.recommendation_id));
+      const successfulUpdates = new Map(
+        updates
+          .filter((update) => !failedIds.has(update.recommendation_id))
+          .map((update) => [update.recommendation_id, update.new_status] as const),
+      );
+
+      if (successfulUpdates.size > 0) {
+        setItems((current) =>
+          current.map((item) => {
+            const nextStatus = successfulUpdates.get(item.id);
+            return nextStatus ? { ...item, status: nextStatus } : item;
+          }),
+        );
+      }
+
       setPendingStatusChanges((current) => {
         const next = new Map<number, RecommendationStatus>();
         current.forEach((status, recommendationId) => {
@@ -362,13 +377,25 @@ const ExternalRecommendationsListPage: React.FC = () => {
         });
         return next;
       });
-      await load(filters);
+
+      let refreshFailed = false;
+      try {
+        await load(filters);
+      } catch (refreshError) {
+        refreshFailed = true;
+        console.error('Status changes saved but recommendation list refresh failed:', refreshError);
+      }
+
       setToastMessage(
-        response.failed
-          ? `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}. ${response.failed} failed.`
-          : `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}.`,
+        refreshFailed
+          ? response.failed
+            ? `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}. ${response.failed} failed. The page may need a refresh.`
+            : `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}. The page may need a refresh.`
+          : response.failed
+            ? `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}. ${response.failed} failed.`
+            : `Saved ${response.updated} status change${response.updated === 1 ? '' : 's'}.`,
       );
-      setToastVariant(response.failed ? 'danger' : 'success');
+      setToastVariant(response.failed || refreshFailed ? 'danger' : 'success');
       setShowToast(true);
     } catch (err: any) {
       console.error(err);
