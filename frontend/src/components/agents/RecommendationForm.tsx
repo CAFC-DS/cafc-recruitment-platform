@@ -20,8 +20,9 @@ interface RecommendationFormProps {
 }
 
 const AGREEMENT_TYPE_OPTIONS: AgreementType[] = [
-  'Player Agreement/Mandate',
-  'Club Mandate',
+  'Exclusive/Registered Player Agreement',
+  'Mandate (Player)',
+  'Mandate (Selling Club)',
   'None',
 ];
 

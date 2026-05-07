@@ -12,8 +12,9 @@ export type AgentStatus =
   | 'Withdrawn';
 
 export type AgreementType =
-  | 'Player Agreement/Mandate'
-  | 'Club Mandate'
+  | 'Exclusive/Registered Player Agreement'
+  | 'Mandate (Player)'
+  | 'Mandate (Selling Club)'
   | 'None';
 
 export type ContractOption =

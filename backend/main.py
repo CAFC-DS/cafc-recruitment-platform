@@ -770,8 +770,9 @@ AGENT_STATUSES = [
 ]
 
 ALLOWED_AGREEMENT_TYPES = [
-    "Player Agreement/Mandate",
-    "Club Mandate",
+    "Exclusive/Registered Player Agreement",
+    "Mandate (Player)",
+    "Mandate (Selling Club)",
     "None",
 ]
 
