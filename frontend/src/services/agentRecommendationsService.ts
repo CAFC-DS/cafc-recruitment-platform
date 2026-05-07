@@ -46,6 +46,11 @@ export const agentRecommendationsService = {
     return response.data;
   },
 
+  async update(id: number, values: RecommendationFormValues) {
+    const response = await axiosInstance.patch<Recommendation>(`/agents/recommendations/${id}`, toFormData(values));
+    return response.data;
+  },
+
   async searchPlayers(query: string, limit = 10) {
     const response = await axiosInstance.get<AgentPlayerSearchResult[]>('/agents/player-search', {
       params: { query, limit },

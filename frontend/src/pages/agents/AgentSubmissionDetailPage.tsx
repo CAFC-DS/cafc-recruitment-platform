@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { Recommendation } from '../../types/recommendations';
@@ -39,6 +39,7 @@ const formatTransferFee = (item: Recommendation) => {
 
 const AgentSubmissionDetailPage: React.FC = () => {
   const { id } = useParams();
+  const location = useLocation();
   const [item, setItem] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +67,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
     () => getRecommendationStatusConfig(item?.status),
     [item?.status],
   );
+  const successMessage = (location.state as { successMessage?: string } | null)?.successMessage;
 
   return (
     <AgentPortalShell
@@ -84,17 +86,29 @@ const AgentSubmissionDetailPage: React.FC = () => {
           </div>
         </div>
       ) : null}
+      {successMessage ? (
+        <div className="agent-portal-banner agent-portal-banner-success" style={{ marginBottom: '1rem' }}>
+          {successMessage}
+        </div>
+      ) : null}
       {error ? <div className="agent-portal-banner">{error}</div> : null}
 
       {!loading && !error && item ? (
         <section className="agent-portal-card">
           <div className="agent-portal-card-body">
             <div style={{ marginBottom: '1.25rem' }}>
-              <div>
+              <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                <div>
                 <div className="agent-portal-section-title">{item.player_name}</div>
                 <div className="agent-portal-section-copy">
                   A simplified view of the current review status, your submitted details and any notes shared by the club.
                 </div>
+                </div>
+                {item.status === 'Submitted' ? (
+                  <Link to={`/agents/submissions/${item.id}/edit`} className="agent-auth-button" style={{ minWidth: 180, textAlign: 'center' }}>
+                    Edit submission
+                  </Link>
+                ) : null}
               </div>
             </div>
 

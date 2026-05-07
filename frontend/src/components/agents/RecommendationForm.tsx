@@ -17,6 +17,9 @@ interface RecommendationFormProps {
   onSubmit: (event: React.FormEvent) => void;
   loading: boolean;
   error?: string | null;
+  mode?: 'create' | 'edit';
+  initialManualPlayerEntry?: boolean;
+  initialSelectedPlayerLabel?: string;
 }
 
 const AGREEMENT_TYPE_OPTIONS: AgreementType[] = [
@@ -178,14 +181,28 @@ function MultiSelectDropdown<T extends string>({
   );
 }
 
-const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile, onChange, onSubmit, loading, error }) => {
-  const [isManualPlayerEntry, setIsManualPlayerEntry] = useState(false);
-  const [playerSearchQuery, setPlayerSearchQuery] = useState(values.player_name || '');
+const RecommendationForm: React.FC<RecommendationFormProps> = ({
+  values,
+  profile,
+  onChange,
+  onSubmit,
+  loading,
+  error,
+  mode = 'create',
+  initialManualPlayerEntry = false,
+  initialSelectedPlayerLabel,
+}) => {
+  const [isManualPlayerEntry, setIsManualPlayerEntry] = useState(initialManualPlayerEntry);
+  const [playerSearchQuery, setPlayerSearchQuery] = useState(initialSelectedPlayerLabel || values.player_name || '');
+  const [selectedPlayerLabel, setSelectedPlayerLabel] = useState(
+    !initialManualPlayerEntry ? (initialSelectedPlayerLabel || values.player_name || '') : '',
+  );
   const [searchResults, setSearchResults] = useState<AgentPlayerSearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const wageBasis = values.wage_basis || values.expected_wages_basis || values.current_wages_basis || 'Gross';
+  const isEditMode = mode === 'edit';
   const updateWageBasis = (nextBasis: WageBasis) => {
     onChange('wage_basis', nextBasis);
     onChange('current_wages_basis', nextBasis);
@@ -193,7 +210,17 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
   };
 
   useEffect(() => {
-    if (isManualPlayerEntry || playerSearchQuery.trim().length < 2) {
+    setIsManualPlayerEntry(initialManualPlayerEntry);
+    setPlayerSearchQuery(initialSelectedPlayerLabel || values.player_name || '');
+    setSelectedPlayerLabel(!initialManualPlayerEntry ? (initialSelectedPlayerLabel || values.player_name || '') : '');
+  }, [initialManualPlayerEntry, initialSelectedPlayerLabel, values.player_name]);
+
+  useEffect(() => {
+    const hasCommittedSelection = !isManualPlayerEntry
+      && !!selectedPlayerLabel
+      && playerSearchQuery.trim() === selectedPlayerLabel.trim();
+
+    if (isManualPlayerEntry || hasCommittedSelection || playerSearchQuery.trim().length < 2) {
       setSearchResults([]);
       setSearchOpen(false);
       setSearchLoading(false);
@@ -231,6 +258,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
 
   const selectSuggestion = (result: AgentPlayerSearchResult) => {
     setPlayerSearchQuery(result.label);
+    setSelectedPlayerLabel(result.label);
     onChange('player_name', result.name);
     onChange('player_date_of_birth', result.date_of_birth || '');
     setSearchResults([]);
@@ -272,33 +300,35 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
           <div>
             <div className="agent-portal-section-title">Recommendation Intake</div>
             <div className="agent-portal-section-copy">
-              Submit structured player and deal information into the Charlton workflow. This test release is read-only after submission.
+              {isEditMode
+                ? 'Update your submitted player and deal information while it is still awaiting review.'
+                : 'Submit structured player and deal information into the Charlton workflow. Edits stay available while the submission status remains Submitted.'}
             </div>
             <div className="agent-portal-meta" style={{ marginTop: '0.5rem', fontWeight: 600 }}>
               * Required fields
             </div>
           </div>
           <div className="agent-portal-surface-muted" style={{ maxWidth: 360 }}>
-            Registered as {profile?.firstname || profile?.agent_name || 'Agent'}. Contact details are locked to your account for audit integrity.
+            Registered as {profile?.firstname || profile?.agent_name || 'Agent'}. Saved profile details still take precedence when your submission is stored.
           </div>
         </div>
 
         <div className="agent-portal-form-grid agent-portal-form-grid-4" style={{ marginBottom: '1.5rem' }}>
           <div>
             <label className="agent-portal-label">Agent Name</label>
-            <input className="agent-portal-input" value={values.agent_name} readOnly />
+            <input className="agent-portal-input" value={values.agent_name} onChange={(event) => onChange('agent_name', event.target.value)} />
           </div>
           <div>
             <label className="agent-portal-label">Agency</label>
-            <input className="agent-portal-input" value={values.agency} readOnly />
+            <input className="agent-portal-input" value={values.agency} onChange={(event) => onChange('agency', event.target.value)} />
           </div>
           <div>
             <label className="agent-portal-label">Agent Email</label>
-            <input className="agent-portal-input" value={values.agent_email} readOnly />
+            <input className="agent-portal-input" value={values.agent_email} onChange={(event) => onChange('agent_email', event.target.value)} />
           </div>
           <div>
             <label className="agent-portal-label">Agent Number</label>
-            <input className="agent-portal-input" value={values.agent_number} readOnly />
+            <input className="agent-portal-input" value={values.agent_number} onChange={(event) => onChange('agent_number', event.target.value)} />
           </div>
         </div>
 
@@ -327,6 +357,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                 setSearchOpen(false);
                 setSearchResults([]);
                 setActiveSuggestionIndex(-1);
+                setSelectedPlayerLabel('');
                 if (!checked && values.player_date_of_birth) {
                   onChange('player_date_of_birth', '');
                 }
@@ -379,6 +410,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
                       onChange={(event) => {
                         const nextQuery = event.target.value;
                         setPlayerSearchQuery(nextQuery);
+                        setSelectedPlayerLabel('');
                         onChange('player_name', nextQuery);
                         onChange('player_date_of_birth', '');
                       }}
@@ -529,10 +561,10 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({ values, profile
 
         <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between', marginTop: '1.75rem' }}>
           <div className="agent-portal-meta">
-            Submissions are locked after sending. File uploads and automated email notifications are disabled in this test release.
+            File uploads and automated email notifications are disabled in this test release.
           </div>
           <button type="submit" disabled={loading} className="agent-auth-button" style={{ minWidth: 220 }}>
-            {loading ? 'Submitting...' : 'Submit Recommendation'}
+            {loading ? (isEditMode ? 'Saving...' : 'Submitting...') : (isEditMode ? 'Save Changes' : 'Submit Recommendation')}
           </button>
         </div>
       </div>

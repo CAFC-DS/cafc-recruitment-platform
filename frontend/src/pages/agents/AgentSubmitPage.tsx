@@ -4,20 +4,11 @@ import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import RecommendationForm from '../../components/agents/RecommendationForm';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { AgentProfile, RecommendationFormValues } from '../../types/recommendations';
-
-const getToday = () => new Date().toISOString().slice(0, 10);
-
-const getSubmitErrorMessage = (err: any) => {
-  const detail = err?.response?.data?.detail;
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) => item?.msg || item?.message)
-      .filter(Boolean)
-      .join(', ') || 'Failed to submit recommendation';
-  }
-  return 'Failed to submit recommendation';
-};
+import {
+  getInitialRecommendationFormValues,
+  getRecommendationSubmitErrorMessage,
+  validateRecommendationFormValues,
+} from '../../utils/agentRecommendationForm';
 
 const AgentSubmitPage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,28 +17,7 @@ const AgentSubmitPage: React.FC = () => {
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
-  const [values, setValues] = useState<RecommendationFormValues>({
-    agent_name: '',
-    agency: '',
-    agent_email: '',
-    agent_number: '',
-    submission_date: getToday(),
-    player_name: '',
-    player_date_of_birth: '',
-    recommended_position: [],
-    transfermarkt_link: '',
-    agreement_type: [],
-    confirmed_contract_expiry: '',
-    contract_options: [],
-    potential_deal_type: [],
-    transfer_fee: '',
-    current_wages_per_week: '',
-    wage_basis: 'Gross',
-    current_wages_basis: 'Gross',
-    expected_wages_per_week: '',
-    expected_wages_basis: 'Gross',
-    additional_information: '',
-  });
+  const [values, setValues] = useState<RecommendationFormValues>(getInitialRecommendationFormValues());
 
   useEffect(() => {
     const load = async () => {
@@ -80,55 +50,9 @@ const AgentSubmitPage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const requiredAgentFields = [
-      values.agent_name,
-      values.agent_email,
-    ];
-    if (requiredAgentFields.some((field) => !field || !field.trim())) {
-      setError('Your agent profile is missing your name or email. Please contact support to update your account details.');
-      return;
-    }
-    if (!values.submission_date) {
-      setError('Date is required.');
-      return;
-    }
-    if (!values.player_name.trim()) {
-      setError('Player name is required.');
-      return;
-    }
-    if (values.recommended_position.length === 0) {
-      setError('Recommended position is required.');
-      return;
-    }
-    if (!values.transfermarkt_link.trim()) {
-      setError('Transfermarkt link is required.');
-      return;
-    }
-    if (values.agreement_type.length === 0) {
-      setError('Agreement type is required.');
-      return;
-    }
-    if (!values.confirmed_contract_expiry) {
-      setError('Confirmed contract expiry is required.');
-      return;
-    }
-    if (values.contract_options.length === 0) {
-      setError('Contract options are required.');
-      return;
-    }
-    if (values.potential_deal_type.length === 0) {
-      setError('Potential deal type is required.');
-      return;
-    }
-    if (!values.expected_wages_per_week.trim()) {
-      setError('Expected wages are required.');
-      return;
-    }
-    if (
-      values.potential_deal_type.includes('Permanent Transfer')
-      && !values.transfer_fee.trim()
-    ) {
-      setError('Transfer fee is required when potential deal type includes Permanent Transfer.');
+    const validationError = validateRecommendationFormValues(values);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -141,7 +65,7 @@ const AgentSubmitPage: React.FC = () => {
       navigate(`/agents/submissions/${recommendation.id}`);
     } catch (err: any) {
       console.error(err);
-      setError(getSubmitErrorMessage(err));
+      setError(getRecommendationSubmitErrorMessage(err));
     } finally {
       setLoading(false);
     }

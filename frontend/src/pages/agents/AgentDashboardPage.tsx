@@ -178,9 +178,16 @@ const AgentDashboardPage: React.FC = () => {
                             <td>{formatDate(item.created_at)}</td>
                             <td>{formatDateTime(item.status_updated_at || item.created_at)}</td>
                             <td className="text-end">
-                              <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
-                                View
-                              </Link>
+                              <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                                <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
+                                  View
+                                </Link>
+                                {item.status === 'Submitted' ? (
+                                  <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
+                                    Edit
+                                  </Link>
+                                ) : null}
+                              </div>
                             </td>
                           </tr>
                         );

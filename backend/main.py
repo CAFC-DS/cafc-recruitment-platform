@@ -2012,6 +2012,155 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
     return history
 
 
+def prepare_agent_recommendation_payload(
+    cursor,
+    current_user: User,
+    agent_name: str,
+    agency: Optional[str],
+    agent_email: str,
+    agent_number: Optional[str],
+    submission_date: str,
+    player_name: str,
+    player_date_of_birth: Optional[str],
+    recommended_position: Optional[str],
+    transfermarkt_link: Optional[str],
+    agreement_type: Optional[str],
+    confirmed_contract_expiry: Optional[str],
+    contract_options: Optional[str],
+    potential_deal_type: Optional[str],
+    transfer_fee: Optional[str],
+    transfer_fee_currency: Optional[str],
+    current_wages_per_week: Optional[str],
+    current_wages_currency: Optional[str],
+    wage_basis: Optional[str],
+    current_wages_basis: Optional[str],
+    expected_wages_per_week: Optional[str],
+    expected_wages_currency: Optional[str],
+    expected_wages_basis: Optional[str],
+    additional_information: Optional[str],
+) -> Dict[str, Any]:
+    profile = get_agent_profile_row(cursor, current_user.id)
+    fallback_agent_number = (
+        validate_agent_number(agent_number)
+        if not profile or not profile[4]
+        else None
+    )
+    normalized_agreement_type = validate_recommendation_multi_option(
+        agreement_type, ALLOWED_AGREEMENT_TYPES, "agreement type"
+    )
+    normalized_contract_option = validate_recommendation_multi_option(
+        contract_options, ALLOWED_CONTRACT_OPTIONS, "contract option"
+    )
+    normalized_potential_deal_type = validate_recommendation_multi_option(
+        potential_deal_type, ALLOWED_POTENTIAL_DEAL_TYPES, "potential deal type"
+    )
+    normalized_transfer_fee_min, normalized_transfer_fee_max = parse_numeric_range_field(
+        transfer_fee, "transfer fee"
+    )
+    normalized_transfer_fee_amount = derive_range_amount(
+        normalized_transfer_fee_min, normalized_transfer_fee_max
+    )
+    normalized_current_wages_min, normalized_current_wages_max = parse_wage_field(
+        current_wages_per_week, "current wages"
+    )
+    normalized_expected_wages_min, normalized_expected_wages_max = parse_wage_field(
+        expected_wages_per_week, "expected wages"
+    )
+    normalized_transfer_fee_currency = normalize_currency_selection(
+        transfer_fee_currency, "transfer fee currency"
+    )
+    normalized_current_wages_currency = normalize_currency_selection(
+        current_wages_currency, "current wages currency"
+    )
+    normalized_expected_wages_currency = normalize_currency_selection(
+        expected_wages_currency, "expected wages currency"
+    )
+    normalized_wage_basis = normalize_wage_basis_selection(
+        wage_basis or expected_wages_basis or current_wages_basis, "wage basis"
+    )
+    normalized_recommended_position = validate_recommendation_multi_option(
+        recommended_position, ALLOWED_RECOMMENDED_POSITIONS, "recommended position"
+    )
+    if normalized_transfer_fee_min is not None and not normalized_transfer_fee_currency:
+        normalized_transfer_fee_currency = "GBP"
+    if normalized_current_wages_min is not None and not normalized_current_wages_currency:
+        normalized_current_wages_currency = "GBP"
+    if normalized_expected_wages_min is not None and not normalized_expected_wages_currency:
+        normalized_expected_wages_currency = "GBP"
+    if (normalized_current_wages_min is not None or normalized_expected_wages_min is not None) and not normalized_wage_basis:
+        normalized_wage_basis = "Gross"
+    if normalized_transfer_fee_min is None:
+        normalized_transfer_fee_currency = None
+    if normalized_current_wages_min is None:
+        normalized_current_wages_currency = None
+    if normalized_expected_wages_min is None:
+        normalized_expected_wages_currency = None
+    if normalized_current_wages_min is None and normalized_expected_wages_min is None:
+        normalized_wage_basis = None
+    if not submission_date:
+        raise HTTPException(status_code=400, detail="Submission date is required")
+    if not player_name or not player_name.strip():
+        raise HTTPException(status_code=400, detail="Player name is required")
+    if not normalized_recommended_position:
+        raise HTTPException(status_code=400, detail="Recommended position is required")
+    if not transfermarkt_link or not transfermarkt_link.strip():
+        raise HTTPException(status_code=400, detail="Transfermarkt link is required")
+    if not normalized_agreement_type:
+        raise HTTPException(status_code=400, detail="Agreement type is required")
+    if not confirmed_contract_expiry:
+        raise HTTPException(status_code=400, detail="Confirmed contract expiry is required")
+    if not normalized_contract_option:
+        raise HTTPException(status_code=400, detail="Contract options are required")
+    if not normalized_potential_deal_type:
+        raise HTTPException(status_code=400, detail="Potential deal type is required")
+    if normalized_expected_wages_min is None:
+        raise HTTPException(status_code=400, detail="Expected wages are required")
+    selected_deal_types = [part.strip() for part in normalized_potential_deal_type.split(",")] if normalized_potential_deal_type else []
+    if "Permanent Transfer" in selected_deal_types and normalized_transfer_fee_min is None:
+        raise HTTPException(status_code=400, detail="Transfer fee is required for permanent transfer")
+
+    resolved_agent_name = profile[1] if profile and profile[1] else agent_name.strip()
+    resolved_agency = profile[2] if profile and profile[2] else (agency.strip() if agency else None)
+    resolved_agent_email = profile[3] if profile and profile[3] else (current_user.email or agent_email.strip().lower())
+    resolved_agent_number = profile[4] if profile and profile[4] else fallback_agent_number
+    confirmed_expiry = datetime.strptime(confirmed_contract_expiry, "%Y-%m-%d").date() if confirmed_contract_expiry else None
+    submitted_date = datetime.strptime(submission_date, "%Y-%m-%d").date() if submission_date else datetime.utcnow().date()
+    player_dob = datetime.strptime(player_date_of_birth, "%Y-%m-%d").date() if player_date_of_birth else None
+
+    return {
+        "AGENT_NAME": resolved_agent_name,
+        "AGENCY": resolved_agency,
+        "AGENT_EMAIL": resolved_agent_email,
+        "AGENT_NUMBER": resolved_agent_number,
+        "DATE": submitted_date,
+        "PLAYER_NAME": player_name.strip(),
+        "TRANSFERMARKT_LINK": transfermarkt_link.strip() if transfermarkt_link else None,
+        "AGREEMENT_TYPE": normalized_agreement_type,
+        "CONTRACT_EXPIRY": confirmed_expiry,
+        "CONTRACT_OPTIONS": normalized_contract_option,
+        "POTENTIAL_DEAL_TYPE": normalized_potential_deal_type,
+        "TRANSFER_FEE": format_numeric_range_for_response(normalized_transfer_fee_min, normalized_transfer_fee_max),
+        "CURRENT_WAGES": normalized_current_wages_min,
+        "EXPECTED_WAGES": normalized_expected_wages_min,
+        "ADDITIONAL_INFO": additional_information,
+        "TRANSFER_FEE_AMOUNT": normalized_transfer_fee_amount,
+        "TRANSFER_FEE_CURRENCY": normalized_transfer_fee_currency,
+        "TRANSFER_FEE_MIN": normalized_transfer_fee_min,
+        "TRANSFER_FEE_MAX": normalized_transfer_fee_max,
+        "CURRENT_WAGES_AMOUNT": normalized_current_wages_min,
+        "CURRENT_WAGES_MIN": normalized_current_wages_min,
+        "CURRENT_WAGES_MAX": normalized_current_wages_max,
+        "CURRENT_WAGES_CURRENCY": normalized_current_wages_currency,
+        "EXPECTED_WAGES_AMOUNT": normalized_expected_wages_min,
+        "EXPECTED_WAGES_MIN": normalized_expected_wages_min,
+        "EXPECTED_WAGES_MAX": normalized_expected_wages_max,
+        "EXPECTED_WAGES_CURRENCY": normalized_expected_wages_currency,
+        "WAGE_BASIS": normalized_wage_basis,
+        "RECOMMENDED_POSITION": normalized_recommended_position,
+        "PLAYER_DATE_OF_BIRTH": player_dob,
+    }
+
+
 def build_recommendation_select():
     refresh_table_schema("player_recommendations")
 
@@ -2782,93 +2931,33 @@ async def create_agent_recommendation(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        profile = get_agent_profile_row(cursor, current_user.id)
-        fallback_agent_number = (
-            validate_agent_number(agent_number)
-            if not profile or not profile[4]
-            else None
+        recommendation_payload = prepare_agent_recommendation_payload(
+            cursor=cursor,
+            current_user=current_user,
+            agent_name=agent_name,
+            agency=agency,
+            agent_email=agent_email,
+            agent_number=agent_number,
+            submission_date=submission_date,
+            player_name=player_name,
+            player_date_of_birth=player_date_of_birth,
+            recommended_position=recommended_position,
+            transfermarkt_link=transfermarkt_link,
+            agreement_type=agreement_type,
+            confirmed_contract_expiry=confirmed_contract_expiry,
+            contract_options=contract_options,
+            potential_deal_type=potential_deal_type,
+            transfer_fee=transfer_fee,
+            transfer_fee_currency=transfer_fee_currency,
+            current_wages_per_week=current_wages_per_week,
+            current_wages_currency=current_wages_currency,
+            wage_basis=wage_basis,
+            current_wages_basis=current_wages_basis,
+            expected_wages_per_week=expected_wages_per_week,
+            expected_wages_currency=expected_wages_currency,
+            expected_wages_basis=expected_wages_basis,
+            additional_information=additional_information,
         )
-        normalized_agreement_type = validate_recommendation_multi_option(
-            agreement_type, ALLOWED_AGREEMENT_TYPES, "agreement type"
-        )
-        normalized_contract_option = validate_recommendation_multi_option(
-            contract_options, ALLOWED_CONTRACT_OPTIONS, "contract option"
-        )
-        normalized_potential_deal_type = validate_recommendation_multi_option(
-            potential_deal_type, ALLOWED_POTENTIAL_DEAL_TYPES, "potential deal type"
-        )
-        normalized_transfer_fee_min, normalized_transfer_fee_max = parse_numeric_range_field(
-            transfer_fee, "transfer fee"
-        )
-        normalized_transfer_fee_amount = derive_range_amount(
-            normalized_transfer_fee_min, normalized_transfer_fee_max
-        )
-        normalized_current_wages_min, normalized_current_wages_max = parse_wage_field(
-            current_wages_per_week, "current wages"
-        )
-        normalized_expected_wages_min, normalized_expected_wages_max = parse_wage_field(
-            expected_wages_per_week, "expected wages"
-        )
-        normalized_transfer_fee_currency = normalize_currency_selection(
-            transfer_fee_currency, "transfer fee currency"
-        )
-        normalized_current_wages_currency = normalize_currency_selection(
-            current_wages_currency, "current wages currency"
-        )
-        normalized_expected_wages_currency = normalize_currency_selection(
-            expected_wages_currency, "expected wages currency"
-        )
-        normalized_wage_basis = normalize_wage_basis_selection(
-            wage_basis or expected_wages_basis or current_wages_basis, "wage basis"
-        )
-        normalized_recommended_position = validate_recommendation_multi_option(
-            recommended_position, ALLOWED_RECOMMENDED_POSITIONS, "recommended position"
-        )
-        if normalized_transfer_fee_min is not None and not normalized_transfer_fee_currency:
-            normalized_transfer_fee_currency = "GBP"
-        if normalized_current_wages_min is not None and not normalized_current_wages_currency:
-            normalized_current_wages_currency = "GBP"
-        if normalized_expected_wages_min is not None and not normalized_expected_wages_currency:
-            normalized_expected_wages_currency = "GBP"
-        if (normalized_current_wages_min is not None or normalized_expected_wages_min is not None) and not normalized_wage_basis:
-            normalized_wage_basis = "Gross"
-        if normalized_transfer_fee_min is None:
-            normalized_transfer_fee_currency = None
-        if normalized_current_wages_min is None:
-            normalized_current_wages_currency = None
-        if normalized_expected_wages_min is None:
-            normalized_expected_wages_currency = None
-        if normalized_current_wages_min is None and normalized_expected_wages_min is None:
-            normalized_wage_basis = None
-        if not submission_date:
-            raise HTTPException(status_code=400, detail="Submission date is required")
-        if not player_name or not player_name.strip():
-            raise HTTPException(status_code=400, detail="Player name is required")
-        if not normalized_recommended_position:
-            raise HTTPException(status_code=400, detail="Recommended position is required")
-        if not transfermarkt_link or not transfermarkt_link.strip():
-            raise HTTPException(status_code=400, detail="Transfermarkt link is required")
-        if not normalized_agreement_type:
-            raise HTTPException(status_code=400, detail="Agreement type is required")
-        if not confirmed_contract_expiry:
-            raise HTTPException(status_code=400, detail="Confirmed contract expiry is required")
-        if not normalized_contract_option:
-            raise HTTPException(status_code=400, detail="Contract options are required")
-        if not normalized_potential_deal_type:
-            raise HTTPException(status_code=400, detail="Potential deal type is required")
-        if normalized_expected_wages_min is None:
-            raise HTTPException(status_code=400, detail="Expected wages are required")
-        selected_deal_types = [part.strip() for part in normalized_potential_deal_type.split(",")] if normalized_potential_deal_type else []
-        if "Permanent Transfer" in selected_deal_types and normalized_transfer_fee_min is None:
-            raise HTTPException(status_code=400, detail="Transfer fee is required for permanent transfer")
-        resolved_agent_name = profile[1] if profile and profile[1] else agent_name.strip()
-        resolved_agency = profile[2] if profile and profile[2] else (agency.strip() if agency else None)
-        resolved_agent_email = profile[3] if profile and profile[3] else (current_user.email or agent_email.strip().lower())
-        resolved_agent_number = profile[4] if profile and profile[4] else fallback_agent_number
-        confirmed_expiry = datetime.strptime(confirmed_contract_expiry, "%Y-%m-%d").date() if confirmed_contract_expiry else None
-        submitted_date = datetime.strptime(submission_date, "%Y-%m-%d").date() if submission_date else datetime.utcnow().date()
-        player_dob = datetime.strptime(player_date_of_birth, "%Y-%m-%d").date() if player_date_of_birth else None
-        normalized_additional_information = additional_information
 
         recommendation_columns = get_table_columns("player_recommendations")
         insert_columns = [
@@ -2896,21 +2985,21 @@ async def create_agent_recommendation(
             "UPDATED_AT",
         ]
         insert_values = [
-                resolved_agent_name,
-            resolved_agency,
-            resolved_agent_email,
-            resolved_agent_number,
-            submitted_date,
-            player_name.strip(),
-            transfermarkt_link.strip() if transfermarkt_link else None,
-            normalized_agreement_type,
-            confirmed_expiry,
-            normalized_contract_option,
-            normalized_potential_deal_type,
-            format_numeric_range_for_response(normalized_transfer_fee_min, normalized_transfer_fee_max),
-            normalized_current_wages_min,
-            normalized_expected_wages_min,
-            normalized_additional_information,
+            recommendation_payload["AGENT_NAME"],
+            recommendation_payload["AGENCY"],
+            recommendation_payload["AGENT_EMAIL"],
+            recommendation_payload["AGENT_NUMBER"],
+            recommendation_payload["DATE"],
+            recommendation_payload["PLAYER_NAME"],
+            recommendation_payload["TRANSFERMARKT_LINK"],
+            recommendation_payload["AGREEMENT_TYPE"],
+            recommendation_payload["CONTRACT_EXPIRY"],
+            recommendation_payload["CONTRACT_OPTIONS"],
+            recommendation_payload["POTENTIAL_DEAL_TYPE"],
+            recommendation_payload["TRANSFER_FEE"],
+            recommendation_payload["CURRENT_WAGES"],
+            recommendation_payload["EXPECTED_WAGES"],
+            recommendation_payload["ADDITIONAL_INFO"],
             current_user.id,
             "Submitted",
             datetime.utcnow(),
@@ -2921,19 +3010,19 @@ async def create_agent_recommendation(
         ]
 
         optional_amount_currency_pairs = [
-            ("TRANSFER_FEE_AMOUNT", normalized_transfer_fee_amount),
-            ("TRANSFER_FEE_CURRENCY", normalized_transfer_fee_currency),
-            ("TRANSFER_FEE_MIN", normalized_transfer_fee_min),
-            ("TRANSFER_FEE_MAX", normalized_transfer_fee_max),
-            ("CURRENT_WAGES_AMOUNT", normalized_current_wages_min),
-            ("CURRENT_WAGES_MIN", normalized_current_wages_min),
-            ("CURRENT_WAGES_MAX", normalized_current_wages_max),
-            ("CURRENT_WAGES_CURRENCY", normalized_current_wages_currency),
-            ("EXPECTED_WAGES_AMOUNT", normalized_expected_wages_min),
-            ("EXPECTED_WAGES_MIN", normalized_expected_wages_min),
-            ("EXPECTED_WAGES_MAX", normalized_expected_wages_max),
-            ("EXPECTED_WAGES_CURRENCY", normalized_expected_wages_currency),
-            ("WAGE_BASIS", normalized_wage_basis),
+            ("TRANSFER_FEE_AMOUNT", recommendation_payload["TRANSFER_FEE_AMOUNT"]),
+            ("TRANSFER_FEE_CURRENCY", recommendation_payload["TRANSFER_FEE_CURRENCY"]),
+            ("TRANSFER_FEE_MIN", recommendation_payload["TRANSFER_FEE_MIN"]),
+            ("TRANSFER_FEE_MAX", recommendation_payload["TRANSFER_FEE_MAX"]),
+            ("CURRENT_WAGES_AMOUNT", recommendation_payload["CURRENT_WAGES_AMOUNT"]),
+            ("CURRENT_WAGES_MIN", recommendation_payload["CURRENT_WAGES_MIN"]),
+            ("CURRENT_WAGES_MAX", recommendation_payload["CURRENT_WAGES_MAX"]),
+            ("CURRENT_WAGES_CURRENCY", recommendation_payload["CURRENT_WAGES_CURRENCY"]),
+            ("EXPECTED_WAGES_AMOUNT", recommendation_payload["EXPECTED_WAGES_AMOUNT"]),
+            ("EXPECTED_WAGES_MIN", recommendation_payload["EXPECTED_WAGES_MIN"]),
+            ("EXPECTED_WAGES_MAX", recommendation_payload["EXPECTED_WAGES_MAX"]),
+            ("EXPECTED_WAGES_CURRENCY", recommendation_payload["EXPECTED_WAGES_CURRENCY"]),
+            ("WAGE_BASIS", recommendation_payload["WAGE_BASIS"]),
         ]
         for optional_column, optional_value in optional_amount_currency_pairs:
             if optional_column in recommendation_columns:
@@ -2942,11 +3031,11 @@ async def create_agent_recommendation(
 
         if "RECOMMENDED_POSITION" in recommendation_columns:
             insert_columns.append("RECOMMENDED_POSITION")
-            insert_values.append(normalized_recommended_position)
+            insert_values.append(recommendation_payload["RECOMMENDED_POSITION"])
 
-        if "PLAYER_DATE_OF_BIRTH" in recommendation_columns and player_dob:
+        if "PLAYER_DATE_OF_BIRTH" in recommendation_columns and recommendation_payload["PLAYER_DATE_OF_BIRTH"]:
             insert_columns.append("PLAYER_DATE_OF_BIRTH")
-            insert_values.append(player_dob)
+            insert_values.append(recommendation_payload["PLAYER_DATE_OF_BIRTH"])
 
         placeholders = ", ".join(["%s"] * len(insert_columns))
         cursor.execute(
@@ -2987,6 +3076,151 @@ async def create_agent_recommendation(
             conn.rollback()
         logging.exception(f"Failed to create recommendation: {e}")
         raise HTTPException(status_code=500, detail="Failed to submit recommendation")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.patch("/agents/recommendations/{recommendation_id}", response_model=RecommendationResponse)
+async def update_agent_recommendation(
+    recommendation_id: int,
+    agent_name: str = Form(...),
+    agency: Optional[str] = Form(None),
+    agent_email: str = Form(...),
+    agent_number: Optional[str] = Form(None),
+    submission_date: str = Form(...),
+    player_name: str = Form(...),
+    player_date_of_birth: Optional[str] = Form(None),
+    recommended_position: Optional[str] = Form(None),
+    transfermarkt_link: Optional[str] = Form(None),
+    agreement_type: Optional[str] = Form(None),
+    confirmed_contract_expiry: Optional[str] = Form(None),
+    contract_options: Optional[str] = Form(None),
+    potential_deal_type: Optional[str] = Form(None),
+    transfer_fee: Optional[str] = Form(None),
+    transfer_fee_currency: Optional[str] = Form(None),
+    current_wages_per_week: Optional[str] = Form(None),
+    current_wages_currency: Optional[str] = Form(None),
+    wage_basis: Optional[str] = Form(None),
+    current_wages_basis: Optional[str] = Form(None),
+    expected_wages_per_week: Optional[str] = Form(None),
+    expected_wages_currency: Optional[str] = Form(None),
+    expected_wages_basis: Optional[str] = Form(None),
+    additional_information: Optional[str] = Form(None),
+    supporting_file: Optional[UploadFile] = File(None),
+    current_user: User = Depends(require_agent_user),
+):
+    validate_recommendation_schema_ready()
+    if supporting_file:
+        raise HTTPException(status_code=400, detail="Supporting file uploads are disabled for testing")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row or row[24] != current_user.id:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        if row[25] != "Submitted":
+            raise HTTPException(status_code=400, detail="Only submitted recommendations can be edited")
+
+        recommendation_payload = prepare_agent_recommendation_payload(
+            cursor=cursor,
+            current_user=current_user,
+            agent_name=agent_name,
+            agency=agency,
+            agent_email=agent_email,
+            agent_number=agent_number,
+            submission_date=submission_date,
+            player_name=player_name,
+            player_date_of_birth=player_date_of_birth,
+            recommended_position=recommended_position,
+            transfermarkt_link=transfermarkt_link,
+            agreement_type=agreement_type,
+            confirmed_contract_expiry=confirmed_contract_expiry,
+            contract_options=contract_options,
+            potential_deal_type=potential_deal_type,
+            transfer_fee=transfer_fee,
+            transfer_fee_currency=transfer_fee_currency,
+            current_wages_per_week=current_wages_per_week,
+            current_wages_currency=current_wages_currency,
+            wage_basis=wage_basis,
+            current_wages_basis=current_wages_basis,
+            expected_wages_per_week=expected_wages_per_week,
+            expected_wages_currency=expected_wages_currency,
+            expected_wages_basis=expected_wages_basis,
+            additional_information=additional_information,
+        )
+
+        recommendation_columns = get_table_columns("player_recommendations")
+        update_values = {
+            "AGENT_NAME": recommendation_payload["AGENT_NAME"],
+            "AGENCY": recommendation_payload["AGENCY"],
+            "AGENT_EMAIL": recommendation_payload["AGENT_EMAIL"],
+            "AGENT_NUMBER": recommendation_payload["AGENT_NUMBER"],
+            "DATE": recommendation_payload["DATE"],
+            "PLAYER_NAME": recommendation_payload["PLAYER_NAME"],
+            "TRANSFERMARKT_LINK": recommendation_payload["TRANSFERMARKT_LINK"],
+            "AGREEMENT_TYPE": recommendation_payload["AGREEMENT_TYPE"],
+            "CONTRACT_EXPIRY": recommendation_payload["CONTRACT_EXPIRY"],
+            "CONTRACT_OPTIONS": recommendation_payload["CONTRACT_OPTIONS"],
+            "POTENTIAL_DEAL_TYPE": recommendation_payload["POTENTIAL_DEAL_TYPE"],
+            "TRANSFER_FEE": recommendation_payload["TRANSFER_FEE"],
+            "CURRENT_WAGES": recommendation_payload["CURRENT_WAGES"],
+            "EXPECTED_WAGES": recommendation_payload["EXPECTED_WAGES"],
+            "ADDITIONAL_INFO": recommendation_payload["ADDITIONAL_INFO"],
+            "UPDATED_AT": datetime.utcnow(),
+        }
+        optional_update_columns = [
+            "TRANSFER_FEE_AMOUNT",
+            "TRANSFER_FEE_CURRENCY",
+            "TRANSFER_FEE_MIN",
+            "TRANSFER_FEE_MAX",
+            "CURRENT_WAGES_AMOUNT",
+            "CURRENT_WAGES_MIN",
+            "CURRENT_WAGES_MAX",
+            "CURRENT_WAGES_CURRENCY",
+            "EXPECTED_WAGES_AMOUNT",
+            "EXPECTED_WAGES_MIN",
+            "EXPECTED_WAGES_MAX",
+            "EXPECTED_WAGES_CURRENCY",
+            "WAGE_BASIS",
+            "RECOMMENDED_POSITION",
+            "PLAYER_DATE_OF_BIRTH",
+        ]
+        for column_name in optional_update_columns:
+            if column_name in recommendation_columns:
+                update_values[column_name] = recommendation_payload[column_name]
+
+        assignments = ", ".join(f"{column_name} = %s" for column_name in update_values.keys())
+        params = list(update_values.values()) + [recommendation_id]
+        cursor.execute(
+            f"""
+            UPDATE player_recommendations
+            SET {assignments}
+            WHERE ID = %s
+        """,
+            tuple(params),
+        )
+        conn.commit()
+
+        detail_row = fetch_recommendation_detail(cursor, recommendation_id)
+        return serialize_recommendation_row(detail_row)
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
+    except ValueError as e:
+        if conn:
+            conn.rollback()
+        logging.warning(f"Invalid recommendation field: {e}")
+        raise HTTPException(status_code=400, detail="Invalid numeric or date field")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to update recommendation: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update recommendation")
     finally:
         if conn:
             conn.close()
