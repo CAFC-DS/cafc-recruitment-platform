@@ -4,6 +4,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import PlayerAnalyticsTab from "../components/analytics/PlayerAnalyticsTab";
 import MatchTeamAnalyticsTab from "../components/analytics/MatchTeamAnalyticsTab";
 import ScoutAnalyticsTab from "../components/analytics/ScoutAnalyticsTab";
+import StageMovementAnalyticsTab from "../components/analytics/StageMovementAnalyticsTab";
 
 const AnalyticsPage: React.FC = () => {
   const { canAccessAnalytics, loading: userLoading } = useCurrentUser();
@@ -94,6 +95,19 @@ const AnalyticsPage: React.FC = () => {
           tabClassName="custom-tab"
         >
           <ScoutAnalyticsTab />
+        </Tab>
+
+        <Tab
+          eventKey="stages"
+          title={
+            <span>
+              <span style={{ fontSize: "1.2rem", marginRight: "8px" }}>📈</span>
+              <strong>Stage Movement</strong>
+            </span>
+          }
+          tabClassName="custom-tab"
+        >
+          <StageMovementAnalyticsTab />
         </Tab>
       </Tabs>
 

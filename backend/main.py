@@ -12633,6 +12633,79 @@ async def get_scout_analytics(
         if conn:
             conn.close()
 
+
+@app.get("/analytics/stage-movements")
+async def get_stage_movement_analytics(
+    current_user: User = Depends(get_current_user),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """Get shortlist stage movement analytics for a selected date window."""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Admin, Senior Manager, or Manager role required.",
+        )
+
+    try:
+        window_start = date.fromisoformat(start_date) if start_date else date(date.today().year, 4, 30)
+        window_end = date.fromisoformat(end_date) if end_date else date.today()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD format.")
+
+    if window_end < window_start:
+        raise HTTPException(status_code=400, detail="End date must be on or after start date.")
+
+    cache_key = f"analytics_stage_movements_{window_start.isoformat()}_{window_end.isoformat()}"
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT_IF(OLD_STAGE IS NULL AND NEW_STAGE = 'Stage 1') AS moved_into_stage_1,
+                COUNT_IF(OLD_STAGE = 'Stage 1' AND NEW_STAGE = 'Stage 2') AS moved_stage_1_to_2,
+                COUNT_IF(OLD_STAGE = 'Stage 2' AND NEW_STAGE = 'Stage 3') AS moved_stage_2_to_3,
+                COUNT_IF(OLD_STAGE = 'Stage 2' AND NEW_STAGE = 'Archived') AS archived_from_stage_2,
+                COUNT_IF(OLD_STAGE = 'Stage 3' AND NEW_STAGE = 'Archived') AS archived_from_stage_3
+            FROM PLAYER_STAGE_HISTORY
+            WHERE CHANGED_AT >= %s
+              AND CHANGED_AT < DATEADD(day, 1, %s::DATE)
+            """,
+            (window_start.isoformat(), window_end.isoformat()),
+        )
+        row = cursor.fetchone() or {}
+
+        result = {
+            "window_start": window_start.isoformat(),
+            "window_end": window_end.isoformat(),
+            "metrics": {
+                "moved_into_stage_1": int(row.get("MOVED_INTO_STAGE_1") or 0),
+                "moved_stage_1_to_2": int(row.get("MOVED_STAGE_1_TO_2") or 0),
+                "moved_stage_2_to_3": int(row.get("MOVED_STAGE_2_TO_3") or 0),
+                "archived_from_stage_2": int(row.get("ARCHIVED_FROM_STAGE_2") or 0),
+                "archived_from_stage_3": int(row.get("ARCHIVED_FROM_STAGE_3") or 0),
+            },
+        }
+
+        set_cache(cache_key, result, expiry_minutes=10)
+        return result
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving stage movement analytics: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/analytics/players/by-score")
 async def get_players_by_score(
     current_user: User = Depends(get_current_user),
