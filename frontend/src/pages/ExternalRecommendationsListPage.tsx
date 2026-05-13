@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Col, Collapse, Form, Modal, Row, Spinner, Toast, ToastContainer } from 'react-bootstrap';
+import { Button, Card, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import SubmissionStatusBadge, { AgentStatusBadge } from '../components/agents/SubmissionStatusBadge';
 import DealTypeBadges from '../components/recommendations/DealTypeBadges';
@@ -134,6 +134,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [savingReview, setSavingReview] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showStatusKey, setShowStatusKey] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<InternalRecommendation | null>(null);
   const [historyRecommendation, setHistoryRecommendation] = useState<InternalRecommendation | null>(null);
   const [statusHistoryMap, setStatusHistoryMap] = useState<Map<number, RecommendationStatusHistory[]>>(new Map());
@@ -485,6 +486,39 @@ const ExternalRecommendationsListPage: React.FC = () => {
           </div>
 
           <Card className="mb-3">
+            <Card.Header className="external-recommendations-legend-toggle">
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 className="mb-0 text-white external-recommendations-legend-label">Review status key</h6>
+                  <div className="external-recommendations-legend-subcopy">Shorthand used in the shortlist table</div>
+                </div>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={() => setShowStatusKey(!showStatusKey)}
+                  className="external-recommendations-legend-button"
+                >
+                  {showStatusKey ? '▲ Hide key' : '▼ Show key'}
+                </Button>
+              </div>
+            </Card.Header>
+            <Collapse in={showStatusKey}>
+              <Card.Body className="external-recommendations-legend">
+                <div className="external-recommendations-legend-grid">
+                  {meta.statuses.map((status) => (
+                    <span key={status} className="external-recommendations-legend-item">
+                      <SubmissionStatusBadge status={status} short />
+                      <span className="external-recommendations-legend-copy">
+                        {getRecommendationStatusConfig(status).displayLabel}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </Card.Body>
+            </Collapse>
+          </Card>
+
+          <Card className="mb-3">
             <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
               <div className="d-flex justify-content-between align-items-center">
                 <h6 className="mb-0 text-white">
@@ -525,7 +559,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                         onChange={(event) => updateFilters({ status: event.target.value as RecommendationStatus | '' })}
                       >
                         <option value="">All statuses</option>
-                        {meta.statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                        {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).displayLabel}</option>)}
                       </Form.Select>
                     </Form.Group>
                   </Col>
@@ -765,7 +799,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                             borderWidth: hasPendingStatusChange ? '2px' : '1px',
                           }}
                         >
-                          {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).displayLabel}</option>)}
+                          {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).shortLabel}</option>)}
                         </Form.Select>
                       </td>
                       <td className="cell-status"><AgentStatusBadge status={item.agent_status} /></td>
@@ -780,12 +814,34 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)}</td>
                       <td className="cell-actions">
                         <div className="external-recommendations-action-stack">
-                          <Button size="sm" variant="outline-dark" onClick={() => openReviewModal(item)}>
-                            Review
-                          </Button>
-                          <Button size="sm" variant="outline-secondary" onClick={() => openHistoryModal(item)}>
-                            History
-                          </Button>
+                          <OverlayTrigger
+                            placement="top"
+                            overlay={<Tooltip id={`review-tooltip-${item.id}`}>Review</Tooltip>}
+                          >
+                            <Button
+                              size="sm"
+                              onClick={() => openReviewModal(item)}
+                              className="btn-action-circle btn-action-view"
+                              aria-label={`Review ${item.player_name}`}
+                              title="Review"
+                            >
+                              📝
+                            </Button>
+                          </OverlayTrigger>
+                          <OverlayTrigger
+                            placement="top"
+                            overlay={<Tooltip id={`history-tooltip-${item.id}`}>History</Tooltip>}
+                          >
+                            <Button
+                              size="sm"
+                              onClick={() => openHistoryModal(item)}
+                              className="btn-action-circle external-recommendations-history-action"
+                              aria-label={`Open history for ${item.player_name}`}
+                              title="History"
+                            >
+                              🕘
+                            </Button>
+                          </OverlayTrigger>
                         </div>
                       </td>
                     </tr>

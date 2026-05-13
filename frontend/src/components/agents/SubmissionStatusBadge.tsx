@@ -2,11 +2,11 @@ import React from 'react';
 import { AgentStatus, RecommendationStatus } from '../../types/recommendations';
 import { getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
 
-const SubmissionStatusBadge: React.FC<{ status: RecommendationStatus }> = ({ status }) => {
+const SubmissionStatusBadge: React.FC<{ status: RecommendationStatus; short?: boolean }> = ({ status, short = false }) => {
   const config = getRecommendationStatusConfig(status);
   return (
     <span className={`agent-status-badge ${config.badgeClassName || 'agent-status-archived'}`}>
-      {config.displayLabel}
+      {short ? config.shortLabel : config.displayLabel}
     </span>
   );
 };

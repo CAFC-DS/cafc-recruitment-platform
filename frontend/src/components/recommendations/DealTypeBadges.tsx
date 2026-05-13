@@ -11,13 +11,15 @@ const DealTypeBadges: React.FC<DealTypeBadgesProps> = ({ dealTypes }) => {
 
   const badgeStyles: { [key: string]: string } = {
     'Free': 'badge bg-success bg-opacity-10 text-success border border-success',
-    'Perm': 'badge bg-primary bg-opacity-10 text-primary border border-primary',
+    'Permanent Transfer': 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary',
+    'Perm': 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary',
     'Loan': 'badge bg-info bg-opacity-10 text-info border border-info',
     'Loan with Option': 'badge bg-warning bg-opacity-10 text-warning border border-warning',
   };
 
   const shortLabels: { [key: string]: string } = {
     'Free': 'Free',
+    'Permanent Transfer': 'Perm',
     'Perm': 'Perm',
     'Loan': 'Loan',
     'Loan with Option': 'Loan+',

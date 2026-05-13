@@ -42,7 +42,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
   'Under Review': {
     badgeClassName: 'agent-status-under-review',
     displayLabel: 'Under Review',
-    shortLabel: 'Under Review',
+    shortLabel: 'UR',
     title: 'Multi-factor assessment in progress',
     summary: 'The player is being assessed against internal criteria including data, profile fit, availability, eligibility and scouting context.',
     clubAction: 'The club is reviewing the recommendation across technical, scouting and squad-planning criteria.',
@@ -54,7 +54,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
   'Added to Emerging Talent Process': {
     badgeClassName: 'agent-status-emerging-talent',
     displayLabel: 'Added to Emerging Talent Process',
-    shortLabel: 'Emerging Talent',
+    shortLabel: 'Added to ETP',
     title: 'Added to the Emerging Talent longlist',
     summary: 'The player has met the required criteria and is now in the Emerging Talent process for further video and live assessment.',
     clubAction: 'The recruitment team is continuing assessment through longer-term talent tracking.',
@@ -66,7 +66,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
   'Added to Scouting Process': {
     badgeClassName: 'agent-status-scouting',
     displayLabel: 'Added to First Team Scouting Process',
-    shortLabel: 'First Team Scouting',
+    shortLabel: 'Added to FTP',
     title: 'Added to the First Team longlist',
     summary: 'The player has met the required criteria and is now in the First Team process for further video and live assessment.',
     clubAction: 'The scouting team is gathering further evidence, with a minimum expectation of two live matches before a senior decision.',
@@ -78,7 +78,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
   'Not Currently under Consideration': {
     badgeClassName: 'agent-status-not-under-consideration',
     displayLabel: 'Not Currently Under Consideration',
-    shortLabel: 'Archived',
+    shortLabel: 'NCUC',
     title: 'Archived for now',
     summary: 'The player does not meet the club’s current criteria and is not under active consideration at this time.',
     clubAction: 'The profile has been archived from the active process.',
