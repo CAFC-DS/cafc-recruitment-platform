@@ -743,12 +743,18 @@ const AppNavbar: React.FC = () => {
                   ⚙️ Settings
                 </Dropdown.Toggle>
                 <Dropdown.Menu align="end">
+                  {user?.role !== "agent" && (
+                    <Dropdown.Item onClick={() => navigate("/me")}>
+                      👤 Profile
+                    </Dropdown.Item>
+                  )}
                   <Dropdown.Item onClick={toggleDarkMode}>
                     {theme.isDark ? "☀️ Light Mode" : "🌙 Dark Mode"}
                   </Dropdown.Item>
                   <Dropdown.Item onClick={() => setShowHelpModal(true)}>
                     ❓ Help
                   </Dropdown.Item>
+                  {user?.role !== "agent" && <Dropdown.Divider />}
                   <Dropdown.Divider />
                   <Dropdown.Item onClick={logout}>
                     🚪 Logout

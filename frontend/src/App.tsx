@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
 import AdminPage from './pages/AdminPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import PersonalAnalyticsPage from './pages/PersonalAnalyticsPage';
 import PlayerListsPage from './pages/PlayerListsPage';
 import KanbanPage from './pages/KanbanPage';
 import SharedReportPage from './pages/SharedReportPage';
@@ -453,6 +454,14 @@ function App() {
                 <AnalyticsRoute>
                   <AnalyticsPage />
                 </AnalyticsRoute>
+              }
+            />
+            <Route
+              path="/me"
+              element={
+                <PrivateRoute>
+                  <PersonalAnalyticsPage />
+                </PrivateRoute>
               }
             />
             <Route
