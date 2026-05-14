@@ -11778,6 +11778,547 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
 
 
 
+@app.get("/users/me/analytics")
+async def get_my_analytics(
+    current_user: User = Depends(get_current_user),
+    months: Optional[int] = None,
+    position: Optional[str] = None,
+):
+    """Get personal scouting analytics for the current internal user."""
+    if current_user.role not in INTERNAL_ROLES:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Internal users only."
+        )
+
+    cache_key = f"my_analytics_{current_user.id}_{months}_{position}"
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        where_clauses = ["sr.USER_ID = %s"]
+        params: list[Any] = [current_user.id]
+
+        if months:
+            where_clauses.append("sr.CREATED_AT >= DATEADD(month, %s, CURRENT_DATE())")
+            params.append(-months)
+
+        if position:
+            where_clauses.append("sr.POSITION = %s")
+            params.append(position)
+
+        where_sql = " AND ".join(where_clauses)
+
+        cursor.execute(
+            f"""
+            SELECT
+                COUNT_IF(sr.REPORT_TYPE = 'Player Assessment') AS TOTAL_PLAYER_ASSESSMENTS,
+                COUNT_IF(sr.REPORT_TYPE IN ('Player Assessment', 'Flag')) AS TOTAL_ALL_REPORTS,
+                COUNT_IF(sr.REPORT_TYPE = 'Flag') AS TOTAL_FLAG_REPORTS,
+                AVG(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' AND sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE,
+                COUNT(DISTINCT CASE
+                    WHEN sr.REPORT_TYPE = 'Player Assessment' THEN COALESCE(sr.CAFC_PLAYER_ID, sr.PLAYER_ID)
+                END) AS UNIQUE_PLAYERS_ASSESSED
+            FROM scout_reports sr
+            WHERE {where_sql}
+            """,
+            params,
+        )
+        summary_row = cursor.fetchone() or {}
+
+        cursor.execute(
+            f"""
+            SELECT
+                TO_CHAR(DATE_TRUNC('MONTH', sr.CREATED_AT), 'YYYY-MM') AS MONTH,
+                COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' THEN 1 ELSE 0 END), 0) AS ASSESSMENTS,
+                COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END), 0) AS FLAGS
+            FROM scout_reports sr
+            WHERE {where_sql}
+              AND sr.REPORT_TYPE IN ('Player Assessment', 'Flag')
+            GROUP BY DATE_TRUNC('MONTH', sr.CREATED_AT)
+            ORDER BY MONTH ASC
+            """,
+            params,
+        )
+        monthly_reports_timeline = []
+        for row in cursor.fetchall():
+            assessments = int(row["ASSESSMENTS"] or 0)
+            flags = int(row["FLAGS"] or 0)
+            monthly_reports_timeline.append(
+                {
+                    "month": row["MONTH"] or "",
+                    "assessments": assessments,
+                    "flags": flags,
+                    "total": assessments + flags,
+                }
+            )
+
+        cursor.execute(
+            f"""
+            SELECT
+                sr.POSITION AS POSITION,
+                SUM(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' THEN 1 ELSE 0 END) AS ASSESSMENTS,
+                SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END) AS FLAGS,
+                COUNT(*) AS TOTAL
+            FROM scout_reports sr
+            WHERE {where_sql}
+              AND sr.POSITION IS NOT NULL
+              AND sr.POSITION != ''
+              AND sr.REPORT_TYPE IN ('Player Assessment', 'Flag')
+            GROUP BY sr.POSITION
+            ORDER BY TOTAL DESC, sr.POSITION
+            """,
+            params,
+        )
+        reports_by_position = []
+        for row in cursor.fetchall():
+            reports_by_position.append(
+                {
+                    "position": row["POSITION"],
+                    "assessments": int(row["ASSESSMENTS"] or 0),
+                    "flags": int(row["FLAGS"] or 0),
+                    "total": int(row["TOTAL"] or 0),
+                }
+            )
+
+        cursor.execute(
+            f"""
+            SELECT
+                COALESCE(p.PLAYERNAME, 'Unknown Player') AS PLAYER_NAME,
+                COALESCE(sr.POSITION, 'Unknown') AS POSITION,
+                AVG(sr.PERFORMANCE_SCORE) AS AVG_PERFORMANCE_SCORE,
+                COUNT(sr.ID) AS REPORT_COUNT,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
+                COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            WHERE {where_sql}
+              AND sr.REPORT_TYPE = 'Player Assessment'
+              AND sr.PERFORMANCE_SCORE IS NOT NULL
+            GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
+            ORDER BY AVG_PERFORMANCE_SCORE DESC, REPORT_COUNT DESC
+            LIMIT 10
+            """,
+            params,
+        )
+        top_players_by_performance = []
+        for row in cursor.fetchall():
+            top_players_by_performance.append(
+                {
+                    "player_name": row["PLAYER_NAME"] or "Unknown Player",
+                    "position": row["POSITION"] or "Unknown",
+                    "avg_performance_score": round(
+                        float(row["AVG_PERFORMANCE_SCORE"] or 0), 2
+                    ),
+                    "report_count": int(row["REPORT_COUNT"] or 0),
+                    "player_id": int(row["PLAYER_ID"] or 0),
+                    "data_source": row["DATA_SOURCE"] or "external",
+                }
+            )
+
+        cursor.execute(
+            f"""
+            SELECT
+                COALESCE(p.PLAYERNAME, 'Unknown Player') AS PLAYER_NAME,
+                COALESCE(sr.POSITION, 'Unknown') AS POSITION,
+                AVG(sr.ATTRIBUTE_SCORE) AS AVG_ATTRIBUTE_SCORE,
+                COUNT(sr.ID) AS REPORT_COUNT,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
+                COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            WHERE {where_sql}
+              AND sr.REPORT_TYPE = 'Player Assessment'
+              AND sr.ATTRIBUTE_SCORE IS NOT NULL
+              AND sr.ATTRIBUTE_SCORE > 0
+            GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
+            ORDER BY AVG_ATTRIBUTE_SCORE DESC, REPORT_COUNT DESC
+            LIMIT 10
+            """,
+            params,
+        )
+        top_players_by_attributes = []
+        for row in cursor.fetchall():
+            top_players_by_attributes.append(
+                {
+                    "player_name": row["PLAYER_NAME"] or "Unknown Player",
+                    "position": row["POSITION"] or "Unknown",
+                    "avg_attribute_score": round(
+                        float(row["AVG_ATTRIBUTE_SCORE"] or 0), 2
+                    ),
+                    "report_count": int(row["REPORT_COUNT"] or 0),
+                    "player_id": int(row["PLAYER_ID"] or 0),
+                    "data_source": row["DATA_SOURCE"] or "external",
+                }
+            )
+
+        cursor.execute(
+            f"""
+            SELECT COUNT(*) AS TOTAL_COUNT
+            FROM (
+                SELECT
+                    COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_KEY,
+                    sr.POSITION
+                FROM scout_reports sr
+                LEFT JOIN players p ON (
+                    (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                    (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+                )
+                WHERE {where_sql}
+                  AND sr.REPORT_TYPE = 'Flag'
+                  AND sr.FLAG_CATEGORY = 'Positive'
+                GROUP BY COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID), sr.POSITION
+            ) flagged_players
+            """,
+            params,
+        )
+        total_positive_flagged_count = int(
+            (cursor.fetchone() or {}).get("TOTAL_COUNT") or 0
+        )
+
+        cursor.execute(
+            f"""
+            SELECT
+                COALESCE(p.PLAYERNAME, 'Unknown Player') AS PLAYER_NAME,
+                COALESCE(sr.POSITION, 'Unknown') AS POSITION,
+                COUNT(sr.ID) AS FLAG_COUNT,
+                MAX(sr.CREATED_AT) AS MOST_RECENT_FLAG,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
+                COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            WHERE {where_sql}
+              AND sr.REPORT_TYPE = 'Flag'
+              AND sr.FLAG_CATEGORY = 'Positive'
+            GROUP BY p.PLAYERNAME, sr.POSITION, p.CAFC_PLAYER_ID, p.PLAYERID, p.DATA_SOURCE
+            ORDER BY FLAG_COUNT DESC, MOST_RECENT_FLAG DESC
+            LIMIT 25
+            """,
+            params,
+        )
+        positive_flagged_players = []
+        for row in cursor.fetchall():
+            positive_flagged_players.append(
+                {
+                    "player_name": row["PLAYER_NAME"] or "Unknown Player",
+                    "position": row["POSITION"] or "Unknown",
+                    "flag_count": int(row["FLAG_COUNT"] or 0),
+                    "most_recent_flag": row["MOST_RECENT_FLAG"].isoformat()
+                    if row["MOST_RECENT_FLAG"]
+                    else None,
+                    "player_id": int(row["PLAYER_ID"] or 0),
+                    "data_source": row["DATA_SOURCE"] or "external",
+                    "report_count": int(row["FLAG_COUNT"] or 0),
+                }
+            )
+
+        reports_limit = 20
+        reports_offset = 0
+        cursor.execute(
+            f"""
+            SELECT COUNT(*) AS TOTAL_REPORTS
+            FROM scout_reports sr
+            WHERE {where_sql}
+            """,
+            params,
+        )
+        my_reports_total = int((cursor.fetchone() or {}).get("TOTAL_REPORTS") or 0)
+
+        cursor.execute(
+            f"""
+            SELECT
+                sr.ID AS REPORT_ID,
+                sr.CREATED_AT AS CREATED_AT,
+                COALESCE(p.PLAYERNAME, 'Unknown Player') AS PLAYER_NAME,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
+                COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE,
+                CASE
+                    WHEN p.DATA_SOURCE = 'internal' AND p.CAFC_PLAYER_ID IS NOT NULL THEN CONCAT('internal_', p.CAFC_PLAYER_ID)
+                    WHEN p.DATA_SOURCE = 'external' AND p.PLAYERID IS NOT NULL THEN CONCAT('external_', p.PLAYERID)
+                    ELSE NULL
+                END AS UNIVERSAL_ID,
+                DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()) AS AGE,
+                DATE(m.SCHEDULEDDATE) AS FIXTURE_DATE,
+                CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) AS FIXTURE_DETAILS,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') AS SCOUT_NAME,
+                COALESCE(sr.REPORT_TYPE, 'Player Assessment') AS REPORT_TYPE,
+                COALESCE(sr.POSITION, 'Unknown') AS POSITION,
+                sr.PERFORMANCE_SCORE AS PERFORMANCE_SCORE,
+                sr.ATTRIBUTE_SCORE AS ATTRIBUTE_SCORE,
+                sr.FLAG_CATEGORY AS FLAG_CATEGORY,
+                sr.SCOUTING_TYPE AS SCOUTING_TYPE,
+                COALESCE(sr.IS_POTENTIAL, FALSE) AS IS_POTENTIAL,
+                COALESCE(sr.IS_ARCHIVED, FALSE) AS IS_ARCHIVED,
+                CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END AS HAS_BEEN_VIEWED,
+                LEFT(sr.SUMMARY, 180) AS SUMMARY
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            LEFT JOIN scout_report_views srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
+            WHERE {where_sql}
+            ORDER BY sr.CREATED_AT DESC, sr.ID DESC
+            LIMIT %s OFFSET %s
+            """,
+            [current_user.id, *params, reports_limit, reports_offset],
+        )
+        my_reports = []
+        for row in cursor.fetchall():
+            my_reports.append(
+                {
+                    "report_id": int(row["REPORT_ID"]),
+                    "created_at": row["CREATED_AT"].isoformat()
+                    if row["CREATED_AT"]
+                    else None,
+                    "player_name": row["PLAYER_NAME"] or "Unknown Player",
+                    "player_id": int(row["PLAYER_ID"] or 0),
+                    "data_source": row["DATA_SOURCE"] or "external",
+                    "universal_id": row["UNIVERSAL_ID"] or None,
+                    "age": int(row["AGE"]) if row["AGE"] is not None else None,
+                    "fixture_date": row["FIXTURE_DATE"].isoformat()
+                    if row["FIXTURE_DATE"]
+                    else None,
+                    "fixture_details": row["FIXTURE_DETAILS"] or None,
+                    "scout_name": row["SCOUT_NAME"] or "Unknown Scout",
+                    "report_type": row["REPORT_TYPE"] or "Player Assessment",
+                    "position": row["POSITION"] or "Unknown",
+                    "performance_score": float(row["PERFORMANCE_SCORE"])
+                    if row["PERFORMANCE_SCORE"] is not None
+                    else None,
+                    "attribute_score": float(row["ATTRIBUTE_SCORE"])
+                    if row["ATTRIBUTE_SCORE"] is not None
+                    else None,
+                    "flag_category": row["FLAG_CATEGORY"],
+                    "scouting_type": row["SCOUTING_TYPE"],
+                    "is_potential": bool(row["IS_POTENTIAL"]),
+                    "is_archived": bool(row["IS_ARCHIVED"]),
+                    "has_been_viewed": bool(row["HAS_BEEN_VIEWED"]),
+                    "summary": row["SUMMARY"] or None,
+                }
+            )
+
+        result = {
+            "summary": {
+                "total_player_assessments": int(
+                    summary_row.get("TOTAL_PLAYER_ASSESSMENTS") or 0
+                ),
+                "total_all_reports": int(summary_row.get("TOTAL_ALL_REPORTS") or 0),
+                "total_flag_reports": int(summary_row.get("TOTAL_FLAG_REPORTS") or 0),
+                "avg_performance_score": round(
+                    float(summary_row.get("AVG_PERFORMANCE_SCORE") or 0), 2
+                ),
+                "unique_players_assessed": int(
+                    summary_row.get("UNIQUE_PLAYERS_ASSESSED") or 0
+                ),
+            },
+            "monthly_reports_timeline": monthly_reports_timeline,
+            "reports_by_position": reports_by_position,
+            "top_players_by_performance": top_players_by_performance,
+            "top_players_by_attributes": top_players_by_attributes,
+            "positive_flagged_players": positive_flagged_players,
+            "total_positive_flagged_count": total_positive_flagged_count,
+            "position_options": [
+                item["position"] for item in reports_by_position if item.get("position")
+            ],
+            "my_reports": my_reports,
+            "my_reports_total": my_reports_total,
+            "my_reports_limit": reports_limit,
+            "my_reports_offset": reports_offset,
+        }
+
+        set_cache(cache_key, result, expiry_minutes=10)
+        return result
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving personal analytics: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/users/me/reports")
+async def get_my_reports(
+    current_user: User = Depends(get_current_user),
+    months: Optional[int] = None,
+    position: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+    sort_by: str = "created_at",
+    sort_direction: str = "desc",
+):
+    """Get paginated personal reports for the current internal user."""
+    if current_user.role not in INTERNAL_ROLES:
+        raise HTTPException(
+            status_code=403, detail="Access denied. Internal users only."
+        )
+
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    sort_direction = "asc" if str(sort_direction).lower() == "asc" else "desc"
+
+    sort_columns = {
+        "created_at": "sr.CREATED_AT",
+        "player_name": "PLAYER_NAME",
+        "report_type": "REPORT_TYPE",
+        "position": "POSITION",
+        "performance_score": "PERFORMANCE_SCORE",
+        "attribute_score": "ATTRIBUTE_SCORE",
+        "flag_category": "FLAG_CATEGORY",
+        "scouting_type": "SCOUTING_TYPE",
+    }
+    resolved_sort_by = sort_by if sort_by in sort_columns else "created_at"
+
+    cache_key = (
+        f"my_reports_{current_user.id}_{months}_{position}_{limit}_{offset}_"
+        f"{resolved_sort_by}_{sort_direction}"
+    )
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor(snowflake.connector.DictCursor)
+
+        where_clauses = ["sr.USER_ID = %s"]
+        params: list[Any] = [current_user.id]
+
+        if months:
+            where_clauses.append("sr.CREATED_AT >= DATEADD(month, %s, CURRENT_DATE())")
+            params.append(-months)
+
+        if position:
+            where_clauses.append("sr.POSITION = %s")
+            params.append(position)
+
+        where_sql = " AND ".join(where_clauses)
+
+        cursor.execute(
+            f"""
+            SELECT COUNT(*) AS TOTAL_REPORTS
+            FROM scout_reports sr
+            WHERE {where_sql}
+            """,
+            params,
+        )
+        total = int((cursor.fetchone() or {}).get("TOTAL_REPORTS") or 0)
+
+        cursor.execute(
+            f"""
+            SELECT
+                sr.ID AS REPORT_ID,
+                sr.CREATED_AT AS CREATED_AT,
+                COALESCE(p.PLAYERNAME, 'Unknown Player') AS PLAYER_NAME,
+                COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
+                COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE,
+                CASE
+                    WHEN p.DATA_SOURCE = 'internal' AND p.CAFC_PLAYER_ID IS NOT NULL THEN CONCAT('internal_', p.CAFC_PLAYER_ID)
+                    WHEN p.DATA_SOURCE = 'external' AND p.PLAYERID IS NOT NULL THEN CONCAT('external_', p.PLAYERID)
+                    ELSE NULL
+                END AS UNIVERSAL_ID,
+                DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()) AS AGE,
+                DATE(m.SCHEDULEDDATE) AS FIXTURE_DATE,
+                CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) AS FIXTURE_DETAILS,
+                COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') AS SCOUT_NAME,
+                COALESCE(sr.REPORT_TYPE, 'Player Assessment') AS REPORT_TYPE,
+                COALESCE(sr.POSITION, 'Unknown') AS POSITION,
+                sr.PERFORMANCE_SCORE AS PERFORMANCE_SCORE,
+                sr.ATTRIBUTE_SCORE AS ATTRIBUTE_SCORE,
+                sr.FLAG_CATEGORY AS FLAG_CATEGORY,
+                sr.SCOUTING_TYPE AS SCOUTING_TYPE,
+                COALESCE(sr.IS_POTENTIAL, FALSE) AS IS_POTENTIAL,
+                COALESCE(sr.IS_ARCHIVED, FALSE) AS IS_ARCHIVED,
+                CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END AS HAS_BEEN_VIEWED,
+                LEFT(sr.SUMMARY, 180) AS SUMMARY
+            FROM scout_reports sr
+            LEFT JOIN players p ON (
+                (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
+                (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
+            )
+            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN users u ON sr.USER_ID = u.ID
+            LEFT JOIN scout_report_views srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
+            WHERE {where_sql}
+            ORDER BY {sort_columns[resolved_sort_by]} {sort_direction.upper()}, sr.ID DESC
+            LIMIT %s OFFSET %s
+            """,
+            [current_user.id, *params, limit, offset],
+        )
+
+        reports = []
+        for row in cursor.fetchall():
+            reports.append(
+                {
+                    "report_id": int(row["REPORT_ID"]),
+                    "created_at": row["CREATED_AT"].isoformat()
+                    if row["CREATED_AT"]
+                    else None,
+                    "player_name": row["PLAYER_NAME"] or "Unknown Player",
+                    "player_id": int(row["PLAYER_ID"] or 0),
+                    "data_source": row["DATA_SOURCE"] or "external",
+                    "universal_id": row["UNIVERSAL_ID"] or None,
+                    "age": int(row["AGE"]) if row["AGE"] is not None else None,
+                    "fixture_date": row["FIXTURE_DATE"].isoformat()
+                    if row["FIXTURE_DATE"]
+                    else None,
+                    "fixture_details": row["FIXTURE_DETAILS"] or None,
+                    "scout_name": row["SCOUT_NAME"] or "Unknown Scout",
+                    "report_type": row["REPORT_TYPE"] or "Player Assessment",
+                    "position": row["POSITION"] or "Unknown",
+                    "performance_score": float(row["PERFORMANCE_SCORE"])
+                    if row["PERFORMANCE_SCORE"] is not None
+                    else None,
+                    "attribute_score": float(row["ATTRIBUTE_SCORE"])
+                    if row["ATTRIBUTE_SCORE"] is not None
+                    else None,
+                    "flag_category": row["FLAG_CATEGORY"],
+                    "scouting_type": row["SCOUTING_TYPE"],
+                    "is_potential": bool(row["IS_POTENTIAL"]),
+                    "is_archived": bool(row["IS_ARCHIVED"]),
+                    "has_been_viewed": bool(row["HAS_BEEN_VIEWED"]),
+                    "summary": row["SUMMARY"] or None,
+                }
+            )
+
+        result = {
+            "reports": reports,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "sort_by": resolved_sort_by,
+            "sort_direction": sort_direction,
+        }
+        set_cache(cache_key, result, expiry_minutes=5)
+        return result
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving personal reports: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/analytics/players")
 async def get_player_analytics(
     current_user: User = Depends(get_current_user),
