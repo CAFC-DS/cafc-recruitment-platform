@@ -37,6 +37,9 @@ import tempfile
 import os.path
 import csv
 import io
+from pathlib import Path
+import math
+from bisect import bisect_left
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
@@ -145,6 +148,335 @@ def find_player_by_any_id(player_id: int, cursor):
         return result, "external"
 
     return None, None
+
+
+IMPECT_DATABASE = "CAFC_DB"
+IMPECT_SCHEMA = "IMPECT_RAW"
+IMPECT_TABLE = "CHAMPIONSHIP_PLAYER_KPIS"
+IMPECT_COMPETITION = "Championship"
+IMPECT_SEASON = "25/26"
+IMPECT_ITERATION_ID = 1410
+
+IMPECT_POSITION_RELEVANT_PARENTS: dict[str, list[str]] = {
+    "GOALKEEPER": [
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Bypassed Opponents",
+        "Bypassed Defenders",
+        "Ball Loss Removed Teammates",
+        "Ball Loss Removed Teammates Defenders",
+        "Ball Win Number",
+        "Defensive Touches",
+    ],
+    "CENTRAL_DEFENDER": [
+        "Bypassed Opponents",
+        "Bypassed Defenders",
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Ball Loss Removed Teammates",
+        "Ball Win Number",
+        "Defensive Touches",
+        "Won Aerial Duels",
+    ],
+    "LEFT_WINGBACK_DEFENDER": [
+        "Bypassed Opponents",
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Offensive Touches",
+        "Defensive Touches",
+        "Assists",
+        "Won Ground Duels",
+        "Shot-based xG",
+    ],
+    "RIGHT_WINGBACK_DEFENDER": [
+        "Bypassed Opponents",
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Offensive Touches",
+        "Defensive Touches",
+        "Assists",
+        "Won Ground Duels",
+        "Shot-based xG",
+    ],
+    "DEFENSE_MIDFIELD": [
+        "Bypassed Opponents",
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Ball Win Number",
+        "Ball Loss Removed Teammates",
+        "Offensive Touches",
+        "Defensive Touches",
+        "Won Ground Duels",
+    ],
+    "CENTRAL_MIDFIELD": [
+        "Bypassed Opponents",
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Ball Win Number",
+        "Offensive Touches",
+        "Defensive Touches",
+        "Won Ground Duels",
+        "Shot-based xG",
+    ],
+    "ATTACKING_MIDFIELD": [
+        "Bypassed Opponents",
+        "Bypassed Defenders",
+        "Successful Passes",
+        "Unsuccessful Passes",
+        "Offensive Touches",
+        "Assists",
+        "Shot-based xG",
+        "Goals",
+    ],
+    "LEFT_WINGER": [
+        "Bypassed Opponents",
+        "Bypassed Defenders",
+        "Offensive Touches",
+        "Assists",
+        "Shot-based xG",
+        "Goals",
+        "Total Shots",
+        "Won Ground Duels",
+    ],
+    "RIGHT_WINGER": [
+        "Bypassed Opponents",
+        "Bypassed Defenders",
+        "Offensive Touches",
+        "Assists",
+        "Shot-based xG",
+        "Goals",
+        "Total Shots",
+        "Won Ground Duels",
+    ],
+    "CENTER_FORWARD": [
+        "Goals",
+        "Shot-based xG",
+        "Total Shots",
+        "Total Shots Off Target",
+        "Assists",
+        "Offensive Touches",
+        "Bypassed Defenders",
+        "Won Aerial Duels",
+    ],
+}
+
+
+def get_impect_direct_metric_label(
+    metric_name: str, metric_label: str, colliding_labels: set[str]
+) -> str:
+    """Disambiguate direct KPI labels that would otherwise collide in the UI."""
+    if metric_name.startswith("CONCEDED_"):
+        return f"Conceded {metric_label}"
+
+    if metric_name.startswith("OPP_") and "Opponent" not in metric_label:
+        return f"Opponent {metric_label}"
+
+    if metric_name.startswith("DEF_PXT_") and "Defensive Threat" not in metric_label:
+        return f"{metric_label} (Defensive Threat)"
+
+    if metric_label in colliding_labels:
+        cleaned_metric_name = metric_name.replace("_", " ").title()
+        cleaned_metric_name = (
+            cleaned_metric_name.replace(" Xg", " xG")
+            .replace(" Pxt", " PXT")
+            .replace("Gk", "GK")
+        )
+        return cleaned_metric_name
+
+    return metric_label
+
+
+def get_impect_glossary_candidates() -> list[Path]:
+    """Return candidate paths for the combined IMPECT glossary CSV."""
+    repo_root = Path(__file__).resolve().parents[1]
+    configured_path = os.getenv("IMPECT_GLOSSARY_PATH")
+
+    candidates = [
+        Path(configured_path).expanduser() if configured_path else None,
+        Path(
+            "/Users/hashim.umarji/Desktop/CAFC/2025-26/Analysis/Coding/full-season-analysis/impect_kpi_glossary_combined.csv"
+        ),
+        (repo_root / "../../../Analysis/Coding/full-season-analysis/impect_kpi_glossary_combined.csv").resolve(),
+    ]
+
+    return [candidate for candidate in candidates if candidate is not None]
+
+
+@lru_cache(maxsize=1)
+def load_impect_glossary_metric_config() -> dict[int, dict[str, Any]]:
+    """
+    Load the IMPECT glossary and map KPI columns to child and parent labels.
+
+    Parent KPI rows group naturally under their glossary parent. Direct KPIs
+    without a parent label are still important for the UI, so we promote them
+    to their own parent metric using the KPI label.
+    """
+    glossary_path = next(
+        (candidate for candidate in get_impect_glossary_candidates() if candidate.exists()),
+        None,
+    )
+
+    if glossary_path is None:
+        raise FileNotFoundError("Could not locate impect_kpi_glossary_combined.csv")
+
+    with glossary_path.open("r", encoding="utf-8", newline="") as glossary_file:
+        glossary_rows = list(csv.DictReader(glossary_file))
+
+    direct_metric_names_by_label: dict[str, set[str]] = {}
+    for row in glossary_rows:
+        raw_kpi_id = (row.get("id") or "").strip()
+        metric_label = (row.get("details_label") or row.get("name") or "").strip()
+        metric_name = (row.get("name") or "").strip().upper()
+        parent_metric = (row.get("parentKpi_label") or "").strip()
+
+        if not raw_kpi_id or not metric_label or parent_metric or not metric_name:
+            continue
+
+        direct_metric_names_by_label.setdefault(metric_label, set()).add(metric_name)
+
+    colliding_direct_labels = {
+        label
+        for label, metric_names in direct_metric_names_by_label.items()
+        if len(metric_names) > 1
+    }
+
+    metric_config: dict[int, dict[str, Any]] = {}
+    for row in glossary_rows:
+        raw_kpi_id = (row.get("id") or "").strip()
+        metric_label = (row.get("details_label") or row.get("name") or "").strip()
+        metric_name = (row.get("name") or "").strip().upper()
+        parent_metric = (row.get("parentKpi_label") or "").strip()
+        is_direct_kpi = not bool(parent_metric)
+        display_metric_label = (
+            get_impect_direct_metric_label(
+                metric_name, metric_label, colliding_direct_labels
+            )
+            if is_direct_kpi
+            else metric_label
+        )
+
+        if not raw_kpi_id or not metric_label:
+            continue
+
+        try:
+            metric_id = int(float(raw_kpi_id))
+        except ValueError:
+            continue
+
+        if metric_id in metric_config:
+            continue
+
+        metric_config[metric_id] = {
+            "metric_id": metric_id,
+            "metric_name": metric_name,
+            "metric_label": display_metric_label,
+            "parent_metric": parent_metric or display_metric_label,
+            "invert": str(row.get("inverted") or "").strip().lower() == "true",
+            "is_event_level": str(row.get("is_event_level") or "").strip().lower() == "true",
+            "is_direct_kpi": is_direct_kpi,
+        }
+
+    return metric_config
+
+
+def aggregate_impect_parent_metrics(
+    metric_rows: list[tuple[Any, ...]],
+    metric_config: dict[int, dict[str, Any]],
+    position: str,
+) -> list[dict[str, Any]]:
+    """Group child metrics under parents and derive parent-level aggregates."""
+    grouped_metrics: dict[str, list[dict[str, Any]]] = {}
+    relevant_parent_metrics = set(IMPECT_POSITION_RELEVANT_PARENTS.get(position, []))
+
+    for metric_id, metric_value, percentile, z_score in metric_rows:
+        metric_definition = metric_config.get(int(metric_id))
+        if not metric_definition:
+            continue
+
+        child_metric = {
+            "metric_id": metric_definition["metric_id"],
+            "metric_name": metric_definition["metric_name"],
+            "metric_label": metric_definition["metric_label"],
+            "parent_metric": metric_definition["parent_metric"],
+            "value": round(float(metric_value), 4) if metric_value is not None else None,
+            "percentile": round(float(percentile), 1) if percentile is not None else None,
+            "z_score": round(float(z_score), 3) if z_score is not None else None,
+            "invert": metric_definition["invert"],
+            "is_direct_kpi": metric_definition["is_direct_kpi"],
+        }
+        grouped_metrics.setdefault(metric_definition["parent_metric"], []).append(child_metric)
+
+    parent_metrics: list[dict[str, Any]] = []
+    for parent_metric, child_metrics in grouped_metrics.items():
+        direct_kpi_metric = next(
+            (metric for metric in child_metrics if metric["is_direct_kpi"]),
+            None,
+        )
+        percentile_values = [
+            metric["percentile"] for metric in child_metrics if metric["percentile"] is not None
+        ]
+        z_score_values = [
+            metric["z_score"] for metric in child_metrics if metric["z_score"] is not None
+        ]
+
+        child_metrics.sort(
+            key=lambda metric: (
+                0 if metric["is_direct_kpi"] else 1,
+                metric["metric_label"],
+            )
+        )
+        parent_metrics.append(
+            {
+                "parent_metric": parent_metric,
+                "score": direct_kpi_metric["z_score"]
+                if direct_kpi_metric and direct_kpi_metric["z_score"] is not None
+                else (
+                    round(sum(z_score_values) / len(z_score_values), 3)
+                    if z_score_values
+                    else None
+                ),
+                "percentile": direct_kpi_metric["percentile"]
+                if direct_kpi_metric and direct_kpi_metric["percentile"] is not None
+                else (
+                    round(sum(percentile_values) / len(percentile_values), 1)
+                    if percentile_values
+                    else None
+                ),
+                "child_count": len(child_metrics),
+                "is_relevant": parent_metric in relevant_parent_metrics,
+                "child_metrics": child_metrics,
+            }
+        )
+
+    parent_metrics.sort(
+        key=lambda metric: metric["percentile"] if metric["percentile"] is not None else -1,
+        reverse=True,
+    )
+    return parent_metrics
+
+
+def calculate_impect_percentile(metric_value: float, peer_values: list[float]) -> float:
+    """Approximate Snowflake PERCENT_RANK() semantics for ascending values."""
+    if len(peer_values) <= 1:
+        return 0.0
+
+    sorted_values = sorted(peer_values)
+    rank_index = bisect_left(sorted_values, metric_value)
+    return (rank_index / (len(sorted_values) - 1)) * 100
+
+
+def calculate_impect_z_score(metric_value: float, peer_values: list[float]) -> Optional[float]:
+    """Calculate a z-score for a metric within its position peer group."""
+    if len(peer_values) <= 1:
+        return None
+
+    mean_value = sum(peer_values) / len(peer_values)
+    variance = sum((value - mean_value) ** 2 for value in peer_values) / (len(peer_values) - 1)
+    stddev_value = math.sqrt(variance)
+    if stddev_value == 0:
+        return None
+
+    return (metric_value - mean_value) / stddev_value
 
 
 def find_player_by_universal_or_legacy_id(player_id, cursor):
@@ -9459,6 +9791,202 @@ async def get_player_attributes(
         logging.exception(e)
         raise HTTPException(
             status_code=500, detail=f"Error fetching player attributes: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/players/{player_id}/technical-metrics")
+async def get_player_technical_metrics(
+    player_id: str, current_user: User = Depends(get_current_user)
+):
+    """Return aggregated IMPECT technical metrics for external players only."""
+    cache_key = f"player_technical_metrics_{player_id}"
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+
+        if data_source != "external" or player_data[1] is not None:
+            response = {
+                "available": False,
+                "message": "There is no technical data.",
+                "player_id": player_id,
+                "positions": [],
+                "entries": [],
+            }
+            set_cache(cache_key, response, expiry_minutes=15)
+            return response
+
+        glossary_metric_config = load_impect_glossary_metric_config()
+
+        position_cursor = conn.cursor()
+        position_cursor.execute(
+            f"""
+            WITH position_matches AS (
+                SELECT
+                    POSITION,
+                    MATCHID,
+                    MAX(MATCHSHARE) AS MATCH_SHARE
+                FROM {IMPECT_DATABASE}.{IMPECT_SCHEMA}.{IMPECT_TABLE}
+                WHERE PLAYERID = %s
+                  AND COMPETITIONNAME = %s
+                  AND SEASON = %s
+                  AND ITERATIONID = %s
+                GROUP BY POSITION, MATCHID
+            )
+            SELECT
+                POSITION,
+                COUNT(*) AS MATCH_COUNT,
+                ROUND(AVG(MATCH_SHARE), 3) AS AVG_MATCH_SHARE
+            FROM position_matches
+            GROUP BY POSITION
+            ORDER BY AVG(MATCH_SHARE) DESC, POSITION
+            """,
+            (
+                player_data[0],
+                IMPECT_COMPETITION,
+                IMPECT_SEASON,
+                IMPECT_ITERATION_ID,
+            ),
+        )
+        player_positions = position_cursor.fetchall()
+
+        if not player_positions:
+            response = {
+                "available": False,
+                "message": "There is no technical data.",
+                "player_id": player_id,
+                "positions": [],
+                "entries": [],
+            }
+            set_cache(cache_key, response, expiry_minutes=15)
+            return response
+
+        positions = [row[0] for row in player_positions if row[0]]
+        position_meta = {
+            row[0]: {
+                "match_count": int(row[1]) if row[1] is not None else 0,
+                "avg_match_share": float(row[2]) if row[2] is not None else 0.0,
+            }
+            for row in player_positions
+            if row[0]
+        }
+
+        placeholders = ", ".join(["%s"] * len(positions))
+        metrics_cursor = conn.cursor()
+        metrics_cursor.execute(
+            f"""
+            WITH aggregated AS (
+                SELECT
+                    PLAYERID,
+                    POSITION,
+                    KPIID,
+                    SUM(VALUE * MATCHSHARE) / NULLIF(SUM(MATCHSHARE), 0) AS WEIGHTED_VALUE
+                FROM {IMPECT_DATABASE}.{IMPECT_SCHEMA}.{IMPECT_TABLE}
+                WHERE COMPETITIONNAME = %s
+                  AND SEASON = %s
+                  AND ITERATIONID = %s
+                  AND POSITION IN ({placeholders})
+                GROUP BY PLAYERID, POSITION, KPIID
+            ),
+            ranked AS (
+                SELECT
+                    PLAYERID,
+                    POSITION,
+                    KPIID,
+                    WEIGHTED_VALUE,
+                    PERCENT_RANK() OVER (
+                        PARTITION BY POSITION, KPIID
+                        ORDER BY WEIGHTED_VALUE
+                    ) * 100 AS PERCENTILE,
+                    AVG(WEIGHTED_VALUE) OVER (
+                        PARTITION BY POSITION, KPIID
+                    ) AS MEAN_VALUE,
+                    STDDEV_SAMP(WEIGHTED_VALUE) OVER (
+                        PARTITION BY POSITION, KPIID
+                    ) AS STDDEV_VALUE
+                FROM aggregated
+            )
+            SELECT
+                PLAYERID,
+                POSITION,
+                KPIID,
+                WEIGHTED_VALUE,
+                PERCENTILE,
+                CASE
+                    WHEN STDDEV_VALUE IS NULL OR STDDEV_VALUE = 0 THEN NULL
+                    ELSE (WEIGHTED_VALUE - MEAN_VALUE) / STDDEV_VALUE
+                END AS Z_SCORE
+            FROM ranked
+            WHERE PLAYERID = %s
+            ORDER BY POSITION, KPIID
+            """,
+            (
+                IMPECT_COMPETITION,
+                IMPECT_SEASON,
+                IMPECT_ITERATION_ID,
+                *positions,
+                player_data[0],
+            ),
+        )
+        aggregated_rows = metrics_cursor.fetchall()
+
+        position_metric_rows: dict[str, list[tuple[Any, ...]]] = {}
+        for _player_id, position, kpi_id, weighted_value, percentile, z_score in aggregated_rows:
+            if kpi_id not in glossary_metric_config:
+                continue
+            position_metric_rows.setdefault(position, []).append(
+                (kpi_id, weighted_value, percentile, z_score)
+            )
+
+        entries: list[dict[str, Any]] = []
+        for position in positions:
+            entries.append(
+                {
+                    "entry_id": f"{player_data[0]}:{position}",
+                    "position": position,
+                    "season": IMPECT_SEASON,
+                    "competition_name": IMPECT_COMPETITION,
+                    "iteration_id": IMPECT_ITERATION_ID,
+                    "player_name": player_data[2],
+                    "match_count": position_meta.get(position, {}).get("match_count", 0),
+                    "avg_match_share": position_meta.get(position, {}).get(
+                        "avg_match_share", 0.0
+                    ),
+                    "parent_metrics": aggregate_impect_parent_metrics(
+                        position_metric_rows.get(position, []),
+                        glossary_metric_config,
+                        position,
+                    ),
+                }
+            )
+
+        response = {
+            "available": len(entries) > 0,
+            "message": None if entries else "There is no technical data.",
+            "player_id": player_id,
+            "positions": positions,
+            "entries": entries,
+        }
+        set_cache(cache_key, response, expiry_minutes=15)
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching technical metrics: {e}"
         )
     finally:
         if conn:

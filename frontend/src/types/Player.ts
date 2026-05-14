@@ -113,6 +113,60 @@ export interface AttributeData {
   avg_score?: number;
 }
 
+export interface PlayerTechnicalChildMetric {
+  metric_id: number;
+  metric_name: string;
+  metric_label: string;
+  parent_metric: string;
+  value: number | null;
+  percentile: number | null;
+  z_score: number | null;
+  invert: boolean;
+  is_direct_kpi: boolean;
+}
+
+export interface PlayerTechnicalParentMetric {
+  parent_metric: string;
+  score: number | null;
+  percentile: number | null;
+  child_count: number;
+  is_relevant: boolean;
+  child_metrics: PlayerTechnicalChildMetric[];
+}
+
+export interface PlayerTechnicalDataEntry {
+  entry_id: string;
+  position: string;
+  season: string;
+  competition_name: string;
+  iteration_id: number;
+  player_name: string;
+  match_count: number;
+  avg_match_share: number;
+  parent_metrics: PlayerTechnicalParentMetric[];
+}
+
+export interface PlayerTechnicalMetricsResponse {
+  available: boolean;
+  message: string | null;
+  player_id: string;
+  positions: string[];
+  entries: PlayerTechnicalDataEntry[];
+}
+
+export type PlayerTechnicalVisibilityMode = "relevant" | "all";
+
+export type PlayerTechnicalSortColumn =
+  | "metric_label"
+  | "value"
+  | "percentile"
+  | "z_score";
+
+export interface PlayerTechnicalSortState {
+  column: PlayerTechnicalSortColumn;
+  direction: "asc" | "desc";
+}
+
 // Stage change tracking types
 export interface StageHistoryRecord {
   id: number;

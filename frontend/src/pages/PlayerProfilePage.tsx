@@ -15,6 +15,8 @@ import {
   Collapse,
   OverlayTrigger,
   Popover,
+  Tabs,
+  Tab,
 } from "react-bootstrap";
 import { PolarArea } from "react-chartjs-2";
 import ChartDataLabels from "chartjs-plugin-datalabels";
@@ -33,6 +35,7 @@ import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
 import IntelModal from "../components/IntelModal";
 import ShareLinkModal from "../components/ShareLinkModal";
+import SimpleBarChart from "../components/analytics/SimpleBarChart";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getPerformanceScoreColor, getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
@@ -44,6 +47,11 @@ import {
   AttributeData,
   PlayerFlowHistoryResponse,
   FlowHistoryEvent,
+  PlayerTechnicalMetricsResponse,
+  PlayerTechnicalDataEntry,
+  PlayerTechnicalParentMetric,
+  PlayerTechnicalSortState,
+  PlayerTechnicalVisibilityMode,
 } from "../types/Player";
 
 ChartJS.register(
@@ -297,6 +305,41 @@ const getFlowHistorySnapshot = (event: FlowHistoryEvent) => {
   return event.subtitle || "";
 };
 
+const formatTechnicalPositionLabel = (position: string) =>
+  position
+    .split("_")
+    .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
+    .join(" ");
+
+const getPercentileBandColor = (percentile: number | null) => {
+  if (percentile == null) return "#667085";
+  if (percentile < 20) return "#b42318";
+  if (percentile < 40) return "#f04438";
+  if (percentile < 60) return "#667085";
+  if (percentile < 80) return "#12b76a";
+  return "#027a48";
+};
+
+const getPercentileBandBorderColor = (percentile: number | null) => {
+  if (percentile == null) return "#475467";
+  if (percentile < 20) return "#912018";
+  if (percentile < 40) return "#d92d20";
+  if (percentile < 60) return "#475467";
+  if (percentile < 80) return "#039855";
+  return "#05603a";
+};
+
+const formatTechnicalMetricValue = (value: number | null, digits = 2) => {
+  if (value == null || Number.isNaN(value)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("en-GB", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+  }).format(value);
+};
+
 const PlayerProfilePage: React.FC = () => {
   const { playerId, cafcPlayerId } = useParams<{
     playerId?: string;
@@ -310,6 +353,8 @@ const PlayerProfilePage: React.FC = () => {
   const { canGenerateShareLinks, canSeeAllReports, isAdmin, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
+  const [technicalData, setTechnicalData] =
+    useState<PlayerTechnicalMetricsResponse | null>(null);
   const [scoutReportsData, setScoutReportsData] =
     useState<ScoutReportsData | null>(null);
   const [flowHistoryData, setFlowHistoryData] =
@@ -317,6 +362,7 @@ const PlayerProfilePage: React.FC = () => {
   const [selectedFlowHistoryEventId, setSelectedFlowHistoryEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [attributesLoading, setAttributesLoading] = useState(true);
+  const [technicalLoading, setTechnicalLoading] = useState(true);
   const [scoutReportsLoading, setScoutReportsLoading] = useState(true);
   const [flowHistoryLoading, setFlowHistoryLoading] = useState(true);
   const [error, setError] = useState("");
@@ -335,6 +381,15 @@ const PlayerProfilePage: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareReportId, setShareReportId] = useState<number | null>(null);
+  const [activeProfileTab, setActiveProfileTab] = useState<string>("overview");
+  const [selectedTechnicalEntryId, setSelectedTechnicalEntryId] = useState<string | null>(null);
+  const [selectedTechnicalParentMetric, setSelectedTechnicalParentMetric] = useState<string | null>(null);
+  const [technicalVisibilityMode, setTechnicalVisibilityMode] =
+    useState<PlayerTechnicalVisibilityMode>("relevant");
+  const [technicalSort, setTechnicalSort] = useState<PlayerTechnicalSortState>({
+    column: "percentile",
+    direction: "desc",
+  });
 
   // Scout report edit/delete state
   const [editScoutReportId, setEditScoutReportId] = useState<number | null>(null);
@@ -994,6 +1049,7 @@ const PlayerProfilePage: React.FC = () => {
     if (actualPlayerId) {
       fetchPlayerProfile();
       fetchPlayerAttributes();
+      fetchTechnicalData();
       fetchScoutReports();
       fetchFlowHistory();
       fetchPositionCounts();
@@ -1009,6 +1065,42 @@ const PlayerProfilePage: React.FC = () => {
       // No default selection - user must select positions manually
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (!technicalData?.entries?.length) {
+      setSelectedTechnicalEntryId(null);
+      setSelectedTechnicalParentMetric(null);
+      return;
+    }
+
+    const firstEntry = technicalData.entries[0];
+    setSelectedTechnicalEntryId(firstEntry.entry_id);
+    setSelectedTechnicalParentMetric(firstEntry.parent_metrics[0]?.parent_metric || null);
+  }, [technicalData]);
+
+  useEffect(() => {
+    const activeEntry =
+      technicalData?.entries.find((entry) => entry.entry_id === selectedTechnicalEntryId) ||
+      technicalData?.entries[0];
+
+    if (!activeEntry?.parent_metrics?.length) {
+      setSelectedTechnicalParentMetric(null);
+      return;
+    }
+
+    if (
+      selectedTechnicalParentMetric &&
+      activeEntry.parent_metrics.some(
+        (metric) => metric.parent_metric === selectedTechnicalParentMetric,
+      )
+    ) {
+      return;
+    }
+
+    setSelectedTechnicalParentMetric(
+      activeEntry.parent_metrics[0]?.parent_metric || null,
+    );
+  }, [technicalData, selectedTechnicalEntryId, selectedTechnicalParentMetric]);
 
   const profileDisplayName = useMemo(() => {
     if (!profile) {
@@ -1048,6 +1140,360 @@ const PlayerProfilePage: React.FC = () => {
     };
   }, [profile]);
 
+  const selectedTechnicalEntry = useMemo<PlayerTechnicalDataEntry | null>(() => {
+    if (!technicalData?.entries?.length) {
+      return null;
+    }
+
+    return (
+      technicalData.entries.find((entry) => entry.entry_id === selectedTechnicalEntryId) ||
+      technicalData.entries[0]
+    );
+  }, [technicalData, selectedTechnicalEntryId]);
+
+  const selectedTechnicalParent = useMemo<PlayerTechnicalParentMetric | null>(() => {
+    if (!selectedTechnicalEntry?.parent_metrics?.length) {
+      return null;
+    }
+
+    return (
+      selectedTechnicalEntry.parent_metrics.find(
+        (metric) => metric.parent_metric === selectedTechnicalParentMetric,
+      ) || selectedTechnicalEntry.parent_metrics[0]
+    );
+  }, [selectedTechnicalEntry, selectedTechnicalParentMetric]);
+
+  const visibleTechnicalParents = useMemo(() => {
+    const parentMetrics = selectedTechnicalEntry?.parent_metrics || [];
+    const filtered =
+      technicalVisibilityMode === "relevant"
+        ? parentMetrics.filter((metric) => metric.is_relevant)
+        : parentMetrics;
+
+    return filtered.length > 0 ? filtered : parentMetrics;
+  }, [selectedTechnicalEntry, technicalVisibilityMode]);
+
+  const sortedTechnicalChildren = useMemo(() => {
+    const childMetrics = selectedTechnicalParent?.child_metrics || [];
+    const sorted = [...childMetrics];
+    sorted.sort((a, b) => {
+      const direction = technicalSort.direction === "asc" ? 1 : -1;
+
+      if (technicalSort.column === "metric_label") {
+        return a.metric_label.localeCompare(b.metric_label) * direction;
+      }
+
+      const aValue = a[technicalSort.column] ?? Number.NEGATIVE_INFINITY;
+      const bValue = b[technicalSort.column] ?? Number.NEGATIVE_INFINITY;
+      if (aValue === bValue) {
+        return a.metric_label.localeCompare(b.metric_label);
+      }
+      return ((aValue as number) - (bValue as number)) * direction;
+    });
+    return sorted;
+  }, [selectedTechnicalParent, technicalSort]);
+
+  useEffect(() => {
+    if (!visibleTechnicalParents.length) {
+      setSelectedTechnicalParentMetric(null);
+      return;
+    }
+
+    if (
+      selectedTechnicalParentMetric &&
+      visibleTechnicalParents.some(
+        (metric) => metric.parent_metric === selectedTechnicalParentMetric,
+      )
+    ) {
+      return;
+    }
+
+    setSelectedTechnicalParentMetric(visibleTechnicalParents[0].parent_metric);
+  }, [visibleTechnicalParents, selectedTechnicalParentMetric]);
+
+  function renderTechnicalDataTab() {
+    if (technicalLoading) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" size="sm" className="me-2" />
+          Loading technical data...
+        </div>
+      );
+    }
+
+    if (!technicalData?.available || !technicalData.entries.length) {
+      return (
+        <Card className="shadow-sm" style={{ border: "1px solid #e5e7eb", borderRadius: "12px" }}>
+          <Card.Body className="text-center py-5">
+            <h5 className="mb-2">Technical Data</h5>
+            <p className="text-muted mb-0">
+              {technicalData?.message || "There is no technical data."}
+            </p>
+          </Card.Body>
+        </Card>
+      );
+    }
+
+    const parentMetrics = visibleTechnicalParents;
+    const selectedParentChildren = sortedTechnicalChildren;
+    const handleSortChange = (
+      column: PlayerTechnicalSortState["column"],
+    ) => {
+      setTechnicalSort((current) => {
+        if (current.column === column) {
+          return {
+            column,
+            direction: current.direction === "asc" ? "desc" : "asc",
+          };
+        }
+        return {
+          column,
+          direction: column === "metric_label" ? "asc" : "desc",
+        };
+      });
+    };
+
+    const renderSortLabel = (
+      label: string,
+      column: PlayerTechnicalSortState["column"],
+    ) => (
+      <button
+        type="button"
+        className="technical-sort-button"
+        onClick={() => handleSortChange(column)}
+      >
+        <span>{label}</span>
+        <span className="technical-sort-indicator">
+          {technicalSort.column === column
+            ? technicalSort.direction === "asc"
+              ? "▲"
+              : "▼"
+            : "↕"}
+        </span>
+      </button>
+    );
+
+    return (
+      <div className="d-flex flex-column gap-4">
+        <Card className="shadow-sm" style={{ border: "1px solid #e5e7eb", borderRadius: "12px" }}>
+          <Card.Body>
+            <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+              <div>
+                <h4 className="mb-1">Technical Data</h4>
+                <p className="text-muted mb-0">
+                  Championship IMPECT KPI percentiles against players in the same position bucket.
+                  Values are rate-based season averages, not raw season totals.
+                </p>
+                <div className="technical-percentile-legend mt-2">
+                  <span className="technical-legend-item">
+                    <span
+                      className="technical-legend-swatch"
+                      style={{ backgroundColor: getPercentileBandColor(10) }}
+                    />
+                    Low percentile
+                  </span>
+                  <span className="technical-legend-item">
+                    <span
+                      className="technical-legend-swatch"
+                      style={{ backgroundColor: getPercentileBandColor(50) }}
+                    />
+                    Around positional average
+                  </span>
+                  <span className="technical-legend-item">
+                    <span
+                      className="technical-legend-swatch"
+                      style={{ backgroundColor: getPercentileBandColor(90) }}
+                    />
+                    High percentile
+                  </span>
+                </div>
+              </div>
+              <div className="d-flex align-items-end gap-3 flex-wrap">
+                <div style={{ minWidth: "280px" }}>
+                  <Form.Label className="fw-semibold mb-1">Position</Form.Label>
+                  <Form.Select
+                    value={selectedTechnicalEntry?.entry_id || ""}
+                    onChange={(e) => setSelectedTechnicalEntryId(e.target.value)}
+                  >
+                    {technicalData.entries.map((entry) => (
+                      <option key={entry.entry_id} value={entry.entry_id}>
+                        {formatTechnicalPositionLabel(entry.position)}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </div>
+
+                <div className="technical-visibility-toggle">
+                  <Form.Label className="fw-semibold mb-1">Metric View</Form.Label>
+                  <div className="btn-group d-flex">
+                    <Button
+                      variant={
+                        technicalVisibilityMode === "relevant"
+                          ? "dark"
+                          : "outline-secondary"
+                      }
+                      size="sm"
+                      onClick={() => setTechnicalVisibilityMode("relevant")}
+                    >
+                      Relevant metrics
+                    </Button>
+                    <Button
+                      variant={
+                        technicalVisibilityMode === "all"
+                          ? "dark"
+                          : "outline-secondary"
+                      }
+                      size="sm"
+                      onClick={() => setTechnicalVisibilityMode("all")}
+                    >
+                      Show all
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {selectedTechnicalEntry ? (
+              <div className="d-flex flex-wrap gap-2 mt-3">
+                <span className="badge badge-neutral-grey">
+                  Position: {formatTechnicalPositionLabel(selectedTechnicalEntry.position)}
+                </span>
+                <span className="badge badge-neutral-grey">
+                  Matches: {selectedTechnicalEntry.match_count}
+                </span>
+                <span className="badge badge-neutral-grey">
+                  Average Match Share: {formatTechnicalMetricValue(selectedTechnicalEntry.avg_match_share)}
+                </span>
+                <span className="badge badge-neutral-grey">
+                  Season: {selectedTechnicalEntry.season}
+                </span>
+              </div>
+            ) : null}
+          </Card.Body>
+        </Card>
+
+        {selectedTechnicalEntry ? (
+          <Row>
+            <Col lg={7} className="mb-4">
+              <SimpleBarChart
+                title="Parent Metric Percentiles"
+                labels={parentMetrics.map((metric) => metric.parent_metric)}
+                data={parentMetrics.map((metric) => metric.percentile || 0)}
+                color={parentMetrics.map((metric) =>
+                  getPercentileBandColor(metric.percentile),
+                )}
+                borderColor={parentMetrics.map((metric) =>
+                  getPercentileBandBorderColor(metric.percentile),
+                )}
+                height={Math.max(420, parentMetrics.length * 36)}
+                tooltipLabelPrefix="Percentile"
+                dataLabelFormatter={(value) => `${Math.round(value)}th`}
+                xAxisMax={100}
+                onBarClick={(index) =>
+                  setSelectedTechnicalParentMetric(parentMetrics[index]?.parent_metric || null)
+                }
+              />
+            </Col>
+
+            <Col lg={5}>
+              <Card className="shadow-sm" style={{ border: "1px solid #e5e7eb", borderRadius: "12px" }}>
+                <Card.Header style={{ backgroundColor: "#f8f9fa" }}>
+                  <div className="d-flex justify-content-between align-items-center gap-2">
+                    <div>
+                      <h5 className="mb-0">
+                        {selectedTechnicalParent?.parent_metric || "Child Metrics"}
+                      </h5>
+                      <small className="text-muted">
+                        {selectedTechnicalParent
+                          ? `${selectedTechnicalParent.child_count} child metrics`
+                          : "Select a parent metric"}
+                      </small>
+                    </div>
+                    {selectedTechnicalParent?.percentile != null ? (
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor: getPercentileBandColor(
+                            selectedTechnicalParent.percentile,
+                          ),
+                          color: "white",
+                        }}
+                      >
+                        {Math.round(selectedTechnicalParent.percentile)}th percentile
+                      </span>
+                    ) : null}
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  {selectedParentChildren.length > 0 ? (
+                    <div className="table-responsive technical-table-shell">
+                      <Table
+                        hover
+                        striped
+                        size="sm"
+                        className="align-middle mb-0 technical-metrics-table"
+                      >
+                        <thead>
+                          <tr>
+                            <th>{renderSortLabel("Metric", "metric_label")}</th>
+                            <th className="text-end">{renderSortLabel("Value", "value")}</th>
+                            <th className="text-end">{renderSortLabel("Percentile", "percentile")}</th>
+                            <th className="text-end">{renderSortLabel("Z-Score", "z_score")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedParentChildren.map((metric) => (
+                            <tr key={metric.metric_name}>
+                              <td className="technical-metric-label-cell">
+                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                  <span>{metric.metric_label}</span>
+                                  {metric.is_direct_kpi ? (
+                                    <span className="badge technical-direct-kpi-badge">
+                                      Direct KPI
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td className="text-end technical-number-cell">
+                                {formatTechnicalMetricValue(metric.value)}
+                              </td>
+                              <td className="text-end technical-number-cell">
+                                {metric.percentile != null ? (
+                                  <span
+                                    className="badge technical-percentile-badge"
+                                    style={{
+                                      backgroundColor: getPercentileBandColor(
+                                        metric.percentile,
+                                      ),
+                                      color: "white",
+                                    }}
+                                  >
+                                    {Math.round(metric.percentile)}th
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td className="text-end technical-number-cell">
+                                {formatTechnicalMetricValue(metric.z_score)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <div className="text-muted">No child metrics available.</div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        ) : null}
+      </div>
+    );
+  }
+
   const fetchPlayerProfile = async () => {
     if (!actualPlayerId) {
       setError("No player ID provided");
@@ -1084,6 +1530,32 @@ const PlayerProfilePage: React.FC = () => {
       // Don't set main error - attributes are optional
     } finally {
       setAttributesLoading(false);
+    }
+  };
+
+  const fetchTechnicalData = async () => {
+    if (!actualPlayerId) {
+      setTechnicalLoading(false);
+      return;
+    }
+
+    try {
+      setTechnicalLoading(true);
+      const response = await axiosInstance.get<PlayerTechnicalMetricsResponse>(
+        `/players/${actualPlayerId}/technical-metrics`,
+      );
+      setTechnicalData(response.data);
+    } catch (error: any) {
+      console.error("Error fetching technical data:", error);
+      setTechnicalData({
+        available: false,
+        message: "There is no technical data.",
+        player_id: actualPlayerId,
+        positions: [],
+        entries: [],
+      });
+    } finally {
+      setTechnicalLoading(false);
     }
   };
 
@@ -1462,9 +1934,15 @@ const PlayerProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Reports Sections - Full Width Stacked Layout */}
-        <div className="mt-4 mb-4">
-          <div className="mb-4">
+        <Tabs
+          id="player-profile-tabs"
+          activeKey={activeProfileTab}
+          onSelect={(key) => setActiveProfileTab(key || "overview")}
+          className="mb-4 profile-tabs"
+        >
+          <Tab eventKey="overview" title="Overview">
+            <div className="mt-4 mb-4">
+              <div className="mb-4">
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex align-items-center gap-2">
@@ -2980,8 +3458,14 @@ const PlayerProfilePage: React.FC = () => {
             })()}
               </div>
             </div>
+            </div>
           </div>
-        </div>
+          </Tab>
+
+          <Tab eventKey="technical-data" title="Technical Data">
+            <div className="mt-4 mb-4">{renderTechnicalDataTab()}</div>
+          </Tab>
+        </Tabs>
       </Container>
 
       {/* Add Note Modal */}
@@ -3629,6 +4113,120 @@ const PlayerProfilePage: React.FC = () => {
           font-size: 0.8rem;
           border-radius: 6px;
           padding: 0.25rem 0.75rem;
+        }
+
+        .technical-visibility-toggle {
+          min-width: 220px;
+        }
+
+        .technical-percentile-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.9rem;
+          color: #667085;
+          font-size: 0.82rem;
+        }
+
+        .technical-legend-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
+        }
+
+        .technical-legend-swatch {
+          width: 12px;
+          height: 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(15, 23, 42, 0.12);
+          flex-shrink: 0;
+        }
+
+        .technical-sort-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 0.35rem;
+          width: 100%;
+          padding: 0;
+          border: none;
+          background: transparent;
+          color: inherit;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+        }
+
+        .technical-sort-button:hover {
+          color: #111827;
+        }
+
+        .technical-sort-indicator {
+          color: #6b7280;
+          font-size: 0.72rem;
+          line-height: 1;
+          min-width: 12px;
+          text-align: center;
+        }
+
+        .technical-table-shell {
+          max-height: 540px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          overflow: auto;
+          background: white;
+        }
+
+        .technical-metrics-table {
+          --bs-table-striped-bg: #f8fafc;
+          margin-bottom: 0;
+        }
+
+        .technical-metrics-table thead th {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          background: #f8fafc;
+          border-bottom: 1px solid #dbe3ee;
+          box-shadow: inset 0 -1px 0 #dbe3ee;
+        }
+
+        .technical-metrics-table tbody td {
+          vertical-align: middle;
+          padding-top: 0.75rem;
+          padding-bottom: 0.75rem;
+          border-color: #edf2f7;
+        }
+
+        .technical-metrics-table tbody tr:hover td {
+          background: #eff6ff;
+        }
+
+        .technical-metric-label-cell {
+          color: #111827;
+          font-weight: 500;
+          min-width: 220px;
+        }
+
+        .technical-number-cell {
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+          color: #1f2937;
+        }
+
+        .technical-percentile-badge {
+          min-width: 72px;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .technical-direct-kpi-badge {
+          background: #e0ecff;
+          color: #1d4ed8;
+          border: 1px solid #bfdbfe;
+          font-size: 0.68rem;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          text-transform: uppercase;
         }
 
         .notes-section {

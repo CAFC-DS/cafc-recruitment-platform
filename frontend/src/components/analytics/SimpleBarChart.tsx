@@ -8,7 +8,9 @@ import {
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  ChartEvent,
+  ActiveElement,
 } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 import '../../styles/professional-theme.css';
@@ -27,8 +29,13 @@ interface SimpleBarChartProps {
   title: string;
   labels: string[];
   data: number[];
-  color?: string;
+  color?: string | string[];
+  borderColor?: string | string[];
   height?: number;
+  tooltipLabelPrefix?: string;
+  dataLabelFormatter?: (value: number) => string;
+  xAxisMax?: number;
+  onBarClick?: (index: number) => void;
 }
 
 const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
@@ -36,7 +43,12 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   labels,
   data,
   color = '#e31e24',
-  height = 300
+  borderColor,
+  height = 300,
+  tooltipLabelPrefix = 'Reports',
+  dataLabelFormatter,
+  xAxisMax,
+  onBarClick,
 }) => {
   const chartData = {
     labels: labels || [],
@@ -45,7 +57,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
         label: title,
         data: data || [],
         backgroundColor: color,
-        borderColor: color,
+        borderColor: borderColor || color,
         borderWidth: 1
       }
     ]
@@ -55,6 +67,11 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
     responsive: true,
     maintainAspectRatio: false,
     indexAxis: 'y' as const, // Horizontal bar chart for better readability
+    onClick: (_event: ChartEvent, elements: ActiveElement[]) => {
+      if (onBarClick && elements.length > 0) {
+        onBarClick(elements[0].index);
+      }
+    },
     plugins: {
       legend: {
         display: false
@@ -62,7 +79,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
       tooltip: {
         callbacks: {
           label: function(context: any) {
-            return `Reports: ${context.parsed.x}`;
+            return `${tooltipLabelPrefix}: ${context.parsed.x}`;
           }
         }
       },
@@ -76,6 +93,9 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
         align: 'end' as const,
         offset: 8,
         formatter: (value: number) => {
+          if (dataLabelFormatter) {
+            return dataLabelFormatter(value);
+          }
           return value > 0 ? value : '';
         }
       }
@@ -83,6 +103,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
     scales: {
       x: {
         beginAtZero: true,
+        max: xAxisMax,
         ticks: {
           precision: 0,
           font: {
@@ -121,6 +142,11 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
         <div style={{ height: `${height}px` }}>
           <Bar data={chartData} options={options} />
         </div>
+        {onBarClick ? (
+          <div className="mt-2 text-muted" style={{ fontSize: '0.8rem' }}>
+            Click a bar to view child metrics.
+          </div>
+        ) : null}
       </Card.Body>
     </Card>
   );
