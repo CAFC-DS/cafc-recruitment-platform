@@ -1,0 +1,10 @@
+Unresolved duplicate groups — 20260522T181939
+======================================================================
+
+-- -- | DOB=None | 4 rows [286639, 289035, 289036, 332770]
+  reason: multiple PLAYERIDs in group match IMPECT: [286639, 332770]
+  - PLAYERID=286639 DATA_SOURCE=external CAFC_PLAYER_ID=None SQUADNAME=NO_SQUAD
+  - PLAYERID=289035 DATA_SOURCE=external CAFC_PLAYER_ID=None SQUADNAME=NO_SQUAD
+  - PLAYERID=289036 DATA_SOURCE=external CAFC_PLAYER_ID=None SQUADNAME=NO_SQUAD
+  - PLAYERID=332770 DATA_SOURCE=external CAFC_PLAYER_ID=None SQUADNAME=1. FC Schweinfurt 05
+
