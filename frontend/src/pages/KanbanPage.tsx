@@ -840,10 +840,31 @@ const KanbanPage: React.FC = () => {
     const removalEntries = Array.from(pendingRemovals.entries());
     const totalChanges = stageEntries.length + removalEntries.length;
 
-    const stageGroups = new Map<number, Array<{ item_id: number; stage: string }>>();
+    // Lookup canonical player identifiers by item_id so the backend can resolve
+    // a stale item_id (e.g. player removed and re-added on another tab).
+    const playerLookup = new Map<number, { player_id: number | null; cafc_player_id: number | null }>();
+    lists.forEach((list) => {
+      list.players.forEach((p) => {
+        playerLookup.set(p.item_id, {
+          player_id: p.player_id ?? null,
+          cafc_player_id: p.cafc_player_id ?? null,
+        });
+      });
+    });
+
+    const stageGroups = new Map<
+      number,
+      Array<{ item_id: number; player_id: number | null; cafc_player_id: number | null; stage: string }>
+    >();
     stageEntries.forEach(([itemId, change]) => {
       const existing = stageGroups.get(change.listId) || [];
-      existing.push({ item_id: itemId, stage: change.toStage });
+      const ids = playerLookup.get(itemId);
+      existing.push({
+        item_id: itemId,
+        player_id: ids?.player_id ?? null,
+        cafc_player_id: ids?.cafc_player_id ?? null,
+        stage: change.toStage,
+      });
       stageGroups.set(change.listId, existing);
     });
 
@@ -854,7 +875,7 @@ const KanbanPage: React.FC = () => {
       removalGroups.set(listId, existing);
     });
 
-    const totalSteps = stageGroups.size + removalGroups.size + 1; // include refetch
+    const totalSteps = 1 + stageGroups.size + removalGroups.size + 1; // pre-save + bulk steps + post-save refetch
 
     try {
       setSavingChanges(true);
@@ -878,6 +899,20 @@ const KanbanPage: React.FC = () => {
       const failedStageIds = new Set<number>();
       const failedRemovalIds = new Set<number>();
 
+      // Pre-save refresh: pull the latest server state before committing. Combined
+      // with the backend's player_id fallback, this minimises the chance of sending
+      // dead item_ids when the page has been open across concurrent edits.
+      step += 1;
+      setSaveProgress({
+        state: "refetching",
+        currentStep: step,
+        totalSteps,
+        savedCount,
+        failedCount,
+        message: `Checking for updates... (${step}/${totalSteps})`,
+      });
+      await refetch();
+
       const stageGroupEntries = Array.from(stageGroups.entries());
       for (let i = 0; i < stageGroupEntries.length; i += 1) {
         const [listId, updates] = stageGroupEntries[i];
@@ -894,7 +929,9 @@ const KanbanPage: React.FC = () => {
         const stageResponse = await bulkUpdatePlayerStages(listId, updates);
         savedCount += stageResponse.updated;
         failedCount += stageResponse.failed;
-        stageResponse.failures.forEach((failure) => failedStageIds.add(failure.item_id));
+        stageResponse.failures.forEach((failure) => {
+          if (failure.item_id != null) failedStageIds.add(failure.item_id);
+        });
       }
 
       const removalGroupEntries = Array.from(removalGroups.entries());

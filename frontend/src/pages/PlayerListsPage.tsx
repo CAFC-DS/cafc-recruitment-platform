@@ -943,9 +943,10 @@ const PlayerListsPage: React.FC = () => {
     const removalItemIds = Array.from(pendingRemovals);
     const totalChanges = stageEntries.length + removalItemIds.length;
     const totalSteps =
+      1 + // pre-save refresh
       (stageEntries.length > 0 ? 1 : 0) +
       (removalItemIds.length > 0 ? 1 : 0) +
-      1; // always include refetch step
+      1; // post-save refresh
 
     try {
       setSavingChanges(true);
@@ -969,7 +970,33 @@ const PlayerListsPage: React.FC = () => {
       const failedStageIds = new Set<number>();
       let keepAllRemovalsPending = false;
 
+      // Pre-save refresh: pull the latest server state so the UI reflects any
+      // concurrent edits before we commit. Combined with the backend's player_id
+      // fallback, this minimises the chance of sending dead item_ids.
+      step += 1;
+      setSaveProgress((prev) => ({
+        ...prev,
+        state: "refetching",
+        currentStep: step,
+        message: `Checking for updates... (${step}/${totalSteps})`,
+      }));
+      await refetch();
+
       if (stageEntries.length > 0) {
+        // Map each pending item_id back to its canonical player identifiers. The
+        // refetch above updates `lists` state asynchronously, so this closure still
+        // sees the snapshot the user actually interacted with — which is what we
+        // want, since pendingStageChanges keys come from that same snapshot.
+        // player_id / cafc_player_id are stable across re-adds, so the backend can
+        // resolve the current item_id even if it has since changed server-side.
+        const playerLookup = new Map<number, { player_id: number | null; cafc_player_id: number | null }>();
+        currentList.players.forEach((p) => {
+          playerLookup.set(p.item_id, {
+            player_id: p.player_id ?? null,
+            cafc_player_id: p.cafc_player_id ?? null,
+          });
+        });
+
         step += 1;
         setSaveProgress((prev) => ({
           ...prev,
@@ -980,11 +1007,21 @@ const PlayerListsPage: React.FC = () => {
 
         const stageResponse = await bulkUpdatePlayerStages(
           currentList.id,
-          stageEntries.map(([itemId, stage]) => ({ item_id: itemId, stage }))
+          stageEntries.map(([itemId, stage]) => {
+            const ids = playerLookup.get(itemId);
+            return {
+              item_id: itemId,
+              player_id: ids?.player_id ?? null,
+              cafc_player_id: ids?.cafc_player_id ?? null,
+              stage,
+            };
+          })
         );
         savedCount += stageResponse.updated;
         failedCount += stageResponse.failed;
-        stageResponse.failures.forEach((failure) => failedStageIds.add(failure.item_id));
+        stageResponse.failures.forEach((failure) => {
+          if (failure.item_id != null) failedStageIds.add(failure.item_id);
+        });
       }
 
       if (removalItemIds.length > 0) {

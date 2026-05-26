@@ -16,7 +16,7 @@ interface UsePlayerListsReturn {
   lists: ListWithPlayers[];
   loading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: () => Promise<ListWithPlayers[] | null>;
   setLists: React.Dispatch<React.SetStateAction<ListWithPlayers[]>>;
 }
 
@@ -28,19 +28,21 @@ export const usePlayerLists = (filters?: PlayerListFilters): UsePlayerListsRetur
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLists = useCallback(async () => {
+  const fetchLists = useCallback(async (): Promise<ListWithPlayers[] | null> => {
     try {
       setLoading(true);
       setError(null);
 
       const data = await getAllListsWithDetails(filters);
       setLists(data);
+      return data;
     } catch (err: any) {
       console.error("Error fetching player lists:", err);
       setError(
         err.response?.data?.detail ||
           "Failed to load player lists. Please try again."
       );
+      return null;
     } finally {
       setLoading(false);
     }

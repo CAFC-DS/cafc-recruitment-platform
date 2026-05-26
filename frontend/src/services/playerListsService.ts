@@ -65,6 +65,10 @@ export interface PlayerListMembership {
 
 export interface BulkStageUpdateItem {
   item_id: number;
+  // Canonical player identifiers — sent so the backend can resolve the current
+  // item_id if the cached one is stale (e.g. player removed and re-added).
+  player_id?: number | null;
+  cafc_player_id?: number | null;
   stage: string;
   reason?: string;
   description?: string;
@@ -74,7 +78,12 @@ export interface BulkStageUpdateResponse {
   requested: number;
   updated: number;
   failed: number;
-  failures: Array<{ item_id: number; reason: string }>;
+  failures: Array<{
+    item_id: number | null;
+    player_id?: number | null;
+    cafc_player_id?: number | null;
+    reason: string;
+  }>;
 }
 
 // ========== API Methods ==========

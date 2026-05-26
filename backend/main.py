@@ -13879,7 +13879,12 @@ class PlayerStageUpdate(BaseModel):
 
 
 class BulkStageUpdateItem(BaseModel):
-    item_id: int
+    item_id: Optional[int] = None
+    # Optional canonical player identifier. When supplied the backend will
+    # resolve the current item_id for this player+list, which protects against
+    # stale item_ids (e.g. when a player was removed and re-added).
+    player_id: Optional[int] = None
+    cafc_player_id: Optional[int] = None
     stage: str
     reason: Optional[str] = None
     description: Optional[str] = None
@@ -15197,68 +15202,111 @@ async def bulk_update_player_stages(
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
+        resolved_by_player_lookup = 0
+
         for update in bulk_data.updates:
-            item_id = update.item_id
+            requested_item_id = update.item_id
+            requested_player_id = update.player_id
+            requested_cafc_player_id = update.cafc_player_id
             target_stage = update.stage
             reason = update.reason
             description = update.description
 
+            def fail(reason_text: str, level: str = "warning") -> None:
+                failures.append({
+                    "item_id": requested_item_id,
+                    "player_id": requested_player_id,
+                    "cafc_player_id": requested_cafc_player_id,
+                    "reason": reason_text,
+                })
+                log_fn = getattr(logging, level, logging.warning)
+                log_fn(
+                    "bulk_update_player_stages item rejected: list_id=%s user_id=%s "
+                    "item_id=%s player_id=%s cafc_player_id=%s target_stage=%s reason=%s",
+                    list_id,
+                    current_user.id,
+                    requested_item_id,
+                    requested_player_id,
+                    requested_cafc_player_id,
+                    target_stage,
+                    reason_text,
+                )
+
             # Validate stage value
             if target_stage not in valid_stages:
-                failures.append({
-                    "item_id": item_id,
-                    "reason": f"Stage must be one of: {', '.join(valid_stages)}",
-                })
+                fail(f"Stage must be one of: {', '.join(valid_stages)}")
                 continue
 
             # Validate reason rules and preserve current single-update behavior
             if target_stage == "Stage 1":
                 if not reason:
-                    failures.append({
-                        "item_id": item_id,
-                        "reason": "Reason is required when moving to Stage 1",
-                    })
+                    fail("Reason is required when moving to Stage 1")
                     continue
                 if reason not in STAGE_1_REASONS:
-                    failures.append({
-                        "item_id": item_id,
-                        "reason": f"Invalid reason for Stage 1. Must be one of: {', '.join(STAGE_1_REASONS)}",
-                    })
+                    fail(f"Invalid reason for Stage 1. Must be one of: {', '.join(STAGE_1_REASONS)}")
                     continue
                 if reason in STAGE_2_AUTO_ADVANCE_REASONS:
                     target_stage = "Stage 2"
             elif target_stage == "Archived":
                 if not reason:
-                    failures.append({
-                        "item_id": item_id,
-                        "reason": "Reason is required when archiving a player",
-                    })
+                    fail("Reason is required when archiving a player")
                     continue
                 if reason not in ARCHIVED_REASONS:
-                    failures.append({
-                        "item_id": item_id,
-                        "reason": f"Invalid reason for Archived. Must be one of: {', '.join(ARCHIVED_REASONS)}",
-                    })
+                    fail(f"Invalid reason for Archived. Must be one of: {', '.join(ARCHIVED_REASONS)}")
                     continue
 
-            # Check item exists and belongs to list
-            cursor.execute(
-                """
-                SELECT STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM player_list_items
-                WHERE ID = %s AND LIST_ID = %s
-            """,
-                (item_id, list_id),
-            )
-            item_row = cursor.fetchone()
+            # Resolve the list item. Prefer the canonical player identifier when supplied
+            # so we recover from stale item_ids (player removed and re-added => new item_id).
+            item_row = None
+            if requested_player_id is not None or requested_cafc_player_id is not None:
+                cursor.execute(
+                    """
+                    SELECT ID, STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM player_list_items
+                    WHERE LIST_ID = %s
+                      AND (
+                            (%s IS NOT NULL AND PLAYER_ID = %s)
+                         OR (%s IS NOT NULL AND CAFC_PLAYER_ID = %s)
+                      )
+                    ORDER BY ID DESC
+                    LIMIT 1
+                """,
+                    (
+                        list_id,
+                        requested_player_id, requested_player_id,
+                        requested_cafc_player_id, requested_cafc_player_id,
+                    ),
+                )
+                item_row = cursor.fetchone()
+                if item_row and item_row[0] != requested_item_id:
+                    resolved_by_player_lookup += 1
+                    logging.info(
+                        "bulk_update_player_stages resolved stale item_id: list_id=%s "
+                        "requested_item_id=%s resolved_item_id=%s player_id=%s cafc_player_id=%s",
+                        list_id,
+                        requested_item_id,
+                        item_row[0],
+                        requested_player_id,
+                        requested_cafc_player_id,
+                    )
+
+            # Fall back to item_id lookup if player lookup yielded nothing (or wasn't given).
+            if item_row is None and requested_item_id is not None:
+                cursor.execute(
+                    """
+                    SELECT ID, STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM player_list_items
+                    WHERE ID = %s AND LIST_ID = %s
+                """,
+                    (requested_item_id, list_id),
+                )
+                item_row = cursor.fetchone()
+
             if not item_row:
-                failures.append({
-                    "item_id": item_id,
-                    "reason": "Player not found in list",
-                })
+                fail("Player not found in list")
                 continue
 
-            old_stage = item_row[0]
-            player_id = item_row[1] or item_row[2]
+            resolved_item_id = item_row[0]
+            old_stage = item_row[1]
+            player_id = item_row[2] or item_row[3]
 
             # Update stage
             cursor.execute(
@@ -15267,13 +15315,13 @@ async def bulk_update_player_stages(
                 SET STAGE = %s
                 WHERE ID = %s AND LIST_ID = %s
             """,
-                (target_stage, item_id, list_id),
+                (target_stage, resolved_item_id, list_id),
             )
 
             if old_stage != target_stage:
                 insert_player_stage_history_record(
                     cursor=cursor,
-                    list_item_id=item_id,
+                    list_item_id=resolved_item_id,
                     list_id=list_id,
                     player_id=player_id,
                     old_stage=old_stage,
@@ -15303,12 +15351,16 @@ async def bulk_update_player_stages(
         requested_count = len(bulk_data.updates)
         failed_count = len(failures)
         duration_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
-        logging.error(
-            "[METRIC] bulk_update_player_stages list_id=%s requested=%s updated=%s failed=%s duration_ms=%s",
+        metric_log = logging.warning if failed_count > 0 else logging.info
+        metric_log(
+            "[METRIC] bulk_update_player_stages list_id=%s user_id=%s requested=%s "
+            "updated=%s failed=%s resolved_by_player_lookup=%s duration_ms=%s",
             list_id,
+            current_user.id,
             requested_count,
             updated_count,
             failed_count,
+            resolved_by_player_lookup,
             duration_ms,
         )
 
@@ -15323,7 +15375,13 @@ async def bulk_update_player_stages(
     except Exception as e:
         if conn:
             conn.rollback()
-        logging.exception(e)
+        logging.exception(
+            "bulk_update_player_stages crashed: list_id=%s user_id=%s requested=%s error=%s",
+            list_id,
+            current_user.id,
+            len(bulk_data.updates),
+            e,
+        )
         raise HTTPException(status_code=500, detail=f"Error bulk updating player stages: {e}")
     finally:
         if conn:
