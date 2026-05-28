@@ -4,7 +4,7 @@ import Select from "react-select";
 import axiosInstance from "../axiosInstance";
 import { Player } from "../types/Player";
 
-type IntelType = "player_information" | "general_note";
+type IntelType = "player_information" | "general_note" | "reference_form";
 
 interface IntelModalProps {
   show: boolean;
@@ -29,6 +29,10 @@ const initialFormData = {
   conversationNotes: "",
   recommendation: "monitor",
   notes: "",
+  relationshipToPlayer: [] as string[],
+  lengthOfRelationship: "",
+  relevanceOfRelationship: "",
+  referenceRating: "",
 };
 
 const IntelModal: React.FC<IntelModalProps> = ({
@@ -68,8 +72,38 @@ const IntelModal: React.FC<IntelModalProps> = ({
     { value: "no action", label: "No Action" },
   ];
 
-  const effectiveIntelType = editMode
-    ? ((existingReportData?.intel_type as IntelType | undefined) || "player_information")
+  const relationshipToPlayerOptions = [
+    { value: "Managed/Coached", label: "Managed/Coached" },
+    { value: "Worked With", label: "Worked With" },
+    { value: "Played With", label: "Played With" },
+    { value: "Friend/Family", label: "Friend/Family" },
+    { value: "Mutual Circles", label: "Mutual Circles" },
+    { value: "Other", label: "Other" },
+  ];
+
+  const lengthOfRelationshipOptions = [
+    { value: "Less Than 1 Year", label: "Less Than 1 Year" },
+    { value: "1-2 Years", label: "1-2 Years" },
+    { value: "2-3 Years", label: "2-3 Years" },
+    { value: "3+ Years", label: "3+ Years" },
+  ];
+
+  const relevanceOfRelationshipOptions = [
+    { value: "Current", label: "Current" },
+    { value: "Recent (Within 2 Years)", label: "Recent (Within 2 Years)" },
+    { value: "Historic (2+ Years)", label: "Historic (2+ Years)" },
+  ];
+
+  const referenceRatingOptions = [
+    { value: "Extremely Positive", label: "Extremely Positive" },
+    { value: "Positive", label: "Positive" },
+    { value: "Mixed", label: "Mixed" },
+    { value: "Negative", label: "Negative" },
+    { value: "Extremely Negative", label: "Extremely Negative" },
+  ];
+
+  const effectiveIntelType: IntelType | null = editMode
+    ? (((existingReportData?.intel_type as IntelType | undefined) ?? "player_information"))
     : intelType;
   const canInteractWithForm = Boolean(selectedPlayer || searchedPlayer || editMode);
 
@@ -193,7 +227,11 @@ const IntelModal: React.FC<IntelModalProps> = ({
 
     if (editMode && existingReportData) {
       const resolvedIntelType: IntelType =
-        existingReportData.intel_type === "general_note" ? "general_note" : "player_information";
+        existingReportData.intel_type === "general_note"
+          ? "general_note"
+          : existingReportData.intel_type === "reference_form"
+            ? "reference_form"
+            : "player_information";
 
       setIntelType(resolvedIntelType);
       setFormData({
@@ -209,6 +247,10 @@ const IntelModal: React.FC<IntelModalProps> = ({
         conversationNotes: existingReportData.conversation_notes || existingReportData.notes || "",
         recommendation: existingReportData.recommendation || existingReportData.action_required || "monitor",
         notes: existingReportData.notes || existingReportData.conversation_notes || "",
+        relationshipToPlayer: existingReportData.relationship_to_player || [],
+        lengthOfRelationship: existingReportData.length_of_relationship || "",
+        relevanceOfRelationship: existingReportData.relevance_of_relationship || "",
+        referenceRating: existingReportData.reference_rating || "",
       });
 
       if (existingReportData.player_name) {
@@ -309,6 +351,49 @@ const IntelModal: React.FC<IntelModalProps> = ({
       }
     }
 
+    if (currentIntelType === "reference_form") {
+      if (!formData.contactName.trim()) {
+        setError("Contact Name is required");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.contactOrganisation.trim()) {
+        setError("Contact Organisation is required");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.dateOfInformation) {
+        setError("Date of Information is required");
+        setIsSubmitting(false);
+        return;
+      }
+      if (formData.relationshipToPlayer.length === 0) {
+        setError("At least one Relationship To Player must be selected");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.lengthOfRelationship) {
+        setError("Length of Relationship is required");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.relevanceOfRelationship) {
+        setError("Relevance of Relationship is required");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.conversationNotes.trim()) {
+        setError("Reference is required");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!formData.referenceRating) {
+        setError("Reference Rating is required");
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const payload = {
         player_id:
@@ -334,7 +419,20 @@ const IntelModal: React.FC<IntelModalProps> = ({
           currentIntelType === "player_information" ? formData.conversationNotes : null,
         recommendation:
           currentIntelType === "player_information" ? formData.recommendation : null,
-        notes: currentIntelType === "general_note" ? formData.notes : null,
+        notes:
+          currentIntelType === "general_note"
+            ? formData.notes
+            : currentIntelType === "reference_form"
+              ? formData.conversationNotes
+              : null,
+        relationship_to_player:
+          currentIntelType === "reference_form" ? formData.relationshipToPlayer : [],
+        length_of_relationship:
+          currentIntelType === "reference_form" ? formData.lengthOfRelationship || null : null,
+        relevance_of_relationship:
+          currentIntelType === "reference_form" ? formData.relevanceOfRelationship || null : null,
+        reference_rating:
+          currentIntelType === "reference_form" ? formData.referenceRating || null : null,
       };
 
       if (editMode && reportId) {
@@ -654,6 +752,145 @@ const IntelModal: React.FC<IntelModalProps> = ({
     </>
   );
 
+  const renderReferenceFormFields = () => (
+    <>
+      <Row className="mb-3">
+        <Form.Group as={Col} controlId="dateOfInformation">
+          <Form.Label>
+            Date of Information <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Control
+            type="date"
+            name="dateOfInformation"
+            value={formData.dateOfInformation}
+            onChange={handleInputChange}
+            required
+          />
+        </Form.Group>
+        <Form.Group as={Col} controlId="contactName">
+          <Form.Label>
+            Contact Name <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Control
+            type="text"
+            name="contactName"
+            value={formData.contactName}
+            onChange={handleInputChange}
+            required
+          />
+        </Form.Group>
+        <Form.Group as={Col} controlId="contactOrganisation">
+          <Form.Label>
+            Contact Organisation <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Control
+            type="text"
+            name="contactOrganisation"
+            value={formData.contactOrganisation}
+            onChange={handleInputChange}
+            required
+          />
+        </Form.Group>
+      </Row>
+
+      <Row className="mb-3">
+        <Form.Group as={Col} md={6} controlId="relationshipToPlayer">
+          <Form.Label>
+            Relationship To Player <span className="text-danger">*</span>
+          </Form.Label>
+          <Select
+            isMulti
+            options={relationshipToPlayerOptions}
+            value={relationshipToPlayerOptions.filter((option) =>
+              formData.relationshipToPlayer.includes(option.value),
+            )}
+            onChange={(selectedOptions) => {
+              setFormData((prev) => ({
+                ...prev,
+                relationshipToPlayer: selectedOptions
+                  ? selectedOptions.map((opt) => opt.value)
+                  : [],
+              }));
+            }}
+            placeholder="Select relationships..."
+            classNamePrefix="react-select"
+          />
+        </Form.Group>
+        <Form.Group as={Col} md={6} controlId="lengthOfRelationship">
+          <Form.Label>
+            Length of Relationship <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Select
+            name="lengthOfRelationship"
+            value={formData.lengthOfRelationship}
+            onChange={handleInputChange}
+            required
+          >
+            <option value="">Select length...</option>
+            {lengthOfRelationshipOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+      </Row>
+
+      <Row className="mb-3">
+        <Form.Group as={Col} md={6} controlId="relevanceOfRelationship">
+          <Form.Label>
+            Relevance of Relationship <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Select
+            name="relevanceOfRelationship"
+            value={formData.relevanceOfRelationship}
+            onChange={handleInputChange}
+            required
+          >
+            <option value="">Select relevance...</option>
+            {relevanceOfRelationshipOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+        <Form.Group as={Col} md={6} controlId="referenceRating">
+          <Form.Label>
+            Reference Rating <span className="text-danger">*</span>
+          </Form.Label>
+          <Form.Select
+            name="referenceRating"
+            value={formData.referenceRating}
+            onChange={handleInputChange}
+            required
+          >
+            <option value="">Select rating...</option>
+            {referenceRatingOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Form.Select>
+        </Form.Group>
+      </Row>
+
+      <Form.Group className="mb-3" controlId="conversationNotes">
+        <Form.Label>
+          Reference <span className="text-danger">*</span>
+        </Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={6}
+          name="conversationNotes"
+          value={formData.conversationNotes}
+          onChange={handleInputChange}
+          required
+        />
+      </Form.Group>
+    </>
+  );
+
   return (
     <Modal show={show} onHide={onHide} size="lg" centered onExited={resetForm}>
       <Modal.Header
@@ -665,11 +902,15 @@ const IntelModal: React.FC<IntelModalProps> = ({
           {editMode
             ? effectiveIntelType === "general_note"
               ? "Edit General Note"
-              : "Edit Intel Report"
+              : effectiveIntelType === "reference_form"
+                ? "Edit Reference Form"
+                : "Edit Intel Report"
             : effectiveIntelType
               ? effectiveIntelType === "general_note"
                 ? "General Note"
-                : "Player Information"
+                : effectiveIntelType === "reference_form"
+                  ? "Reference Form"
+                  : "Player Information"
               : "Select Intel Type"}
         </Modal.Title>
       </Modal.Header>
@@ -678,7 +919,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
           <div>
             <p className="mb-4">Choose the type of intel entry you want to add.</p>
             <Row className="g-3">
-              <Col md={6}>
+              <Col md={4}>
                 <Card
                   className="h-100 intel-type-card"
                   role="button"
@@ -692,7 +933,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
                   </Card.Body>
                 </Card>
               </Col>
-              <Col md={6}>
+              <Col md={4}>
                 <Card
                   className="h-100 intel-type-card"
                   role="button"
@@ -702,6 +943,20 @@ const IntelModal: React.FC<IntelModalProps> = ({
                     <div className="fw-bold mb-2">General Note</div>
                     <div className="text-muted small">
                       Quick player-linked note with contact details and required notes.
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card
+                  className="h-100 intel-type-card"
+                  role="button"
+                  onClick={() => setIntelType("reference_form")}
+                >
+                  <Card.Body>
+                    <div className="fw-bold mb-2">Reference Form</div>
+                    <div className="text-muted small">
+                      Reference from a contact who knows the player, including relationship context and rating.
                     </div>
                   </Card.Body>
                 </Card>
@@ -730,6 +985,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
             >
               {effectiveIntelType === "player_information" && renderPlayerInformationFields()}
               {effectiveIntelType === "general_note" && renderGeneralNoteFields()}
+              {effectiveIntelType === "reference_form" && renderReferenceFormFields()}
 
               <div className="d-flex justify-content-between gap-2">
                 <div>
@@ -750,9 +1006,15 @@ const IntelModal: React.FC<IntelModalProps> = ({
                         {editMode ? "Updating..." : "Submitting..."}
                       </>
                     ) : editMode ? (
-                      effectiveIntelType === "general_note" ? "Update General Note" : "Update Intel Report"
+                      effectiveIntelType === "general_note"
+                        ? "Update General Note"
+                        : effectiveIntelType === "reference_form"
+                          ? "Update Reference Form"
+                          : "Update Intel Report"
                     ) : effectiveIntelType === "general_note" ? (
                       "Submit General Note"
+                    ) : effectiveIntelType === "reference_form" ? (
+                      "Submit Reference Form"
                     ) : (
                       "Submit Intel Report"
                     )}

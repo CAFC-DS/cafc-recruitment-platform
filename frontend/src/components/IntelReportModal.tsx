@@ -26,7 +26,11 @@ interface IntelReportDetails {
   notes?: string | null;
   recommendation?: string | null;
   action_required?: string | null;
-  intel_type?: "player_information" | "general_note";
+  intel_type?: "player_information" | "general_note" | "reference_form";
+  relationship_to_player?: string[];
+  length_of_relationship?: string | null;
+  relevance_of_relationship?: string | null;
+  reference_rating?: string | null;
 }
 
 const IntelReportModal: React.FC<IntelReportModalProps> = ({
@@ -91,8 +95,11 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
     return labels[type] || type;
   };
 
-  const formatIntelType = (intelType?: string | null) =>
-    intelType === "general_note" ? "General Note" : "Player Information";
+  const formatIntelType = (intelType?: string | null) => {
+    if (intelType === "general_note") return "General Note";
+    if (intelType === "reference_form") return "Reference Form";
+    return "Player Information";
+  };
 
   const handleClose = () => {
     setIntel(null);
@@ -188,6 +195,53 @@ const IntelReportModal: React.FC<IntelReportModalProps> = ({
                   </Card.Body>
                 </Card>
 
+              </>
+            ) : intelType === "reference_form" ? (
+              <>
+                <Card className="mb-4">
+                  <Card.Header className="bg-light text-dark">
+                    <h6 className="mb-0">Relationship Details</h6>
+                  </Card.Header>
+                  <Card.Body>
+                    <Row>
+                      <Col md={6}>
+                        <p>
+                          <strong>Relationship To Player:</strong>{" "}
+                          {intel.relationship_to_player?.length
+                            ? intel.relationship_to_player.join(", ")
+                            : "Not specified"}
+                        </p>
+                        <p>
+                          <strong>Length of Relationship:</strong>{" "}
+                          {intel.length_of_relationship || "Not specified"}
+                        </p>
+                      </Col>
+                      <Col md={6}>
+                        <p>
+                          <strong>Relevance of Relationship:</strong>{" "}
+                          {intel.relevance_of_relationship || "Not specified"}
+                        </p>
+                        <p>
+                          <strong>Reference Rating:</strong>{" "}
+                          {intel.reference_rating || "Not specified"}
+                        </p>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+
+                <Card className="mb-4">
+                  <Card.Header className="bg-light text-dark">
+                    <h6 className="mb-0">Reference</h6>
+                  </Card.Header>
+                  <Card.Body>
+                    <div className="border-start border-secondary border-4 ps-3">
+                      <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                        {notesText}
+                      </p>
+                    </div>
+                  </Card.Body>
+                </Card>
               </>
             ) : (
               <>

@@ -42,7 +42,11 @@ interface IntelReport {
   notes?: string | null;
   recommendation?: string | null;
   action_required?: string | null;
-  intel_type?: "player_information" | "general_note";
+  intel_type?: "player_information" | "general_note" | "reference_form";
+  relationship_to_player?: string[];
+  length_of_relationship?: string | null;
+  relevance_of_relationship?: string | null;
+  reference_rating?: string | null;
   player_id: number | null;
   universal_id?: string;
   position?: string;
@@ -292,13 +296,21 @@ const IntelPage: React.FC = () => {
     return formatted[recommendation.toLowerCase()] || recommendation;
   };
 
-  const formatIntelType = (intelType?: string) =>
-    intelType === "general_note" ? "General Note" : "Player Information";
+  const formatIntelType = (intelType?: string) => {
+    if (intelType === "general_note") return "General Note";
+    if (intelType === "reference_form") return "Reference Form";
+    return "Player Information";
+  };
 
   const isGeneralNote = (report: IntelReport) => report.intel_type === "general_note";
+  const isReferenceForm = (report: IntelReport) => report.intel_type === "reference_form";
+  const hasRecommendation = (report: IntelReport) =>
+    !isGeneralNote(report) && !isReferenceForm(report);
 
   const renderRecommendationCell = (report: IntelReport) =>
-    isGeneralNote(report) ? "—" : getRecommendationBadge(report.recommendation || report.action_required);
+    hasRecommendation(report)
+      ? getRecommendationBadge(report.recommendation || report.action_required)
+      : "—";
 
   const getRecommendationBadge = (recommendation?: string | null) => {
     const backgroundColor = getRecommendationColor(recommendation || "");
@@ -675,12 +687,12 @@ const IntelPage: React.FC = () => {
                           <td>{report.contact_name || "—"}</td>
                           <td>{report.contact_organisation || "—"}</td>
                           <td>
-                            {!isGeneralNote(report) && report.confirmed_contract_expiry
+                            {hasRecommendation(report) && report.confirmed_contract_expiry
                               ? new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")
                               : "—"}
                           </td>
                           <td>
-                            {isGeneralNote(report) ? "—" : formatDealTypes(report.potential_deal_types)}
+                            {hasRecommendation(report) ? formatDealTypes(report.potential_deal_types) : "—"}
                           </td>
                           <td>{renderRecommendationCell(report)}</td>
                           <td>
@@ -830,13 +842,21 @@ const IntelPage: React.FC = () => {
                             <Col xs={6} className="text-end">
                               <div>
                                 <small className="text-muted fw-semibold d-block">
-                                  {isGeneralNote(report) ? "Type" : "Recommendation"}
+                                  {isReferenceForm(report)
+                                    ? "Rating"
+                                    : hasRecommendation(report)
+                                      ? "Recommendation"
+                                      : "Type"}
                                 </small>
-                              {isGeneralNote(report) ? (
+                                {isReferenceForm(report) ? (
+                                  <small className="text-muted intel-card-nowrap">
+                                    {report.reference_rating || "—"}
+                                  </small>
+                                ) : hasRecommendation(report) ? (
+                                  getRecommendationBadge(report.recommendation || report.action_required)
+                                ) : (
                                   <small className="text-muted intel-card-nowrap">{formatIntelType(report.intel_type)}</small>
-                              ) : (
-                                getRecommendationBadge(report.recommendation || report.action_required)
-                              )}
+                                )}
                               </div>
                             </Col>
                           </Row>
@@ -848,17 +868,29 @@ const IntelPage: React.FC = () => {
                                   className="text-muted d-block mb-1"
                                   style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
                                 >
-                                  <span className="fw-semibold">Deal Types:</span>{" "}
-                                  {isGeneralNote(report) ? "—" : formatDealTypes(report.potential_deal_types)}
+                                  <span className="fw-semibold">
+                                    {isReferenceForm(report) ? "Relationship:" : "Deal Types:"}
+                                  </span>{" "}
+                                  {isReferenceForm(report)
+                                    ? report.relationship_to_player?.length
+                                      ? report.relationship_to_player.join(", ")
+                                      : "—"
+                                    : hasRecommendation(report)
+                                      ? formatDealTypes(report.potential_deal_types)
+                                      : "—"}
                                 </small>
                                 <small
                                   className="text-muted d-block"
                                   style={{ fontSize: "0.75rem", lineHeight: "1.2" }}
                                 >
-                                  <span className="fw-semibold">Contract Expiry:</span>{" "}
-                                  {!isGeneralNote(report) && report.confirmed_contract_expiry
-                                    ? new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")
-                                    : "—"}
+                                  <span className="fw-semibold">
+                                    {isReferenceForm(report) ? "Length:" : "Contract Expiry:"}
+                                  </span>{" "}
+                                  {isReferenceForm(report)
+                                    ? report.length_of_relationship || "—"
+                                    : hasRecommendation(report) && report.confirmed_contract_expiry
+                                      ? new Date(report.confirmed_contract_expiry).toLocaleDateString("en-GB")
+                                      : "—"}
                                 </small>
                               </div>
                             </Col>

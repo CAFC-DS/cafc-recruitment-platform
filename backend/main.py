@@ -827,6 +827,36 @@ ALLOWED_WAGE_BASIS = [
     "Net",
 ]
 
+ALLOWED_RELATIONSHIP_TO_PLAYER = [
+    "Managed/Coached",
+    "Worked With",
+    "Played With",
+    "Friend/Family",
+    "Mutual Circles",
+    "Other",
+]
+
+ALLOWED_LENGTH_OF_RELATIONSHIP = [
+    "Less Than 1 Year",
+    "1-2 Years",
+    "2-3 Years",
+    "3+ Years",
+]
+
+ALLOWED_RELEVANCE_OF_RELATIONSHIP = [
+    "Current",
+    "Recent (Within 2 Years)",
+    "Historic (2+ Years)",
+]
+
+ALLOWED_REFERENCE_RATING = [
+    "Extremely Positive",
+    "Positive",
+    "Mixed",
+    "Negative",
+    "Extremely Negative",
+]
+
 RECOMMENDATION_MAX_FILE_SIZE = 15 * 1024 * 1024
 RECOMMENDATION_ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg"}
 RECOMMENDATION_ALLOWED_CONTENT_TYPES = {
@@ -1208,6 +1238,10 @@ class IntelReport(BaseModel):
     conversation_notes: Optional[str] = None
     recommendation: Optional[str] = None
     notes: Optional[str] = None
+    relationship_to_player: Optional[List[str]] = None
+    length_of_relationship: Optional[str] = None
+    relevance_of_relationship: Optional[str] = None
+    reference_rating: Optional[str] = None
 
 
 # --- Chatbot Models ---
@@ -1689,7 +1723,7 @@ def derive_range_amount(min_value: Optional[int], max_value: Optional[int]) -> O
     return min_value
 
 
-VALID_INTEL_TYPES = {"player_information", "general_note"}
+VALID_INTEL_TYPES = {"player_information", "general_note", "reference_form"}
 
 
 def normalize_intel_type(value: Optional[str]) -> str:
@@ -1697,7 +1731,7 @@ def normalize_intel_type(value: Optional[str]) -> str:
     if normalized not in VALID_INTEL_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Invalid intel_type. Must be 'player_information' or 'general_note'",
+            detail="Invalid intel_type. Must be 'player_information', 'general_note', or 'reference_form'",
         )
     return normalized
 
@@ -1732,6 +1766,86 @@ def normalize_intel_payload(report: IntelReport) -> Dict[str, Any]:
                 "current_wages": None,
                 "expected_wages": None,
                 "recommendation": None,
+                "relationship_to_player": [],
+                "length_of_relationship": None,
+                "relevance_of_relationship": None,
+                "reference_rating": None,
+            }
+        )
+        return normalized_payload
+
+    if intel_type == "reference_form":
+        if not (report.contact_name or "").strip():
+            raise HTTPException(status_code=400, detail="Contact Name is required")
+        if not (report.contact_organisation or "").strip():
+            raise HTTPException(status_code=400, detail="Contact Organisation is required")
+        if not report.date_of_information:
+            raise HTTPException(status_code=400, detail="Date of Information is required")
+        if not report.relationship_to_player:
+            raise HTTPException(
+                status_code=400, detail="At least one Relationship To Player must be selected"
+            )
+        if not (report.length_of_relationship or "").strip():
+            raise HTTPException(status_code=400, detail="Length of Relationship is required")
+        if not (report.relevance_of_relationship or "").strip():
+            raise HTTPException(status_code=400, detail="Relevance of Relationship is required")
+        if not notes_value:
+            raise HTTPException(status_code=400, detail="Reference is required")
+        if not (report.reference_rating or "").strip():
+            raise HTTPException(status_code=400, detail="Reference Rating is required")
+
+        invalid_relationships = [
+            value for value in report.relationship_to_player
+            if value not in ALLOWED_RELATIONSHIP_TO_PLAYER
+        ]
+        if invalid_relationships:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Relationship To Player. Must be one of: {', '.join(ALLOWED_RELATIONSHIP_TO_PLAYER)}",
+            )
+
+        length_value = report.length_of_relationship.strip()
+        if length_value not in ALLOWED_LENGTH_OF_RELATIONSHIP:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Length of Relationship. Must be one of: {', '.join(ALLOWED_LENGTH_OF_RELATIONSHIP)}",
+            )
+
+        relevance_value = report.relevance_of_relationship.strip()
+        if relevance_value not in ALLOWED_RELEVANCE_OF_RELATIONSHIP:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Relevance of Relationship. Must be one of: {', '.join(ALLOWED_RELEVANCE_OF_RELATIONSHIP)}",
+            )
+
+        rating_value = report.reference_rating.strip()
+        if rating_value not in ALLOWED_REFERENCE_RATING:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid Reference Rating. Must be one of: {', '.join(ALLOWED_REFERENCE_RATING)}",
+            )
+
+        ordered_relationships = [
+            candidate for candidate in ALLOWED_RELATIONSHIP_TO_PLAYER
+            if candidate in report.relationship_to_player
+        ]
+
+        normalized_payload.update(
+            {
+                "contact_name": report.contact_name.strip(),
+                "contact_organisation": report.contact_organisation.strip(),
+                "date_of_information": report.date_of_information,
+                "confirmed_contract_expiry": None,
+                "contract_options": None,
+                "potential_deal_types": [],
+                "transfer_fee": None,
+                "current_wages": None,
+                "expected_wages": None,
+                "recommendation": None,
+                "relationship_to_player": ordered_relationships,
+                "length_of_relationship": length_value,
+                "relevance_of_relationship": relevance_value,
+                "reference_rating": rating_value,
             }
         )
         return normalized_payload
@@ -1761,6 +1875,10 @@ def normalize_intel_payload(report: IntelReport) -> Dict[str, Any]:
             "current_wages": report.current_wages,
             "expected_wages": report.expected_wages,
             "recommendation": report.recommendation.strip(),
+            "relationship_to_player": [],
+            "length_of_relationship": None,
+            "relevance_of_relationship": None,
+            "reference_rating": None,
         }
     )
     return normalized_payload
@@ -10137,6 +10255,10 @@ async def create_intel_report(
         has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
         has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
         has_intel_type = has_column("player_information", "INTEL_TYPE")
+        has_relationship_to_player = has_column("player_information", "RELATIONSHIP_TO_PLAYER")
+        has_length_of_relationship = has_column("player_information", "LENGTH_OF_RELATIONSHIP")
+        has_relevance_of_relationship = has_column("player_information", "RELEVANCE_OF_RELATIONSHIP")
+        has_reference_rating = has_column("player_information", "REFERENCE_RATING")
 
         if not has_intel_type:
             raise HTTPException(
@@ -10144,10 +10266,26 @@ async def create_intel_report(
                 detail="Intel type support requires an INTEL_TYPE column on player_information",
             )
 
+        if normalized_report["intel_type"] == "reference_form" and not (
+            has_relationship_to_player
+            and has_length_of_relationship
+            and has_relevance_of_relationship
+            and has_reference_rating
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Reference Form support requires RELATIONSHIP_TO_PLAYER, LENGTH_OF_RELATIONSHIP, RELEVANCE_OF_RELATIONSHIP, and REFERENCE_RATING columns on player_information",
+            )
+
         # Convert potential_deal_types list to comma-separated string
         deal_types_str = (
             ",".join(normalized_report["potential_deal_types"])
             if normalized_report["potential_deal_types"]
+            else None
+        )
+        relationship_to_player_str = (
+            ",".join(normalized_report["relationship_to_player"])
+            if normalized_report["relationship_to_player"]
             else None
         )
         current_wages_min, current_wages_max = parse_numeric_range_field(
@@ -10257,6 +10395,26 @@ async def create_intel_report(
         sql_values.append("%s")
         params.append(expected_wages_min if expected_wages_min is not None and expected_wages_min == expected_wages_max else None)
 
+        if has_relationship_to_player:
+            sql_columns.append("RELATIONSHIP_TO_PLAYER")
+            sql_values.append("%s")
+            params.append(relationship_to_player_str)
+
+        if has_length_of_relationship:
+            sql_columns.append("LENGTH_OF_RELATIONSHIP")
+            sql_values.append("%s")
+            params.append(normalized_report["length_of_relationship"])
+
+        if has_relevance_of_relationship:
+            sql_columns.append("RELEVANCE_OF_RELATIONSHIP")
+            sql_values.append("%s")
+            params.append(normalized_report["relevance_of_relationship"])
+
+        if has_reference_rating:
+            sql_columns.append("REFERENCE_RATING")
+            sql_values.append("%s")
+            params.append(normalized_report["reference_rating"])
+
         # Construct the final SQL query
         sql = f"""
             INSERT INTO player_information ({', '.join(sql_columns)})
@@ -10340,6 +10498,10 @@ async def update_intel_report(
         has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
         has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
         has_intel_type = has_column("player_information", "INTEL_TYPE")
+        has_relationship_to_player = has_column("player_information", "RELATIONSHIP_TO_PLAYER")
+        has_length_of_relationship = has_column("player_information", "LENGTH_OF_RELATIONSHIP")
+        has_relevance_of_relationship = has_column("player_information", "RELEVANCE_OF_RELATIONSHIP")
+        has_reference_rating = has_column("player_information", "REFERENCE_RATING")
 
         if not has_intel_type:
             raise HTTPException(
@@ -10347,10 +10509,26 @@ async def update_intel_report(
                 detail="Intel type support requires an INTEL_TYPE column on player_information",
             )
 
+        if normalized_report["intel_type"] == "reference_form" and not (
+            has_relationship_to_player
+            and has_length_of_relationship
+            and has_relevance_of_relationship
+            and has_reference_rating
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Reference Form support requires RELATIONSHIP_TO_PLAYER, LENGTH_OF_RELATIONSHIP, RELEVANCE_OF_RELATIONSHIP, and REFERENCE_RATING columns on player_information",
+            )
+
         # Convert potential_deal_types list to comma-separated string
         deal_types_str = (
             ",".join(normalized_report["potential_deal_types"])
             if normalized_report["potential_deal_types"]
+            else None
+        )
+        relationship_to_player_str = (
+            ",".join(normalized_report["relationship_to_player"])
+            if normalized_report["relationship_to_player"]
             else None
         )
         current_wages_min, current_wages_max = parse_numeric_range_field(
@@ -10433,6 +10611,22 @@ async def update_intel_report(
 
         update_fields.append("EXPECTED_WAGES = %s")
         params.append(expected_wages_min if expected_wages_min is not None and expected_wages_min == expected_wages_max else None)
+
+        if has_relationship_to_player:
+            update_fields.append("RELATIONSHIP_TO_PLAYER = %s")
+            params.append(relationship_to_player_str)
+
+        if has_length_of_relationship:
+            update_fields.append("LENGTH_OF_RELATIONSHIP = %s")
+            params.append(normalized_report["length_of_relationship"])
+
+        if has_relevance_of_relationship:
+            update_fields.append("RELEVANCE_OF_RELATIONSHIP = %s")
+            params.append(normalized_report["relevance_of_relationship"])
+
+        if has_reference_rating:
+            update_fields.append("REFERENCE_RATING = %s")
+            params.append(normalized_report["reference_rating"])
 
         # Add the report_id for the WHERE clause
         params.append(report_id)
@@ -10545,6 +10739,10 @@ async def get_all_intel_reports(
         has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
         has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
         has_intel_type = has_column("player_information", "INTEL_TYPE")
+        has_relationship_to_player = has_column("player_information", "RELATIONSHIP_TO_PLAYER")
+        has_length_of_relationship = has_column("player_information", "LENGTH_OF_RELATIONSHIP")
+        has_relevance_of_relationship = has_column("player_information", "RELEVANCE_OF_RELATIONSHIP")
+        has_reference_rating = has_column("player_information", "REFERENCE_RATING")
 
         # Build JOIN clause based on whether DATA_SOURCE columns exist
         # Use DATA_SOURCE to prevent ID collisions between internal and external players
@@ -10572,7 +10770,11 @@ async def get_all_intel_reports(
                    {"pi.CURRENT_WAGES_MAX" if has_current_wages_max else "NULL"},
                    {"pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL"},
                    {"pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL"},
-                   {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")}
+                   {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")},
+                   {"pi.RELATIONSHIP_TO_PLAYER" if has_relationship_to_player else "NULL"},
+                   {"pi.LENGTH_OF_RELATIONSHIP" if has_length_of_relationship else "NULL"},
+                   {"pi.RELEVANCE_OF_RELATIONSHIP" if has_relevance_of_relationship else "NULL"},
+                   {"pi.REFERENCE_RATING" if has_reference_rating else "NULL"}
             FROM player_information pi
             {join_clause}
             LEFT JOIN users u ON pi.USER_ID = u.ID
@@ -10652,6 +10854,9 @@ async def get_all_intel_reports(
 
         for row in reports:
             deal_types = row[11].split(",") if row[11] else []
+            relationship_to_player = (
+                row[26].split(",") if len(row) > 26 and row[26] else []
+            )
 
             player_id = row[15]
             cafc_player_id = row[16]
@@ -10684,6 +10889,10 @@ async def get_all_intel_reports(
                     "universal_id": universal_id,
                     "submitted_by": f"{row[19] or ''} {row[20] or ''}".strip() if (row[19] or row[20]) else (row[18] or "Unknown"),
                     "intel_type": normalize_intel_type(row[25] if len(row) > 25 else None),
+                    "relationship_to_player": relationship_to_player,
+                    "length_of_relationship": row[27] if len(row) > 27 else None,
+                    "relevance_of_relationship": row[28] if len(row) > 28 else None,
+                    "reference_rating": row[29] if len(row) > 29 else None,
                 }
             )
 
@@ -10728,6 +10937,10 @@ async def get_single_intel_report(
         has_expected_wages_min = has_column("player_information", "EXPECTED_WAGES_MIN")
         has_expected_wages_max = has_column("player_information", "EXPECTED_WAGES_MAX")
         has_intel_type = has_column("player_information", "INTEL_TYPE")
+        has_relationship_to_player = has_column("player_information", "RELATIONSHIP_TO_PLAYER")
+        has_length_of_relationship = has_column("player_information", "LENGTH_OF_RELATIONSHIP")
+        has_relevance_of_relationship = has_column("player_information", "RELEVANCE_OF_RELATIONSHIP")
+        has_reference_rating = has_column("player_information", "REFERENCE_RATING")
 
         if has_player_id:
             sql = """
@@ -10751,7 +10964,11 @@ async def get_single_intel_report(
                     {current_wages_max_expr},
                     {expected_wages_min_expr},
                     {expected_wages_max_expr},
-                    {intel_type_expr}
+                    {intel_type_expr},
+                    {relationship_to_player_expr},
+                    {length_of_relationship_expr},
+                    {relevance_of_relationship_expr},
+                    {reference_rating_expr}
                 FROM player_information pi
                 LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
                 WHERE pi.ID = %s
@@ -10761,6 +10978,10 @@ async def get_single_intel_report(
                 expected_wages_min_expr="pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL",
                 expected_wages_max_expr="pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL",
                 intel_type_expr="pi.INTEL_TYPE" if has_intel_type else "'player_information'",
+                relationship_to_player_expr="pi.RELATIONSHIP_TO_PLAYER" if has_relationship_to_player else "NULL",
+                length_of_relationship_expr="pi.LENGTH_OF_RELATIONSHIP" if has_length_of_relationship else "NULL",
+                relevance_of_relationship_expr="pi.RELEVANCE_OF_RELATIONSHIP" if has_relevance_of_relationship else "NULL",
+                reference_rating_expr="pi.REFERENCE_RATING" if has_reference_rating else "NULL",
             )
         else:
             sql = """
@@ -10782,7 +11003,11 @@ async def get_single_intel_report(
                     {current_wages_max_expr},
                     {expected_wages_min_expr},
                     {expected_wages_max_expr},
-                    {intel_type_expr}
+                    {intel_type_expr},
+                    {relationship_to_player_expr},
+                    {length_of_relationship_expr},
+                    {relevance_of_relationship_expr},
+                    {reference_rating_expr}
                 FROM player_information pi
                 WHERE pi.ID = %s
             """.format(
@@ -10791,6 +11016,10 @@ async def get_single_intel_report(
                 expected_wages_min_expr="pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL",
                 expected_wages_max_expr="pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL",
                 intel_type_expr="pi.INTEL_TYPE" if has_intel_type else "'player_information'",
+                relationship_to_player_expr="pi.RELATIONSHIP_TO_PLAYER" if has_relationship_to_player else "NULL",
+                length_of_relationship_expr="pi.LENGTH_OF_RELATIONSHIP" if has_length_of_relationship else "NULL",
+                relevance_of_relationship_expr="pi.RELEVANCE_OF_RELATIONSHIP" if has_relevance_of_relationship else "NULL",
+                reference_rating_expr="pi.REFERENCE_RATING" if has_reference_rating else "NULL",
             )
 
         values = (intel_id,)
@@ -10810,6 +11039,9 @@ async def get_single_intel_report(
             # Split potential_deal_types back into a list
             deal_types = report_data[8].split(",") if report_data[8] else []
             intel_type = normalize_intel_type(report_data[19] if len(report_data) > 19 else None)
+            relationship_to_player = (
+                report_data[20].split(",") if len(report_data) > 20 and report_data[20] else []
+            )
 
             intel_report = {
                 "intel_id": report_data[0],
@@ -10831,11 +11063,18 @@ async def get_single_intel_report(
                 "recommendation": report_data[13],
                 "player_id": report_data[14],
                 "intel_type": intel_type,
+                "relationship_to_player": relationship_to_player,
+                "length_of_relationship": report_data[21] if len(report_data) > 21 else None,
+                "relevance_of_relationship": report_data[22] if len(report_data) > 22 else None,
+                "reference_rating": report_data[23] if len(report_data) > 23 else None,
             }
         else:
             # Without PLAYER_ID column, offset indices by 1
             deal_types = report_data[7].split(",") if report_data[7] else []
             intel_type = normalize_intel_type(report_data[17] if len(report_data) > 17 else None)
+            relationship_to_player = (
+                report_data[18].split(",") if len(report_data) > 18 and report_data[18] else []
+            )
 
             intel_report = {
                 "intel_id": report_data[0],
@@ -10856,6 +11095,10 @@ async def get_single_intel_report(
                 "notes": report_data[11],
                 "recommendation": report_data[12],
                 "intel_type": intel_type,
+                "relationship_to_player": relationship_to_player,
+                "length_of_relationship": report_data[19] if len(report_data) > 19 else None,
+                "relevance_of_relationship": report_data[20] if len(report_data) > 20 else None,
+                "reference_rating": report_data[21] if len(report_data) > 21 else None,
             }
 
         return intel_report
