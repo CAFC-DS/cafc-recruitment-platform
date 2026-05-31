@@ -13,7 +13,7 @@ import { agentRecommendationsService } from '../../services/agentRecommendations
 interface RecommendationFormProps {
   values: RecommendationFormValues;
   profile: AgentProfile | null;
-  onChange: (field: keyof RecommendationFormValues, value: string | string[] | null) => void;
+  onChange: (field: keyof RecommendationFormValues, value: string | string[] | boolean | null) => void;
   onSubmit: (event: React.FormEvent) => void;
   loading: boolean;
   error?: string | null;
@@ -181,6 +181,47 @@ function MultiSelectDropdown<T extends string>({
   );
 }
 
+const formatDob = (iso?: string | null) => {
+  if (!iso) return '';
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleDateString('en-GB');
+};
+
+const PlayerSearchOption: React.FC<{
+  result: AgentPlayerSearchResult;
+  active: boolean;
+  onSelect: (result: AgentPlayerSearchResult) => void;
+  variant?: 'suggestion';
+}> = ({ result, active, onSelect, variant }) => {
+  const metaParts = [result.squad_name, result.position, formatDob(result.date_of_birth)].filter(Boolean);
+  const classes = [
+    'agent-player-search-option',
+    variant === 'suggestion' ? 'agent-player-search-suggestion' : '',
+    active ? 'active' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <button
+      type="button"
+      className={classes}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => onSelect(result)}
+    >
+      <div className="agent-player-search-option-text">
+        <div className="agent-player-search-option-name">{result.name}</div>
+        {metaParts.length > 0 ? (
+          <div className="agent-player-search-option-meta">{metaParts.join(' · ')}</div>
+        ) : null}
+      </div>
+      {result.avg_performance_score != null ? (
+        <span className="agent-player-score-badge">{result.avg_performance_score.toFixed(1)}</span>
+      ) : null}
+    </button>
+  );
+};
+
 const RecommendationForm: React.FC<RecommendationFormProps> = ({
   values,
   profile,
@@ -198,9 +239,20 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
     !initialManualPlayerEntry ? (initialSelectedPlayerLabel || values.player_name || '') : '',
   );
   const [searchResults, setSearchResults] = useState<AgentPlayerSearchResult[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<AgentPlayerSearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  // Transient — only populated when the agent commits a selection during this
+  // mount. On edit-mode rehydration we don't have squad/position to display
+  // and gracefully fall back to "linked" copy.
+  const [selectedPlayerSnapshot, setSelectedPlayerSnapshot] = useState<{
+    squad_name?: string | null;
+    position?: string | null;
+  } | null>(null);
+  const playerInputRef = React.useRef<HTMLInputElement | null>(null);
+  const combinedSuggestionList = [...searchResults, ...searchSuggestions];
+  const hasSelectedPlayer = !isManualPlayerEntry && !!selectedPlayerLabel;
   const wageBasis = values.wage_basis || values.expected_wages_basis || values.current_wages_basis || 'Gross';
   const isEditMode = mode === 'edit';
   const updateWageBasis = (nextBasis: WageBasis) => {
@@ -210,10 +262,15 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
   };
 
   useEffect(() => {
+    // Hydrate from the parent's *initial* values only. We deliberately do NOT
+    // depend on values.player_name here — that would re-arm selectedPlayerLabel
+    // every time the typing handler updates the parent's form state, making the
+    // "selected" card flash green after the first keystroke.
     setIsManualPlayerEntry(initialManualPlayerEntry);
     setPlayerSearchQuery(initialSelectedPlayerLabel || values.player_name || '');
     setSelectedPlayerLabel(!initialManualPlayerEntry ? (initialSelectedPlayerLabel || values.player_name || '') : '');
-  }, [initialManualPlayerEntry, initialSelectedPlayerLabel, values.player_name]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialManualPlayerEntry, initialSelectedPlayerLabel]);
 
   useEffect(() => {
     const hasCommittedSelection = !isManualPlayerEntry
@@ -222,6 +279,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
 
     if (isManualPlayerEntry || hasCommittedSelection || playerSearchQuery.trim().length < 2) {
       setSearchResults([]);
+      setSearchSuggestions([]);
       setSearchOpen(false);
       setSearchLoading(false);
       return;
@@ -231,9 +289,10 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
     const timeout = window.setTimeout(async () => {
       try {
         setSearchLoading(true);
-        const results = await agentRecommendationsService.searchPlayers(playerSearchQuery.trim(), 10);
+        const response = await agentRecommendationsService.searchPlayers(playerSearchQuery.trim(), 10);
         if (!cancelled) {
-          setSearchResults(results);
+          setSearchResults(response.results || []);
+          setSearchSuggestions(response.suggestions || []);
           setSearchOpen(true);
           setActiveSuggestionIndex(-1);
         }
@@ -241,6 +300,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
         console.error(searchError);
         if (!cancelled) {
           setSearchResults([]);
+          setSearchSuggestions([]);
           setSearchOpen(false);
         }
       } finally {
@@ -259,19 +319,35 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
   const selectSuggestion = (result: AgentPlayerSearchResult) => {
     setPlayerSearchQuery(result.label);
     setSelectedPlayerLabel(result.label);
+    setSelectedPlayerSnapshot({ squad_name: result.squad_name, position: result.position });
     onChange('player_name', result.name);
     onChange('player_date_of_birth', result.date_of_birth || '');
+    onChange('linked_universal_id', result.universal_id ?? null);
+    onChange('player_manual_entry', false);
     setSearchResults([]);
+    setSearchSuggestions([]);
     setSearchOpen(false);
     setActiveSuggestionIndex(-1);
   };
 
+  const handleChangeSelectedPlayer = () => {
+    setSelectedPlayerLabel('');
+    setSelectedPlayerSnapshot(null);
+    setPlayerSearchQuery('');
+    onChange('player_name', '');
+    onChange('player_date_of_birth', '');
+    onChange('linked_universal_id', null);
+    // Re-focus the search input after the next render so the agent can start
+    // typing immediately.
+    window.setTimeout(() => playerInputRef.current?.focus(), 0);
+  };
+
   const handlePlayerInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!searchOpen || searchResults.length === 0) return;
+    if (!searchOpen || combinedSuggestionList.length === 0) return;
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveSuggestionIndex((prev) => Math.min(prev + 1, searchResults.length - 1));
+      setActiveSuggestionIndex((prev) => Math.min(prev + 1, combinedSuggestionList.length - 1));
       return;
     }
 
@@ -283,7 +359,10 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
 
     if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
       event.preventDefault();
-      selectSuggestion(searchResults[activeSuggestionIndex]);
+      const choice = combinedSuggestionList[activeSuggestionIndex];
+      if (choice) {
+        selectSuggestion(choice);
+      }
       return;
     }
 
@@ -356,8 +435,11 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                 setIsManualPlayerEntry(checked);
                 setSearchOpen(false);
                 setSearchResults([]);
+                setSearchSuggestions([]);
                 setActiveSuggestionIndex(-1);
                 setSelectedPlayerLabel('');
+                onChange('linked_universal_id', null);
+                onChange('player_manual_entry', checked);
                 if (!checked && values.player_date_of_birth) {
                   onChange('player_date_of_birth', '');
                 }
@@ -404,25 +486,54 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                 <div className="agent-portal-form-grid">
                   <div>
                     <label className="agent-portal-label">Player Name *</label>
-                    <input
-                      className="agent-portal-input"
-                      value={playerSearchQuery}
-                      onChange={(event) => {
-                        const nextQuery = event.target.value;
-                        setPlayerSearchQuery(nextQuery);
-                        setSelectedPlayerLabel('');
-                        onChange('player_name', nextQuery);
-                        onChange('player_date_of_birth', '');
-                      }}
-                      onFocus={() => {
-                        if (searchResults.length > 0) {
-                          setSearchOpen(true);
-                        }
-                      }}
-                      onKeyDown={handlePlayerInputKeyDown}
-                      placeholder="Start typing player name"
-                      required
-                    />
+                    {hasSelectedPlayer ? (
+                      <div className="agent-player-selected-card" role="status">
+                        <div className="agent-player-selected-icon" aria-hidden="true">✓</div>
+                        <div className="agent-player-selected-text">
+                          <div className="agent-player-selected-name">{values.player_name}</div>
+                          <div className="agent-player-selected-meta">
+                            {(() => {
+                              const parts = [
+                                selectedPlayerSnapshot?.squad_name,
+                                selectedPlayerSnapshot?.position,
+                                formatDob(values.player_date_of_birth),
+                              ].filter(Boolean);
+                              return parts.length > 0 ? parts.join(' · ') : 'Player linked from database';
+                            })()}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="agent-player-selected-change"
+                          onClick={handleChangeSelectedPlayer}
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        ref={playerInputRef}
+                        className="agent-portal-input"
+                        value={playerSearchQuery}
+                        onChange={(event) => {
+                          const nextQuery = event.target.value;
+                          setPlayerSearchQuery(nextQuery);
+                          setSelectedPlayerLabel('');
+                          setSelectedPlayerSnapshot(null);
+                          onChange('player_name', nextQuery);
+                          onChange('player_date_of_birth', '');
+                          onChange('linked_universal_id', null);
+                        }}
+                        onFocus={() => {
+                          if (searchResults.length > 0) {
+                            setSearchOpen(true);
+                          }
+                        }}
+                        onKeyDown={handlePlayerInputKeyDown}
+                        placeholder="Start typing player name"
+                        required
+                      />
+                    )}
                   </div>
                   <div>
                     <MultiSelectDropdown
@@ -434,36 +545,62 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                     />
                   </div>
                 </div>
-                <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
-                  Enter a player's name to get started.
-                </div>
-                {searchLoading ? (
+                {!hasSelectedPlayer ? (
+                  <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
+                    Enter a player's name to get started.
+                  </div>
+                ) : null}
+                {!hasSelectedPlayer && searchLoading ? (
                   <div className="agent-portal-meta" style={{ marginTop: '0.35rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
                     Loading player suggestions...
                   </div>
                 ) : null}
-                {searchOpen ? (
+                {!hasSelectedPlayer && searchOpen ? (
                   <div className="agent-player-search-menu">
                     {searchLoading ? (
                       <div className="agent-player-search-option">
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
                         Searching...
                       </div>
-                    ) : searchResults.length === 0 ? (
+                    ) : searchResults.length === 0 && searchSuggestions.length === 0 ? (
                       <div className="agent-player-search-option">No players found.</div>
                     ) : (
-                      searchResults.map((result, index) => (
-                        <button
-                          type="button"
-                          key={`${result.name}-${result.date_of_birth || 'unknown'}-${index}`}
-                          className={`agent-player-search-option${index === activeSuggestionIndex ? ' active' : ''}`}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => selectSuggestion(result)}
-                        >
-                          <span>{result.label}</span>
-                        </button>
-                      ))
+                      <>
+                        {searchResults.map((result, index) => (
+                          <PlayerSearchOption
+                            key={`result-${result.name}-${result.date_of_birth || 'unknown'}-${index}`}
+                            result={result}
+                            active={index === activeSuggestionIndex}
+                            onSelect={selectSuggestion}
+                          />
+                        ))}
+                        {searchSuggestions.length > 0 ? (
+                          <>
+                            <div className="agent-player-search-divider">
+                              {searchResults.length === 0 ? (
+                                <>
+                                  No exact match for <strong>{playerSearchQuery.trim()}</strong> — did you mean…?
+                                </>
+                              ) : (
+                                'Did you mean…'
+                              )}
+                            </div>
+                            {searchSuggestions.map((result, index) => {
+                              const combinedIndex = searchResults.length + index;
+                              return (
+                                <PlayerSearchOption
+                                  key={`suggestion-${result.name}-${result.date_of_birth || 'unknown'}-${index}`}
+                                  result={result}
+                                  active={combinedIndex === activeSuggestionIndex}
+                                  onSelect={selectSuggestion}
+                                  variant="suggestion"
+                                />
+                              );
+                            })}
+                          </>
+                        ) : null}
+                      </>
                     )}
                   </div>
                 ) : null}

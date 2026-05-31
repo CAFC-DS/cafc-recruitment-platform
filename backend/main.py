@@ -1055,6 +1055,15 @@ class AgentPlayerSearchResult(BaseModel):
     name: str
     date_of_birth: Optional[str] = None
     avg_performance_score: Optional[float] = None
+    universal_id: Optional[str] = None
+    similarity: Optional[int] = None
+    squad_name: Optional[str] = None
+    position: Optional[str] = None
+
+
+class AgentPlayerSearchResponse(BaseModel):
+    results: List[AgentPlayerSearchResult]
+    suggestions: List[AgentPlayerSearchResult] = []
 
 
 class RecommendationResponse(BaseModel):
@@ -1101,6 +1110,7 @@ class RecommendationResponse(BaseModel):
     agent_status: str = "Active"
     agent_status_updated_at: Optional[str] = None
     shared_notes: Optional[str] = None
+    linked_universal_id: Optional[str] = None
 
 
 class RecommendationStatusHistoryResponse(BaseModel):
@@ -2130,6 +2140,88 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
     return history
 
 
+def _create_external_player_from_agent_intake(
+    cursor,
+    *,
+    player_name: str,
+    player_dob,
+    recommended_position: Optional[str],
+    transfermarkt_link: Optional[str],
+) -> str:
+    """Create a new external PLAYERS row from an agent's manual-entry intake and
+    return its universal_id (e.g. 'external_12345')."""
+    cursor.execute(
+        "SELECT COALESCE(MAX(PLAYERID), 0) + 1 FROM players WHERE PLAYERID IS NOT NULL"
+    )
+    row = cursor.fetchone()
+    new_player_id = int(row[0]) if row and row[0] is not None else 1
+
+    first_position = None
+    if recommended_position:
+        parts = [part.strip() for part in recommended_position.split(",") if part.strip()]
+        if parts:
+            first_position = parts[0]
+
+    player_columns = get_table_columns("players")
+    columns = ["PLAYERID", "PLAYERNAME", "DATA_SOURCE"]
+    values: List[Any] = [new_player_id, player_name.strip(), "external"]
+    if player_dob is not None and "BIRTHDATE" in player_columns:
+        columns.append("BIRTHDATE")
+        values.append(player_dob)
+    if first_position and "POSITION" in player_columns:
+        columns.append("POSITION")
+        values.append(first_position)
+    if transfermarkt_link and "TRANSFERMARKT_LINK" in player_columns:
+        columns.append("TRANSFERMARKT_LINK")
+        values.append(transfermarkt_link.strip())
+
+    placeholders = ", ".join(["%s"] * len(columns))
+    cursor.execute(
+        f"INSERT INTO players ({', '.join(columns)}) VALUES ({placeholders})",
+        tuple(values),
+    )
+    return f"external_{new_player_id}"
+
+
+def resolve_agent_intake_player_link(
+    cursor,
+    *,
+    linked_universal_id: Optional[str],
+    player_manual_entry: bool,
+    player_name: str,
+    player_dob,
+    recommended_position: Optional[str],
+    transfermarkt_link: Optional[str],
+) -> Optional[str]:
+    """Decide which universal_id to store on an agent intake row.
+
+    Path A — agent picked a real player in the typeahead and we got a
+    linked_universal_id. Verify it resolves to a real PLAYERS row and return it.
+
+    Path B — agent ticked "Other (Manual Entry)" or no link was sent. Create a
+    new external PLAYERS row from the agent-provided fields and return that.
+    """
+    if linked_universal_id and not player_manual_entry:
+        normalized_link = linked_universal_id.strip()
+        if normalized_link.startswith("internal_") or normalized_link.startswith("external_"):
+            try:
+                player_data, _ = find_player_by_universal_or_legacy_id(normalized_link, cursor)
+            except (ValueError, Exception):
+                player_data = None
+            if player_data:
+                return normalized_link
+            # Universal id was provided but didn't resolve — fall through to
+            # the manual path so the recommendation still gets a real link.
+
+    return _create_external_player_from_agent_intake(
+        cursor,
+        player_name=player_name,
+        player_dob=player_dob,
+        recommended_position=recommended_position,
+        transfermarkt_link=transfermarkt_link,
+    )
+
+
 def prepare_agent_recommendation_payload(
     cursor,
     current_user: User,
@@ -2405,6 +2497,7 @@ def build_recommendation_select():
     has_player_dob = recommendation_column_exists("player_recommendations", "PLAYER_DATE_OF_BIRTH")
     has_agent_status = recommendation_column_exists("player_recommendations", "AGENT_STATUS")
     has_agent_status_updated_at = recommendation_column_exists("player_recommendations", "AGENT_STATUS_UPDATED_AT")
+    has_linked_universal_id = recommendation_column_exists("player_recommendations", "LINKED_UNIVERSAL_ID")
 
     recommended_position_expr = "pr.RECOMMENDED_POSITION" if has_recommended_position else "NULL"
     matched_player_id_expr = "NULL"
@@ -2465,6 +2558,32 @@ def build_recommendation_select():
     agent_status_expr = "pr.AGENT_STATUS" if has_agent_status else "'Active'"
     agent_status_updated_at_expr = "pr.AGENT_STATUS_UPDATED_AT" if has_agent_status_updated_at else "NULL"
 
+    # Prefer the stored LINKED_UNIVERSAL_ID (set at submission/edit time) over
+    # the fuzzy name match, falling back to the legacy match when the link is
+    # NULL (older rows submitted before this column existed).
+    if has_linked_universal_id:
+        matched_player_id_expr = (
+            "CASE "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%' "
+            "THEN TRY_TO_NUMBER(SUBSTR(pr.LINKED_UNIVERSAL_ID, 10)) "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%' THEN NULL "
+            f"ELSE {matched_player_id_expr} END"
+        )
+        matched_cafc_player_id_expr = (
+            "CASE "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%' "
+            "THEN TRY_TO_NUMBER(SUBSTR(pr.LINKED_UNIVERSAL_ID, 10)) "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%' THEN NULL "
+            f"ELSE {matched_cafc_player_id_expr} END"
+        )
+        matched_data_source_expr = (
+            "CASE "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%' THEN 'internal' "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%' THEN 'external' "
+            f"ELSE {matched_data_source_expr} END"
+        )
+    linked_universal_id_expr = "pr.LINKED_UNIVERSAL_ID" if has_linked_universal_id else "NULL"
+
     return """
         SELECT
             pr.ID,
@@ -2516,7 +2635,8 @@ def build_recommendation_select():
             {matched_player_id_expr} AS LINKED_PLAYER_ID,
             {matched_cafc_player_id_expr} AS LINKED_CAFC_PLAYER_ID,
             {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
-            {wage_basis_expr} AS WAGE_BASIS
+            {wage_basis_expr} AS WAGE_BASIS,
+            {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID
         FROM player_recommendations pr
         LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
@@ -2540,6 +2660,7 @@ def build_recommendation_select():
         matched_player_id_expr=matched_player_id_expr,
         matched_cafc_player_id_expr=matched_cafc_player_id_expr,
         matched_data_source_expr=matched_data_source_expr,
+        linked_universal_id_expr=linked_universal_id_expr,
     )
 
 
@@ -2563,6 +2684,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     current_wages_currency_value = (current_wages_currency or "GBP") if current_wages_value is not None else None
     expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
     wage_basis = row[49] if len(row) > 49 else None
+    linked_universal_id = row[50] if len(row) > 50 else None
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None
     display_transfer_fee_value = transfer_fee_value or legacy_transfer_fee
     display_transfer_fee = (
@@ -2615,6 +2737,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agent_status": row[44] or "Active",
         "agent_status_updated_at": serialize_datetime(row[45]),
         "shared_notes": row[28],
+        "linked_universal_id": linked_universal_id,
     }
 
     if not include_internal:
@@ -2853,7 +2976,7 @@ async def get_agent_me(current_user: User = Depends(require_agent_user)):
             conn.close()
 
 
-@app.get("/agents/player-search", response_model=List[AgentPlayerSearchResult])
+@app.get("/agents/player-search", response_model=AgentPlayerSearchResponse)
 async def search_agent_players(
     query: str,
     limit: int = 10,
@@ -2862,7 +2985,7 @@ async def search_agent_players(
     validate_recommendation_schema_ready()
     normalized_query = query.strip()
     if len(normalized_query) < 2:
-        return []
+        return AgentPlayerSearchResponse(results=[], suggestions=[])
 
     conn = None
     try:
@@ -2893,6 +3016,24 @@ async def search_agent_players(
         has_sr_cafc = "CAFC_PLAYER_ID" in scout_report_columns
         has_sr_player = "PLAYER_ID" in scout_report_columns
 
+        select_cafc_id_expr = (
+            f"MIN(p.{player_cafc_id_column})" if player_cafc_id_column else "NULL"
+        )
+        select_external_id_expr = (
+            f"MIN(p.{player_external_id_column})" if player_external_id_column else "NULL"
+        )
+        select_data_source_expr = (
+            "MIN(COALESCE(p.DATA_SOURCE, 'external'))"
+            if "DATA_SOURCE" in player_columns
+            else "'external'"
+        )
+        select_squadname_expr = (
+            "MIN(p.SQUADNAME)" if "SQUADNAME" in player_columns else "NULL"
+        )
+        select_position_expr = (
+            "MIN(p.POSITION)" if "POSITION" in player_columns else "NULL"
+        )
+
         if has_sr_perf and (
             (has_sr_cafc and player_cafc_id_column)
             or (has_sr_player and player_external_id_column)
@@ -2912,7 +3053,12 @@ async def search_agent_players(
                 SELECT
                     p.{player_name_column},
                     {select_birthdate_expr},
-                    AVG(CASE WHEN sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE
+                    AVG(CASE WHEN sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE,
+                    {select_cafc_id_expr} AS CAFC_PLAYER_ID,
+                    {select_external_id_expr} AS PLAYERID,
+                    {select_data_source_expr} AS DATA_SOURCE,
+                    {select_squadname_expr} AS SQUADNAME,
+                    {select_position_expr} AS POSITION
                 FROM players p
                 LEFT JOIN scout_reports sr
                     ON ({join_condition})
@@ -2952,12 +3098,20 @@ async def search_agent_players(
                 (search_pattern, normalized_search, normalized_search + "%", safe_limit),
             )
 
-        items: List[AgentPlayerSearchResult] = []
-        seen = set()
-        for row in cursor.fetchall():
-            name = row[0]
-            if not name:
-                continue
+        def derive_universal_id(cafc_id: Any, external_id: Any, data_source: Any) -> Optional[str]:
+            source = (data_source or "").strip().lower() if isinstance(data_source, str) else None
+            if source == "internal" and cafc_id is not None:
+                return f"internal_{int(cafc_id)}"
+            if external_id is not None:
+                return f"external_{int(external_id)}"
+            if cafc_id is not None:
+                return f"internal_{int(cafc_id)}"
+            return None
+
+        def build_result(row: List[Any], similarity: Optional[int] = None) -> Optional[AgentPlayerSearchResult]:
+            row_name = row[0]
+            if not row_name:
+                return None
             dob_iso = serialize_datetime(row[1])
             if dob_iso and "T" in dob_iso:
                 dob_iso = dob_iso.split("T")[0]
@@ -2966,21 +3120,104 @@ async def search_agent_players(
                 if dob_iso
                 else "Unknown DOB"
             )
-            avg_performance_score = format_decimal(row[2])
-            unique_key = (name.strip().lower(), dob_iso or "")
+            avg = format_decimal(row[2]) if len(row) > 2 else None
+            cafc_id = row[3] if len(row) > 3 else None
+            external_id = row[4] if len(row) > 4 else None
+            data_source = row[5] if len(row) > 5 else None
+            squad_name = row[6] if len(row) > 6 else None
+            position = row[7] if len(row) > 7 else None
+            return AgentPlayerSearchResult(
+                label=f"{row_name} - {dob_label}",
+                name=row_name,
+                date_of_birth=dob_iso,
+                avg_performance_score=avg,
+                universal_id=derive_universal_id(cafc_id, external_id, data_source),
+                similarity=similarity,
+                squad_name=squad_name,
+                position=position,
+            )
+
+        items: List[AgentPlayerSearchResult] = []
+        seen = set()
+        for row in cursor.fetchall():
+            result = build_result(row)
+            if result is None:
+                continue
+            unique_key = (result.name.strip().lower(), result.date_of_birth or "")
             if unique_key in seen:
                 continue
             seen.add(unique_key)
-            label = f"{name} - {dob_label}"
-            items.append(
-                AgentPlayerSearchResult(
-                    label=label,
-                    name=name,
-                    date_of_birth=dob_iso,
-                    avg_performance_score=avg_performance_score,
+            items.append(result)
+
+        suggestions: List[AgentPlayerSearchResult] = []
+        # Only run the heavier JAROWINKLER_SIMILARITY query when the primary
+        # ILIKE search returned little, otherwise we'd burn a full-table
+        # similarity scan on every keystroke.
+        if len(items) < 3 and len(normalized_search) >= 3:
+            try:
+                # Token-level Jaro-Winkler: compare the query against the full
+                # name AND the first/last whitespace-separated token. This
+                # catches surname-only typos like "Modrik" → "Luka Modric"
+                # which a full-string JW would score too low on, because the
+                # strings differ wildly in length and prefix.
+                first_token_expr = f"SPLIT_PART({search_name_expr}, ' ', 1)"
+                last_token_expr = f"REGEXP_SUBSTR({search_name_expr}, '\\\\S+$')"
+                similarity_expr = (
+                    "GREATEST("
+                    f"MAX(JAROWINKLER_SIMILARITY({search_name_expr}, %s)), "
+                    f"MAX(JAROWINKLER_SIMILARITY({first_token_expr}, %s)), "
+                    f"MAX(JAROWINKLER_SIMILARITY({last_token_expr}, %s))"
+                    ")"
                 )
-            )
-        return items
+                cursor.execute(
+                    f"""
+                    SELECT
+                        p.{player_name_column},
+                        {select_birthdate_expr},
+                        NULL AS AVG_PERFORMANCE_SCORE,
+                        {select_cafc_id_expr} AS CAFC_PLAYER_ID,
+                        {select_external_id_expr} AS PLAYERID,
+                        {select_data_source_expr} AS DATA_SOURCE,
+                        {select_squadname_expr} AS SQUADNAME,
+                        {select_position_expr} AS POSITION,
+                        {similarity_expr} AS SIMILARITY
+                    FROM players p
+                    WHERE (
+                            JAROWINKLER_SIMILARITY({search_name_expr}, %s) >= 80
+                         OR JAROWINKLER_SIMILARITY({first_token_expr}, %s) >= 80
+                         OR JAROWINKLER_SIMILARITY({last_token_expr}, %s) >= 80
+                        )
+                      AND {search_name_expr} NOT ILIKE %s
+                    GROUP BY p.{player_name_column}, {select_birthdate_expr}
+                    ORDER BY SIMILARITY DESC, p.{player_name_column}
+                    LIMIT 5
+                """,
+                    (
+                        # SELECT GREATEST(...)
+                        normalized_search, normalized_search, normalized_search,
+                        # WHERE three OR'd similarity checks
+                        normalized_search, normalized_search, normalized_search,
+                        # NOT ILIKE
+                        search_pattern,
+                    ),
+                )
+                for row in cursor.fetchall():
+                    similarity_score = int(row[8]) if len(row) > 8 and row[8] is not None else None
+                    suggestion = build_result(row, similarity=similarity_score)
+                    if suggestion is None:
+                        continue
+                    unique_key = (suggestion.name.strip().lower(), suggestion.date_of_birth or "")
+                    if unique_key in seen:
+                        continue
+                    seen.add(unique_key)
+                    suggestions.append(suggestion)
+            except Exception as fuzzy_error:
+                # JAROWINKLER_SIMILARITY is built into Snowflake but if the
+                # environment somehow lacks it we still want the primary results
+                # to come back — just skip suggestions in that case.
+                logging.warning(f"JAROWINKLER suggestion fallback failed: {fuzzy_error}")
+
+        return AgentPlayerSearchResponse(results=items, suggestions=suggestions)
     except Exception as e:
         logging.exception(f"Agent player search failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to search players")
@@ -3038,6 +3275,8 @@ async def create_agent_recommendation(
     expected_wages_currency: Optional[str] = Form(None),
     expected_wages_basis: Optional[str] = Form(None),
     additional_information: Optional[str] = Form(None),
+    linked_universal_id: Optional[str] = Form(None),
+    player_manual_entry: Optional[bool] = Form(False),
     supporting_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(require_agent_user),
 ):
@@ -3075,6 +3314,16 @@ async def create_agent_recommendation(
             expected_wages_currency=expected_wages_currency,
             expected_wages_basis=expected_wages_basis,
             additional_information=additional_information,
+        )
+
+        resolved_universal_id = resolve_agent_intake_player_link(
+            cursor,
+            linked_universal_id=linked_universal_id,
+            player_manual_entry=bool(player_manual_entry),
+            player_name=recommendation_payload["PLAYER_NAME"],
+            player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
+            recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
+            transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
         )
 
         recommendation_columns = get_table_columns("player_recommendations")
@@ -3155,6 +3404,10 @@ async def create_agent_recommendation(
             insert_columns.append("PLAYER_DATE_OF_BIRTH")
             insert_values.append(recommendation_payload["PLAYER_DATE_OF_BIRTH"])
 
+        if "LINKED_UNIVERSAL_ID" in recommendation_columns:
+            insert_columns.append("LINKED_UNIVERSAL_ID")
+            insert_values.append(resolved_universal_id)
+
         placeholders = ", ".join(["%s"] * len(insert_columns))
         cursor.execute(
             f"""
@@ -3225,6 +3478,8 @@ async def update_agent_recommendation(
     expected_wages_currency: Optional[str] = Form(None),
     expected_wages_basis: Optional[str] = Form(None),
     additional_information: Optional[str] = Form(None),
+    linked_universal_id: Optional[str] = Form(None),
+    player_manual_entry: Optional[bool] = Form(False),
     supporting_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(require_agent_user),
 ):
@@ -3271,6 +3526,16 @@ async def update_agent_recommendation(
             additional_information=additional_information,
         )
 
+        resolved_universal_id = resolve_agent_intake_player_link(
+            cursor,
+            linked_universal_id=linked_universal_id,
+            player_manual_entry=bool(player_manual_entry),
+            player_name=recommendation_payload["PLAYER_NAME"],
+            player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
+            recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
+            transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
+        )
+
         recommendation_columns = get_table_columns("player_recommendations")
         update_values = {
             "AGENT_NAME": recommendation_payload["AGENT_NAME"],
@@ -3310,6 +3575,9 @@ async def update_agent_recommendation(
         for column_name in optional_update_columns:
             if column_name in recommendation_columns:
                 update_values[column_name] = recommendation_payload[column_name]
+
+        if "LINKED_UNIVERSAL_ID" in recommendation_columns:
+            update_values["LINKED_UNIVERSAL_ID"] = resolved_universal_id
 
         assignments = ", ".join(f"{column_name} = %s" for column_name in update_values.keys())
         params = list(update_values.values()) + [recommendation_id]

@@ -1,6 +1,6 @@
 import axiosInstance from '../axiosInstance';
 import {
-  AgentPlayerSearchResult,
+  AgentPlayerSearchResponse,
   AgentProfile,
   AgentRegisterPayload,
   AgentStatus,
@@ -52,7 +52,7 @@ export const agentRecommendationsService = {
   },
 
   async searchPlayers(query: string, limit = 10) {
-    const response = await axiosInstance.get<AgentPlayerSearchResult[]>('/agents/player-search', {
+    const response = await axiosInstance.get<AgentPlayerSearchResponse>('/agents/player-search', {
       params: { query, limit },
     });
     return response.data;
