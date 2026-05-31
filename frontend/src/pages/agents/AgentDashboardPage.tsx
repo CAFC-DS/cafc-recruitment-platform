@@ -143,58 +143,107 @@ const AgentDashboardPage: React.FC = () => {
               items.length === 0 ? (
                 <div className="agent-portal-empty">No submissions yet.</div>
               ) : (
-                <div className="table-responsive agent-portal-table-wrap">
-                  <table className="table table-striped table-hover table-compact mb-0 agent-dashboard-table">
-                    <thead className="table-dark">
-                      <tr>
-                        <th>Player</th>
-                        <th>Status</th>
-                        <th>Notes</th>
-                        <th>Submitted</th>
-                        <th>Last Updated</th>
-                        <th className="text-end">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedItems.map((item) => {
-                        return (
-                          <tr key={item.id}>
-                            <td>
-                              <div style={{ fontWeight: 700, color: '#111827' }}>{item.player_name}</div>
-                              <div className="agent-portal-meta">{item.agreement_type || 'Agreement type not provided'}</div>
-                            </td>
-                            <td className="text-center">
-                              <SubmissionStatusBadge status={item.status} />
-                            </td>
-                            <td>
-                              <div className="agent-portal-meta" style={{ color: '#111827', maxWidth: 260 }}>
-                                {item.shared_notes
-                                  ? item.shared_notes.length > 120
-                                    ? `${item.shared_notes.slice(0, 120)}...`
-                                    : item.shared_notes
-                                  : 'No notes shared yet.'}
-                              </div>
-                            </td>
-                            <td>{formatDate(item.created_at)}</td>
-                            <td>{formatDateTime(item.status_updated_at || item.created_at)}</td>
-                            <td className="text-end">
-                              <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                                <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
-                                  View
-                                </Link>
-                                {item.status === 'Submitted' ? (
-                                  <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
-                                    Edit
+                <>
+                  <div className="table-responsive agent-portal-table-wrap d-none d-md-block">
+                    <table className="table table-striped table-hover table-compact mb-0 agent-dashboard-table">
+                      <thead className="table-dark">
+                        <tr>
+                          <th>Player</th>
+                          <th>Status</th>
+                          <th>Notes</th>
+                          <th>Submitted</th>
+                          <th>Last Updated</th>
+                          <th className="text-end">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedItems.map((item) => {
+                          return (
+                            <tr key={item.id}>
+                              <td>
+                                <div style={{ fontWeight: 700, color: '#111827' }}>{item.player_name}</div>
+                                <div className="agent-portal-meta">{item.agreement_type || 'Agreement type not provided'}</div>
+                              </td>
+                              <td className="text-center">
+                                <SubmissionStatusBadge status={item.status} />
+                              </td>
+                              <td>
+                                <div className="agent-portal-meta" style={{ color: '#111827', maxWidth: 260 }}>
+                                  {item.shared_notes
+                                    ? item.shared_notes.length > 120
+                                      ? `${item.shared_notes.slice(0, 120)}...`
+                                      : item.shared_notes
+                                    : 'No notes shared yet.'}
+                                </div>
+                              </td>
+                              <td>{formatDate(item.created_at)}</td>
+                              <td>{formatDateTime(item.status_updated_at || item.created_at)}</td>
+                              <td className="text-end">
+                                <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                                  <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
+                                    View
                                   </Link>
-                                ) : null}
+                                  {item.status === 'Submitted' ? (
+                                    <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
+                                      Edit
+                                    </Link>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <ul className="agent-portal-mobile-cards d-md-none">
+                    {sortedItems.map((item) => {
+                      const notesPreview = item.shared_notes
+                        ? item.shared_notes.length > 120
+                          ? `${item.shared_notes.slice(0, 120)}...`
+                          : item.shared_notes
+                        : 'No notes shared yet.';
+                      return (
+                        <li key={item.id} className="agent-portal-mobile-card">
+                          <header className="agent-portal-mobile-card-head">
+                            <div className="agent-portal-mobile-card-title">
+                              <div className="agent-portal-mobile-card-name">{item.player_name}</div>
+                              <div className="agent-portal-meta">
+                                {item.agreement_type || 'Agreement type not provided'}
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            </div>
+                            <SubmissionStatusBadge status={item.status} />
+                          </header>
+
+                          <div className="agent-portal-mobile-card-notes">{notesPreview}</div>
+
+                          <dl className="agent-portal-mobile-card-meta">
+                            <div>
+                              <dt>Submitted</dt>
+                              <dd>{formatDate(item.created_at)}</dd>
+                            </div>
+                            <div>
+                              <dt>Last updated</dt>
+                              <dd>{formatDateTime(item.status_updated_at || item.created_at)}</dd>
+                            </div>
+                          </dl>
+
+                          <footer className="agent-portal-mobile-card-actions">
+                            <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
+                              View
+                            </Link>
+                            {item.status === 'Submitted' ? (
+                              <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
+                                Edit
+                              </Link>
+                            ) : null}
+                          </footer>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )
             ) : null}
           </div>
