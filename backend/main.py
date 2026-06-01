@@ -14950,32 +14950,29 @@ async def get_all_lists_with_details(
 
                     if universal_ids:
                         placeholders = ", ".join(["%s"] * len(universal_ids))
-                        # Note: %% is required because Snowflake connector uses Python % formatting
                         cursor.execute(
                             f"""
-                            SELECT
-                                CASE
-                                    WHEN LINKED_UNIVERSAL_ID LIKE 'external_%%'
-                                    THEN TRY_TO_NUMBER(SUBSTR(LINKED_UNIVERSAL_ID, 10))
-                                    ELSE NULL
-                                END as external_id,
-                                CASE
-                                    WHEN LINKED_UNIVERSAL_ID LIKE 'internal_%%'
-                                    THEN TRY_TO_NUMBER(SUBSTR(LINKED_UNIVERSAL_ID, 10))
-                                    ELSE NULL
-                                END as internal_id,
-                                COUNT(*) as recommendation_count
+                            SELECT LINKED_UNIVERSAL_ID, COUNT(*) as recommendation_count
                             FROM player_recommendations
                             WHERE LINKED_UNIVERSAL_ID IN ({placeholders})
-                            GROUP BY external_id, internal_id
+                            GROUP BY LINKED_UNIVERSAL_ID
                             """,
                             universal_ids,
                         )
 
                         for rec_row in cursor.fetchall():
-                            key = (rec_row[0], rec_row[1])
-                            # Add recommendation count to existing intel count
-                            intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + (rec_row[2] or 0)
+                            linked_id = rec_row[0]
+                            count = rec_row[1] or 0
+
+                            # Parse the LINKED_UNIVERSAL_ID to extract player IDs
+                            if linked_id and linked_id.startswith("external_"):
+                                player_id = int(linked_id.replace("external_", ""))
+                                key = (player_id, None)
+                                intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
+                            elif linked_id and linked_id.startswith("internal_"):
+                                cafc_id = int(linked_id.replace("internal_", ""))
+                                key = (None, cafc_id)
+                                intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
 
         # Build player data and attach to lists
         for row in player_rows:
