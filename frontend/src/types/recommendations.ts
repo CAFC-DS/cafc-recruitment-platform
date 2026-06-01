@@ -89,6 +89,7 @@ export interface Recommendation {
   agent_status: AgentStatus;
   agent_status_updated_at?: string;
   shared_notes?: string;
+  linked_universal_id?: string | null;
 }
 
 export interface RecommendationStatusHistory {
@@ -163,6 +164,8 @@ export interface RecommendationFormValues {
   expected_wages_per_week: string;
   expected_wages_basis: WageBasis;
   additional_information: string;
+  linked_universal_id?: string | null;
+  player_manual_entry?: boolean;
 }
 
 export interface AgentPlayerSearchResult {
@@ -170,6 +173,15 @@ export interface AgentPlayerSearchResult {
   name: string;
   date_of_birth?: string | null;
   avg_performance_score?: number | null;
+  universal_id?: string | null;
+  similarity?: number | null;
+  squad_name?: string | null;
+  position?: string | null;
+}
+
+export interface AgentPlayerSearchResponse {
+  results: AgentPlayerSearchResult[];
+  suggestions: AgentPlayerSearchResult[];
 }
 
 export interface AgentRegisterPayload {

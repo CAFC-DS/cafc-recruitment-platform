@@ -23,6 +23,8 @@ export const getInitialRecommendationFormValues = (): RecommendationFormValues =
   expected_wages_per_week: '',
   expected_wages_basis: 'Gross',
   additional_information: '',
+  linked_universal_id: null,
+  player_manual_entry: false,
 });
 
 export const getRecommendationSubmitErrorMessage = (err: any) => {
@@ -86,11 +88,20 @@ export const mapRecommendationToFormValues = (item: Recommendation): Recommendat
   ),
   expected_wages_basis: item.expected_wages_basis || item.wage_basis || 'Gross',
   additional_information: item.additional_information || '',
+  linked_universal_id: item.linked_universal_id ?? null,
+  player_manual_entry: shouldUseManualPlayerEntry(item),
 });
 
-export const shouldUseManualPlayerEntry = (item: Recommendation) => (
-  !item.linked_player_id && !item.linked_cafc_player_id && !!item.player_date_of_birth
-);
+export const shouldUseManualPlayerEntry = (item: Recommendation) => {
+  // Newer rows: the agent's pick is recorded in linked_universal_id. An
+  // 'external_*' value here with no linked_player_id means we created the
+  // PLAYERS row from manual entry, not from a typeahead suggestion.
+  if (item.linked_universal_id) {
+    return !item.linked_player_id && !item.linked_cafc_player_id;
+  }
+  // Legacy rows (no stored link): fall back to the old heuristic.
+  return !item.linked_player_id && !item.linked_cafc_player_id && !!item.player_date_of_birth;
+};
 
 export const getRecommendationSelectedPlayerLabel = (item: Recommendation) => {
   if (!item.player_name) return '';

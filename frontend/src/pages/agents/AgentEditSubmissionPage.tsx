@@ -52,7 +52,7 @@ const AgentEditSubmissionPage: React.FC = () => {
 
   const handleChange = (
     field: keyof RecommendationFormValues,
-    value: string | string[] | null,
+    value: string | string[] | boolean | null,
   ) => {
     setValues((current) => (current ? { ...current, [field]: value as never } : current));
   };

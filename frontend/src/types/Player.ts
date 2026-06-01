@@ -53,6 +53,7 @@ export interface Player {
 export interface PlayerProfile extends Player {
   scout_reports?: any[];
   intel_reports?: any[];
+  agent_recommendations?: any[];
   notes?: any[];
 }
 
