@@ -14946,12 +14946,16 @@ async def get_all_lists_with_details(
                 for intel_row in cursor.fetchall():
                     intel_stats_lookup[(intel_row[0], intel_row[1])] = intel_row[2] or 0
 
+                print(f"DEBUG: Intel stats after player_information query: {intel_stats_lookup}")
+
                 # Add counts from agent recommendations using the same logic as player profile
                 try:
                     recommendation_select = build_recommendation_select()
                     if all_player_ids or all_cafc_ids:
                         external_ids_list = list(all_player_ids) if all_player_ids else []
                         internal_ids_list = list(all_cafc_ids) if all_cafc_ids else []
+
+                        print(f"DEBUG: Looking for recommendations with external_ids={external_ids_list}, internal_ids={internal_ids_list}")
 
                         # Build WHERE conditions for recommendations
                         rec_conditions = []
@@ -14968,8 +14972,7 @@ async def get_all_lists_with_details(
                             rec_params.extend(internal_ids_list)
 
                         if rec_conditions:
-                            cursor.execute(
-                                f"""
+                            query_sql = f"""
                                 WITH recommendation_feed AS (
                                     {recommendation_select}
                                 )
@@ -14977,17 +14980,24 @@ async def get_all_lists_with_details(
                                 FROM recommendation_feed rf
                                 WHERE {" OR ".join(rec_conditions)}
                                 GROUP BY rf.LINKED_PLAYER_ID, rf.LINKED_CAFC_PLAYER_ID
-                                """,
-                                rec_params,
-                            )
+                                """
+                            print(f"DEBUG: Recommendation query WHERE: {' OR '.join(rec_conditions)}")
+                            cursor.execute(query_sql, rec_params)
 
-                            for rec_row in cursor.fetchall():
+                            rec_results = cursor.fetchall()
+                            print(f"DEBUG: Found {len(rec_results)} recommendation groups")
+                            for rec_row in rec_results:
                                 key = (rec_row[0], rec_row[1])
                                 count = rec_row[2] or 0
+                                print(f"DEBUG: Recommendation key={key}, count={count}, existing={intel_stats_lookup.get(key, 0)}")
                                 intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
+
+                        print(f"DEBUG: Intel stats after recommendations: {intel_stats_lookup}")
                 except Exception as e:
                     # Don't let recommendation counting errors break the whole list
                     logging.warning(f"Could not count agent recommendations: {e}")
+                    import traceback
+                    print(f"DEBUG: Exception counting recommendations: {traceback.format_exc()}")
 
         # Build player data and attach to lists
         for row in player_rows:
