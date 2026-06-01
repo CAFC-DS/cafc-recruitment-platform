@@ -520,6 +520,43 @@ else:
 # Legacy password support (kept for backward compatibility, not used with key-pair auth)
 SNOWFLAKE_PASSWORD = os.getenv("SNOWFLAKE_PASSWORD")
 
+# --- Canonical-platform cutover seam (Part 3 / Phase 0) ----------------------
+# Three env vars drive explicit table-ref templating in subsequent per-feature
+# PRs. Defaults match the legacy RECRUITMENT_TEST.PUBLIC home so this PR is a
+# pure no-op. Production env will flip these as each feature cuts over to the
+# CAFC_DB canonical layer (reads → APP_COMPAT, writes → CORE).
+#
+# Untemplated SQL is unaffected — it keeps resolving via the Snowflake
+# connection's default database/schema (set from SNOWFLAKE_DATABASE/
+# SNOWFLAKE_SCHEMA above). Per-feature PRs template only the SQL they own.
+CANONICAL_DB = os.getenv("CANONICAL_DB", "RECRUITMENT_TEST")
+PLATFORM_DB_SCHEMA = os.getenv("PLATFORM_DB_SCHEMA", "PUBLIC")
+CORE_DB_SCHEMA = os.getenv("CORE_DB_SCHEMA", "PUBLIC")
+
+# READ_PREFIX  – use in `FROM {READ_PREFIX}.x` for reads we want to flip.
+# WRITE_PREFIX – use in `INSERT INTO {WRITE_PREFIX}.x` / `UPDATE {WRITE_PREFIX}.x`
+#                for writes that land in CORE once their table moves.
+READ_PREFIX = f"{CANONICAL_DB}.{PLATFORM_DB_SCHEMA}"
+WRITE_PREFIX = f"{CANONICAL_DB}.{CORE_DB_SCHEMA}"
+
+print(
+    f"📍 Canonical seam: READ_PREFIX={READ_PREFIX}  WRITE_PREFIX={WRITE_PREFIX}"
+)
+
+
+def read_table(table_name: str) -> str:
+    """Fully-qualified read-path for `table_name`. Use in per-feature cutover
+    PRs as we template specific reads. With Phase 0 defaults this resolves to
+    `RECRUITMENT_TEST.PUBLIC.<name>` – identical to today's bare `FROM <name>`."""
+    return f"{READ_PREFIX}.{table_name}"
+
+
+def write_table(table_name: str) -> str:
+    """Fully-qualified write-path for `table_name`. Defaults to
+    RECRUITMENT_TEST.PUBLIC.<table> until CORE_DB_SCHEMA flips to CORE."""
+    return f"{WRITE_PREFIX}.{table_name}"
+# --- End canonical-platform cutover seam --------------------------------------
+
 # Enhanced connection pool and caching
 _connection_cache = {}
 _data_cache = {}
