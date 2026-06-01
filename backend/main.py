@@ -14950,16 +14950,17 @@ async def get_all_lists_with_details(
 
                     if universal_ids:
                         placeholders = ", ".join(["%s"] * len(universal_ids))
+                        # Note: %% is required because Snowflake connector uses Python % formatting
                         cursor.execute(
                             f"""
                             SELECT
                                 CASE
-                                    WHEN LINKED_UNIVERSAL_ID LIKE 'external_%'
+                                    WHEN LINKED_UNIVERSAL_ID LIKE 'external_%%'
                                     THEN TRY_TO_NUMBER(SUBSTR(LINKED_UNIVERSAL_ID, 10))
                                     ELSE NULL
                                 END as external_id,
                                 CASE
-                                    WHEN LINKED_UNIVERSAL_ID LIKE 'internal_%'
+                                    WHEN LINKED_UNIVERSAL_ID LIKE 'internal_%%'
                                     THEN TRY_TO_NUMBER(SUBSTR(LINKED_UNIVERSAL_ID, 10))
                                     ELSE NULL
                                 END as internal_id,
