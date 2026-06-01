@@ -9515,6 +9515,65 @@ async def get_player_profile(
         cursor.execute(intel_sql, intel_values)
         intel_reports = cursor.fetchall()
 
+        # Get agent recommendations linked to this player. New rows match
+        # exactly via LINKED_UNIVERSAL_ID (set at submission time by
+        # /agents/recommendations); legacy rows fall through to the same
+        # fuzzy name-match used by the flow history endpoint, so historical
+        # submissions still surface even though they pre-date the linked column.
+        agent_recommendations: List[Dict[str, Any]] = []
+        try:
+            external_player_id_for_link = player_data[0]
+            cafc_player_id_for_link = player_data[1]
+            player_name_for_link = player_data[2]
+            player_dob_for_link = player_data[5]
+            if data_source == "internal" and cafc_player_id_for_link is not None:
+                universal_id_for_player = f"internal_{cafc_player_id_for_link}"
+            elif external_player_id_for_link is not None:
+                universal_id_for_player = f"external_{external_player_id_for_link}"
+            else:
+                universal_id_for_player = None
+
+            recommendation_select = build_recommendation_select()
+            cursor.execute(
+                f"""
+                WITH recommendation_feed AS (
+                    {recommendation_select}
+                )
+                SELECT *
+                FROM recommendation_feed rf
+                WHERE
+                    rf.LINKED_UNIVERSAL_ID = %s
+                    OR rf.LINKED_PLAYER_ID = %s
+                    OR rf.LINKED_CAFC_PLAYER_ID = %s
+                    OR (
+                        NORMALIZE_TEXT_UDF(rf.PLAYER_NAME) = NORMALIZE_TEXT_UDF(%s)
+                        AND (
+                            %s IS NULL
+                            OR rf.PLAYER_DATE_OF_BIRTH IS NULL
+                            OR rf.PLAYER_DATE_OF_BIRTH = %s
+                        )
+                    )
+                ORDER BY rf.CREATED_AT DESC
+            """,
+                (
+                    universal_id_for_player,
+                    external_player_id_for_link,
+                    cafc_player_id_for_link,
+                    player_name_for_link,
+                    player_dob_for_link,
+                    player_dob_for_link,
+                ),
+            )
+            agent_recommendations = [
+                serialize_recommendation_row(row).model_dump()
+                for row in cursor.fetchall()
+            ]
+        except Exception as agent_rec_error:
+            # Never let a recommendation-side failure 500 the whole profile load.
+            logging.warning(
+                f"Could not load agent recommendations for player {player_id}: {agent_rec_error}"
+            )
+
         # Get player notes (if table exists)
         notes = []
         try:
@@ -9617,6 +9676,7 @@ async def get_player_profile(
                 }
                 for row in intel_reports
             ],
+            "agent_recommendations": agent_recommendations,
             "notes": notes,
         }
 

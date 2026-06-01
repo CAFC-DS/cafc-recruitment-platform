@@ -4197,3 +4197,223 @@ span.badge.badge-neutral-grey {
     align-items: stretch;
   }
 }
+
+/* ----------------------------------------------------------------------
+   Intel History — agent vs internal source markers
+   Agent rows are sourced from PLAYER_RECOMMENDATIONS and need to be
+   visually unmistakable in the otherwise-internal Intel feed. We use a
+   pill in the new Source column, a left-border accent on the table row
+   and card, and a soft red row tint.
+   ---------------------------------------------------------------------- */
+
+.intel-source-agent-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #b91c1c;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.intel-source-internal-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.intel-row--agent > td:first-child {
+  border-left: 4px solid #b91c1c;
+}
+
+.intel-row--agent {
+  background-color: rgba(185, 28, 28, 0.03);
+}
+
+.intel-card--agent {
+  border-left: 4px solid #b91c1c !important;
+}
+
+/* ----------------------------------------------------------------------
+   Premium agent recommendation card (cards view on the player profile).
+   Replaces the inherited intel-card layout with a clearer hierarchy:
+   top strip (eyebrow + status pill) -> identity -> chips -> metric grid
+   -> single ghost button.
+   ---------------------------------------------------------------------- */
+
+.agent-rec-card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 10px 28px -16px rgba(15, 23, 42, 0.10);
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.agent-rec-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 18px 36px -16px rgba(15, 23, 42, 0.18);
+}
+
+.agent-rec-card-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.95rem;
+  background: linear-gradient(180deg, #fff5f5 0%, #ffffff 100%);
+  border-bottom: 1px solid rgba(185, 28, 28, 0.12);
+}
+
+.agent-rec-card-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b91c1c;
+  line-height: 1.2;
+}
+
+.agent-rec-card-eyebrow-divider {
+  color: rgba(185, 28, 28, 0.4);
+  font-weight: 400;
+  margin: 0 0.15rem;
+  letter-spacing: 0;
+}
+
+.agent-rec-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.95rem 1rem 0.85rem;
+  flex: 1 1 auto;
+}
+
+.agent-rec-card-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.agent-rec-card-name {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-rec-card-agency {
+  font-size: 0.85rem;
+  color: #64748b;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-rec-card-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.agent-rec-card-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.agent-rec-card-chip--deal {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.agent-rec-card-chip--position {
+  background: #fef2f2;
+  border: 1px solid rgba(185, 28, 28, 0.18);
+  color: #991b1b;
+}
+
+.agent-rec-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.7rem 0;
+  border-top: 1px solid #eef2f7;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.agent-rec-card-meta > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.agent-rec-card-meta dt {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.agent-rec-card-meta dd {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111827;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 65%;
+}
+
+.agent-rec-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.agent-rec-card-view-btn {
+  border: 0;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.agent-rec-card-view-btn:hover {
+  background: rgba(185, 28, 28, 0.08);
+  color: #8f1b1c;
+}

@@ -32,6 +32,8 @@ import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
 import IntelModal from "../components/IntelModal";
+import AgentRecommendationModal from "../components/AgentRecommendationModal";
+import SubmissionStatusBadge from "../components/agents/SubmissionStatusBadge";
 import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -521,13 +523,47 @@ const PlayerProfilePage: React.FC = () => {
 
   const getIntelReportId = (intel: any) => intel?.intel_id ?? intel?.id ?? null;
 
-  const sortedIntelReports = profile?.intel_reports
-    ? [...profile.intel_reports].sort(
-        (a: any, b: any) =>
-          new Date(b.created_at).getTime() -
-          new Date(a.created_at).getTime(),
-      )
-    : [];
+  // Unified Intel + Agent feed for the Intel History section. Items keep their
+  // native shape and are tagged with a source discriminator so the renderers
+  // can branch (visual distinction, action buttons, modal target).
+  type IntelFeedItem =
+    | { source: "intel"; data: any }
+    | { source: "agent"; data: any };
+
+  const intelFeed: IntelFeedItem[] = useMemo(() => {
+    const intel: IntelFeedItem[] = (profile?.intel_reports ?? []).map(
+      (item: any) => ({ source: "intel" as const, data: item }),
+    );
+    const agent: IntelFeedItem[] = (profile?.agent_recommendations ?? []).map(
+      (item: any) => ({ source: "agent" as const, data: item }),
+    );
+    return [...intel, ...agent].sort((a, b) => {
+      const aDate = new Date(a.data.created_at ?? 0).getTime();
+      const bDate = new Date(b.data.created_at ?? 0).getTime();
+      return bDate - aDate;
+    });
+  }, [profile?.intel_reports, profile?.agent_recommendations]);
+
+  const formatAgentDealTypes = (csv?: string | null) => {
+    if (!csv) return "Not specified";
+    return csv
+      .split(",")
+      .map((part: string) => part.trim())
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const formatAgentDate = (iso?: string | null) =>
+    iso ? new Date(iso).toLocaleDateString("en-GB") : "—";
+
+  const agentSubmissionDate = (agent: any) =>
+    formatAgentDate(agent?.submission_date ?? agent?.created_at);
+  const agentReportDate = (agent: any) => formatAgentDate(agent?.created_at);
+
+  const [selectedAgentRecommendation, setSelectedAgentRecommendation] =
+    useState<any | null>(null);
+  const [showAgentRecommendationModal, setShowAgentRecommendationModal] =
+    useState(false);
 
   // Intel report handlers
   const handleEditIntelReport = async (reportId: number) => {
@@ -2227,7 +2263,7 @@ const PlayerProfilePage: React.FC = () => {
             </div>
 
             {/* Player Intel Section */}
-            {profile.intel_reports && profile.intel_reports.length > 0 ? (
+            {intelFeed.length > 0 ? (
               <div className="horizontal-timeline-section">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div className="d-flex align-items-center gap-2">
@@ -2288,17 +2324,23 @@ const PlayerProfilePage: React.FC = () => {
             {/* Summary Stats - Always Visible */}
             <div className="timeline-summary-compact mb-3" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", fontSize: "0.85rem" }}>
               <span className="summary-stat">
-                <strong>{profile.intel_reports.length}</strong> intel report{profile.intel_reports.length !== 1 ? 's' : ''}
+                <strong>{intelFeed.length}</strong> intel item{intelFeed.length !== 1 ? 's' : ''}
+              </span>
+              <span className="summary-stat">
+                <strong>{(profile.agent_recommendations ?? []).length}</strong> agent{(profile.agent_recommendations ?? []).length !== 1 ? 's' : ''}
               </span>
               <span className="summary-stat">
                 <strong>
-                  {profile.intel_reports.filter((intel) => ((intel.recommendation || intel.action_required || "").toLowerCase() === "discuss urgently")).length}
+                  {(profile.intel_reports ?? []).filter((intel: any) => ((intel.recommendation || intel.action_required || "").toLowerCase() === "discuss urgently")).length}
                 </strong>{" "}
                 urgent
               </span>
               <span className="summary-stat">
                 <strong>
-                  {new Set(profile.intel_reports.map((intel) => intel.contact_name).filter(Boolean)).size}
+                  {new Set([
+                    ...(profile.intel_reports ?? []).map((intel: any) => intel.contact_name).filter(Boolean),
+                    ...(profile.agent_recommendations ?? []).map((agent: any) => agent.agent_name).filter(Boolean),
+                  ]).size}
                 </strong>{" "}
                 different contacts
               </span>
@@ -2320,6 +2362,7 @@ const PlayerProfilePage: React.FC = () => {
                     >
                       <thead className="table-dark">
                         <tr>
+                          <th>Source</th>
                           <th>Report Date</th>
                           <th>Date of Information</th>
                           <th>User</th>
@@ -2332,13 +2375,62 @@ const PlayerProfilePage: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedIntelReports.map((intel) => {
+                        {intelFeed.map((item) => {
+                          if (item.source === "agent") {
+                            const agent = item.data;
+                            return (
+                              <tr
+                                key={`agent-row-${agent.id}`}
+                                className="intel-row--agent"
+                              >
+                                <td>
+                                  <span className="intel-source-agent-pill" title="Submitted via agent portal">
+                                    AGENT
+                                  </span>
+                                </td>
+                                <td>{agentReportDate(agent)}</td>
+                                <td>{agentSubmissionDate(agent)}</td>
+                                <td>{agent.agent_name || "Unknown"}</td>
+                                <td>{agent.agent_name || "—"}</td>
+                                <td>{agent.agency || "—"}</td>
+                                <td>
+                                  {agent.confirmed_contract_expiry
+                                    ? new Date(agent.confirmed_contract_expiry).toLocaleDateString("en-GB")
+                                    : "—"}
+                                </td>
+                                <td>{formatAgentDealTypes(agent.potential_deal_type)}</td>
+                                <td>
+                                  <SubmissionStatusBadge status={agent.status} />
+                                </td>
+                                <td>
+                                  <div className="btn-group" style={{ justifyContent: "center" }}>
+                                    <Button
+                                      size="sm"
+                                      className="btn-action-circle btn-action-view"
+                                      title="View Agent Recommendation"
+                                      onClick={() => {
+                                        setSelectedAgentRecommendation(agent);
+                                        setShowAgentRecommendationModal(true);
+                                      }}
+                                    >
+                                      👁️
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          const intel = item.data;
                           const intelReportId = getIntelReportId(intel);
                           const isActionLoading =
                             intelReportId !== null && loadingReportId === intelReportId;
 
                           return (
                             <tr key={intelReportId ?? `intel-report-${intel.created_at}-${intel.contact_name}`}>
+                              <td>
+                                <span className="text-muted intel-source-internal-label">Internal</span>
+                              </td>
                               <td>
                                 {formatIntelReportDate(intel)}
                               </td>
@@ -2422,7 +2514,119 @@ const PlayerProfilePage: React.FC = () => {
                     marginBottom: "1rem"
                   }}>
                       <Row>
-                        {sortedIntelReports.map((intel) => {
+                        {intelFeed.map((item) => {
+                          if (item.source === "agent") {
+                            const agent = item.data;
+                            const dealTypeChips = (agent.potential_deal_type || "")
+                              .split(",")
+                              .map((part: string) => part.trim())
+                              .filter(Boolean);
+                            const positionChips = (agent.recommended_position || "")
+                              .split(",")
+                              .map((part: string) => part.trim())
+                              .filter(Boolean);
+                            const contractDate = agent.confirmed_contract_expiry
+                              ? new Date(agent.confirmed_contract_expiry).toLocaleDateString("en-GB")
+                              : null;
+                            const headerDate = agent.submission_date
+                              ? new Date(agent.submission_date).toLocaleDateString("en-GB", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : agent.created_at
+                                ? new Date(agent.created_at).toLocaleDateString("en-GB", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : null;
+                            const expectedWagesLabel = agent.expected_wages_per_week
+                              ? `${agent.expected_wages_currency ? `${agent.expected_wages_currency} ` : ""}${agent.expected_wages_per_week}`
+                              : null;
+                            const transferFeeLabel = agent.transfer_fee
+                              ? (agent.transfer_fee_currency &&
+                                 !String(agent.transfer_fee).toUpperCase().includes(agent.transfer_fee_currency.toUpperCase()))
+                                  ? `${agent.transfer_fee_currency} ${agent.transfer_fee}`
+                                  : String(agent.transfer_fee)
+                              : null;
+
+                            return (
+                              <Col
+                                key={`agent-card-${agent.id}`}
+                                className="mb-4"
+                                xs={12}
+                                sm={6}
+                                md={4}
+                                lg={3}
+                                xl={3}
+                              >
+                                <div className="agent-rec-card intel-card--agent h-100">
+                                  <div className="agent-rec-card-strip">
+                                    <span className="agent-rec-card-eyebrow">
+                                      AGENT{headerDate ? <span className="agent-rec-card-eyebrow-divider"> · </span> : null}{headerDate}
+                                    </span>
+                                    <SubmissionStatusBadge status={agent.status} />
+                                  </div>
+                                  <div className="agent-rec-card-body">
+                                    <div className="agent-rec-card-identity">
+                                      <div className="agent-rec-card-name">
+                                        {agent.agent_name || "Unknown agent"}
+                                      </div>
+                                      <div className="agent-rec-card-agency">
+                                        {agent.agency || "No agency listed"}
+                                      </div>
+                                    </div>
+
+                                    {(dealTypeChips.length > 0 || positionChips.length > 0) && (
+                                      <div className="agent-rec-card-chips">
+                                        {dealTypeChips.map((chip: string) => (
+                                          <span key={`deal-${chip}`} className="agent-rec-card-chip agent-rec-card-chip--deal">
+                                            {chip}
+                                          </span>
+                                        ))}
+                                        {positionChips.slice(0, 3).map((chip: string) => (
+                                          <span key={`pos-${chip}`} className="agent-rec-card-chip agent-rec-card-chip--position">
+                                            {chip}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    <dl className="agent-rec-card-meta">
+                                      <div>
+                                        <dt>Asking Fee</dt>
+                                        <dd>{transferFeeLabel || "—"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Expected Wages</dt>
+                                        <dd>{expectedWagesLabel || "—"}</dd>
+                                      </div>
+                                      <div>
+                                        <dt>Contract</dt>
+                                        <dd>{contractDate || "—"}</dd>
+                                      </div>
+                                    </dl>
+
+                                    <div className="agent-rec-card-footer">
+                                      <button
+                                        type="button"
+                                        className="agent-rec-card-view-btn"
+                                        onClick={() => {
+                                          setSelectedAgentRecommendation(agent);
+                                          setShowAgentRecommendationModal(true);
+                                        }}
+                                      >
+                                        View details →
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </Col>
+                            );
+                          }
+
+                          const intel = item.data;
                           const intelReportId = getIntelReportId(intel);
                           const isActionLoading =
                             intelReportId !== null && loadingReportId === intelReportId;
@@ -3045,6 +3249,17 @@ const PlayerProfilePage: React.FC = () => {
         show={showIntelModal}
         onHide={() => setShowIntelModal(false)}
         intelId={selectedIntelId}
+      />
+
+      {/* Agent Recommendation View Modal */}
+      <AgentRecommendationModal
+        show={showAgentRecommendationModal}
+        onHide={() => {
+          setShowAgentRecommendationModal(false);
+          setSelectedAgentRecommendation(null);
+        }}
+        recommendation={selectedAgentRecommendation}
+        playerName={profile?.player_name ?? profile?.name ?? null}
       />
 
       {/* Intel Edit Modal */}
