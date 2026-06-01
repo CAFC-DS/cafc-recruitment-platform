@@ -2562,24 +2562,28 @@ def build_recommendation_select():
     # the fuzzy name match, falling back to the legacy match when the link is
     # NULL (older rows submitted before this column existed).
     if has_linked_universal_id:
+        # Note: literal '%' must be doubled to '%%' because the Snowflake
+        # connector applies Python %-formatting on the SQL string at
+        # cursor.execute time to substitute %s placeholders. A bare '%'
+        # would be interpreted as a malformed format spec and 500 the request.
         matched_player_id_expr = (
             "CASE "
-            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%' "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%%' "
             "THEN TRY_TO_NUMBER(SUBSTR(pr.LINKED_UNIVERSAL_ID, 10)) "
-            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%' THEN NULL "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%%' THEN NULL "
             f"ELSE {matched_player_id_expr} END"
         )
         matched_cafc_player_id_expr = (
             "CASE "
-            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%' "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%%' "
             "THEN TRY_TO_NUMBER(SUBSTR(pr.LINKED_UNIVERSAL_ID, 10)) "
-            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%' THEN NULL "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%%' THEN NULL "
             f"ELSE {matched_cafc_player_id_expr} END"
         )
         matched_data_source_expr = (
             "CASE "
-            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%' THEN 'internal' "
-            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%' THEN 'external' "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%%' THEN 'internal' "
+            "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%%' THEN 'external' "
             f"ELSE {matched_data_source_expr} END"
         )
     linked_universal_id_expr = "pr.LINKED_UNIVERSAL_ID" if has_linked_universal_id else "NULL"
