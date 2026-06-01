@@ -14853,13 +14853,22 @@ async def get_all_lists_with_details(
         all_player_ids = set()
         all_cafc_ids = set()
         player_rows = []
+        # Map individual IDs to complete keys for recommendation matching
+        player_id_to_key = {}  # Maps external ID to (player_id, cafc_player_id)
+        cafc_id_to_key = {}    # Maps internal ID to (player_id, cafc_player_id)
 
         for row in cursor.fetchall():
             player_rows.append(row)
-            if row[2]:  # PLAYER_ID
-                all_player_ids.add(row[2])
-            if row[3]:  # CAFC_PLAYER_ID
-                all_cafc_ids.add(row[3])
+            player_id = row[2]  # PLAYER_ID
+            cafc_player_id = row[3]  # CAFC_PLAYER_ID
+            key = (player_id, cafc_player_id)
+
+            if player_id:
+                all_player_ids.add(player_id)
+                player_id_to_key[player_id] = key
+            if cafc_player_id:
+                all_cafc_ids.add(cafc_player_id)
+                cafc_id_to_key[cafc_player_id] = key
 
         # Get stats for all players in one query
         stats_lookup = {}
@@ -14937,42 +14946,48 @@ async def get_all_lists_with_details(
                 for intel_row in cursor.fetchall():
                     intel_stats_lookup[(intel_row[0], intel_row[1])] = intel_row[2] or 0
 
-                # Add counts from agent recommendations (player_recommendations table)
-                # Check if LINKED_UNIVERSAL_ID column exists
-                has_linked_universal_id = has_column("player_recommendations", "LINKED_UNIVERSAL_ID")
-                if has_linked_universal_id:
-                    # Build list of universal IDs to search for
-                    universal_ids = []
-                    if all_player_ids:
-                        universal_ids.extend([f"external_{pid}" for pid in all_player_ids])
-                    if all_cafc_ids:
-                        universal_ids.extend([f"internal_{cid}" for cid in all_cafc_ids])
+                # Add counts from agent recommendations using the same logic as player profile
+                try:
+                    recommendation_select = build_recommendation_select()
+                    if all_player_ids or all_cafc_ids:
+                        external_ids_list = list(all_player_ids) if all_player_ids else []
+                        internal_ids_list = list(all_cafc_ids) if all_cafc_ids else []
 
-                    if universal_ids:
-                        placeholders = ", ".join(["%s"] * len(universal_ids))
-                        cursor.execute(
-                            f"""
-                            SELECT LINKED_UNIVERSAL_ID, COUNT(*) as recommendation_count
-                            FROM player_recommendations
-                            WHERE LINKED_UNIVERSAL_ID IN ({placeholders})
-                            GROUP BY LINKED_UNIVERSAL_ID
-                            """,
-                            universal_ids,
-                        )
+                        # Build WHERE conditions for recommendations
+                        rec_conditions = []
+                        rec_params = []
 
-                        for rec_row in cursor.fetchall():
-                            linked_id = rec_row[0]
-                            count = rec_row[1] or 0
+                        if external_ids_list:
+                            ext_placeholders = ", ".join(["%s"] * len(external_ids_list))
+                            rec_conditions.append(f"rf.LINKED_PLAYER_ID IN ({ext_placeholders})")
+                            rec_params.extend(external_ids_list)
 
-                            # Parse the LINKED_UNIVERSAL_ID to extract player IDs
-                            if linked_id and linked_id.startswith("external_"):
-                                player_id = int(linked_id.replace("external_", ""))
-                                key = (player_id, None)
+                        if internal_ids_list:
+                            int_placeholders = ", ".join(["%s"] * len(internal_ids_list))
+                            rec_conditions.append(f"rf.LINKED_CAFC_PLAYER_ID IN ({int_placeholders})")
+                            rec_params.extend(internal_ids_list)
+
+                        if rec_conditions:
+                            cursor.execute(
+                                f"""
+                                WITH recommendation_feed AS (
+                                    {recommendation_select}
+                                )
+                                SELECT rf.LINKED_PLAYER_ID, rf.LINKED_CAFC_PLAYER_ID, COUNT(*) as rec_count
+                                FROM recommendation_feed rf
+                                WHERE {" OR ".join(rec_conditions)}
+                                GROUP BY rf.LINKED_PLAYER_ID, rf.LINKED_CAFC_PLAYER_ID
+                                """,
+                                rec_params,
+                            )
+
+                            for rec_row in cursor.fetchall():
+                                key = (rec_row[0], rec_row[1])
+                                count = rec_row[2] or 0
                                 intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
-                            elif linked_id and linked_id.startswith("internal_"):
-                                cafc_id = int(linked_id.replace("internal_", ""))
-                                key = (None, cafc_id)
-                                intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
+                except Exception as e:
+                    # Don't let recommendation counting errors break the whole list
+                    logging.warning(f"Could not count agent recommendations: {e}")
 
         # Build player data and attach to lists
         for row in player_rows:
