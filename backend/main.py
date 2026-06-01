@@ -14919,6 +14919,8 @@ async def get_all_lists_with_details(
             if intel_conditions:
                 cafc_player_id_select = "CAFC_PLAYER_ID" if has_intel_cafc_player_id else "NULL as CAFC_PLAYER_ID"
                 cafc_player_id_group = ", CAFC_PLAYER_ID" if has_intel_cafc_player_id else ""
+
+                # Count intel reports from player_information table
                 cursor.execute(
                     f"""
                     SELECT
@@ -14934,6 +14936,45 @@ async def get_all_lists_with_details(
 
                 for intel_row in cursor.fetchall():
                     intel_stats_lookup[(intel_row[0], intel_row[1])] = intel_row[2] or 0
+
+                # Add counts from agent recommendations (player_recommendations table)
+                # Check if LINKED_UNIVERSAL_ID column exists
+                has_linked_universal_id = has_column("player_recommendations", "LINKED_UNIVERSAL_ID")
+                if has_linked_universal_id:
+                    # Build list of universal IDs to search for
+                    universal_ids = []
+                    if all_player_ids:
+                        universal_ids.extend([f"external_{pid}" for pid in all_player_ids])
+                    if all_cafc_ids:
+                        universal_ids.extend([f"internal_{cid}" for cid in all_cafc_ids])
+
+                    if universal_ids:
+                        placeholders = ", ".join(["%s"] * len(universal_ids))
+                        cursor.execute(
+                            f"""
+                            SELECT
+                                CASE
+                                    WHEN LINKED_UNIVERSAL_ID LIKE 'external_%'
+                                    THEN TRY_TO_NUMBER(SUBSTR(LINKED_UNIVERSAL_ID, 10))
+                                    ELSE NULL
+                                END as external_id,
+                                CASE
+                                    WHEN LINKED_UNIVERSAL_ID LIKE 'internal_%'
+                                    THEN TRY_TO_NUMBER(SUBSTR(LINKED_UNIVERSAL_ID, 10))
+                                    ELSE NULL
+                                END as internal_id,
+                                COUNT(*) as recommendation_count
+                            FROM player_recommendations
+                            WHERE LINKED_UNIVERSAL_ID IN ({placeholders})
+                            GROUP BY external_id, internal_id
+                            """,
+                            universal_ids,
+                        )
+
+                        for rec_row in cursor.fetchall():
+                            key = (rec_row[0], rec_row[1])
+                            # Add recommendation count to existing intel count
+                            intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + (rec_row[2] or 0)
 
         # Build player data and attach to lists
         for row in player_rows:
