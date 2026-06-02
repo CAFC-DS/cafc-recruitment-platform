@@ -2758,9 +2758,10 @@ span.badge.badge-neutral-grey {
 }
 
 .agent-availability-active {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #047857;
+  background: transparent;
+  border-color: transparent;
+  color: #22c55e;
+  font-size: 1.2em;
 }
 
 .agent-availability-unavailable {
@@ -3942,7 +3943,7 @@ span.badge.badge-neutral-grey {
 .external-recommendations-table .col-age { width: 4%; }
 .external-recommendations-table .col-date { width: 6.5%; }
 .external-recommendations-table .col-agent { width: 7.5%; }
-.external-recommendations-table .col-status { width: 11.5%; }
+.external-recommendations-table .col-review-status { width: 18%; }
 .external-recommendations-table .col-deal { width: 7%; }
 .external-recommendations-table .col-money { width: 8%; }
 .external-recommendations-table .col-actions { width: 5%; }
@@ -3963,16 +3964,18 @@ span.badge.badge-neutral-grey {
 .external-recommendations-status-select {
   display: inline-block;
   width: auto;
-  min-width: 112px;
-  max-width: 136px;
+  min-width: 145px;
+  max-width: 220px;
   border-radius: 999px;
-  font-size: 0.64rem;
+  font-size: 0.76rem;
   font-weight: 800;
   line-height: 1.1;
-  padding: 0.12rem 1.15rem 0.12rem 0.46rem;
-  min-height: 30px;
-  height: 30px;
+  padding: 0.18rem 1.6rem 0.18rem 0.56rem;
+  min-height: 36px;
+  height: 36px;
   box-shadow: none;
+  background-size: 10px 10px;
+  background-position: right 0.5rem center;
 }
 
 .external-recommendations-status-select:focus {
@@ -4003,6 +4006,15 @@ span.badge.badge-neutral-grey {
   text-overflow: ellipsis;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.external-recommendations-table .cell-review-status .agent-status-badge {
+  white-space: normal;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.9rem;
 }
 
 .external-recommendations-table .cell-actions {

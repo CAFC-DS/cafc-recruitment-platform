@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Card, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import SubmissionStatusBadge, { AgentStatusBadge } from '../components/agents/SubmissionStatusBadge';
+import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
 import DealTypeBadges from '../components/recommendations/DealTypeBadges';
 import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
@@ -728,8 +728,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                   <th className="col-age">Age</th>
                   <SortableHeader column="date" label="Submitted" className="col-date" />
                   <SortableHeader column="agent_name" label="Agent" className="col-agent" />
-                  <SortableHeader column="status" label="Review Status" className="col-status" />
-                  <th className="col-status">Agent Status</th>
+                  <SortableHeader column="status" label="Review Status" className="col-review-status" />
                   <th className="col-deal">Deal Type</th>
                   <th className="col-money">Transfer Fee</th>
                   <th className="col-money">Expected Salary</th>
@@ -738,9 +737,9 @@ const ExternalRecommendationsListPage: React.FC = () => {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={11} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={11} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
                 ) : (
                   items.map((item) => {
                     const queuedStatus = pendingStatusChanges.get(item.id);
@@ -785,7 +784,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       <td className="cell-agent" title={item.agent_name || '-'}>
                         {item.agent_name || '-'}
                       </td>
-                      <td className="cell-status">
+                      <td className="cell-review-status">
                         <Form.Select
                           size="sm"
                           value={displayedStatus}
@@ -802,7 +801,6 @@ const ExternalRecommendationsListPage: React.FC = () => {
                           {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).shortLabel}</option>)}
                         </Form.Select>
                       </td>
-                      <td className="cell-status"><AgentStatusBadge status={item.agent_status} /></td>
                       <td><DealTypeBadges dealTypes={item.potential_deal_type || ''} /></td>
                       <td className="cell-money">
                         {formatTransferFeeAmount(

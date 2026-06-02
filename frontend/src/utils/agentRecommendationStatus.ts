@@ -3,8 +3,8 @@ import { RecommendationStatus } from '../types/recommendations';
 export const REVIEW_STATUS_ORDER: RecommendationStatus[] = [
   'Submitted',
   'Under Review',
-  'Added to Emerging Talent Process',
-  'Added to Scouting Process',
+  'Added / Already in Emerging Talent Process',
+  'Added / Already in First Team Scouting Process',
   'Not Currently under Consideration',
 ];
 
@@ -51,23 +51,23 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     dashboardHint: 'Being assessed against the club’s internal criteria.',
     color: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
   },
-  'Added to Emerging Talent Process': {
+  'Added / Already in Emerging Talent Process': {
     badgeClassName: 'agent-status-emerging-talent',
-    displayLabel: 'Added to Emerging Talent Process',
-    shortLabel: 'Added to ETP',
-    title: 'Added to the Emerging Talent longlist',
+    displayLabel: 'Added / Already in Emerging Talent Process',
+    shortLabel: 'Added / Already in ETP',
+    title: 'Added / Already in the Emerging Talent longlist',
     summary: 'The player has met the required criteria and is now in the Emerging Talent process for further video and live assessment.',
     clubAction: 'The recruitment team is continuing assessment through longer-term talent tracking.',
     nextStep: 'If the player continues to impress, the club may deepen live and video work or request more information.',
-    agentAction: 'Keep the player’s situation updated in case availability or contract context changes.',
+    agentAction: "Keep the player's situation updated in case availability or contract context changes.",
     dashboardHint: 'On the Emerging Talent longlist for further assessment.',
     color: { bg: '#ede9fe', text: '#6d28d9', border: '#8b5cf6' },
   },
-  'Added to Scouting Process': {
+  'Added / Already in First Team Scouting Process': {
     badgeClassName: 'agent-status-scouting',
-    displayLabel: 'Added to First Team Scouting Process',
-    shortLabel: 'Added to FTP',
-    title: 'Added to the First Team longlist',
+    displayLabel: 'Added / Already in First Team Scouting Process',
+    shortLabel: 'Added / Already in FTP',
+    title: 'Added / Already in the First Team longlist',
     summary: 'The player has met the required criteria and is now in the First Team process for further video and live assessment.',
     clubAction: 'The scouting team is gathering further evidence, with a minimum expectation of two live matches before a senior decision.',
     nextStep: 'If the reports meet the required standard, a member of the senior recruitment team may contact you for more information.',

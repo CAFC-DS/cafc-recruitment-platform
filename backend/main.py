@@ -757,8 +757,8 @@ INTERNAL_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAG
 RECOMMENDATION_STATUSES = [
     "Submitted",
     "Under Review",
-    "Added to Scouting Process",
-    "Added to Emerging Talent Process",
+    "Added / Already in First Team Scouting Process",
+    "Added / Already in Emerging Talent Process",
     "Not Currently under Consideration",
 ]
 
@@ -14947,49 +14947,48 @@ async def get_all_lists_with_details(
                     intel_stats_lookup[(intel_row[0], intel_row[1])] = intel_row[2] or 0
 
                 # Add counts from agent recommendations
-                # Use build_recommendation_select() which computes LINKED_PLAYER_ID/LINKED_CAFC_PLAYER_ID
+                # Query player_recommendations directly using LINKED_UNIVERSAL_ID (backfilled)
                 try:
-                    recommendation_select = build_recommendation_select()
                     if all_player_ids or all_cafc_ids:
-                        external_ids_list = list(all_player_ids) if all_player_ids else []
-                        internal_ids_list = list(all_cafc_ids) if all_cafc_ids else []
+                        # Build universal_id strings for all players
+                        universal_ids = []
+                        if all_player_ids:
+                            universal_ids.extend([f"external_{pid}" for pid in all_player_ids])
+                        if all_cafc_ids:
+                            universal_ids.extend([f"internal_{cid}" for cid in all_cafc_ids])
 
-                        # Build WHERE conditions - add IS NOT NULL checks to avoid grouping NULLs
-                        rec_conditions = []
-                        rec_params = []
-
-                        if external_ids_list:
-                            ext_placeholders = ", ".join(["%s"] * len(external_ids_list))
-                            rec_conditions.append(f"(rf.LINKED_PLAYER_ID IN ({ext_placeholders}) AND rf.LINKED_PLAYER_ID IS NOT NULL)")
-                            rec_params.extend(external_ids_list)
-
-                        if internal_ids_list:
-                            int_placeholders = ", ".join(["%s"] * len(internal_ids_list))
-                            rec_conditions.append(f"(rf.LINKED_CAFC_PLAYER_ID IN ({int_placeholders}) AND rf.LINKED_CAFC_PLAYER_ID IS NOT NULL)")
-                            rec_params.extend(internal_ids_list)
-
-                        if rec_conditions:
+                        if universal_ids:
+                            placeholders = ", ".join(["%s"] * len(universal_ids))
                             cursor.execute(
                                 f"""
-                                WITH recommendation_feed AS (
-                                    {recommendation_select}
-                                )
-                                SELECT rf.LINKED_PLAYER_ID, rf.LINKED_CAFC_PLAYER_ID, COUNT(*) as rec_count
-                                FROM recommendation_feed rf
-                                WHERE {" OR ".join(rec_conditions)}
-                                GROUP BY rf.LINKED_PLAYER_ID, rf.LINKED_CAFC_PLAYER_ID
+                                SELECT LINKED_UNIVERSAL_ID, COUNT(*) as rec_count
+                                FROM player_recommendations
+                                WHERE LINKED_UNIVERSAL_ID IN ({placeholders})
+                                GROUP BY LINKED_UNIVERSAL_ID
                                 """,
-                                rec_params,
+                                universal_ids,
                             )
 
                             for rec_row in cursor.fetchall():
-                                key = (rec_row[0], rec_row[1])
-                                count = rec_row[2] or 0
-                                # Add recommendation count to existing intel count
-                                intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
+                                linked_universal_id = rec_row[0]
+                                count = rec_row[1] or 0
+
+                                # Parse universal_id to get the player key
+                                if linked_universal_id and linked_universal_id.startswith("external_"):
+                                    player_id = int(linked_universal_id.replace("external_", ""))
+                                    if player_id in player_id_to_key:
+                                        key = player_id_to_key[player_id]
+                                        intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
+                                elif linked_universal_id and linked_universal_id.startswith("internal_"):
+                                    cafc_player_id = int(linked_universal_id.replace("internal_", ""))
+                                    if cafc_player_id in cafc_id_to_key:
+                                        key = cafc_id_to_key[cafc_player_id]
+                                        intel_stats_lookup[key] = intel_stats_lookup.get(key, 0) + count
                 except Exception as e:
                     # Don't let recommendation counting errors break the whole list
                     logging.warning(f"Could not count agent recommendations: {e}")
+                    import traceback
+                    print(f"DEBUG: Exception in recommendation counting: {traceback.format_exc()}")
 
         # Build player data and attach to lists
         for row in player_rows:
