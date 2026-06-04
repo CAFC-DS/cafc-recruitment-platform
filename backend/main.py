@@ -7804,8 +7804,10 @@ async def get_all_scout_reports(
     scouting_type: Optional[str] = None,  # "Live" or "Video"
     position: Optional[str] = None,
     match_id: Optional[str] = None,  # Filter by match ID (universal_id format)
-    date_from: Optional[str] = None,  # YYYY-MM-DD format
-    date_to: Optional[str] = None,  # YYYY-MM-DD format
+    date_from: Optional[str] = None,  # YYYY-MM-DD format (report creation date)
+    date_to: Optional[str] = None,  # YYYY-MM-DD format (report creation date)
+    fixture_date_from: Optional[str] = None,  # YYYY-MM-DD format (match/fixture date)
+    fixture_date_to: Optional[str] = None,  # YYYY-MM-DD format (match/fixture date)
 ):
     conn = None
     try:
@@ -7917,9 +7919,9 @@ async def get_all_scout_reports(
             where_clauses.append("UPPER(sr.PURPOSE) = UPPER(%s)")
             sql_params.append(purpose)
 
-        # Scouting type filter
+        # Scouting type filter (case-insensitive to handle "Live"/"live" and "Video"/"video")
         if scouting_type:
-            where_clauses.append("sr.SCOUTING_TYPE = %s")
+            where_clauses.append("UPPER(sr.SCOUTING_TYPE) = UPPER(%s)")
             sql_params.append(scouting_type)
 
         # Position filter (case-insensitive partial match)
@@ -7932,13 +7934,21 @@ async def get_all_scout_reports(
             where_clauses.append("sr.MATCH_ID = %s")
             sql_params.append(match_id)
 
-        # Date range filter
+        # Date range filter (report creation date)
         if date_from:
             where_clauses.append("sr.CREATED_AT >= %s")
             sql_params.append(date_from)
         if date_to:
             where_clauses.append("sr.CREATED_AT <= %s")
             sql_params.append(date_to)
+
+        # Fixture date range filter (match/fixture date)
+        if fixture_date_from:
+            where_clauses.append("m.SCHEDULEDDATE >= %s")
+            sql_params.append(fixture_date_from)
+        if fixture_date_to:
+            where_clauses.append("m.SCHEDULEDDATE <= %s")
+            sql_params.append(fixture_date_to)
 
         # Construct WHERE clause
         if where_clauses:

@@ -88,8 +88,10 @@ const ScoutingPage: React.FC = () => {
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [playerNameFilter, setPlayerNameFilter] = useState("");
-  const [dateFromFilter, setDateFromFilter] = useState("");
-  const [dateToFilter, setDateToFilter] = useState("");
+  const [dateFromFilter, setDateFromFilter] = useState(""); // Report creation date
+  const [dateToFilter, setDateToFilter] = useState(""); // Report creation date
+  const [fixtureDateFromFilter, setFixtureDateFromFilter] = useState(""); // Match/fixture date
+  const [fixtureDateToFilter, setFixtureDateToFilter] = useState(""); // Match/fixture date
   const [reportTypeFilter, setReportTypeFilter] = useState("");
   const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
@@ -166,6 +168,12 @@ const ScoutingPage: React.FC = () => {
         }
         if (dateToFilter) {
           params.date_to = dateToFilter;
+        }
+        if (fixtureDateFromFilter) {
+          params.fixture_date_from = fixtureDateFromFilter;
+        }
+        if (fixtureDateToFilter) {
+          params.fixture_date_to = fixtureDateToFilter;
         }
 
         const response = await axiosInstance.get("/scout_reports/all", {
@@ -379,6 +387,8 @@ const ScoutingPage: React.FC = () => {
     fixtureFilter,
     dateFromFilter,
     dateToFilter,
+    fixtureDateFromFilter,
+    fixtureDateToFilter,
   ]);
 
   // Fetch when page changes (no debounce for pagination)
@@ -1025,7 +1035,7 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold">Date Range</Form.Label>
+                  <Form.Label className="small fw-bold">Report Created Date</Form.Label>
                   <div className="range-inputs">
                     <Form.Control
                       size="sm"
@@ -1062,6 +1072,8 @@ const ScoutingPage: React.FC = () => {
                       setPlayerNameFilter("");
                       setDateFromFilter("");
                       setDateToFilter("");
+                      setFixtureDateFromFilter("");
+                      setFixtureDateToFilter("");
                       setReportTypeFilter("");
                       setScoutingTypeFilter("");
                       setPositionFilter("");
@@ -1072,6 +1084,33 @@ const ScoutingPage: React.FC = () => {
                   >
                     🔄 Clear All Filters
                   </Button>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Row 4: Fixture Date Range */}
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Fixture Date Range</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={fixtureDateFromFilter}
+                      onChange={(e) => setFixtureDateFromFilter(e.target.value)}
+                    />
+                    <span className="range-separator">to</span>
+                    <Form.Control
+                      size="sm"
+                      type="date"
+                      value={fixtureDateToFilter}
+                      onChange={(e) => setFixtureDateToFilter(e.target.value)}
+                    />
+                  </div>
+                  <Form.Text className="text-muted">
+                    Filter by the date of the match/fixture being scouted
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
