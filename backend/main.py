@@ -116,10 +116,10 @@ def find_player_by_any_id(player_id: int, cursor):
     """
     # Try CAFC_PLAYER_ID first (internal/manual records) - these take priority
     cursor.execute(
-        """
+        f"""
         SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
                BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
-        FROM players
+        FROM {read_table('players')}
         WHERE CAFC_PLAYER_ID = %s AND DATA_SOURCE = 'internal'
     """,
         (player_id,),
@@ -131,10 +131,10 @@ def find_player_by_any_id(player_id: int, cursor):
 
     # Then try external ID (backwards compatibility)
     cursor.execute(
-        """
+        f"""
         SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
                BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
-        FROM players
+        FROM {read_table('players')}
         WHERE PLAYERID = %s AND DATA_SOURCE = 'external'
     """,
         (player_id,),
@@ -161,7 +161,7 @@ def find_player_by_universal_or_legacy_id(player_id, cursor):
             f"""
             SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME,
                    BIRTHDATE, SQUADNAME, POSITION, DATA_SOURCE
-            FROM players
+            FROM {read_table('players')}
             WHERE {where_clause}
         """,
             params,
@@ -2514,16 +2514,16 @@ def build_recommendation_select():
         avg_performance_expr = f"""
             (
                 SELECT AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)
-                FROM players p
-                LEFT JOIN scout_reports sr ON ({join_condition})
+                FROM {read_table('players')} p
+                LEFT JOIN {read_table('scout_reports')} sr ON ({join_condition})
                 WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
             )
         """
     elif has_sr_perf and has_sr_playername:
-        avg_performance_expr = """
+        avg_performance_expr = f"""
             (
                 SELECT AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)
-                FROM scout_reports sr
+                FROM {read_table('scout_reports')} sr
                 WHERE NORMALIZE_TEXT_UDF(sr.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
             )
         """
@@ -2543,45 +2543,45 @@ def build_recommendation_select():
     matched_player_dob_expr = "NULL"
     if has_players_playername:
         if has_players_playerid:
-            matched_player_id_expr = """
+            matched_player_id_expr = f"""
                 (
                     SELECT MIN(p.PLAYERID)
-                    FROM players p
+                    FROM {read_table('players')} p
                     WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
                 )
             """
         if has_players_cafc_id:
-            matched_cafc_player_id_expr = """
+            matched_cafc_player_id_expr = f"""
                 (
                     SELECT MIN(p.CAFC_PLAYER_ID)
-                    FROM players p
+                    FROM {read_table('players')} p
                     WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
                 )
             """
         if has_players_data_source and has_players_cafc_id:
-            matched_data_source_expr = """
+            matched_data_source_expr = f"""
                 (
                     SELECT CASE
                         WHEN MIN(p.CAFC_PLAYER_ID) IS NOT NULL THEN 'internal'
                         ELSE MIN(p.DATA_SOURCE)
                     END
-                    FROM players p
+                    FROM {read_table('players')} p
                     WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
                 )
             """
         elif has_players_data_source:
-            matched_data_source_expr = """
+            matched_data_source_expr = f"""
                 (
                     SELECT MIN(p.DATA_SOURCE)
-                    FROM players p
+                    FROM {read_table('players')} p
                     WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
                 )
             """
         if has_players_birthdate:
-            matched_player_dob_expr = """
+            matched_player_dob_expr = f"""
                 (
                     SELECT MIN(p.BIRTHDATE)
-                    FROM players p
+                    FROM {read_table('players')} p
                     WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
                 )
             """
@@ -2678,9 +2678,9 @@ def build_recommendation_select():
             {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
             {wage_basis_expr} AS WAGE_BASIS,
             {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID
-        FROM player_recommendations pr
-        LEFT JOIN users u ON pr.SUBMITTED_BY_USER_ID = u.ID
-        LEFT JOIN users su ON pr.STATUS_UPDATED_BY = su.ID
+        FROM {read_table('player_recommendations')} pr
+        LEFT JOIN {read_table('users')} u ON pr.SUBMITTED_BY_USER_ID = u.ID
+        LEFT JOIN {read_table('users')} su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
@@ -4194,8 +4194,8 @@ async def get_analytics_timeline(
                 sr.SCOUTING_TYPE,
                 COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
-            FROM scout_reports sr
-            LEFT JOIN users u ON sr.USER_ID = u.ID
+            FROM {read_table('scout_reports')} sr
+            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             {date_filter}
             GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM'), sr.SCOUTING_TYPE, u.USERNAME
             ORDER BY month ASC, scout_name ASC
@@ -4288,14 +4288,14 @@ async def get_analytics_timeline_daily(
 
         # Query to get timeline data grouped by day and user
         cursor.execute(
-            """
+            f"""
             SELECT
                 TO_CHAR(sr.CREATED_AT, 'YYYY-MM-DD') as day,
                 sr.SCOUTING_TYPE,
                 COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
-            FROM scout_reports sr
-            LEFT JOIN users u ON sr.USER_ID = u.ID
+            FROM {read_table('scout_reports')} sr
+            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())
             GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM-DD'), sr.SCOUTING_TYPE, u.USERNAME
             ORDER BY day ASC, scout_name ASC
@@ -6256,9 +6256,9 @@ async def search_players(query: str, limit: int = 10, offset: int = 0, current_u
 
         if has_cafc_id:
             cursor.execute(
-                """
+                f"""
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
-                FROM players
+                FROM {read_table('players')}
                 WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
@@ -6273,9 +6273,9 @@ async def search_players(query: str, limit: int = 10, offset: int = 0, current_u
             )
         else:
             cursor.execute(
-                """
+                f"""
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
-                FROM players
+                FROM {read_table('players')}
                 WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
                 ORDER BY
                     CASE
@@ -9479,8 +9479,8 @@ async def get_player_profile(
             SELECT sr.ID, sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE,
                    sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
                    u.USERNAME, sr.IS_POTENTIAL
-            FROM scout_reports sr
-            LEFT JOIN users u ON sr.USER_ID = u.ID
+            FROM {read_table('scout_reports')} sr
+            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             WHERE {player_id_column} = %s
             ORDER BY sr.CREATED_AT DESC
         """
@@ -9490,7 +9490,7 @@ async def get_player_profile(
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
-            test_cursor.execute("SELECT USER_ID, PURPOSE FROM scout_reports LIMIT 1")
+            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {read_table('scout_reports')} LIMIT 1")
             if current_user.role == ROLE_SCOUT:
                 # Scouts see ONLY their own reports
                 scout_sql = scout_sql.replace(
@@ -9530,8 +9530,8 @@ async def get_player_profile(
                    {"pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL"},
                    {"pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL"},
                    {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")}
-            FROM player_information pi
-            LEFT JOIN users u ON pi.USER_ID = u.ID
+            FROM {read_table('player_information')} pi
+            LEFT JOIN {read_table('users')} u ON pi.USER_ID = u.ID
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
         """
@@ -9615,10 +9615,10 @@ async def get_player_profile(
         notes = []
         try:
             cursor.execute(
-                """
+                f"""
                 SELECT pn.ID, pn.NOTE_CONTENT, pn.IS_PRIVATE, pn.CREATED_AT, u.USERNAME
-                FROM player_notes pn
-                LEFT JOIN users u ON pn.USER_ID = u.ID
+                FROM {read_table('player_notes')} pn
+                LEFT JOIN {read_table('users')} u ON pn.USER_ID = u.ID
                 WHERE pn.PLAYER_ID = %s
                 ORDER BY pn.CREATED_AT DESC
             """,
@@ -11116,16 +11116,16 @@ async def get_all_intel_reports(
         # Build JOIN clause based on whether DATA_SOURCE columns exist
         # Use DATA_SOURCE to prevent ID collisions between internal and external players
         if has_data_source_pi and has_data_source_p:
-            join_clause = """
-            LEFT JOIN players p ON (
+            join_clause = f"""
+            LEFT JOIN {read_table('players')} p ON (
                 (pi.PLAYER_ID = p.PLAYERID AND COALESCE(pi.DATA_SOURCE, 'external') = 'external' AND COALESCE(p.DATA_SOURCE, 'external') = 'external') OR
                 (pi.PLAYER_ID = p.CAFC_PLAYER_ID AND COALESCE(pi.DATA_SOURCE, 'internal') = 'internal' AND COALESCE(p.DATA_SOURCE, 'internal') = 'internal')
             )
             """
         else:
             # Fallback to old JOIN without DATA_SOURCE check
-            join_clause = """
-            LEFT JOIN players p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
+            join_clause = f"""
+            LEFT JOIN {read_table('players')} p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
             """
 
         # Base SQL query for fetching reports
@@ -11144,9 +11144,9 @@ async def get_all_intel_reports(
                    {"pi.LENGTH_OF_RELATIONSHIP" if has_length_of_relationship else "NULL"},
                    {"pi.RELEVANCE_OF_RELATIONSHIP" if has_relevance_of_relationship else "NULL"},
                    {"pi.REFERENCE_RATING" if has_reference_rating else "NULL"}
-            FROM player_information pi
+            FROM {read_table('player_information')} pi
             {join_clause}
-            LEFT JOIN users u ON pi.USER_ID = u.ID
+            LEFT JOIN {read_table('users')} u ON pi.USER_ID = u.ID
         """
 
         where_clauses = []

@@ -5,6 +5,8 @@ Orchestrates AI-powered SQL generation with comprehensive safety measures
 
 import logging
 import json
+import os
+import re
 import sqlparse
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, date
@@ -15,6 +17,17 @@ from .ollama_service import ollama_service
 from .schema_service import SchemaService
 
 logger = logging.getLogger(__name__)
+
+# --- Canonical-platform cutover seam (Phase 1 - Chatbot SQL templating) -------
+# Import the same env vars as main.py for consistent table name resolution
+CANONICAL_DB = os.getenv("CANONICAL_DB", "RECRUITMENT_TEST")
+PLATFORM_DB_SCHEMA = os.getenv("PLATFORM_DB_SCHEMA", "PUBLIC")
+READ_PREFIX = f"{CANONICAL_DB}.{PLATFORM_DB_SCHEMA}"
+
+def read_table(table_name: str) -> str:
+    """Fully-qualified read-path for chatbot-generated SQL"""
+    return f"{READ_PREFIX}.{table_name}"
+# --- End canonical-platform cutover seam --------------------------------------
 
 class SQLGeneratorService:
     def __init__(self, snowflake_connection: SnowflakeConnection):
@@ -253,6 +266,32 @@ class SQLGeneratorService:
         except Exception:
             return []
 
+    def _template_table_names(self, sql_query: str) -> str:
+        """
+        Replace bare table names with fully-qualified names for canonical cutover.
+        This ensures chatbot-generated SQL queries resolve to the correct schema.
+        """
+        # List of tables used in the recruitment platform
+        tables = [
+            'players', 'scout_reports', 'player_information', 'player_notes',
+            'users', 'player_recommendations', 'matches', 'lists', 'list_items'
+        ]
+
+        templated_sql = sql_query
+        for table in tables:
+            # Replace various patterns: FROM table, JOIN table, INTO table, UPDATE table
+            # Use word boundaries to avoid partial matches (e.g., players_backup)
+            patterns = [
+                (rf'\bFROM\s+{table}\b', f'FROM {read_table(table)}'),
+                (rf'\bJOIN\s+{table}\b', f'JOIN {read_table(table)}'),
+                (rf'\bINTO\s+{table}\b', f'INTO {read_table(table)}'),
+                (rf'\bUPDATE\s+{table}\b', f'UPDATE {read_table(table)}'),
+            ]
+            for pattern, replacement in patterns:
+                templated_sql = re.sub(pattern, replacement, templated_sql, flags=re.IGNORECASE)
+
+        return templated_sql
+
     async def _execute_sql_safely(self, sql_query: str) -> Dict[str, Any]:
         """
         Execute SQL with safety controls and monitoring
@@ -270,8 +309,11 @@ class SQLGeneratorService:
             # Set query timeout
             cursor.execute(f"ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = {self.query_timeout}")
 
+            # Template table names for canonical cutover (Phase 1)
+            templated_sql = self._template_table_names(sql_query)
+
             # Execute the query
-            cursor.execute(sql_query)
+            cursor.execute(templated_sql)
             results = cursor.fetchall()
             column_names = [desc[0] for desc in cursor.description] if cursor.description else []
 
