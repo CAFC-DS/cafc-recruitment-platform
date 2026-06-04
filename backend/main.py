@@ -7076,7 +7076,10 @@ async def get_scout_report(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             WHERE sr.ID = %s
         """,
             (report_id,),
@@ -7823,7 +7826,10 @@ async def get_all_scout_reports(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN SCOUT_REPORT_VIEWS srv ON (
                 sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
@@ -8108,7 +8114,10 @@ async def get_recent_scout_reports(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN SCOUT_REPORT_VIEWS srv ON (
                 sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
@@ -8308,7 +8317,10 @@ async def get_top_attribute_reports(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
         """
 
@@ -8474,7 +8486,10 @@ async def get_single_scout_report(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
             WHERE sr.ID = %s
         """
@@ -8732,7 +8747,10 @@ async def get_public_report(token: str):
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
             WHERE sr.ID = %s
         """
@@ -9982,7 +10000,10 @@ async def get_player_scout_reports(
                 sr.USER_ID as user_id
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN SCOUT_REPORT_ATTRIBUTE_SCORES sras ON sr.ID = sras.SCOUT_REPORT_ID
             WHERE {where_clause}
         """
@@ -10403,7 +10424,10 @@ async def export_player_pdf(
                    u.USERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE
             FROM scout_reports sr
             LEFT JOIN users u ON sr.USER_ID = u.ID
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             WHERE sr.PLAYER_ID = %s
             ORDER BY sr.CREATED_AT DESC
         """,
@@ -12654,7 +12678,10 @@ async def get_my_analytics(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN scout_report_views srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
             WHERE {where_sql}
@@ -12839,7 +12866,10 @@ async def get_my_reports(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN matches m ON (sr.MATCH_ID = m.ID OR sr.MATCH_ID = m.CAFC_MATCH_ID)
+            LEFT JOIN matches m ON (
+                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
+                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
+            )
             LEFT JOIN users u ON sr.USER_ID = u.ID
             LEFT JOIN scout_report_views srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
             WHERE {where_sql}

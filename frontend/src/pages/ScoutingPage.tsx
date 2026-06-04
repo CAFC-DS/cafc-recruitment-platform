@@ -836,6 +836,81 @@ const ScoutingPage: React.FC = () => {
               </Col>
               <Col md={4}>
                 <Form.Group>
+                  <Form.Label className="small fw-bold">Age Range</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control
+                      size="sm"
+                      type="number"
+                      placeholder="Min"
+                      value={minAge}
+                      onChange={(e) => setMinAge(e.target.value)}
+                      min="16"
+                      max="50"
+                      style={{ width: "80px" }}
+                    />
+                    <span className="range-separator">to</span>
+                    <Form.Control
+                      size="sm"
+                      type="number"
+                      placeholder="Max"
+                      value={maxAge}
+                      onChange={(e) => setMaxAge(e.target.value)}
+                      min="16"
+                      max="50"
+                      style={{ width: "80px" }}
+                    />
+                  </div>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Row 2: Scout Name, Report Type, Scouting Type, Performance Score */}
+            <Row className="mb-3">
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Scout Name</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="text"
+                    placeholder="Enter scout name"
+                    value={scoutNameFilter}
+                    onChange={(e) => setScoutNameFilter(e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Report Type</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={reportTypeFilter}
+                    onChange={(e) => setReportTypeFilter(e.target.value)}
+                  >
+                    <option value="">All Types</option>
+                    <option value="Player Assessment">Player Assessment</option>
+                    <option value="Flag">Flag</option>
+                    <option value="Clips">Clips</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">
+                    Scouting Type
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={scoutingTypeFilter}
+                    onChange={(e) => setScoutingTypeFilter(e.target.value)}
+                  >
+                    <option value="">All Types</option>
+                    <option value="live">Live</option>
+                    <option value="video">Video</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={3}>
+                <Form.Group>
                   <Form.Label className="small fw-bold">
                     Performance Score
                   </Form.Label>
@@ -881,54 +956,7 @@ const ScoutingPage: React.FC = () => {
               </Col>
             </Row>
 
-            {/* Row 2: Scout Name, Report Type, Scouting Type */}
-            <Row className="mb-3">
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">Scout Name</Form.Label>
-                  <Form.Control
-                    size="sm"
-                    type="text"
-                    placeholder="Enter scout name"
-                    value={scoutNameFilter}
-                    onChange={(e) => setScoutNameFilter(e.target.value)}
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">Report Type</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={reportTypeFilter}
-                    onChange={(e) => setReportTypeFilter(e.target.value)}
-                  >
-                    <option value="">All Types</option>
-                    <option value="Player Assessment">Player Assessment</option>
-                    <option value="Flag">Flag</option>
-                    <option value="Clips">Clips</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">
-                    Scouting Type
-                  </Form.Label>
-                  <Form.Select
-                    size="sm"
-                    value={scoutingTypeFilter}
-                    onChange={(e) => setScoutingTypeFilter(e.target.value)}
-                  >
-                    <option value="">All Types</option>
-                    <option value="live">Live</option>
-                    <option value="video">Video</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Row 2.5: Fixture Filter */}
+            {/* Row 3: Fixture Filter */}
             <Row className="mb-3">
               <Col md={12}>
                 <Form.Group className="position-relative">
@@ -1003,34 +1031,29 @@ const ScoutingPage: React.FC = () => {
               </Col>
             </Row>
 
-            {/* Row 3: Age Range, Date Range, Clear Filters & Report Count */}
+            {/* Row 4: Date Filters & Actions */}
             <Row className="mb-3">
               <Col md={4}>
                 <Form.Group>
-                  <Form.Label className="small fw-bold">Age Range</Form.Label>
+                  <Form.Label className="small fw-bold">Fixture Date Range</Form.Label>
                   <div className="range-inputs">
                     <Form.Control
                       size="sm"
-                      type="number"
-                      placeholder="Min"
-                      value={minAge}
-                      onChange={(e) => setMinAge(e.target.value)}
-                      min="16"
-                      max="50"
-                      style={{ width: "80px" }}
+                      type="date"
+                      value={fixtureDateFromFilter}
+                      onChange={(e) => setFixtureDateFromFilter(e.target.value)}
                     />
                     <span className="range-separator">to</span>
                     <Form.Control
                       size="sm"
-                      type="number"
-                      placeholder="Max"
-                      value={maxAge}
-                      onChange={(e) => setMaxAge(e.target.value)}
-                      min="16"
-                      max="50"
-                      style={{ width: "80px" }}
+                      type="date"
+                      value={fixtureDateToFilter}
+                      onChange={(e) => setFixtureDateToFilter(e.target.value)}
                     />
                   </div>
+                  <Form.Text className="text-muted">
+                    Filter by match date
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={4}>
@@ -1051,6 +1074,9 @@ const ScoutingPage: React.FC = () => {
                       onChange={(e) => setDateToFilter(e.target.value)}
                     />
                   </div>
+                  <Form.Text className="text-muted">
+                    Filter by report creation date
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={4}>
@@ -1084,33 +1110,6 @@ const ScoutingPage: React.FC = () => {
                   >
                     🔄 Clear All Filters
                   </Button>
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Row 4: Fixture Date Range */}
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="small fw-bold">Fixture Date Range</Form.Label>
-                  <div className="range-inputs">
-                    <Form.Control
-                      size="sm"
-                      type="date"
-                      value={fixtureDateFromFilter}
-                      onChange={(e) => setFixtureDateFromFilter(e.target.value)}
-                    />
-                    <span className="range-separator">to</span>
-                    <Form.Control
-                      size="sm"
-                      type="date"
-                      value={fixtureDateToFilter}
-                      onChange={(e) => setFixtureDateToFilter(e.target.value)}
-                    />
-                  </div>
-                  <Form.Text className="text-muted">
-                    Filter by the date of the match/fixture being scouted
-                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
