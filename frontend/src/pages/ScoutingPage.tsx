@@ -206,6 +206,8 @@ const ScoutingPage: React.FC = () => {
       fixtureFilter,
       dateFromFilter,
       dateToFilter,
+      fixtureDateFromFilter,
+      fixtureDateToFilter,
     ],
   );
 

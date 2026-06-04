@@ -7963,6 +7963,14 @@ async def get_all_scout_reports(
         # Get total count
         count_sql = f"SELECT COUNT(*) {base_sql}"
 
+        # Debug logging for fixture date filter
+        if fixture_date_from or fixture_date_to:
+            logging.info(f"🗓️ FIXTURE DATE FILTER ACTIVE")
+            logging.info(f"  fixture_date_from: {fixture_date_from}")
+            logging.info(f"  fixture_date_to: {fixture_date_to}")
+            logging.info(f"  Count SQL: {count_sql}")
+            logging.info(f"  SQL params: {sql_params}")
+
         # Log the actual SQL query for debugging
         if current_user.role == "loan":
             logging.info(f"Executing count query: {count_sql}")
@@ -7976,6 +7984,7 @@ async def get_all_scout_reports(
             logging.info(f"Loan user sees {total_reports} total reports")
 
         # Get paginated reports
+        # Use QUALIFY to deduplicate scout reports that might match multiple matches
         select_sql = f"""
             SELECT
                 sr.CREATED_AT,
@@ -8000,13 +8009,24 @@ async def get_all_scout_reports(
                 CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END as HAS_BEEN_VIEWED,
                 sr.IS_POTENTIAL
             {base_sql}
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
         """
         sql_params.extend([limit, offset])
 
+        # Debug logging for fixture date filter (SELECT query)
+        if fixture_date_from or fixture_date_to:
+            logging.info(f"  Select SQL: {select_sql}")
+            logging.info(f"  Select params: {sql_params}")
+
         cursor.execute(select_sql, sql_params)
         reports = cursor.fetchall()
+
+        # Debug logging: Show fixture dates in results
+        if fixture_date_from or fixture_date_to:
+            fixture_dates = [str(row[3]) if row[3] else "NULL" for row in reports]
+            logging.info(f"  Returned {len(reports)} reports with fixture dates: {fixture_dates[:10]}")  # Show first 10
 
         report_list = []
         for row in reports:
