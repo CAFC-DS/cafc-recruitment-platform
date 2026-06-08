@@ -12,11 +12,16 @@ import ExportButton from "./ExportButton";
 import AttributeFilterSection from "./AttributeFilterSection";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
 import { getPerformanceScoreColor, getAttributeScoreColor } from "../../utils/colorUtils";
+import PositionMultiSelect from "./PositionMultiSelect";
+import { POSITION_ORDER } from "../../constants/positions";
 
 interface PlayerAnalytics {
   total_player_assessments: number;
   total_all_reports: number;
   total_flag_reports: number;
+  total_live_reports: number;
+  total_video_reports: number;
+  total_data_players: number;
   avg_performance_score: number;
   unique_players_assessed: number;
   monthly_reports_timeline: Array<{
@@ -76,8 +81,12 @@ const PlayerAnalyticsTab: React.FC = () => {
   const [data, setData] = useState<PlayerAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Applied filters (these drive the data fetch). The matching pending* values
+  // hold the draft selection until the user clicks "Apply Filters".
   const [monthFilter, setMonthFilter] = useState<number>(6);
-  const [selectedPosition, setSelectedPosition] = useState<string>("");
+  const [pendingMonthFilter, setPendingMonthFilter] = useState<number>(6);
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
+  const [pendingPositions, setPendingPositions] = useState<string[]>([]);
 
   const [minPerformance, setMinPerformance] = useState<string>("");
   const [maxPerformance, setMaxPerformance] = useState<string>("");
@@ -89,20 +98,26 @@ const PlayerAnalyticsTab: React.FC = () => {
 
   const [showPosition, setShowPosition] = useState<boolean>(true);
 
+  // True when any draft filter differs from what's currently applied.
+  const filtersDirty =
+    pendingMonthFilter !== monthFilter ||
+    pendingPositions.length !== selectedPositions.length ||
+    pendingPositions.some((position) => !selectedPositions.includes(position));
+
   useEffect(() => {
     fetchData();
-  }, [monthFilter, selectedPosition]);
+  }, [monthFilter, selectedPositions]);
 
   useEffect(() => {
     fetchScoreFilteredPlayers();
-  }, [minPerformance, maxPerformance, minAttribute, maxAttribute, monthFilter, selectedPosition]);
+  }, [minPerformance, maxPerformance, minAttribute, maxAttribute, monthFilter, selectedPositions]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const params: any = {};
       if (monthFilter) params.months = monthFilter;
-      if (selectedPosition) params.position = selectedPosition;
+      if (selectedPositions.length) params.positions = selectedPositions.join(",");
 
       const response = await axiosInstance.get("/analytics/players", { params });
       setData(response.data);
@@ -123,7 +138,7 @@ const PlayerAnalyticsTab: React.FC = () => {
       setLoadingScoreFilter(true);
       const params: any = {};
       if (monthFilter) params.months = monthFilter;
-      if (selectedPosition) params.position = selectedPosition;
+      if (selectedPositions.length) params.positions = selectedPositions.join(",");
       if (minPerformance) params.min_performance = parseFloat(minPerformance);
       if (maxPerformance) params.max_performance = parseFloat(maxPerformance);
       if (minAttribute) params.min_attribute = parseFloat(minAttribute);
@@ -186,24 +201,7 @@ const PlayerAnalyticsTab: React.FC = () => {
   }, [scoreFilteredPlayers, showPosition]);
 
   // ✅ Your position order, options, charts, etc. stay unchanged below...
-
-  // Position ordering from scouting template
-  const POSITION_ORDER = [
-    "GK", "RB", "RWB", "RCB(3)", "RCB(2)", "CCB(3)", "LCB(2)", "LCB(3)",
-    "LWB", "LB", "DM", "CM", "RAM", "AM", "LAM", "RW", "LW",
-    "Target Man CF", "In Behind CF"
-  ];
-
-  const positionOptions = Array.from(
-    new Set((data?.reports_by_position || []).map(r => r.position).filter(Boolean))
-  ).sort((a, b) => {
-    const indexA = POSITION_ORDER.indexOf(a);
-    const indexB = POSITION_ORDER.indexOf(b);
-    if (indexA === -1 && indexB === -1) return a.localeCompare(b);
-    if (indexA === -1) return 1;
-    if (indexB === -1) return -1;
-    return indexA - indexB;
-  });
+  // POSITION_ORDER is imported from ../../constants/positions
 
   const timelineLabels = data?.monthly_reports_timeline?.map(d => d.month) || [];
   const timelineDatasets = [
@@ -258,65 +256,68 @@ const PlayerAnalyticsTab: React.FC = () => {
             <Col>
               <Card className="shadow-sm">
                 <Card.Body className="py-3">
-                  <div className="d-flex align-items-center justify-content-between flex-wrap" style={{ gap: "1rem" }}>
-                    <div className="d-flex align-items-center" style={{ gap: "1rem" }}>
-                      <span className="text-muted" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
-                        Filters:
-                      </span>
-                      <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
-                        <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Time Period:</span>
-                        <ButtonGroup size="sm">
-                          <Button
-                            variant={monthFilter === 3 ? 'dark' : 'outline-secondary'}
-                            onClick={() => setMonthFilter(3)}
-                            style={{ minWidth: "45px" }}
-                          >
-                            3M
-                          </Button>
-                          <Button
-                            variant={monthFilter === 6 ? 'dark' : 'outline-secondary'}
-                            onClick={() => setMonthFilter(6)}
-                            style={{ minWidth: "45px" }}
-                          >
-                            6M
-                          </Button>
-                          <Button
-                            variant={monthFilter === 9 ? 'dark' : 'outline-secondary'}
-                            onClick={() => setMonthFilter(9)}
-                            style={{ minWidth: "45px" }}
-                          >
-                            9M
-                          </Button>
-                          <Button
-                            variant={monthFilter === 12 ? 'dark' : 'outline-secondary'}
-                            onClick={() => setMonthFilter(12)}
-                            style={{ minWidth: "45px" }}
-                          >
-                            12M
-                          </Button>
-                        </ButtonGroup>
-                      </div>
-
-                      <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
-                        <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Position:</span>
-                        <Form.Select
-                          value={selectedPosition}
-                          onChange={(e) => setSelectedPosition(e.target.value)}
-                          size="sm"
-                          style={{ width: "180px" }}
+                  <div className="d-flex align-items-center flex-wrap" style={{ gap: "0.75rem 1.5rem" }}>
+                    <span className="text-muted" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+                      Filters:
+                    </span>
+                    <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Time Period:</span>
+                      <ButtonGroup size="sm">
+                        <Button
+                          variant={pendingMonthFilter ===3 ? 'dark' : 'outline-secondary'}
+                          onClick={() => setPendingMonthFilter(3)}
+                          style={{ minWidth: "45px" }}
                         >
-                          <option value="">All Positions</option>
-                          {positionOptions.map((pos) => (
-                            <option key={pos} value={pos}>
-                              {pos}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </div>
+                          3M
+                        </Button>
+                        <Button
+                          variant={pendingMonthFilter ===6 ? 'dark' : 'outline-secondary'}
+                          onClick={() => setPendingMonthFilter(6)}
+                          style={{ minWidth: "45px" }}
+                        >
+                          6M
+                        </Button>
+                        <Button
+                          variant={pendingMonthFilter ===9 ? 'dark' : 'outline-secondary'}
+                          onClick={() => setPendingMonthFilter(9)}
+                          style={{ minWidth: "45px" }}
+                        >
+                          9M
+                        </Button>
+                        <Button
+                          variant={pendingMonthFilter ===12 ? 'dark' : 'outline-secondary'}
+                          onClick={() => setPendingMonthFilter(12)}
+                          style={{ minWidth: "45px" }}
+                        >
+                          12M
+                        </Button>
+                      </ButtonGroup>
                     </div>
 
+                    <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Position:</span>
+                      <PositionMultiSelect
+                        selected={pendingPositions}
+                        options={POSITION_ORDER}
+                        onChange={setPendingPositions}
+                        width={200}
+                      />
+                    </div>
+
+                    <Button
+                      variant="dark"
+                      size="sm"
+                      onClick={() => {
+                        setMonthFilter(pendingMonthFilter);
+                        setSelectedPositions(pendingPositions);
+                      }}
+                      disabled={!filtersDirty}
+                    >
+                      Apply Filters
+                    </Button>
+
                     <OverlayTrigger
-                      placement="left"
+                      placement="top"
                       overlay={
                         <Tooltip id="filters-tooltip">
                           These filters apply to: Summary Stats, Monthly Timeline, Top Players, and Flagged Players
@@ -326,7 +327,7 @@ const PlayerAnalyticsTab: React.FC = () => {
                       }
                     >
                       <span
-                        className="badge bg-light text-dark"
+                        className="badge bg-light text-dark ms-auto"
                         style={{ cursor: 'help', fontSize: "0.75rem", padding: "0.4rem 0.6rem" }}
                       >
                         ℹ️ Filter Info
@@ -345,29 +346,48 @@ const PlayerAnalyticsTab: React.FC = () => {
           {/* ✅ Continue with your Monthly Timeline, Charts, Cards, Tables, etc... */}
 
           {/* Summary Stats */}
-      <Row className="mb-4">
-        <Col md={3}>
+      <Row className="g-3 mb-4">
+        <Col xl={3} md={6}>
           <SimpleStatsCard
             title="Total Reports"
             value={data.total_all_reports ?? 0}
           />
         </Col>
-        <Col md={3}>
+        <Col xl={3} md={6}>
           <SimpleStatsCard
             title="Assessments"
             value={data.total_player_assessments ?? 0}
           />
         </Col>
-        <Col md={3}>
+        <Col xl={3} md={6}>
           <SimpleStatsCard
             title="Flags"
             value={data.total_flag_reports ?? 0}
           />
         </Col>
-        <Col md={3}>
+        <Col xl={3} md={6}>
           <SimpleStatsCard
             title="Unique Players"
             value={data.unique_players_assessed ?? 0}
+          />
+        </Col>
+        <Col xl={3} md={6}>
+          <SimpleStatsCard
+            title="Data Players"
+            value={data.total_data_players ?? 0}
+            subtitle="Flagged by Data"
+          />
+        </Col>
+        <Col xl={3} md={6}>
+          <SimpleStatsCard
+            title="Live Reports"
+            value={data.total_live_reports ?? 0}
+          />
+        </Col>
+        <Col xl={3} md={6}>
+          <SimpleStatsCard
+            title="Video Reports"
+            value={data.total_video_reports ?? 0}
           />
         </Col>
       </Row>
@@ -435,7 +455,7 @@ const PlayerAnalyticsTab: React.FC = () => {
                     {(data.top_players_by_performance || []).length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-muted">
-                          {selectedPosition ? "No players found for selected position" : "No data available"}
+                          {selectedPositions.length ? "No players found for selected positions" : "No data available"}
                         </td>
                       </tr>
                     ) : (
@@ -510,7 +530,7 @@ const PlayerAnalyticsTab: React.FC = () => {
                     {(data.top_players_by_attributes || []).length === 0 ? (
                       <tr>
                         <td colSpan={4} className="text-muted">
-                          {selectedPosition ? "No players found for selected position" : "No data available"}
+                          {selectedPositions.length ? "No players found for selected positions" : "No data available"}
                         </td>
                       </tr>
                     ) : (

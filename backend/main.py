@@ -816,6 +816,34 @@ ALLOWED_RECOMMENDED_POSITIONS = [
     "In Behind CF",
 ]
 
+# Recruitment lists are named by position. Map each fine-grained scouting
+# position (a dropdown value) to the LIST_NAME it corresponds to, so a position
+# filter can be matched against the list a player sits in. The list names are the
+# actual values in player_lists.LIST_NAME:
+#   GK, RB/RWB, LB/LWB, RCB, LCB, CCB, DM/CM, AM, RW, LW, CF
+POSITION_TO_LIST_NAME = {
+    "GK": "GK",
+    "RB": "RB/RWB", "RWB": "RB/RWB",
+    "LB": "LB/LWB", "LWB": "LB/LWB",
+    "RCB(3)": "RCB", "RCB(2)": "RCB",
+    "CCB(3)": "CCB",
+    "LCB(2)": "LCB", "LCB(3)": "LCB",
+    "DM": "DM/CM", "CM": "DM/CM",
+    "RAM": "AM", "AM": "AM", "LAM": "AM",
+    "RW": "RW", "LW": "LW",
+    "Target Man CF": "CF", "In Behind CF": "CF",
+}
+
+
+def list_names_for_positions(position_list):
+    """Map selected dropdown positions to the distinct LIST_NAMEs they correspond to."""
+    names = []
+    for pos in position_list:
+        name = POSITION_TO_LIST_NAME.get(pos)
+        if name and name not in names:
+            names.append(name)
+    return names
+
 ALLOWED_CURRENCY_CODES = [
     "GBP",
     "EUR",
@@ -12959,6 +12987,7 @@ async def get_player_analytics(
     current_user: User = Depends(get_current_user),
     months: Optional[int] = None,
     position: Optional[str] = None,
+    positions: Optional[str] = None,
     min_performance_score: Optional[int] = None
 ):
     """Get player-focused analytics data"""
@@ -12969,7 +12998,7 @@ async def get_player_analytics(
         )
 
     # Generate cache key based on parameters
-    cache_key = f"analytics_players_{months}_{position}_{min_performance_score}"
+    cache_key = f"analytics_players_{months}_{position}_{positions}_{min_performance_score}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -12992,7 +13021,16 @@ async def get_player_analytics(
             where_clauses.append("sr.CREATED_AT >= DATEADD(month, %s, CURRENT_DATE())")
             params.append(-months)
 
-        if position:
+        # Multi-position filter (comma-separated). Falls back to the legacy
+        # single `position` param. Position params are appended AFTER months so
+        # the `[params[0]] if months else []` slices below stay correct.
+        position_list = [p.strip() for p in positions.split(",")] if positions else []
+        position_list = [p for p in position_list if p]
+        if position_list:
+            placeholders = ", ".join(["%s"] * len(position_list))
+            where_clauses.append(f"sr.POSITION IN ({placeholders})")
+            params.extend(position_list)
+        elif position:
             where_clauses.append("sr.POSITION = %s")
             params.append(position)
 
@@ -13304,6 +13342,64 @@ async def get_player_analytics(
                 "data_source": row['DATA_SOURCE'] or 'external'
             })
 
+        # 16-18. New summary metrics (Live/Video report counts + Data players).
+        # Wrapped defensively so a failure in any of these cannot take down the
+        # whole player analytics page; the cards simply fall back to 0.
+        total_live_reports = 0
+        total_video_reports = 0
+        total_data_players = 0
+        try:
+            # 16. Total Live Reports (respects months + position filters)
+            cursor.execute(f"""
+                SELECT COUNT(*) as total_live
+                FROM scout_reports sr
+                WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
+                AND UPPER(sr.SCOUTING_TYPE) = 'LIVE'
+                {additional_filters}
+            """, params)
+            total_live_reports = (cursor.fetchone() or {}).get('TOTAL_LIVE', 0)
+
+            # 17. Total Video Reports (respects months + position filters)
+            cursor.execute(f"""
+                SELECT COUNT(*) as total_video
+                FROM scout_reports sr
+                WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
+                AND UPPER(sr.SCOUTING_TYPE) = 'VIDEO'
+                {additional_filters}
+            """, params)
+            total_video_reports = (cursor.fetchone() or {}).get('TOTAL_VIDEO', 0)
+
+            # 18. Total Data Players: distinct players flagged via "Flagged by Data"
+            #     (PLAYER_STAGE_HISTORY). Months filter applies to CHANGED_AT.
+            #     When a position filter is applied, a player only counts if the LIST
+            #     they were flagged in matches one of the selected positions (each
+            #     dropdown position maps to a list name via POSITION_TO_LIST_NAME).
+            data_players_clauses = ["psh.REASON = 'Flagged by Data'"]
+            data_players_params: list = []
+            if months:
+                data_players_clauses.append("psh.CHANGED_AT >= DATEADD(month, %s, CURRENT_DATE())")
+                data_players_params.append(-months)
+            if position_list:
+                target_lists = list_names_for_positions(position_list)
+                if target_lists:
+                    dp_ph = ", ".join(["%s"] * len(target_lists))
+                    data_players_clauses.append(f"TRIM(pl.LIST_NAME) IN ({dp_ph})")
+                    data_players_params.extend(target_lists)
+                else:
+                    # Selected positions don't map to any list → no matches.
+                    data_players_clauses.append("1 = 0")
+            data_players_where = " AND ".join(data_players_clauses)
+            cursor.execute(f"""
+                SELECT COUNT(DISTINCT COALESCE(pli.CAFC_PLAYER_ID, pli.PLAYER_ID)) as data_players
+                FROM PLAYER_STAGE_HISTORY psh
+                JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID
+                LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+                WHERE {data_players_where}
+            """, data_players_params)
+            total_data_players = (cursor.fetchone() or {}).get('DATA_PLAYERS', 0)
+        except Exception as metrics_error:
+            logging.exception(metrics_error)
+
         result = {
             "total_player_assessments": total_player_assessments,
             "avg_performance_score": avg_performance_score,
@@ -13315,6 +13411,9 @@ async def get_player_analytics(
             "flag_distribution": flag_distribution,
             "total_all_reports": total_all_reports,
             "total_flag_reports": total_flag_reports,
+            "total_live_reports": total_live_reports,
+            "total_video_reports": total_video_reports,
+            "total_data_players": total_data_players,
             "monthly_reports_timeline": monthly_reports_timeline,
             "reports_by_position": reports_by_position,
             "top_players_by_performance": top_players_by_performance,
@@ -13815,8 +13914,17 @@ async def get_stage_movement_analytics(
     current_user: User = Depends(get_current_user),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    as_of_date: Optional[str] = None,
+    positions: Optional[str] = None,
 ):
-    """Get shortlist stage movement analytics for a selected date window."""
+    """Get shortlist stage movement analytics for a selected date window.
+
+    - Move metrics (transitions) are counted over the start_date..end_date window.
+    - Stage occupancy (stage_counts) is a point-in-time snapshot of how many
+      players sit in each stage as of `as_of_date`.
+    - `positions` is an optional comma-separated list (e.g. "CM,DM,GK") that
+      filters both views by the player's resolved position.
+    """
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
         raise HTTPException(
             status_code=403,
@@ -13826,41 +13934,111 @@ async def get_stage_movement_analytics(
     try:
         window_start = date.fromisoformat(start_date) if start_date else date(date.today().year, 4, 30)
         window_end = date.fromisoformat(end_date) if end_date else date.today()
+        as_of = date.fromisoformat(as_of_date) if as_of_date else date.today()
     except ValueError:
         raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD format.")
 
     if window_end < window_start:
         raise HTTPException(status_code=400, detail="End date must be on or after start date.")
 
-    cache_key = f"analytics_stage_movements_{window_start.isoformat()}_{window_end.isoformat()}"
+    # Parse the optional multi-position filter
+    position_list = [p.strip() for p in positions.split(",")] if positions else []
+    position_list = [p for p in position_list if p]
+
+    positions_key = ",".join(position_list) if position_list else "all"
+    cache_key = (
+        f"analytics_stage_movements_{window_start.isoformat()}_{window_end.isoformat()}"
+        f"_{as_of.isoformat()}_{positions_key}"
+    )
     cached_data = get_cache(cache_key)
     if cached_data is not None:
         return cached_data
+
+    # Build the optional position join + predicate. Position is resolved from the
+    # LIST a player sits in (player_lists.LIST_NAME), mapped from the selected
+    # dropdown positions via POSITION_TO_LIST_NAME.
+    position_join = ""
+    position_clause = ""
+    position_params: list = []
+    if position_list:
+        position_join = """
+            LEFT JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID
+            LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+        """
+        target_lists = list_names_for_positions(position_list)
+        if target_lists:
+            placeholders = ", ".join(["%s"] * len(target_lists))
+            position_clause = f" AND TRIM(pl.LIST_NAME) IN ({placeholders})"
+            position_params = target_lists
+        else:
+            position_clause = " AND 1 = 0"
 
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor(snowflake.connector.DictCursor)
 
+        # 1. Stage MOVE metrics over the selected window
         cursor.execute(
-            """
+            f"""
             SELECT
-                COUNT_IF(OLD_STAGE IS NULL AND NEW_STAGE = 'Stage 1') AS moved_into_stage_1,
-                COUNT_IF(OLD_STAGE = 'Stage 1' AND NEW_STAGE = 'Stage 2') AS moved_stage_1_to_2,
-                COUNT_IF(OLD_STAGE = 'Stage 2' AND NEW_STAGE = 'Stage 3') AS moved_stage_2_to_3,
-                COUNT_IF(OLD_STAGE = 'Stage 2' AND NEW_STAGE = 'Archived') AS archived_from_stage_2,
-                COUNT_IF(OLD_STAGE = 'Stage 3' AND NEW_STAGE = 'Archived') AS archived_from_stage_3
-            FROM PLAYER_STAGE_HISTORY
-            WHERE CHANGED_AT >= %s
-              AND CHANGED_AT < DATEADD(day, 1, %s::DATE)
+                COUNT_IF(psh.OLD_STAGE IS NULL AND psh.NEW_STAGE = 'Stage 1') AS moved_into_stage_1,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 1' AND psh.NEW_STAGE = 'Stage 2') AS moved_stage_1_to_2,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Stage 3') AS moved_stage_2_to_3,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_2,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3
+            FROM PLAYER_STAGE_HISTORY psh
+            {position_join}
+            WHERE psh.CHANGED_AT >= %s
+              AND psh.CHANGED_AT < DATEADD(day, 1, %s::DATE)
+              {position_clause}
             """,
-            (window_start.isoformat(), window_end.isoformat()),
+            [window_start.isoformat(), window_end.isoformat(), *position_params],
         )
         row = cursor.fetchone() or {}
+
+        # 2. Stage OCCUPANCY snapshot as of `as_of` date. Each list item's stage
+        #    is the NEW_STAGE of its most recent history row on/before that date.
+        cursor.execute(
+            f"""
+            WITH ranked AS (
+                SELECT
+                    psh.LIST_ITEM_ID,
+                    psh.NEW_STAGE,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY psh.LIST_ITEM_ID
+                        ORDER BY psh.CHANGED_AT DESC, psh.ID DESC
+                    ) AS rn
+                FROM PLAYER_STAGE_HISTORY psh
+                WHERE psh.CHANGED_AT < DATEADD(day, 1, %s::DATE)
+            )
+            SELECT r.NEW_STAGE AS stage, COUNT(*) AS player_count
+            FROM ranked r
+            LEFT JOIN player_list_items pli ON r.LIST_ITEM_ID = pli.ID
+            LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+            WHERE r.rn = 1
+              {position_clause}
+            GROUP BY r.NEW_STAGE
+            """,
+            [as_of.isoformat(), *position_params],
+        )
+        raw_counts = {
+            stage_row.get("STAGE"): int(stage_row.get("PLAYER_COUNT") or 0)
+            for stage_row in (cursor.fetchall() or [])
+        }
+        stage_counts = {
+            "Stage 1": raw_counts.get("Stage 1", 0),
+            "Stage 2": raw_counts.get("Stage 2", 0),
+            "Stage 3": raw_counts.get("Stage 3", 0),
+            "Stage 4": raw_counts.get("Stage 4", 0),
+            "Archived": raw_counts.get("Archived", 0),
+        }
 
         result = {
             "window_start": window_start.isoformat(),
             "window_end": window_end.isoformat(),
+            "as_of_date": as_of.isoformat(),
+            "positions": position_list,
             "metrics": {
                 "moved_into_stage_1": int(row.get("MOVED_INTO_STAGE_1") or 0),
                 "moved_stage_1_to_2": int(row.get("MOVED_STAGE_1_TO_2") or 0),
@@ -13868,6 +14046,7 @@ async def get_stage_movement_analytics(
                 "archived_from_stage_2": int(row.get("ARCHIVED_FROM_STAGE_2") or 0),
                 "archived_from_stage_3": int(row.get("ARCHIVED_FROM_STAGE_3") or 0),
             },
+            "stage_counts": stage_counts,
         }
 
         set_cache(cache_key, result, expiry_minutes=10)
@@ -13890,7 +14069,8 @@ async def get_players_by_score(
     min_attribute: Optional[float] = None,
     max_attribute: Optional[float] = None,
     months: Optional[int] = None,
-    position: Optional[str] = None
+    position: Optional[str] = None,
+    positions: Optional[str] = None
 ):
     """Get players filtered by performance and attribute score thresholds"""
     # Analytics access restricted to Admin, Senior Manager, and Manager
@@ -13908,7 +14088,12 @@ async def get_players_by_score(
         filters = []
         if months:
             filters.append(f"sr.CREATED_AT >= DATEADD(month, -{months}, CURRENT_DATE())")
-        if position:
+        position_list = [p.strip() for p in positions.split(",")] if positions else []
+        position_list = [p for p in position_list if p]
+        if position_list:
+            quoted = ", ".join("'" + p.replace("'", "''") + "'" for p in position_list)
+            filters.append(f"sr.POSITION IN ({quoted})")
+        elif position:
             filters.append(f"sr.POSITION = '{position}'")
 
         # Performance score filters
