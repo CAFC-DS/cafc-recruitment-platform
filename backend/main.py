@@ -13922,8 +13922,11 @@ async def get_stage_movement_analytics(
     - Move metrics (transitions) are counted over the start_date..end_date window.
     - Stage occupancy (stage_counts) is a point-in-time snapshot of how many
       players sit in each stage as of `as_of_date`.
+    - Cumulative presence (stage_ever_counts) counts how many players spent any
+      time in each stage over the start_date..end_date window, including players
+      who have since moved on or been archived.
     - `positions` is an optional comma-separated list (e.g. "CM,DM,GK") that
-      filters both views by the player's resolved position.
+      filters all views by the player's resolved position.
     """
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
         raise HTTPException(
@@ -14034,6 +14037,49 @@ async def get_stage_movement_analytics(
             "Archived": raw_counts.get("Archived", 0),
         }
 
+        # 3. CUMULATIVE stage presence over the window. Counts every list item
+        #    that spent any time in a stage between window_start and window_end,
+        #    including players who have since moved on or been archived. Each
+        #    history row opens a stage interval that runs from its CHANGED_AT
+        #    until the next row's CHANGED_AT (LEAD); an interval is counted when
+        #    it overlaps the selected window. COUNT(DISTINCT ...) so a player who
+        #    enters and leaves the same stage more than once is only counted once.
+        cursor.execute(
+            f"""
+            WITH ordered AS (
+                SELECT
+                    psh.LIST_ITEM_ID,
+                    psh.NEW_STAGE,
+                    psh.CHANGED_AT AS stage_start,
+                    LEAD(psh.CHANGED_AT) OVER (
+                        PARTITION BY psh.LIST_ITEM_ID
+                        ORDER BY psh.CHANGED_AT, psh.ID
+                    ) AS stage_end
+                FROM PLAYER_STAGE_HISTORY psh
+                {position_join}
+                WHERE 1 = 1
+                  {position_clause}
+            )
+            SELECT o.NEW_STAGE AS stage, COUNT(DISTINCT o.LIST_ITEM_ID) AS player_count
+            FROM ordered o
+            WHERE o.stage_start < DATEADD(day, 1, %s::DATE)
+              AND (o.stage_end IS NULL OR o.stage_end > %s::DATE)
+            GROUP BY o.NEW_STAGE
+            """,
+            [*position_params, window_end.isoformat(), window_start.isoformat()],
+        )
+        raw_ever_counts = {
+            stage_row.get("STAGE"): int(stage_row.get("PLAYER_COUNT") or 0)
+            for stage_row in (cursor.fetchall() or [])
+        }
+        stage_ever_counts = {
+            "Stage 1": raw_ever_counts.get("Stage 1", 0),
+            "Stage 2": raw_ever_counts.get("Stage 2", 0),
+            "Stage 3": raw_ever_counts.get("Stage 3", 0),
+            "Stage 4": raw_ever_counts.get("Stage 4", 0),
+            "Archived": raw_ever_counts.get("Archived", 0),
+        }
+
         result = {
             "window_start": window_start.isoformat(),
             "window_end": window_end.isoformat(),
@@ -14047,6 +14093,7 @@ async def get_stage_movement_analytics(
                 "archived_from_stage_3": int(row.get("ARCHIVED_FROM_STAGE_3") or 0),
             },
             "stage_counts": stage_counts,
+            "stage_ever_counts": stage_ever_counts,
         }
 
         set_cache(cache_key, result, expiry_minutes=10)

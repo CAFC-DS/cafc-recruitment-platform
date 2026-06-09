@@ -16,6 +16,7 @@ interface StageMovementAnalytics {
     archived_from_stage_3: number;
   };
   stage_counts: Record<string, number>;
+  stage_ever_counts: Record<string, number>;
 }
 
 const formatDate = (value: string) => {
@@ -78,15 +79,19 @@ const StageMovementAnalyticsTab: React.FC = () => {
   const [asOfDate, setAsOfDate] = useState(getTodayIso);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
 
-  const fetchData = async () => {
+  const fetchData = async (overrides?: {
+    startDate?: string;
+    endDate?: string;
+    asOfDate?: string;
+  }) => {
     try {
       setLoading(true);
       setError(null);
       const response = await axiosInstance.get("/analytics/stage-movements", {
         params: {
-          start_date: startDate,
-          end_date: endDate,
-          as_of_date: asOfDate,
+          start_date: overrides?.startDate ?? startDate,
+          end_date: overrides?.endDate ?? endDate,
+          as_of_date: overrides?.asOfDate ?? asOfDate,
           positions: selectedPositions.length ? selectedPositions.join(",") : undefined,
         },
       });
@@ -97,6 +102,17 @@ const StageMovementAnalyticsTab: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Reset the date inputs back to the default window (last 7 days through
+  // today) and refresh immediately with those values.
+  const handleReset = () => {
+    const defaultStart = getDefaultStartDate();
+    const today = getTodayIso();
+    setStartDate(defaultStart);
+    setEndDate(today);
+    setAsOfDate(today);
+    fetchData({ startDate: defaultStart, endDate: today, asOfDate: today });
   };
 
   // Refetch on mount and whenever the position filter changes; date changes
@@ -181,11 +197,26 @@ const StageMovementAnalyticsTab: React.FC = () => {
               </Form.Group>
             </Col>
             <Col xs={12}>
-              <Button variant="dark" onClick={fetchData} className="w-100">
-                Update
-              </Button>
+              <div className="d-flex" style={{ gap: "0.5rem" }}>
+                <Button variant="dark" onClick={() => fetchData()} className="flex-grow-1">
+                  Update
+                </Button>
+                <Button variant="outline-secondary" onClick={handleReset}>
+                  Reset dates
+                </Button>
+              </div>
             </Col>
           </Row>
+          <div className="mt-3" style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.6 }}>
+            Adjust the <strong>start</strong> and <strong>end</strong> dates to change the
+            movement window for the <strong>Stage movements</strong> and{" "}
+            <strong>Unique players who appeared in stages</strong> numbers. Change the{" "}
+            <strong>Players in stage as of</strong> date to change the{" "}
+            <strong>Players in each stage</strong> numbers. Then press <strong>Update</strong>{" "}
+            to refresh all the numbers below. Use <strong>Reset dates</strong> to return to the
+            default window and dates. Changing a date does not update the figures until Update
+            is pressed.
+          </div>
         </Card.Body>
       </Card>
 
@@ -215,11 +246,41 @@ const StageMovementAnalyticsTab: React.FC = () => {
         ))}
       </Row>
 
-      <div className="mb-2 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+      <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+        Unique players who appeared in stages
+        <span style={{ fontWeight: 400, color: "#64748b" }}>
+          {" "}({formatDate(data.window_start)} to {formatDate(data.window_end)})
+        </span>
+      </div>
+      <div className="mb-2" style={{ fontSize: "0.82rem", color: "#64748b" }}>
+        Every player who spent any time in a stage during the selected window — including
+        players who have since moved on to another stage or been archived.
+      </div>
+      <Row className="g-3">
+        {stageCountCards.map((stage) => (
+          <Col key={stage.key} xl md={6}>
+            <Card className="shadow-sm h-100 hover-card">
+              <Card.Body>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {stage.title}
+                </div>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "#111827", lineHeight: 1.1, marginTop: "0.45rem" }}>
+                  {(data.stage_ever_counts?.[stage.key] ?? 0).toLocaleString("en-GB")}
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
         Players in each stage
         <span style={{ fontWeight: 400, color: "#64748b" }}>
           {" "}(as of {formatDate(data.as_of_date)})
         </span>
+      </div>
+      <div className="mb-2" style={{ fontSize: "0.82rem", color: "#64748b" }}>
+        A snapshot of how many players sit in each stage on the selected &ldquo;as of&rdquo; date.
       </div>
       <Row className="g-3">
         {stageCountCards.map((stage) => (
