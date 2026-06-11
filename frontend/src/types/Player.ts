@@ -146,6 +146,7 @@ export type ArchivedReason =
   | "Signed"
   | "Character"
   | "Suitability"
-  | "Medical";
+  | "Medical"
+  | "Eligibility";
 
 export type StageChangeReason = Stage1Reason | ArchivedReason;

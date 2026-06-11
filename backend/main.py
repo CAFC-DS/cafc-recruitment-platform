@@ -925,7 +925,8 @@ ARCHIVED_REASONS = [
     "Signed",
     "Character",
     "Suitability",
-    "Medical"
+    "Medical",
+    "Eligibility"
 ]
 
 
