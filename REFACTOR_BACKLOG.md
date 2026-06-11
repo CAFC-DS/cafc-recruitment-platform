@@ -75,6 +75,17 @@ fix?* No → log it, move on.
       and the legacy branches in `add_player` / `add_match` delete at
       end-state along with `WRITES_TO_CORE`.
 
+- [ ] Match/team analytics (`/analytics/matches-teams`, reports-by-competition)
+      rebuild per-request from dual-ID OR-joins, and "team coverage" groups by
+      the player's CURRENT squad, not the team in the reported match. After
+      cutover, replace with a platform-side pre-joined fact view (one row per
+      scout report with player, current squad, fixture, home/away squads,
+      competition, season from the canonical dims) — backend analytics
+      collapse to simple GROUP BYs, Tableau gets the same view (the missing
+      ANALYTICS layer flagged in the 2026-06 architecture review), and
+      match-team semantics become available (reports by the team actually
+      played for/against). Added 2026-06-11.
+
 ## Conventions for this file
 
 Add entries as `file:line — what — why it waits`. Date entries when added.
