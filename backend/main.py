@@ -562,6 +562,14 @@ def write_table(table_name: str) -> str:
     """Fully-qualified write-path for `table_name`. Defaults to
     RECRUITMENT_TEST.PUBLIC.<table> until CORE_DB_SCHEMA flips to CORE."""
     return f"{WRITE_PREFIX}.{table_name}"
+
+
+# True only in the full-cutover state (WRITE_DB=CAFC_DB, CORE_DB_SCHEMA=CORE).
+# Player/match creation can't use write_table(): canonical PLAYERS/FIXTURES
+# have a different shape from the legacy tables (identity model: mint a CAFC
+# id from the CORE sequence + record a PLAYER_/FIXTURE_IDENTITIES row), so
+# those endpoints branch on this flag instead of templating the legacy SQL.
+WRITES_TO_CORE = WRITE_PREFIX.upper() == "CAFC_DB.CORE"
 # --- End canonical-platform cutover seam --------------------------------------
 
 # Enhanced connection pool and caching
@@ -5906,17 +5914,6 @@ async def add_player(player: Player, current_user: User = Depends(get_current_us
                 "note": f"Use existing {data_source} player with universal ID: {universal_id}",
             }
 
-        # Get next CAFC ID for manual player using sequence
-        cursor.execute("SELECT manual_player_seq.NEXTVAL")
-        cafc_player_id = cursor.fetchone()[0]
-
-        # Insert manual player with CAFC_PLAYER_ID, PLAYERID stays NULL
-        sql = """
-            INSERT INTO players (
-                FIRSTNAME, LASTNAME, PLAYERNAME, BIRTHDATE, SQUADNAME, POSITION,
-                CAFC_PLAYER_ID, DATA_SOURCE
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
         # Parse birth date string to date object
         birth_date_obj = None
         if player.birthDate:
@@ -5929,17 +5926,66 @@ async def add_player(player: Player, current_user: User = Depends(get_current_us
                     status_code=400, detail="Invalid birth date format. Use YYYY-MM-DD"
                 )
 
-        values = (
-            player.firstName,
-            player.lastName,
-            player_name,
-            birth_date_obj,
-            player.squadName,
-            player.position,
-            cafc_player_id,
-            "internal",
-        )
-        cursor.execute(sql, values)
+        if WRITES_TO_CORE:
+            # Mint a canonical player (same shape as the platform's mint.py):
+            # CORE sequence + PLAYERS row + a MANUAL identity row. The player
+            # surfaces through APP_COMPAT.players as DATA_SOURCE='internal'
+            # with PLAYERID NULL, matching the legacy manual-player contract.
+            # POSITION/SQUADNAME have no canonical home for manual players yet
+            # (context columns are derived from provider iteration data) — see
+            # REFACTOR_BACKLOG.md.
+            cursor.execute("SELECT CAFC_DB.CORE.CAFC_PLAYER_ID_SEQ.NEXTVAL")
+            cafc_player_id = cursor.fetchone()[0]
+            cursor.execute(
+                """
+                INSERT INTO CAFC_DB.CORE.PLAYERS
+                  (CAFC_PLAYER_ID, DISPLAY_NAME, COMMON_NAME, FIRST_NAME,
+                   LAST_NAME, BIRTH_DATE, CREATED_FROM_SOURCE)
+                VALUES (%s, %s, %s, %s, %s, %s, 'MANUAL')
+                """,
+                (
+                    cafc_player_id,
+                    player_name,
+                    player_name,
+                    player.firstName,
+                    player.lastName,
+                    birth_date_obj,
+                ),
+            )
+            cursor.execute(
+                """
+                INSERT INTO CAFC_DB.CORE.PLAYER_IDENTITIES
+                  (CAFC_PLAYER_ID, SOURCE_SYSTEM, SOURCE_PLAYER_ID,
+                   SOURCE_CONTEXT, SOURCE_NAME, SOURCE_BIRTH_DATE,
+                   MATCH_CONFIDENCE, IS_PRIMARY)
+                VALUES (%s, 'MANUAL', %s, 'recruitment-app add-player', %s, %s, 100, TRUE)
+                """,
+                (cafc_player_id, f"app_{cafc_player_id}", player_name, birth_date_obj),
+            )
+        else:
+            # Get next CAFC ID for manual player using sequence
+            cursor.execute("SELECT manual_player_seq.NEXTVAL")
+            cafc_player_id = cursor.fetchone()[0]
+
+            # Insert manual player with CAFC_PLAYER_ID, PLAYERID stays NULL
+            cursor.execute(
+                """
+                INSERT INTO players (
+                    FIRSTNAME, LASTNAME, PLAYERNAME, BIRTHDATE, SQUADNAME, POSITION,
+                    CAFC_PLAYER_ID, DATA_SOURCE
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    player.firstName,
+                    player.lastName,
+                    player_name,
+                    birth_date_obj,
+                    player.squadName,
+                    player.position,
+                    cafc_player_id,
+                    "internal",
+                ),
+            )
         conn.commit()
 
         universal_id = f"internal_{cafc_player_id}"
@@ -7573,46 +7619,88 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
                 "note": f"Use existing {data_source} match with universal ID: {universal_id}",
             }
 
-        # Get next CAFC ID for manual match using sequence
-        cursor.execute("SELECT manual_match_seq.NEXTVAL")
-        cafc_match_id = cursor.fetchone()[0]
+        if WRITES_TO_CORE:
+            # Canonical fixtures reference squads by id (names come from the
+            # squads dimension at read time), so both teams must be picked
+            # from the existing team list — free-text team names would render
+            # as a nameless fixture in APP_COMPAT.matches.
+            if match.homeTeamId is None or match.awayTeamId is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Home and away teams must be selected from the team "
+                        "list. Free-text team entry is not supported for "
+                        "manual matches."
+                    ),
+                )
+            cursor.execute("SELECT CAFC_DB.CORE.CAFC_FIXTURE_ID_SEQ.NEXTVAL")
+            cafc_match_id = cursor.fetchone()[0]
+            cursor.execute(
+                """
+                INSERT INTO CAFC_DB.CORE.FIXTURES
+                  (CAFC_FIXTURE_ID, HOME_SQUAD_ID, AWAY_SQUAD_ID,
+                   FIXTURE_DATE, CREATED_FROM_SOURCE)
+                VALUES (%s, %s, %s, %s, 'MANUAL')
+                """,
+                (cafc_match_id, match.homeTeamId, match.awayTeamId, match.date),
+            )
+            cursor.execute(
+                """
+                INSERT INTO CAFC_DB.CORE.FIXTURE_IDENTITIES
+                  (CAFC_FIXTURE_ID, SOURCE_SYSTEM, SOURCE_FIXTURE_ID,
+                   SOURCE_CONTEXT, SOURCE_HOME_SQUAD_ID, SOURCE_AWAY_SQUAD_ID,
+                   SOURCE_FIXTURE_DATE, MATCH_CONFIDENCE, IS_PRIMARY)
+                VALUES (%s, 'MANUAL', %s, 'recruitment-app add-match', %s, %s, %s, 100, TRUE)
+                """,
+                (
+                    cafc_match_id,
+                    f"app_{cafc_match_id}",
+                    str(match.homeTeamId),
+                    str(match.awayTeamId),
+                    match.date,
+                ),
+            )
+        else:
+            # Get next CAFC ID for manual match using sequence
+            cursor.execute("SELECT manual_match_seq.NEXTVAL")
+            cafc_match_id = cursor.fetchone()[0]
 
-        # Insert manual match with CAFC_MATCH_ID and all squad metadata if provided
-        sql = """
-            INSERT INTO matches (
-                HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE,
-                HOMESQUADID, AWAYSQUADID,
-                HOMESQUADTYPE, AWAYSQUADTYPE,
-                HOMESQUADCOUNTRYID, AWAYSQUADCOUNTRYID,
-                HOMESQUADCOUNTRYNAME, AWAYSQUADCOUNTRYNAME,
-                HOMESQUADSKILLCORNERID, AWAYSQUADSKILLCORNERID,
-                HOMESQUADHEIMSPIELID, AWAYSQUADHEIMSPIELID,
-                HOMESQUADWYSCOUTID, AWAYSQUADWYSCOUTID,
-                CAFC_MATCH_ID, DATA_SOURCE
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
-        values = (
-            match.homeTeam,
-            match.awayTeam,
-            match.date,
-            match.homeTeamId,
-            match.awayTeamId,
-            match.homeTeamType,
-            match.awayTeamType,
-            match.homeTeamCountryId,
-            match.awayTeamCountryId,
-            match.homeTeamCountryName,
-            match.awayTeamCountryName,
-            match.homeTeamSkillCornerId,
-            match.awayTeamSkillCornerId,
-            match.homeTeamHeimspielId,
-            match.awayTeamHeimspielId,
-            match.homeTeamWyscoutId,
-            match.awayTeamWyscoutId,
-            cafc_match_id,
-            "internal"
-        )
-        cursor.execute(sql, values)
+            # Insert manual match with CAFC_MATCH_ID and all squad metadata if provided
+            sql = """
+                INSERT INTO matches (
+                    HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE,
+                    HOMESQUADID, AWAYSQUADID,
+                    HOMESQUADTYPE, AWAYSQUADTYPE,
+                    HOMESQUADCOUNTRYID, AWAYSQUADCOUNTRYID,
+                    HOMESQUADCOUNTRYNAME, AWAYSQUADCOUNTRYNAME,
+                    HOMESQUADSKILLCORNERID, AWAYSQUADSKILLCORNERID,
+                    HOMESQUADHEIMSPIELID, AWAYSQUADHEIMSPIELID,
+                    HOMESQUADWYSCOUTID, AWAYSQUADWYSCOUTID,
+                    CAFC_MATCH_ID, DATA_SOURCE
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            values = (
+                match.homeTeam,
+                match.awayTeam,
+                match.date,
+                match.homeTeamId,
+                match.awayTeamId,
+                match.homeTeamType,
+                match.awayTeamType,
+                match.homeTeamCountryId,
+                match.awayTeamCountryId,
+                match.homeTeamCountryName,
+                match.awayTeamCountryName,
+                match.homeTeamSkillCornerId,
+                match.awayTeamSkillCornerId,
+                match.homeTeamHeimspielId,
+                match.awayTeamHeimspielId,
+                match.homeTeamWyscoutId,
+                match.awayTeamWyscoutId,
+                cafc_match_id,
+                "internal"
+            )
+            cursor.execute(sql, values)
         conn.commit()
 
         universal_id = f"internal_{cafc_match_id}"

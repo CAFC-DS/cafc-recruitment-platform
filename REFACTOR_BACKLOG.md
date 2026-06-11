@@ -60,6 +60,21 @@ fix?* No → log it, move on.
 - [ ] `agents_recs` returns 403 for all five roles — either a missing role
       grant or dead feature; decide and delete or fix.
 
+## Phase 5 (added 2026-06-11)
+
+- [ ] Manual players' POSITION / SQUADNAME have no canonical home —
+      `add_player` in CORE mode mints name/DOB only; context columns in
+      `APP_COMPAT.players` derive from provider iteration data, so
+      manually-added players show NULL position/squad (same accepted gap as
+      migrated legacy internal players). Fix belongs platform-side (manual
+      attributes on CORE.PLAYERS or squad identity work), not in the app.
+- [ ] Legacy manual squads (ids 9000xxx on migrated MANUAL fixtures) don't
+      resolve in CORE_SQUADS — those old fixtures render NULL team names in
+      `APP_COMPAT.matches`. Platform squad-identity backlog.
+- [ ] `manual_player_seq` / `manual_match_seq` (legacy Snowflake sequences)
+      and the legacy branches in `add_player` / `add_match` delete at
+      end-state along with `WRITES_TO_CORE`.
+
 ## Conventions for this file
 
 Add entries as `file:line — what — why it waits`. Date entries when added.
