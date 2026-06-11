@@ -5800,6 +5800,18 @@ async def delete_duplicate(
             status_code=400, detail="entity_type must be 'player' or 'match'"
         )
 
+    if WRITES_TO_CORE:
+        # Legacy-only tool: it DELETEs through the compat layer, which is a
+        # view over canonical CORE post-cutover. Canonical duplicates are
+        # merged with the platform tooling (merge.py) instead.
+        raise HTTPException(
+            status_code=410,
+            detail=(
+                "Deleting players/matches is retired post-cutover. Use the "
+                "data platform's merge tooling for canonical duplicates."
+            ),
+        )
+
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -5808,13 +5820,19 @@ async def delete_duplicate(
         if entity_type == "player":
             condition, params = resolve_player_lookup(universal_id)
 
-            # Check if player has any reports
+            # Check if player has any reports. scout_reports has no
+            # DATA_SOURCE column — internal players link via CAFC_PLAYER_ID,
+            # external via PLAYER_ID.
+            if universal_id.startswith("internal_"):
+                report_check = "sr.CAFC_PLAYER_ID = %s"
+            else:
+                report_check = "sr.PLAYER_ID = %s"
             cursor.execute(
                 f"""
                 SELECT COUNT(*) FROM {read_table('scout_reports')} sr
-                WHERE {condition.replace('PLAYERID', 'sr.PLAYER_ID').replace('CAFC_PLAYER_ID', 'sr.CAFC_PLAYER_ID').replace('DATA_SOURCE', 'sr.DATA_SOURCE')}
+                WHERE {report_check}
             """,
-                params,
+                params[:1],
             )
             report_count = cursor.fetchone()[0]
 
