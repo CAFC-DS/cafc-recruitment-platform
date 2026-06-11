@@ -425,31 +425,11 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
         </div>
 
         <div className="agent-portal-section-title">Player Details</div>
-        <div className="agent-portal-inline-actions" style={{ justifyContent: 'flex-start', marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-          <label className="agent-manual-toggle">
-            <input
-              type="checkbox"
-              checked={isManualPlayerEntry}
-              onChange={(event) => {
-                const checked = event.target.checked;
-                setIsManualPlayerEntry(checked);
-                setSearchOpen(false);
-                setSearchResults([]);
-                setSearchSuggestions([]);
-                setActiveSuggestionIndex(-1);
-                setSelectedPlayerLabel('');
-                onChange('linked_universal_id', null);
-                onChange('player_manual_entry', checked);
-                if (!checked && values.player_date_of_birth) {
-                  onChange('player_date_of_birth', '');
-                }
-              }}
-            />
-            <span>Other (Manual Entry)</span>
-          </label>
-        </div>
-        <div className="agent-portal-form-grid" style={{ marginTop: '0.5rem' }}>
+        <div className="agent-portal-form-grid" style={{ marginTop: '0.75rem' }}>
           <div className="full-span">
+            {/* Manual entry is rehydration-only: edits of recommendations
+                submitted before player creation was restricted to staff.
+                New submissions must link a player from the search. */}
             {isManualPlayerEntry ? (
               <div className="agent-portal-form-grid">
                 <div>
@@ -547,7 +527,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                 </div>
                 {!hasSelectedPlayer ? (
                   <div className="agent-portal-meta" style={{ marginTop: '0.4rem' }}>
-                    Enter a player's name to get started.
+                    Enter a player's name and select them from the list. If the player is not listed, contact the recruitment team to have them added.
                   </div>
                 ) : null}
                 {!hasSelectedPlayer && searchLoading ? (
@@ -564,7 +544,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                         Searching...
                       </div>
                     ) : searchResults.length === 0 && searchSuggestions.length === 0 ? (
-                      <div className="agent-player-search-option">No players found.</div>
+                      <div className="agent-player-search-option">No players found. Contact the recruitment team to have the player added.</div>
                     ) : (
                       <>
                         {searchResults.map((result, index) => (

@@ -422,18 +422,6 @@ const AdminPage: React.FC = () => {
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline-warning"
-                          onClick={() =>
-                            runAdminAction(
-                              "/admin/setup-cafc-player-ids",
-                              (d) => `CAFC setup complete: ${(d.results || []).join(", ") || d.message}`
-                            )
-                          }
-                        >
-                          Setup CAFC IDs
-                        </Button>
-                        <Button
-                          size="sm"
                           variant="outline-info"
                           onClick={() =>
                             runAdminAction(

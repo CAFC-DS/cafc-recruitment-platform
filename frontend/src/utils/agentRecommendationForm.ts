@@ -115,7 +115,13 @@ export const getRecommendationSelectedPlayerLabel = (item: Recommendation) => {
   return `${item.player_name} - ${dobLabel}`;
 };
 
-export const validateRecommendationFormValues = (values: RecommendationFormValues) => {
+export const validateRecommendationFormValues = (
+  values: RecommendationFormValues,
+  options?: { requireLinkedPlayer?: boolean },
+) => {
+  if (options?.requireLinkedPlayer && !values.linked_universal_id) {
+    return 'Please select a player from the search results. If the player is not listed, contact the recruitment team to have them added.';
+  }
   const requiredAgentFields = [
     values.agent_name,
     values.agent_email,

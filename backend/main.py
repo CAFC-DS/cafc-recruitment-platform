@@ -2184,66 +2184,23 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
     return history
 
 
-def _create_external_player_from_agent_intake(
-    cursor,
-    *,
-    player_name: str,
-    player_dob,
-    recommended_position: Optional[str],
-    transfermarkt_link: Optional[str],
-) -> str:
-    """Create a new external PLAYERS row from an agent's manual-entry intake and
-    return its universal_id (e.g. 'external_12345')."""
-    cursor.execute(
-        f"SELECT COALESCE(MAX(PLAYERID), 0) + 1 FROM {read_table('players')} WHERE PLAYERID IS NOT NULL"
-    )
-    row = cursor.fetchone()
-    new_player_id = int(row[0]) if row and row[0] is not None else 1
-
-    first_position = None
-    if recommended_position:
-        parts = [part.strip() for part in recommended_position.split(",") if part.strip()]
-        if parts:
-            first_position = parts[0]
-
-    player_columns = get_table_columns("players")
-    columns = ["PLAYERID", "PLAYERNAME", "DATA_SOURCE"]
-    values: List[Any] = [new_player_id, player_name.strip(), "external"]
-    if player_dob is not None and "BIRTHDATE" in player_columns:
-        columns.append("BIRTHDATE")
-        values.append(player_dob)
-    if first_position and "POSITION" in player_columns:
-        columns.append("POSITION")
-        values.append(first_position)
-    if transfermarkt_link and "TRANSFERMARKT_LINK" in player_columns:
-        columns.append("TRANSFERMARKT_LINK")
-        values.append(transfermarkt_link.strip())
-
-    placeholders = ", ".join(["%s"] * len(columns))
-    cursor.execute(
-        f"INSERT INTO players ({', '.join(columns)}) VALUES ({placeholders})",
-        tuple(values),
-    )
-    return f"external_{new_player_id}"
-
-
 def resolve_agent_intake_player_link(
     cursor,
     *,
     linked_universal_id: Optional[str],
     player_manual_entry: bool,
-    player_name: str,
-    player_dob,
-    recommended_position: Optional[str],
-    transfermarkt_link: Optional[str],
-) -> Optional[str]:
+    existing_universal_id: Optional[str] = None,
+) -> str:
     """Decide which universal_id to store on an agent intake row.
 
     Path A — agent picked a real player in the typeahead and we got a
     linked_universal_id. Verify it resolves to a real PLAYERS row and return it.
 
-    Path B — agent ticked "Other (Manual Entry)" or no link was sent. Create a
-    new external PLAYERS row from the agent-provided fields and return that.
+    Path B — edit of an existing recommendation with no (or an unresolvable)
+    new link: keep the link already stored on the row.
+
+    Otherwise reject. Agents cannot create PLAYERS rows — recommendations must
+    reference a player that already exists in the system.
     """
     if linked_universal_id and not player_manual_entry:
         normalized_link = linked_universal_id.strip()
@@ -2254,15 +2211,17 @@ def resolve_agent_intake_player_link(
                 player_data = None
             if player_data:
                 return normalized_link
-            # Universal id was provided but didn't resolve — fall through to
-            # the manual path so the recommendation still gets a real link.
 
-    return _create_external_player_from_agent_intake(
-        cursor,
-        player_name=player_name,
-        player_dob=player_dob,
-        recommended_position=recommended_position,
-        transfermarkt_link=transfermarkt_link,
+    if existing_universal_id:
+        return existing_universal_id
+
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "Player not found in the system. Please search for and select an "
+            "existing player. If the player is missing, contact the recruitment "
+            "team to have them added."
+        ),
     )
 
 
@@ -3368,10 +3327,6 @@ async def create_agent_recommendation(
             cursor,
             linked_universal_id=linked_universal_id,
             player_manual_entry=bool(player_manual_entry),
-            player_name=recommendation_payload["PLAYER_NAME"],
-            player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
-            recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
-            transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
         )
 
         recommendation_columns = get_table_columns("player_recommendations")
@@ -3578,10 +3533,9 @@ async def update_agent_recommendation(
             cursor,
             linked_universal_id=linked_universal_id,
             player_manual_entry=bool(player_manual_entry),
-            player_name=recommendation_payload["PLAYER_NAME"],
-            player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
-            recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
-            transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
+            # Edits of older recommendations (including pre-policy manual
+            # entries) keep their stored link when no new selection is sent.
+            existing_universal_id=row[-1],
         )
 
         recommendation_columns = get_table_columns("player_recommendations")
@@ -4889,168 +4843,18 @@ async def get_cafc_system_status(current_user: User = Depends(get_current_user))
 
 @app.post("/admin/setup-cafc-player-ids")
 async def setup_cafc_player_ids(current_user: User = Depends(get_current_user)):
-    """Add CAFC_PLAYER_ID system for data provider independence (admin only)"""
+    """Retired. This one-off migration backfilled CAFC_PLAYER_ID onto the legacy
+    RECRUITMENT_TEST tables. Canonical IDs are owned by CAFC_DB.CORE (minted via
+    CAFC_PLAYER_ID_SEQ), so re-running it is never valid post-cutover."""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
-
-    conn = None
-    try:
-        conn = get_snowflake_connection()
-        cursor = conn.cursor()
-
-        results = []
-
-        # 1. Add CAFC_PLAYER_ID to players table if it doesn't exist
-        cursor.execute("DESCRIBE TABLE players")
-        players_columns = cursor.fetchall()
-        players_column_names = [col[0] for col in players_columns]
-
-        if "CAFC_PLAYER_ID" not in players_column_names:
-            # Use IDENTITY for auto-increment in Snowflake
-            cursor.execute(
-                "ALTER TABLE players ADD COLUMN CAFC_PLAYER_ID INTEGER IDENTITY(1,1)"
-            )
-            conn.commit()
-            results.append("Added CAFC_PLAYER_ID column to players table")
-
-            # Generate CAFC_PLAYER_IDs for existing players
-            cursor.execute(
-                f"SELECT PLAYERID FROM {read_table('players')} WHERE CAFC_PLAYER_ID IS NULL ORDER BY PLAYERID"
-            )
-            existing_players = cursor.fetchall()
-
-            for i, player in enumerate(existing_players, 1):
-                cursor.execute(
-                    "UPDATE players SET CAFC_PLAYER_ID = %s WHERE PLAYERID = %s",
-                    (i, player[0]),
-                )
-
-            conn.commit()
-            results.append(
-                f"Generated CAFC_PLAYER_IDs for {len(existing_players)} existing players"
-            )
-        else:
-            results.append("CAFC_PLAYER_ID column already exists in players table")
-
-        # 2. Update scout_reports to use CAFC_PLAYER_ID
-        try:
-            cursor.execute("DESCRIBE TABLE scout_reports")
-            scout_columns = cursor.fetchall()
-            scout_column_names = [col[0] for col in scout_columns]
-
-            if "CAFC_PLAYER_ID" not in scout_column_names:
-                cursor.execute(
-                    "ALTER TABLE scout_reports ADD COLUMN CAFC_PLAYER_ID INTEGER"
-                )
-                conn.commit()
-                results.append("Added CAFC_PLAYER_ID column to scout_reports table")
-
-                # Migrate existing data if both columns exist
-                cursor.execute(
-                    f"""
-                    UPDATE {write_table('scout_reports')} sr
-                    SET CAFC_PLAYER_ID = (
-                        SELECT p.CAFC_PLAYER_ID 
-                        FROM {read_table('players')} p 
-                        WHERE p.PLAYERID = sr.PLAYER_ID
-                    )
-                    WHERE sr.PLAYER_ID IS NOT NULL
-                """
-                )
-                conn.commit()
-                results.append("Migrated existing scout_reports to use CAFC_PLAYER_ID")
-            else:
-                results.append(
-                    "CAFC_PLAYER_ID column already exists in scout_reports table"
-                )
-        except Exception as e:
-            results.append(f"Scout reports table update: {str(e)}")
-
-        # 3. Update player_information (intel reports) to use CAFC_PLAYER_ID
-        try:
-            cursor.execute("DESCRIBE TABLE player_information")
-            intel_columns = cursor.fetchall()
-            intel_column_names = [col[0] for col in intel_columns]
-
-            if "CAFC_PLAYER_ID" not in intel_column_names:
-                cursor.execute(
-                    "ALTER TABLE player_information ADD COLUMN CAFC_PLAYER_ID INTEGER"
-                )
-                conn.commit()
-                results.append(
-                    "Added CAFC_PLAYER_ID column to player_information table"
-                )
-
-                # Migrate existing data if both columns exist
-                if "PLAYER_ID" in intel_column_names:
-                    cursor.execute(
-                        f"""
-                        UPDATE {write_table('player_information')} pi
-                        SET CAFC_PLAYER_ID = (
-                            SELECT p.CAFC_PLAYER_ID 
-                            FROM {read_table('players')} p 
-                            WHERE p.PLAYERID = pi.PLAYER_ID
-                        )
-                        WHERE pi.PLAYER_ID IS NOT NULL
-                    """
-                    )
-                    conn.commit()
-                    results.append(
-                        "Migrated existing player_information to use CAFC_PLAYER_ID"
-                    )
-            else:
-                results.append(
-                    "CAFC_PLAYER_ID column already exists in player_information table"
-                )
-        except Exception as e:
-            results.append(f"Player information table update: {str(e)}")
-
-        # 4. Update player_notes to use CAFC_PLAYER_ID
-        try:
-            cursor.execute("DESCRIBE TABLE player_notes")
-            notes_columns = cursor.fetchall()
-            notes_column_names = [col[0] for col in notes_columns]
-
-            if "CAFC_PLAYER_ID" not in notes_column_names:
-                cursor.execute(
-                    "ALTER TABLE player_notes ADD COLUMN CAFC_PLAYER_ID INTEGER"
-                )
-                conn.commit()
-                results.append("Added CAFC_PLAYER_ID column to player_notes table")
-
-                # Migrate existing data
-                cursor.execute(
-                    f"""
-                    UPDATE {write_table('player_notes')} pn
-                    SET CAFC_PLAYER_ID = (
-                        SELECT p.CAFC_PLAYER_ID 
-                        FROM {read_table('players')} p 
-                        WHERE p.PLAYERID = pn.PLAYER_ID
-                    )
-                    WHERE pn.PLAYER_ID IS NOT NULL
-                """
-                )
-                conn.commit()
-                results.append("Migrated existing player_notes to use CAFC_PLAYER_ID")
-            else:
-                results.append(
-                    "CAFC_PLAYER_ID column already exists in player_notes table"
-                )
-        except Exception as e:
-            results.append(f"Player notes table update: {str(e)}")
-
-        return {"message": "CAFC Player ID system setup completed", "results": results}
-
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        logging.exception(e)
-        raise HTTPException(
-            status_code=500, detail=f"Error setting up CAFC Player IDs: {e}"
-        )
-    finally:
-        if conn:
-            conn.close()
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "This migration has been retired. CAFC player IDs are owned by the "
+            "canonical platform (CAFC_DB.CORE) and must not be regenerated here."
+        ),
+    )
 
 
 # --- Modified Endpoints with Authorization ---

@@ -1,4 +1,12 @@
-"""Repeatable dedupe for RECRUITMENT_TEST.PUBLIC.PLAYERS.
+"""RETIRED (canonical cutover Phase 5): legacy-only dedupe for
+RECRUITMENT_TEST.PUBLIC.PLAYERS. It UPDATEs/DELETEs the legacy database
+directly, which is frozen post-cutover. Duplicate canonical players are
+merged with the platform tooling instead:
+cafc-data-platform/python/identity/merge.py (+ candidates.py queue).
+
+Original docstring follows.
+
+Repeatable dedupe for RECRUITMENT_TEST.PUBLIC.PLAYERS.
 
 Finds rows that share `(UPPER(TRIM(PLAYERNAME)), BIRTHDATE)`, picks the
 canonical PLAYERID by matching against `CAFC_DB.IMPECT_RAW.PLAYERS.PLAYERID`
