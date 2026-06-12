@@ -2662,10 +2662,12 @@ def build_recommendation_select():
             {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
             {wage_basis_expr} AS WAGE_BASIS,
             {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID
-        FROM {read_table('player_recommendations')} pr
-        LEFT JOIN {read_table('users')} u ON pr.SUBMITTED_BY_USER_ID = u.ID
-        LEFT JOIN {read_table('users')} su ON pr.STATUS_UPDATED_BY = su.ID
+        FROM {pr_table} pr
+        LEFT JOIN {users_table} u ON pr.SUBMITTED_BY_USER_ID = u.ID
+        LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
+        pr_table=read_table('player_recommendations'),
+        users_table=read_table('users'),
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
         transfer_fee_min_expr=transfer_fee_min_expr,

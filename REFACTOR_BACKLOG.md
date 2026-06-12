@@ -54,11 +54,15 @@ fix?* No → log it, move on.
       so prod (Railway) output is filterable.
 - [ ] Startup does serial `DESCRIBE TABLE` over many tables — slow cold start;
       one `INFORMATION_SCHEMA.COLUMNS` query covers all.
-- [ ] `internal_recs` endpoint returns HTTP 500 for every role (pre-existing,
-      identical legacy vs canonical — captured in cutover_compare baselines).
-      Diagnose after cutover; it's a real bug users may not be hitting.
-- [ ] `agents_recs` returns 403 for all five roles — either a missing role
-      grant or dead feature; decide and delete or fix.
+- [x] `internal_recs` 500 — NOT pre-existing after all: the Phase 1+2
+      templating put `{read_table(...)}` inside `build_recommendation_select`'s
+      plain `.format()` template → KeyError → every recommendation read 500'd
+      on cutover branches (prod main unaffected). Fixed 2026-06-12 during the
+      agent-flow test; all old cutover_compare baselines have internal_recs as
+      500, so the first capture after the fix will show 500→200 as expected.
+- [ ] `agents_recs` returns 403 for the five staff roles — correct role
+      gating (agent-only endpoint); agent-role access verified working
+      2026-06-12. Nothing to fix; entry kept to explain harness 403s.
 
 ## Phase 5 (added 2026-06-11)
 
