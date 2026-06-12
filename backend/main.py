@@ -71,39 +71,49 @@ def normalize_text(text: str) -> str:
 
 
 # Universal ID helper functions for mixed data sources
+def _universal_id_num(value):
+    """Normalize an id for a universal-id string. Canonical APP_COMPAT views
+    can surface ids as Decimal with scale (e.g. 2849300.00000), which would
+    break the int() parsing in resolve_*_lookup."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
+
 def get_player_universal_id(player_row):
     """Get the appropriate ID based on data source"""
     if player_row.get("DATA_SOURCE") == "internal":
-        return f"internal_{player_row['CAFC_PLAYER_ID']}"
+        return f"internal_{_universal_id_num(player_row['CAFC_PLAYER_ID'])}"
     else:
-        return f"external_{player_row['PLAYERID']}"
+        return f"external_{_universal_id_num(player_row['PLAYERID'])}"
 
 
 def get_match_universal_id(match_row):
     """Get the appropriate ID based on data source"""
     if match_row.get("DATA_SOURCE") == "internal":
-        return f"internal_{match_row['CAFC_MATCH_ID']}"
+        return f"internal_{_universal_id_num(match_row['CAFC_MATCH_ID'])}"
     else:
-        return f"external_{match_row['ID']}"
+        return f"external_{_universal_id_num(match_row['ID'])}"
 
 
 def resolve_player_lookup(universal_id):
     """Convert universal ID to database query"""
     if universal_id.startswith("internal_"):
-        cafc_id = int(universal_id[9:])
+        cafc_id = int(float(universal_id[9:]))
         return "CAFC_PLAYER_ID = %s AND DATA_SOURCE = 'internal'", [cafc_id]
     else:
-        player_id = int(universal_id[9:])
+        player_id = int(float(universal_id[9:]))
         return "PLAYERID = %s AND DATA_SOURCE = 'external'", [player_id]
 
 
 def resolve_match_lookup(universal_id):
     """Convert universal ID to database query"""
     if universal_id.startswith("internal_"):
-        cafc_id = int(universal_id[9:])
+        cafc_id = int(float(universal_id[9:]))
         return "CAFC_MATCH_ID = %s AND DATA_SOURCE = 'internal'", [cafc_id]
     else:
-        match_id = int(universal_id[9:])
+        match_id = int(float(universal_id[9:]))
         return "ID = %s AND DATA_SOURCE = 'external'", [match_id]
 
 
@@ -6016,6 +6026,10 @@ async def add_player(player: Player, current_user: User = Depends(get_current_us
             "data_source": "internal",
             "note": "This player has a separate ID space from external players - zero collision risk",
         }
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
     except Exception as e:
         if conn:
             conn.rollback()
@@ -7400,7 +7414,8 @@ async def search_matches(
             universal_id = get_match_universal_id(
                 {
                     "ID": match_id if id_type == "external" else None,
-                    "CAFC_MATCH_ID": match_id if id_type == "internal" else None,
+                    # The UNION branches label internal rows 'manual'.
+                    "CAFC_MATCH_ID": match_id if id_type == "manual" else None,
                     "DATA_SOURCE": data_source,
                 }
             )
@@ -7471,7 +7486,8 @@ async def get_matches_by_date(
             universal_id = get_match_universal_id(
                 {
                     "ID": match_id if id_type == "external" else None,
-                    "CAFC_MATCH_ID": match_id if id_type == "internal" else None,
+                    # The UNION branches label internal rows 'manual'.
+                    "CAFC_MATCH_ID": match_id if id_type == "manual" else None,
                     "DATA_SOURCE": data_source,
                 }
             )
@@ -7731,6 +7747,10 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
             "data_source": "internal",
             "note": "This match has a separate ID space from external matches - zero collision risk",
         }
+    except HTTPException:
+        if conn:
+            conn.rollback()
+        raise
     except Exception as e:
         if conn:
             conn.rollback()
