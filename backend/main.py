@@ -13958,17 +13958,15 @@ async def get_stage_movement_analytics(
     if cached_data is not None:
         return cached_data
 
-    # Build the optional position join + predicate. Position is resolved from the
-    # LIST a player sits in (player_lists.LIST_NAME), mapped from the selected
-    # dropdown positions via POSITION_TO_LIST_NAME.
-    position_join = ""
+    # Build the optional position predicate. Position is resolved from the LIST a
+    # player sits in (player_lists.LIST_NAME), mapped from the selected dropdown
+    # positions via POSITION_TO_LIST_NAME. All three queries below join
+    # player_list_items + player_lists unconditionally so they can (a) resolve a
+    # stable per-player identity and (b) fall back to the list item's CREATED_AT
+    # for the stage date when a history row's CHANGED_AT was never recorded.
     position_clause = ""
     position_params: list = []
     if position_list:
-        position_join = """
-            LEFT JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID
-            LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
-        """
         target_lists = list_names_for_positions(position_list)
         if target_lists:
             placeholders = ", ".join(["%s"] * len(target_lists))
@@ -13977,12 +13975,42 @@ async def get_stage_movement_analytics(
         else:
             position_clause = " AND 1 = 0"
 
+    # Shared SQL fragments used by all three queries below.
+    #   list_join       - always attach the list item + list so we can read
+    #                     CREATED_AT and resolve position/identity.
+    #   EFFECTIVE_START - date a stage appearance by its recorded change time,
+    #                     falling back to when the player was added to the list.
+    #                     Legacy bulk-import rows have a NULL CHANGED_AT; without
+    #                     this fallback any date filter silently drops them (this
+    #                     was undercounting "ever at stage", e.g. Stage 2).
+    #   PLAYER_KEY      - one identity per real player so re-imported list entries
+    #                     (fresh LIST_ITEM_IDs for the same player) aren't counted
+    #                     more than once.
+    list_join = (
+        " LEFT JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID"
+        " LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID"
+    )
+    EFFECTIVE_START = "COALESCE(psh.CHANGED_AT, pli.CREATED_AT)"
+    PLAYER_KEY = (
+        "COALESCE(CAST(psh.PLAYER_ID AS VARCHAR),"
+        " 'C' || CAST(pli.CAFC_PLAYER_ID AS VARCHAR),"
+        " 'I' || CAST(psh.LIST_ITEM_ID AS VARCHAR))"
+    )
+    # Same identity expressed from the live player_list_items row (used for the
+    # authoritative "as of today" occupancy snapshot).
+    LIVE_PLAYER_KEY = (
+        "COALESCE(CAST(pli.PLAYER_ID AS VARCHAR),"
+        " 'C' || CAST(pli.CAFC_PLAYER_ID AS VARCHAR),"
+        " 'I' || CAST(pli.ID AS VARCHAR))"
+    )
+
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor(snowflake.connector.DictCursor)
 
-        # 1. Stage MOVE metrics over the selected window
+        # 1. Stage MOVE metrics over the selected window. Dated by EFFECTIVE_START
+        #    so legacy import rows (NULL CHANGED_AT) still count toward entries.
         cursor.execute(
             f"""
             SELECT
@@ -13992,40 +14020,56 @@ async def get_stage_movement_analytics(
                 COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_2,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3
             FROM PLAYER_STAGE_HISTORY psh
-            {position_join}
-            WHERE psh.CHANGED_AT >= %s
-              AND psh.CHANGED_AT < DATEADD(day, 1, %s::DATE)
+            {list_join}
+            WHERE {EFFECTIVE_START} >= %s
+              AND {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
               {position_clause}
             """,
             [window_start.isoformat(), window_end.isoformat(), *position_params],
         )
         row = cursor.fetchone() or {}
 
-        # 2. Stage OCCUPANCY snapshot as of `as_of` date. Each list item's stage
-        #    is the NEW_STAGE of its most recent history row on/before that date.
-        cursor.execute(
-            f"""
-            WITH ranked AS (
-                SELECT
-                    psh.LIST_ITEM_ID,
-                    psh.NEW_STAGE,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY psh.LIST_ITEM_ID
-                        ORDER BY psh.CHANGED_AT DESC, psh.ID DESC
-                    ) AS rn
-                FROM PLAYER_STAGE_HISTORY psh
-                WHERE psh.CHANGED_AT < DATEADD(day, 1, %s::DATE)
+        # 2. Stage OCCUPANCY snapshot as of `as_of` date.
+        #    For "today or later" read the authoritative current stage straight
+        #    from player_list_items so this matches the Lists/Kanban page exactly.
+        #    For a past as_of, reconstruct each item's stage from its most recent
+        #    appearance on/before that date (dated by EFFECTIVE_START).
+        if as_of >= date.today():
+            cursor.execute(
+                f"""
+                SELECT pli.STAGE AS stage,
+                       COUNT(DISTINCT {LIVE_PLAYER_KEY}) AS player_count
+                FROM player_list_items pli
+                LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+                WHERE pli.STAGE IS NOT NULL
+                  {position_clause}
+                GROUP BY pli.STAGE
+                """,
+                [*position_params],
             )
-            SELECT r.NEW_STAGE AS stage, COUNT(*) AS player_count
-            FROM ranked r
-            LEFT JOIN player_list_items pli ON r.LIST_ITEM_ID = pli.ID
-            LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
-            WHERE r.rn = 1
-              {position_clause}
-            GROUP BY r.NEW_STAGE
-            """,
-            [as_of.isoformat(), *position_params],
-        )
+        else:
+            cursor.execute(
+                f"""
+                WITH ranked AS (
+                    SELECT
+                        {PLAYER_KEY} AS player_key,
+                        psh.NEW_STAGE,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY psh.LIST_ITEM_ID
+                            ORDER BY {EFFECTIVE_START} DESC, psh.ID DESC
+                        ) AS rn
+                    FROM PLAYER_STAGE_HISTORY psh
+                    {list_join}
+                    WHERE {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
+                      {position_clause}
+                )
+                SELECT NEW_STAGE AS stage, COUNT(DISTINCT player_key) AS player_count
+                FROM ranked
+                WHERE rn = 1
+                GROUP BY NEW_STAGE
+                """,
+                [as_of.isoformat(), *position_params],
+            )
         raw_counts = {
             stage_row.get("STAGE"): int(stage_row.get("PLAYER_COUNT") or 0)
             for stage_row in (cursor.fetchall() or [])
@@ -14038,34 +14082,43 @@ async def get_stage_movement_analytics(
             "Archived": raw_counts.get("Archived", 0),
         }
 
-        # 3. CUMULATIVE stage presence over the window. Counts every list item
-        #    that spent any time in a stage between window_start and window_end,
-        #    including players who have since moved on or been archived. Each
-        #    history row opens a stage interval that runs from its CHANGED_AT
-        #    until the next row's CHANGED_AT (LEAD); an interval is counted when
-        #    it overlaps the selected window. COUNT(DISTINCT ...) so a player who
-        #    enters and leaves the same stage more than once is only counted once.
+        # 3. CUMULATIVE stage presence over the window: distinct players who spent
+        #    any time in a stage between window_start and window_end, including
+        #    players who have since moved on or been archived. Each appearance
+        #    opens an interval from EFFECTIVE_START until the next appearance
+        #    (LEAD); an interval counts when it overlaps the window. Dated by
+        #    EFFECTIVE_START (so import rows count) and de-duplicated by player.
         cursor.execute(
             f"""
-            WITH ordered AS (
+            WITH base AS (
                 SELECT
                     psh.LIST_ITEM_ID,
+                    {PLAYER_KEY} AS player_key,
                     psh.NEW_STAGE,
-                    psh.CHANGED_AT AS stage_start,
-                    LEAD(psh.CHANGED_AT) OVER (
-                        PARTITION BY psh.LIST_ITEM_ID
-                        ORDER BY psh.CHANGED_AT, psh.ID
-                    ) AS stage_end
+                    {EFFECTIVE_START} AS stage_start,
+                    psh.ID AS seq
                 FROM PLAYER_STAGE_HISTORY psh
-                {position_join}
+                {list_join}
                 WHERE 1 = 1
                   {position_clause}
+            ),
+            ordered AS (
+                SELECT
+                    player_key,
+                    NEW_STAGE,
+                    stage_start,
+                    LEAD(stage_start) OVER (
+                        PARTITION BY LIST_ITEM_ID
+                        ORDER BY stage_start, seq
+                    ) AS stage_end
+                FROM base
+                WHERE stage_start IS NOT NULL
             )
-            SELECT o.NEW_STAGE AS stage, COUNT(DISTINCT o.LIST_ITEM_ID) AS player_count
-            FROM ordered o
-            WHERE o.stage_start < DATEADD(day, 1, %s::DATE)
-              AND (o.stage_end IS NULL OR o.stage_end > %s::DATE)
-            GROUP BY o.NEW_STAGE
+            SELECT NEW_STAGE AS stage, COUNT(DISTINCT player_key) AS player_count
+            FROM ordered
+            WHERE stage_start < DATEADD(day, 1, %s::DATE)
+              AND (stage_end IS NULL OR stage_end > %s::DATE)
+            GROUP BY NEW_STAGE
             """,
             [*position_params, window_end.isoformat(), window_start.isoformat()],
         )
