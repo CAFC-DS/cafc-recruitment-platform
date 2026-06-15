@@ -27,6 +27,8 @@ import AgentEditSubmissionPage from './pages/agents/AgentEditSubmissionPage';
 import InternalRecommendationsPage from './pages/internal/InternalRecommendationsPage';
 import ListsGatewayPage from './pages/ListsGatewayPage';
 import ExternalRecommendationsListPage from './pages/ExternalRecommendationsListPage';
+import EmergingTalentListsPage from './pages/EmergingTalentListsPage';
+import EmergingTalentKanbanPage from './pages/EmergingTalentKanbanPage';
 
 interface AuthContextType {
   token: string | null;
@@ -421,6 +423,22 @@ function App() {
               element={
                 <ListsRoute>
                   <ExternalRecommendationsListPage />
+                </ListsRoute>
+              }
+            />
+            <Route
+              path="/lists/emerging-talent"
+              element={
+                <ListsRoute>
+                  <EmergingTalentListsPage />
+                </ListsRoute>
+              }
+            />
+            <Route
+              path="/lists/emerging-talent/kanban"
+              element={
+                <ListsRoute>
+                  <EmergingTalentKanbanPage />
                 </ListsRoute>
               }
             />

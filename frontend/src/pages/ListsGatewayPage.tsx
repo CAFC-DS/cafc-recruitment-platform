@@ -39,6 +39,19 @@ const ListsGatewayPage: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        <div className="agent-portal-card">
+          <div className="agent-portal-card-body">
+            <div className="agent-portal-label">Emerging Talent</div>
+            <div className="agent-portal-kpi-value" style={{ fontSize: '1.8rem' }}>U21 &amp; U18 Shortlists</div>
+            <div className="agent-portal-kpi-copy" style={{ marginBottom: '1.5rem' }}>
+              The same recruitment pipeline (pills, pitch view, filters, stages, kanban) for emerging talent, with a toggle between the U21 and U18 shortlists.
+            </div>
+            <Link to="/lists/emerging-talent" className="agent-auth-button" style={{ textDecoration: 'none', minWidth: 200 }}>
+              Open Emerging Talent
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

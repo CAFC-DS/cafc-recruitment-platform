@@ -13376,6 +13376,9 @@ async def get_player_analytics(
             #     they were flagged in matches one of the selected positions (each
             #     dropdown position maps to a list name via POSITION_TO_LIST_NAME).
             data_players_clauses = ["psh.REASON = 'Flagged by Data'"]
+            # First-team shortlist only (emerging-talent U21/U18 lists reuse the
+            # same position LIST_NAMEs, so scope by category to avoid double counts).
+            data_players_clauses.append("pl.LIST_CATEGORY = 'first_team'")
             data_players_params: list = []
             if months:
                 data_players_clauses.append("psh.CHANGED_AT >= DATEADD(month, %s, CURRENT_DATE())")
@@ -14003,11 +14006,16 @@ async def get_stage_movement_analytics(
         " 'C' || CAST(pli.CAFC_PLAYER_ID AS VARCHAR),"
         " 'I' || CAST(pli.ID AS VARCHAR))"
     )
+    # This analytics view covers the first-team shortlist only. Scope every query
+    # to first_team so the emerging-talent (U21/U18) lists — which reuse the same
+    # position LIST_NAMEs — never leak into these counts.
+    FIRST_TEAM_ONLY = f" AND pl.LIST_CATEGORY = '{FIRST_TEAM_CATEGORY}'"
 
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor(snowflake.connector.DictCursor)
+        ensure_player_lists_category_column(cursor)
 
         # 1. Stage MOVE metrics over the selected window. Dated by EFFECTIVE_START
         #    so legacy import rows (NULL CHANGED_AT) still count toward entries.
@@ -14023,7 +14031,7 @@ async def get_stage_movement_analytics(
             {list_join}
             WHERE {EFFECTIVE_START} >= %s
               AND {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
-              {position_clause}
+              {position_clause}{FIRST_TEAM_ONLY}
             """,
             [window_start.isoformat(), window_end.isoformat(), *position_params],
         )
@@ -14042,7 +14050,7 @@ async def get_stage_movement_analytics(
                 FROM player_list_items pli
                 LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
                 WHERE pli.STAGE IS NOT NULL
-                  {position_clause}
+                  {position_clause}{FIRST_TEAM_ONLY}
                 GROUP BY pli.STAGE
                 """,
                 [*position_params],
@@ -14061,7 +14069,7 @@ async def get_stage_movement_analytics(
                     FROM PLAYER_STAGE_HISTORY psh
                     {list_join}
                     WHERE {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
-                      {position_clause}
+                      {position_clause}{FIRST_TEAM_ONLY}
                 )
                 SELECT NEW_STAGE AS stage, COUNT(DISTINCT player_key) AS player_count
                 FROM ranked
@@ -14100,7 +14108,7 @@ async def get_stage_movement_analytics(
                 FROM PLAYER_STAGE_HISTORY psh
                 {list_join}
                 WHERE 1 = 1
-                  {position_clause}
+                  {position_clause}{FIRST_TEAM_ONLY}
             ),
             ordered AS (
                 SELECT
@@ -14773,6 +14781,9 @@ async def submit_feedback(
 class PlayerListCreate(BaseModel):
     list_name: str
     description: Optional[str] = None
+    # Which shortlist this list belongs to: 'first_team' (default),
+    # 'emerging_talent_u21' or 'emerging_talent_u18'.
+    list_category: Optional[str] = "first_team"
 
 
 class PlayerListUpdate(BaseModel):
@@ -14815,6 +14826,56 @@ class BulkStageUpdateRequest(BaseModel):
     updates: List[BulkStageUpdateItem]
 
 
+# Valid list categories. 'first_team' is the original (and default) shortlist;
+# the two emerging-talent shortlists are independent sets of the same position
+# lists, toggled between U21 and U18 in the UI.
+FIRST_TEAM_CATEGORY = "first_team"
+EMERGING_TALENT_CATEGORIES = ["emerging_talent_u21", "emerging_talent_u18"]
+VALID_LIST_CATEGORIES = [FIRST_TEAM_CATEGORY, *EMERGING_TALENT_CATEGORIES]
+
+
+def ensure_player_lists_category_column(cursor):
+    """Ensure player_lists.LIST_CATEGORY exists (cheap no-op when present).
+
+    NOTE: player_lists is owned by ACCOUNTADMIN and the application role only has
+    DML (no MODIFY), so in deployed environments the column CANNOT be added by the
+    app. It must be created once by an admin migration — see
+    backend/migrations/add_list_category_to_player_lists.sql (or run
+    tools/seed_emerging_talent_lists.py with SNOWFLAKE_SEED_ROLE set to a role
+    that has MODIFY, e.g. ACCOUNTADMIN).
+
+    This helper short-circuits when the column already exists, and otherwise makes
+    a best-effort attempt (which succeeds only if the connected role happens to
+    have the privilege). The column defaults to 'first_team'; Snowflake's DEFAULT
+    only applies to new inserts, so we also backfill existing rows.
+    """
+    try:
+        cursor.execute(
+            "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS "
+            "WHERE TABLE_SCHEMA = CURRENT_SCHEMA() AND TABLE_NAME = 'PLAYER_LISTS' "
+            "AND COLUMN_NAME = 'LIST_CATEGORY' LIMIT 1"
+        )
+        if cursor.fetchone():
+            return  # column present — nothing to do
+    except Exception as e:
+        logging.debug(f"LIST_CATEGORY existence check failed: {e}")
+    try:
+        cursor.execute(
+            "ALTER TABLE player_lists ADD COLUMN LIST_CATEGORY VARCHAR(50) DEFAULT 'first_team'"
+        )
+        cursor.execute(
+            "UPDATE player_lists SET LIST_CATEGORY = 'first_team' WHERE LIST_CATEGORY IS NULL"
+        )
+        logging.info(
+            "Added LIST_CATEGORY column to player_lists and backfilled existing rows to 'first_team'"
+        )
+    except Exception as e:
+        logging.warning(
+            "LIST_CATEGORY column is missing and the app role cannot add it; "
+            f"run the admin migration. ({e})"
+        )
+
+
 @app.post("/player-lists")
 async def create_player_list(
     list_data: PlayerListCreate, current_user: User = Depends(get_current_user)
@@ -14823,6 +14884,13 @@ async def create_player_list(
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
             status_code=403, detail="Only admins and senior managers can create lists"
+        )
+
+    list_category = list_data.list_category or FIRST_TEAM_CATEGORY
+    if list_category not in VALID_LIST_CATEGORIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid list_category. Must be one of {VALID_LIST_CATEGORIES}.",
         )
 
     conn = None
@@ -14882,13 +14950,16 @@ async def create_player_list(
         except Exception as e:
             logging.debug(f"STAGE column may already exist: {e}")
 
+        # Add LIST_CATEGORY column if it doesn't exist (migration)
+        ensure_player_lists_category_column(cursor)
+
         # Insert new list
         cursor.execute(
             """
-            INSERT INTO player_lists (LIST_NAME, DESCRIPTION, USER_ID)
-            VALUES (%s, %s, %s)
+            INSERT INTO player_lists (LIST_NAME, DESCRIPTION, USER_ID, LIST_CATEGORY)
+            VALUES (%s, %s, %s, %s)
         """,
-            (list_data.list_name, list_data.description, current_user.id),
+            (list_data.list_name, list_data.description, current_user.id, list_category),
         )
 
         # Get the ID of the newly created list (Snowflake-compatible approach)
@@ -14904,8 +14975,8 @@ async def create_player_list(
 
         conn.commit()
 
-        # Invalidate cache after creating list
-        invalidate_cache("player_lists_all")
+        # Invalidate cache after creating list (all category variants)
+        invalidate_cache_by_prefix(["player_lists_all"])
 
         return {
             "message": "List created successfully",
@@ -14924,15 +14995,18 @@ async def create_player_list(
 
 
 @app.get("/player-lists")
-async def get_all_player_lists(current_user: User = Depends(get_current_user)):
-    """Get all player lists (admin/manager only)"""
+async def get_all_player_lists(
+    category: str = "first_team",
+    current_user: User = Depends(get_current_user),
+):
+    """Get all player lists for a category (admin/manager only)"""
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
             status_code=403, detail="Only admins and senior managers can view lists"
         )
 
-    # Check cache first
-    cache_key = "player_lists_all"
+    # Check cache first (per category)
+    cache_key = f"player_lists_all_{category}"
     cached_data = get_cache(cache_key)
     if cached_data:
         return cached_data
@@ -14941,6 +15015,7 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        ensure_player_lists_category_column(cursor)
 
         # Get all lists with player counts and creator info
         # If table doesn't exist, return empty list
@@ -14966,10 +15041,12 @@ async def get_all_player_lists(current_user: User = Depends(get_current_user)):
                     (pli.PLAYER_ID IS NOT NULL AND sr.PLAYER_ID = pli.PLAYER_ID) OR
                     (pli.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = pli.CAFC_PLAYER_ID)
                 )
+                WHERE pl.LIST_CATEGORY = %s
                 GROUP BY pl.ID, pl.LIST_NAME, pl.DESCRIPTION, pl.USER_ID,
                          pl.CREATED_AT, pl.UPDATED_AT, u.USERNAME, u.FIRSTNAME, u.LASTNAME
                 ORDER BY pl.UPDATED_AT DESC
-            """
+            """,
+                [category],
             )
 
             lists = []
@@ -15029,6 +15106,7 @@ async def get_all_lists_with_details(
     recency_months: Optional[int] = None,
     include_archived: bool = False,  # Include archived reports in counts
     include_flags: bool = False,  # Include flag reports in counts (default: exclude)
+    category: str = "first_team",  # Which shortlist: first_team / emerging_talent_u21 / emerging_talent_u18
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -15046,8 +15124,9 @@ async def get_all_lists_with_details(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        ensure_player_lists_category_column(cursor)
 
-        # First, get all lists
+        # First, get all lists for this category
         cursor.execute(
             """
             SELECT
@@ -15062,20 +15141,22 @@ async def get_all_lists_with_details(
                 u.LASTNAME
             FROM player_lists pl
             LEFT JOIN users u ON pl.USER_ID = u.ID
+            WHERE pl.LIST_CATEGORY = %s
             ORDER BY
                 CASE
-                    WHEN pl.LIST_NAME LIKE '%GK%' THEN 1
-                    WHEN pl.LIST_NAME LIKE '%RB/RWB%' THEN 2
-                    WHEN pl.LIST_NAME LIKE '%LB/LWB%' THEN 3
-                    WHEN pl.LIST_NAME LIKE '%CB%' THEN 4
-                    WHEN pl.LIST_NAME LIKE '%DM/CM%' THEN 5
-                    WHEN pl.LIST_NAME LIKE '%AM%' THEN 6
-                    WHEN pl.LIST_NAME LIKE '%W%' AND pl.LIST_NAME NOT LIKE '%RWB%' AND pl.LIST_NAME NOT LIKE '%LWB%' THEN 7
-                    WHEN pl.LIST_NAME LIKE '%CF%' THEN 8
+                    WHEN pl.LIST_NAME LIKE '%%GK%%' THEN 1
+                    WHEN pl.LIST_NAME LIKE '%%RB/RWB%%' THEN 2
+                    WHEN pl.LIST_NAME LIKE '%%LB/LWB%%' THEN 3
+                    WHEN pl.LIST_NAME LIKE '%%CB%%' THEN 4
+                    WHEN pl.LIST_NAME LIKE '%%DM/CM%%' THEN 5
+                    WHEN pl.LIST_NAME LIKE '%%AM%%' THEN 6
+                    WHEN pl.LIST_NAME LIKE '%%W%%' AND pl.LIST_NAME NOT LIKE '%%RWB%%' AND pl.LIST_NAME NOT LIKE '%%LWB%%' THEN 7
+                    WHEN pl.LIST_NAME LIKE '%%CF%%' THEN 8
                     ELSE 9
                 END,
                 pl.LIST_NAME
-            """
+            """,
+            [category],
         )
 
         lists_data = {}
@@ -16630,7 +16711,9 @@ async def get_player_list_memberships(
 
 @app.post("/players/list-memberships/batch")
 async def get_batch_player_list_memberships(
-    universal_ids: list[str], current_user: User = Depends(get_current_user)
+    universal_ids: list[str],
+    category: str = "first_team",
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get list memberships for multiple players in a single batch query.
@@ -16687,7 +16770,11 @@ async def get_batch_player_list_memberships(
         if not conditions:
             return {}
 
-        # Get all memberships in single query
+        ensure_player_lists_category_column(cursor)
+
+        # Get all memberships in a single query, scoped to the requested shortlist
+        # category so first-team and emerging-talent (U21/U18) badges don't bleed
+        # across views.
         query = f"""
             SELECT
                 pl.ID,
@@ -16700,11 +16787,12 @@ async def get_batch_player_list_memberships(
                 pli.CAFC_PLAYER_ID
             FROM player_list_items pli
             JOIN player_lists pl ON pli.LIST_ID = pl.ID
-            WHERE {" OR ".join(conditions)}
+            WHERE ({" OR ".join(conditions)})
+              AND pl.LIST_CATEGORY = %s
             ORDER BY pl.LIST_NAME ASC
         """
 
-        cursor.execute(query, params)
+        cursor.execute(query, [*params, category])
 
         # Group results by universal_id
         results = {}

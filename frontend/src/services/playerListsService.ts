@@ -91,8 +91,12 @@ export interface BulkStageUpdateResponse {
 /**
  * Get all player lists (summary only)
  */
-export const getAllPlayerLists = async (): Promise<PlayerList[]> => {
-  const response = await axiosInstance.get("/player-lists");
+export const getAllPlayerLists = async (
+  category: string = "first_team"
+): Promise<PlayerList[]> => {
+  const response = await axiosInstance.get("/player-lists", {
+    params: { category },
+  });
   return response.data.lists;
 };
 
@@ -117,6 +121,9 @@ export interface PlayerListFilters {
   recencyMonths?: number;
   includeArchivedReports?: boolean;
   includeFlagReports?: boolean;
+  // Which shortlist to fetch: 'first_team' (default), 'emerging_talent_u21' or
+  // 'emerging_talent_u18'. Omitted => backend defaults to first_team.
+  category?: string;
 }
 
 /**
@@ -142,6 +149,7 @@ export const getAllListsWithDetails = async (
     if (filters.recencyMonths !== undefined) params.append("recency_months", filters.recencyMonths.toString());
     if (filters.includeArchivedReports !== undefined) params.append("include_archived", filters.includeArchivedReports.toString());
     if (filters.includeFlagReports !== undefined) params.append("include_flags", filters.includeFlagReports.toString());
+    if (filters.category) params.append("category", filters.category);
   }
 
   const url = params.toString()
@@ -181,11 +189,13 @@ export const getPlayerListDetails = async (
  */
 export const createPlayerList = async (
   listName: string,
-  description?: string
+  description?: string,
+  category: string = "first_team"
 ): Promise<{ message: string; list_id: number }> => {
   const response = await axiosInstance.post("/player-lists", {
     list_name: listName,
     description: description || null,
+    list_category: category,
   });
   return response.data;
 };
@@ -313,12 +323,17 @@ export const getPlayerListMemberships = async (
  * This eliminates N+1 queries when displaying multi-list badges
  */
 export const getBatchPlayerListMemberships = async (
-  universalIds: string[]
+  universalIds: string[],
+  category: string = "first_team"
 ): Promise<Record<string, PlayerListMembership[]>> => {
   if (!universalIds || universalIds.length === 0) {
     return {};
   }
-  const response = await axiosInstance.post("/players/list-memberships/batch", universalIds);
+  const response = await axiosInstance.post(
+    "/players/list-memberships/batch",
+    universalIds,
+    { params: { category } }
+  );
   return response.data;
 };
 
