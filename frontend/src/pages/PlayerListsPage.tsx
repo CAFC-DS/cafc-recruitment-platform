@@ -169,7 +169,27 @@ const ArchiveInfoContent: React.FC<{
   );
 };
 
-const PlayerListsPage: React.FC = () => {
+interface PlayerListsPageProps {
+  // Which shortlist this page renders. Defaults to the first-team lists; the
+  // emerging-talent wrappers pass 'emerging_talent_u21' / 'emerging_talent_u18'.
+  category?: string;
+  // Where the "Kanban view" switch navigates (kept category-aware so the
+  // emerging-talent section stays within its own routes).
+  kanbanPath?: string;
+  // Header customisation (the emerging-talent wrappers pass a title and render
+  // the U21/U18 toggle in the header accessory slot).
+  headerTitle?: string;
+  headerCopy?: string;
+  headerAccessory?: React.ReactNode;
+}
+
+const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
+  category = "first_team",
+  kanbanPath = "/lists/internal/kanban",
+  headerTitle = "Internal Lists",
+  headerCopy = "Manage Charlton recruitment lists with the existing table workflow.",
+  headerAccessory = null,
+}) => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
@@ -189,8 +209,9 @@ const PlayerListsPage: React.FC = () => {
     recencyMonths: "",
   });
 
-  // Debounced filters for API
-  const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({});
+  // Debounced filters for API. Seed with the category so the very first fetch is
+  // scoped correctly (otherwise it would briefly load first_team data).
+  const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({ category });
 
   // Use custom hook for data
   const { lists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
@@ -381,11 +402,14 @@ const PlayerListsPage: React.FC = () => {
       // Include flag reports in counts
       apiFilters.includeFlagReports = includeFlagReports;
 
+      // Which shortlist to fetch (first team vs emerging talent U21/U18)
+      apiFilters.category = category;
+
       setDebouncedFilters(apiFilters);
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [filters, includeArchivedReports, includeFlagReports]);
+  }, [filters, includeArchivedReports, includeFlagReports, category]);
 
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
@@ -478,7 +502,7 @@ const PlayerListsPage: React.FC = () => {
       try {
         setLoadingMemberships(true);
         const universalIds = mergedPlayers.map((p) => p.universal_id);
-        const memberships = await getBatchPlayerListMemberships(universalIds);
+        const memberships = await getBatchPlayerListMemberships(universalIds, category);
         setBatchMemberships(memberships);
       } catch (err) {
         console.error("Error fetching batch memberships:", err);
@@ -489,7 +513,7 @@ const PlayerListsPage: React.FC = () => {
     };
 
     fetchBatchMemberships();
-  }, [mergedPlayers]);
+  }, [mergedPlayers, category]);
 
   // Sort players with optimistic updates applied
   const sortedPlayers = useMemo(() => {
@@ -620,7 +644,7 @@ const PlayerListsPage: React.FC = () => {
       if (editingList) {
         await updatePlayerList(editingList.id, listName, listDescription);
       } else {
-        const result = await createPlayerList(listName, listDescription);
+        const result = await createPlayerList(listName, listDescription, category);
         // Show only the newly created list
         setVisibleListIds(new Set([result.list_id]));
       }
@@ -1129,8 +1153,8 @@ const PlayerListsPage: React.FC = () => {
       <Container className="mt-4 page-lists-cafc">
         <div className="agent-portal-card mb-3">
           <div className="agent-portal-card-body">
-            <div className="agent-portal-section-title">Internal Lists</div>
-            <div className="agent-portal-section-copy">Current recruitment list workflow with pills, pitch view, stage management, and exports.</div>
+            <div className="agent-portal-section-title">{headerTitle}</div>
+            <div className="agent-portal-section-copy">{headerCopy}</div>
           </div>
         </div>
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
@@ -1154,9 +1178,12 @@ const PlayerListsPage: React.FC = () => {
 
       {/* Header */}
       <div className="agent-portal-card mb-3">
-        <div className="agent-portal-card-body">
-          <div className="agent-portal-section-title">Internal Lists</div>
-          <div className="agent-portal-section-copy">Manage Charlton recruitment lists with the existing table workflow.</div>
+        <div className="agent-portal-card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div>
+            <div className="agent-portal-section-title">{headerTitle}</div>
+            <div className="agent-portal-section-copy">{headerCopy}</div>
+          </div>
+          {headerAccessory}
         </div>
       </div>
 
@@ -1295,7 +1322,7 @@ const PlayerListsPage: React.FC = () => {
                   </Dropdown.Toggle>
 
                     <Dropdown.Menu>
-                      <Dropdown.Item onClick={() => navigate("/lists/internal/kanban")}>
+                      <Dropdown.Item onClick={() => navigate(kanbanPath)}>
                         🔄 Switch to Kanban View
                       </Dropdown.Item>
                       <Dropdown.Divider />
