@@ -9350,7 +9350,14 @@ async def get_player_flow_history(
             except Exception as e:
                 logging.warning(f"Could not build player flow stage events for {player_id}: {e}")
 
-        if get_table_columns("player_recommendations"):
+        # Agent recommendations are intel-sensitive: only SMT roles (admin /
+        # senior manager / manager) see recommendation events in the flow
+        # history. Scouts and loan managers are excluded, matching the player
+        # profile's intel-report restriction.
+        if (
+            current_user.role in (ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER)
+            and get_table_columns("player_recommendations")
+        ):
             try:
                 recommendation_select = build_recommendation_select()
                 cursor.execute(
@@ -9576,80 +9583,99 @@ async def get_player_profile(
             ORDER BY pi.CREATED_AT DESC
         """
 
-        # Apply role-based filtering for intel reports
+        # Apply role-based filtering for intel reports. Intel carries
+        # transfer/wage/contact data, so it follows the same access rule as
+        # agent recommendations: SMT roles (admin / senior manager / manager)
+        # see all of a player's intel; scouts see only their own; everyone
+        # else (e.g. loan managers, agents) sees none.
+        intel_reports = []
         intel_values = (actual_player_id,)
-        try:
-            # Check if USER_ID column exists (using cached schema)
-            if has_column("player_information", "USER_ID") and current_user.role == "scout":
-                intel_sql = intel_sql.replace(
-                    "WHERE pi.PLAYER_ID = %s",
-                    "WHERE pi.PLAYER_ID = %s AND pi.USER_ID = %s",
-                )
-                intel_values = (actual_player_id, current_user.id)
-        except:
-            pass
+        run_intel_query = True
+        if current_user.role in (ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER):
+            pass  # SMT roles see all intel for the player
+        elif current_user.role == ROLE_SCOUT:
+            try:
+                # Check if USER_ID column exists (using cached schema)
+                if has_column("player_information", "USER_ID"):
+                    intel_sql = intel_sql.replace(
+                        "WHERE pi.PLAYER_ID = %s",
+                        "WHERE pi.PLAYER_ID = %s AND pi.USER_ID = %s",
+                    )
+                    intel_values = (actual_player_id, current_user.id)
+            except:
+                pass
+        else:
+            # Loan managers and any other non-SMT role: no intel access.
+            run_intel_query = False
 
-        cursor.execute(intel_sql, intel_values)
-        intel_reports = cursor.fetchall()
+        if run_intel_query:
+            cursor.execute(intel_sql, intel_values)
+            intel_reports = cursor.fetchall()
 
         # Get agent recommendations linked to this player. New rows match
         # exactly via LINKED_UNIVERSAL_ID (set at submission time by
         # /agents/recommendations); legacy rows fall through to the same
         # fuzzy name-match used by the flow history endpoint, so historical
         # submissions still surface even though they pre-date the linked column.
+        #
+        # Agent recommendations carry transfer/agent intel, so they follow the
+        # same access rule as intel reports: visible only to SMT roles
+        # (admin / senior manager / manager). Scouts and loan managers never
+        # see them on the player profile.
         agent_recommendations: List[Dict[str, Any]] = []
-        try:
-            external_player_id_for_link = player_data[0]
-            cafc_player_id_for_link = player_data[1]
-            player_name_for_link = player_data[2]
-            player_dob_for_link = player_data[5]
-            if data_source == "internal" and cafc_player_id_for_link is not None:
-                universal_id_for_player = f"internal_{cafc_player_id_for_link}"
-            elif external_player_id_for_link is not None:
-                universal_id_for_player = f"external_{external_player_id_for_link}"
-            else:
-                universal_id_for_player = None
+        if current_user.role in (ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER):
+            try:
+                external_player_id_for_link = player_data[0]
+                cafc_player_id_for_link = player_data[1]
+                player_name_for_link = player_data[2]
+                player_dob_for_link = player_data[5]
+                if data_source == "internal" and cafc_player_id_for_link is not None:
+                    universal_id_for_player = f"internal_{cafc_player_id_for_link}"
+                elif external_player_id_for_link is not None:
+                    universal_id_for_player = f"external_{external_player_id_for_link}"
+                else:
+                    universal_id_for_player = None
 
-            recommendation_select = build_recommendation_select()
-            cursor.execute(
-                f"""
-                WITH recommendation_feed AS (
-                    {recommendation_select}
-                )
-                SELECT *
-                FROM recommendation_feed rf
-                WHERE
-                    rf.LINKED_UNIVERSAL_ID = %s
-                    OR rf.LINKED_PLAYER_ID = %s
-                    OR rf.LINKED_CAFC_PLAYER_ID = %s
-                    OR (
-                        NORMALIZE_TEXT_UDF(rf.PLAYER_NAME) = NORMALIZE_TEXT_UDF(%s)
-                        AND (
-                            %s IS NULL
-                            OR rf.PLAYER_DATE_OF_BIRTH IS NULL
-                            OR rf.PLAYER_DATE_OF_BIRTH = %s
-                        )
+                recommendation_select = build_recommendation_select()
+                cursor.execute(
+                    f"""
+                    WITH recommendation_feed AS (
+                        {recommendation_select}
                     )
-                ORDER BY rf.CREATED_AT DESC
-            """,
-                (
-                    universal_id_for_player,
-                    external_player_id_for_link,
-                    cafc_player_id_for_link,
-                    player_name_for_link,
-                    player_dob_for_link,
-                    player_dob_for_link,
-                ),
-            )
-            agent_recommendations = [
-                serialize_recommendation_row(row).model_dump()
-                for row in cursor.fetchall()
-            ]
-        except Exception as agent_rec_error:
-            # Never let a recommendation-side failure 500 the whole profile load.
-            logging.warning(
-                f"Could not load agent recommendations for player {player_id}: {agent_rec_error}"
-            )
+                    SELECT *
+                    FROM recommendation_feed rf
+                    WHERE
+                        rf.LINKED_UNIVERSAL_ID = %s
+                        OR rf.LINKED_PLAYER_ID = %s
+                        OR rf.LINKED_CAFC_PLAYER_ID = %s
+                        OR (
+                            NORMALIZE_TEXT_UDF(rf.PLAYER_NAME) = NORMALIZE_TEXT_UDF(%s)
+                            AND (
+                                %s IS NULL
+                                OR rf.PLAYER_DATE_OF_BIRTH IS NULL
+                                OR rf.PLAYER_DATE_OF_BIRTH = %s
+                            )
+                        )
+                    ORDER BY rf.CREATED_AT DESC
+                """,
+                    (
+                        universal_id_for_player,
+                        external_player_id_for_link,
+                        cafc_player_id_for_link,
+                        player_name_for_link,
+                        player_dob_for_link,
+                        player_dob_for_link,
+                    ),
+                )
+                agent_recommendations = [
+                    serialize_recommendation_row(row).model_dump()
+                    for row in cursor.fetchall()
+                ]
+            except Exception as agent_rec_error:
+                # Never let a recommendation-side failure 500 the whole profile load.
+                logging.warning(
+                    f"Could not load agent recommendations for player {player_id}: {agent_rec_error}"
+                )
 
         # Get player notes (if table exists)
         notes = []
