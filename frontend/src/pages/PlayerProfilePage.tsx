@@ -73,6 +73,7 @@ interface ScoutReport {
   report_type: string | null;
   position_played: string | null;
   flag_category?: string;
+  clip_category?: string;
   scouting_type?: string;
   is_potential?: boolean;
   user_id?: number;
@@ -172,9 +173,9 @@ const getReportTypeBadge = (
   _scoutingType: string,
   report: ScoutReport,
 ) => {
-  // For archived reports in card view, don't show badge in Tags section
-  // (they have ARCHIVED banner at top instead)
-  if (report.is_archived) {
+  // Archived reports show the ARCHIVED banner at the top instead of a tag badge
+  // — except Clips, which still surface their sentiment badge.
+  if (report.is_archived && reportType.toLowerCase() !== "clips") {
     return null;
   }
 
@@ -183,7 +184,22 @@ const getReportTypeBadge = (
     case "flag assessment":
       return getFlagBadge(report);
     case "clips":
-      return <span className="badge badge-neutral-grey">Clips</span>;
+      return report.clip_category ? (
+        <span
+          className="badge"
+          style={{
+            backgroundColor: getFlagColor(report.clip_category),
+            color: "white",
+            border: "none",
+            fontWeight: "500",
+          }}
+          title={`Sentiment: ${report.clip_category}`}
+        >
+          {report.clip_category}
+        </span>
+      ) : (
+        <span className="badge badge-neutral-grey">Clips</span>
+      );
     case "player assessment":
     case "player":
       return null; // Remove Player Assessment badge

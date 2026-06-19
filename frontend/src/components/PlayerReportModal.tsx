@@ -706,6 +706,24 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
           </div>
         )}
 
+        {/* Clip sentiment */}
+        {report.report_type?.toLowerCase() === "clips" && report.clip_category && (
+          <div className="mb-3">
+            <span
+              className="badge"
+              style={{
+                backgroundColor: getFlagColor(report.clip_category),
+                color: "white",
+                border: "none",
+                fontWeight: 500,
+              }}
+              title={`Sentiment: ${report.clip_category}`}
+            >
+              Sentiment: {report.clip_category}
+            </span>
+          </div>
+        )}
+
         {isFlagReport ? (
           /* Simplified Flag Report Layout */
           <>

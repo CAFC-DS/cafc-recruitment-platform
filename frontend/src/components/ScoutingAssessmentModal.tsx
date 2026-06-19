@@ -108,6 +108,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     assessmentSummary: "",
     justificationRationale: "",
     flagCategory: "",
+    clipCategory: "",
     oppositionDetails: "",
   };
 
@@ -522,6 +523,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.performanceScore = queuedReport.formData.performanceScore;
           payload.isPotential = queuedReport.formData.isPotential;
+          payload.clipCategory = queuedReport.formData.clipCategory;
         }
 
         await axiosInstance.post("/scout_reports", payload);
@@ -644,6 +646,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
           payload.assessmentSummary = queuedReport.formData.assessmentSummary;
           payload.performanceScore = queuedReport.formData.performanceScore;
           payload.isPotential = queuedReport.formData.isPotential;
+          payload.clipCategory = queuedReport.formData.clipCategory;
         }
 
         await axiosInstance.post("/scout_reports", payload);
@@ -700,6 +703,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         assessmentSummary: existingReportData.assessmentSummary || "",
         justificationRationale: existingReportData.justificationRationale || "",
         flagCategory: existingReportData.flagCategory || "",
+        clipCategory: existingReportData.clipCategory || "",
         oppositionDetails: existingReportData.oppositionDetails || "",
       });
 
@@ -1080,6 +1084,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         payload.assessmentSummary = formData.assessmentSummary;
         payload.performanceScore = formData.performanceScore;
         payload.isPotential = formData.isPotential;
+        payload.clipCategory = formData.clipCategory;
       }
 
       if (editMode && reportId) {
@@ -2026,6 +2031,21 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                 onChange={handleChange}
                 disabled={!selectedPlayer}
               />
+            </Form.Group>
+
+            <Form.Group className="mb-3" controlId="clipCategory">
+              <Form.Label>Sentiment</Form.Label>
+              <Form.Select
+                name="clipCategory"
+                value={formData.clipCategory}
+                onChange={handleChange}
+                disabled={!selectedPlayer}
+              >
+                <option value="">Select Sentiment</option>
+                <option value="Positive">Positive</option>
+                <option value="Neutral">Neutral</option>
+                <option value="Negative">Negative</option>
+              </Form.Select>
             </Form.Group>
 
             {/* Potential vs Performance Toggle */}
