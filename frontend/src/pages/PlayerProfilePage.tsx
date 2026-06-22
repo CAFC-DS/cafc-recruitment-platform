@@ -2087,7 +2087,9 @@ const PlayerProfilePage: React.FC = () => {
                           </Col>
                         </Row>
 
-                        {/* Middle Row - 2 columns */}
+                        {/* Middle Row - fixture + score. Hidden for clips, which
+                            have no fixture or score (avoids redundant N/A labels). */}
+                        {report.report_type?.toLowerCase() !== "clips" && (
                         <Row className="mb-3 pb-2 border-bottom">
                           {/* Left: Fixture Info */}
                           <Col xs={6}>
@@ -2189,6 +2191,7 @@ const PlayerProfilePage: React.FC = () => {
                             </div>
                           </Col>
                         </Row>
+                        )}
 
                         {/* Bottom Row - Tags and Actions */}
                         <Row className="align-items-center">
