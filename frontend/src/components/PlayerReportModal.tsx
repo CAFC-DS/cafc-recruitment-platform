@@ -137,19 +137,24 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     return isNaN(birthDate.getTime()) ? null : birthDate;
   };
 
-  // Function to calculate age at fixture date
+  // Function to calculate age at the report's reference date. Clips have no
+  // fixture date, so fall back to the report (match) date, then to today.
   const calculateAgeAtFixture = () => {
-    const fixtureDate = new Date(report.fixture_date);
     const birthDate = getBirthDate();
-
     if (!birthDate) {
       return null;
     }
 
-    const ageInMs = fixtureDate.getTime() - birthDate.getTime();
+    const refRaw = report.fixture_date || report.created_at;
+    let refDate = refRaw ? new Date(refRaw) : new Date();
+    if (isNaN(refDate.getTime())) {
+      refDate = new Date();
+    }
+
+    const ageInMs = refDate.getTime() - birthDate.getTime();
     const ageInYears = Math.floor(ageInMs / (365.25 * 24 * 60 * 60 * 1000));
 
-    return ageInYears;
+    return isNaN(ageInYears) ? null : ageInYears;
   };
 
   // Function to format birth date with age
@@ -755,7 +760,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                         </p>
                       </>
                     )}
-                    {(report.is_archived || isClipReport) && (
+                    {report.is_archived && !isClipReport && (
                       <p className="mb-0">
                         <strong>Position:</strong>{" "}
                         {report.position_played || "Not specified"}

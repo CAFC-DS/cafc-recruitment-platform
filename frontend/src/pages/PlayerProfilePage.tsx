@@ -2066,9 +2066,11 @@ const PlayerProfilePage: React.FC = () => {
                               >
                                 {profile.player_name}
                               </div>
-                              <small className="text-muted d-block">
-                                Position: {report.position_played || "N/A"}
-                              </small>
+                              {report.report_type?.toLowerCase() !== "clips" && (
+                                <small className="text-muted d-block">
+                                  Position: {report.position_played || "N/A"}
+                                </small>
+                              )}
                               <small className="text-muted d-block">
                                 Age: {profile.age || "N/A"}
                               </small>
