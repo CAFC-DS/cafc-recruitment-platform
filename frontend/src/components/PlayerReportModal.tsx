@@ -138,17 +138,30 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
   };
 
   // Function to calculate age at the report's reference date. Clips have no
-  // fixture date, so fall back to the report (match) date, then to today.
+  // fixture, so use the report (match) date; other reports use the fixture date.
   const calculateAgeAtFixture = () => {
     const birthDate = getBirthDate();
     if (!birthDate) {
       return null;
     }
 
-    const refRaw = report.fixture_date || report.created_at;
-    let refDate = refRaw ? new Date(refRaw) : new Date();
-    if (isNaN(refDate.getTime())) {
-      refDate = new Date();
+    const isClip = report.report_type?.toLowerCase() === "clips";
+    const candidates = isClip
+      ? [report.created_at]
+      : [report.fixture_date, report.created_at];
+
+    let refDate: Date | null = null;
+    for (const c of candidates) {
+      if (c && c !== "N/A") {
+        const d = new Date(c);
+        if (!isNaN(d.getTime())) {
+          refDate = d;
+          break;
+        }
+      }
+    }
+    if (!refDate) {
+      return null;
     }
 
     const ageInMs = refDate.getTime() - birthDate.getTime();

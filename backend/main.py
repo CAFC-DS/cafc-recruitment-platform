@@ -8536,7 +8536,8 @@ async def get_single_scout_report(
                 sr.FLAG_CATEGORY,
                 sr.OPPOSITION_DETAILS,
                 sr.IS_ARCHIVED,
-                sr.IS_POTENTIAL
+                sr.IS_POTENTIAL,
+                sr.CLIP_CATEGORY
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -8617,6 +8618,8 @@ async def get_single_scout_report(
             "opposition_details": report_data[21],
             "is_archived": report_data[22] if report_data[22] is not None else False,
             "is_potential": report_data[23] if report_data[23] is not None else False,
+            "clip_category": report_data[24],
+            "birth_date": str(report_data[2]) if report_data[2] else None,
             "individual_attribute_scores": individual_attribute_scores,
             "average_attribute_score": round(average_attribute_score, 2),
         }
