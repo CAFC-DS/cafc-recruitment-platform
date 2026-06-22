@@ -168,6 +168,23 @@ const getScoutingTypeBadge = (scoutingType: string) => {
   );
 };
 
+// Age at a given date (used so clip cards show the player's age at the report's
+// match date, matching the report modal — not the player's current age).
+const ageAtDate = (
+  birthDateStr?: string | null,
+  atDateStr?: string | null,
+): number | null => {
+  if (!birthDateStr) return null;
+  const bd = new Date(birthDateStr);
+  const at =
+    atDateStr && atDateStr !== "N/A" ? new Date(atDateStr) : new Date();
+  if (isNaN(bd.getTime()) || isNaN(at.getTime())) return null;
+  let age = at.getFullYear() - bd.getFullYear();
+  const m = at.getMonth() - bd.getMonth();
+  if (m < 0 || (m === 0 && at.getDate() < bd.getDate())) age--;
+  return age < 0 || isNaN(age) ? null : age;
+};
+
 const getReportTypeBadge = (
   reportType: string,
   _scoutingType: string,
@@ -2072,7 +2089,12 @@ const PlayerProfilePage: React.FC = () => {
                                 </small>
                               )}
                               <small className="text-muted d-block">
-                                Age: {profile.age || "N/A"}
+                                Age:{" "}
+                                {report.report_type?.toLowerCase() === "clips"
+                                  ? ageAtDate(profile.birth_date, report.report_date) ??
+                                    profile.age ??
+                                    "N/A"
+                                  : profile.age || "N/A"}
                               </small>
                             </div>
                           </Col>

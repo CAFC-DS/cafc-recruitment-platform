@@ -164,10 +164,14 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
       return null;
     }
 
-    const ageInMs = refDate.getTime() - birthDate.getTime();
-    const ageInYears = Math.floor(ageInMs / (365.25 * 24 * 60 * 60 * 1000));
+    // Calendar age (same method as the card) so the two always agree.
+    let age = refDate.getFullYear() - birthDate.getFullYear();
+    const m = refDate.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && refDate.getDate() < birthDate.getDate())) {
+      age--;
+    }
 
-    return isNaN(ageInYears) ? null : ageInYears;
+    return age < 0 || isNaN(age) ? null : age;
   };
 
   // Function to format birth date with age
