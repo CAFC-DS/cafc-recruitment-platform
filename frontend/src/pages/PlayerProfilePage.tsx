@@ -184,21 +184,26 @@ const getReportTypeBadge = (
     case "flag assessment":
       return getFlagBadge(report);
     case "clips":
-      return report.clip_category ? (
-        <span
-          className="badge"
-          style={{
-            backgroundColor: getFlagColor(report.clip_category),
-            color: "white",
-            border: "none",
-            fontWeight: "500",
-          }}
-          title={`Sentiment: ${report.clip_category}`}
-        >
-          {report.clip_category}
-        </span>
-      ) : (
-        <span className="badge badge-neutral-grey">Clips</span>
+      return (
+        <>
+          <span className="badge badge-neutral-grey" title="Clip">
+            🎬
+          </span>
+          {report.clip_category && (
+            <span
+              className="badge ms-1"
+              style={{
+                backgroundColor: getFlagColor(report.clip_category),
+                color: "white",
+                border: "none",
+                fontWeight: "500",
+              }}
+              title={`Sentiment: ${report.clip_category}`}
+            >
+              {report.clip_category}
+            </span>
+          )}
+        </>
       );
     case "player assessment":
     case "player":
