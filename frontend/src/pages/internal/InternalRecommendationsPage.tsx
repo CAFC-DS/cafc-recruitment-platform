@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SubmissionStatusBadge from '../../components/agents/SubmissionStatusBadge';
 import { internalRecommendationsService } from '../../services/internalRecommendationsService';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import {
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
@@ -18,6 +19,7 @@ interface RecommendationFilterState {
 }
 
 const InternalRecommendationsPage: React.FC = () => {
+  const { isIntelReviewer } = useCurrentUser();
   const [filters, setFilters] = useState<RecommendationFilterState>({
     status: '',
     agent_user_id: '',
@@ -300,7 +302,7 @@ const InternalRecommendationsPage: React.FC = () => {
                       className="agent-portal-select"
                       value={selected.status}
                       onChange={(e) => handleStatusChange(e.target.value as RecommendationStatus)}
-                      disabled={updatingStatus}
+                      disabled={updatingStatus || isIntelReviewer}
                     >
                       {meta.statuses.map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
@@ -309,8 +311,10 @@ const InternalRecommendationsPage: React.FC = () => {
 
                   <div className="agent-portal-info-card">
                     <label className="agent-portal-label">Shared Notes</label>
-                    <textarea className="agent-portal-textarea" rows={6} value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} />
-                    <button className="btn btn-dark btn-sm mt-3" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? 'Saving...' : 'Save Shared Notes'}</button>
+                    <textarea className="agent-portal-textarea" rows={6} value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} readOnly={isIntelReviewer} />
+                    {!isIntelReviewer && (
+                      <button className="btn btn-dark btn-sm mt-3" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? 'Saving...' : 'Save Shared Notes'}</button>
+                    )}
                   </div>
 
                   <div>

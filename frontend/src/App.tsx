@@ -312,6 +312,26 @@ const ListsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =>
   return token && canAccessLists ? children : null;
 };
 
+// External recommendations: admin/senior manager (via Lists) + the read-only intel_reviewer.
+const ExternalRecsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessExternalRecs, loading, user } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
+    } else if (!loading && !canAccessExternalRecs) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessExternalRecs, loading, user, navigate, location]);
+
+  return token && canAccessExternalRecs ? children : null;
+};
+
 // New wrapper component for LoginPage
 const LoginPageWrapper: React.FC = () => {
   const { login } = useAuth();
@@ -331,6 +351,9 @@ const HomePageWrapper: React.FC = () => {
         navigate('/login');
       } else if (!loading && user?.role === 'agent') {
         navigate('/agents/dashboard');
+      } else if (!loading && user?.role === 'intel_reviewer') {
+        // Scoped read-only role: land on Intel (their home).
+        navigate('/intel', { replace: true });
       }
       if (!loading) {
         setAuthChecked(true);
@@ -345,7 +368,7 @@ const HomePageWrapper: React.FC = () => {
     return null;
   }
 
-  return token && user && user.role !== 'agent' ? <HomePage /> : null;
+  return token && user && user.role !== 'agent' && user.role !== 'intel_reviewer' ? <HomePage /> : null;
 };
 
 // Conditional navbar wrapper - only show navbar if not on shared report page
@@ -421,9 +444,9 @@ function App() {
             <Route
               path="/lists/external"
               element={
-                <ListsRoute>
+                <ExternalRecsRoute>
                   <ExternalRecommendationsListPage />
-                </ListsRoute>
+                </ExternalRecsRoute>
               }
             />
             <Route

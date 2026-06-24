@@ -45,6 +45,8 @@ export const useCurrentUser = () => {
   const isLoanManager = user?.role === "loan_manager";
   const isScout = user?.role === "scout";
   const isAgent = user?.role === "agent";
+  // View-only role: intel + external/internal recommendations only.
+  const isIntelReviewer = user?.role === "intel_reviewer";
 
   return {
     user,
@@ -56,11 +58,15 @@ export const useCurrentUser = () => {
     isLoanManager,
     isScout,
     isAgent,
+    isIntelReviewer,
     // Permission checks
     canAccessAdmin: isAdmin,
-    canAccessIntel: isAdmin || isSeniorManager,
+    canAccessIntel: isAdmin || isSeniorManager || isIntelReviewer,
     canAccessAnalytics: isAdmin || isSeniorManager || isManager,
     canAccessLists: isAdmin || isSeniorManager,
+    // Recommendations (external = agent intake page, internal = staff page)
+    canAccessExternalRecs: isAdmin || isSeniorManager || isIntelReviewer,
+    canAccessInternalRecs: isAdmin || isSeniorManager || isManager || isLoanManager || isScout || isIntelReviewer,
     canAccessRecommendations: isAdmin || isSeniorManager || isManager || isLoanManager || isScout,
     canSeeAllReports: isAdmin || isSeniorManager || isManager,
     canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanManager,

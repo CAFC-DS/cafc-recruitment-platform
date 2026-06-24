@@ -29,6 +29,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ show, onHide, userRole }) => {
     loan_manager: "Loan Manager",
     loan: "Loan Manager",
     scout: "Scout",
+    intel_reviewer: "Intel Reviewer",
     agent: "Agent",
   };
 

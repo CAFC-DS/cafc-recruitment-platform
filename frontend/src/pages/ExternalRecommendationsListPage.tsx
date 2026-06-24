@@ -7,6 +7,7 @@ import RecommendationReviewModal from '../components/recommendations/Recommendat
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
 import { getRecommendationStatusConfig } from '../utils/agentRecommendationStatus';
 import { getPerformanceScoreColor } from '../utils/colorUtils';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import {
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
@@ -127,6 +128,7 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
 };
 
 const ExternalRecommendationsListPage: React.FC = () => {
+  const { isIntelReviewer } = useCurrentUser();
   const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
@@ -789,7 +791,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                           size="sm"
                           value={displayedStatus}
                           onChange={(event) => queueStatusChange(item.id, item.status, event.target.value as RecommendationStatus)}
-                          disabled={savingPendingStatusChanges}
+                          disabled={savingPendingStatusChanges || isIntelReviewer}
                           className="external-recommendations-status-select"
                           style={{
                             backgroundColor: statusConfig.color.bg,
@@ -874,6 +876,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
         error={modalError}
         onHide={closeReviewModal}
         onSubmitReview={handleSubmitReview}
+        readOnly={isIntelReviewer}
       />
 
       <Modal show={Boolean(historyRecommendation)} onHide={closeHistoryModal} size="lg" centered scrollable>

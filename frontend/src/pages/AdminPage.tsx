@@ -43,6 +43,7 @@ const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "manager", label: "Manager" },
   { value: "loan_manager", label: "Loan Manager" },
   { value: "scout", label: "Scout" },
+  { value: "intel_reviewer", label: "Intel Reviewer (view intel + recs)" },
   { value: "agent", label: "Agent (External)" },
 ];
 

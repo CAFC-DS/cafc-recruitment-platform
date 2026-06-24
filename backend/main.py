@@ -750,9 +750,15 @@ ROLE_MANAGER = "manager"
 ROLE_LOAN_MANAGER = "loan_manager"
 ROLE_SCOUT = "scout"
 ROLE_AGENT = "agent"
+# View-only role: can read all intel + external/internal recommendations, nothing else.
+# Deliberately NOT in INTERNAL_ROLES (that would grant broad internal access).
+ROLE_INTEL_REVIEWER = "intel_reviewer"
 
-VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT, ROLE_AGENT]
+VALID_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT, ROLE_AGENT, ROLE_INTEL_REVIEWER]
 INTERNAL_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_LOAN_MANAGER, ROLE_SCOUT]
+# Who can VIEW intel reports / recommendations (read-only intel_reviewer included).
+INTEL_VIEW_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_INTEL_REVIEWER]
+RECS_VIEW_ROLES = INTERNAL_ROLES + [ROLE_INTEL_REVIEWER]
 
 RECOMMENDATION_STATUSES = [
     "Submitted",
@@ -2884,6 +2890,13 @@ def require_internal_user(current_user: User = Depends(get_current_user)) -> Use
     return current_user
 
 
+def require_recs_viewer(current_user: User = Depends(get_current_user)) -> User:
+    """Read access to recommendations: internal roles + the view-only intel_reviewer."""
+    if current_user.role not in RECS_VIEW_ROLES:
+        raise HTTPException(status_code=403, detail="Recommendation view access required")
+    return current_user
+
+
 def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != ROLE_AGENT:
         raise HTTPException(status_code=403, detail="Agent access required")
@@ -3749,7 +3762,7 @@ async def list_internal_recommendations(
     sort_order: Optional[str] = Query("desc", description="asc or desc"),
     page: int = 1,
     page_size: int = 25,
-    current_user: User = Depends(require_internal_user),
+    current_user: User = Depends(require_recs_viewer),
 ):
     validate_recommendation_schema_ready()
     page = max(page, 1)
@@ -3848,7 +3861,7 @@ async def list_internal_recommendations(
 
 
 @app.get("/internal/recommendations/filters/meta")
-async def get_internal_recommendation_filters_meta(current_user: User = Depends(require_internal_user)):
+async def get_internal_recommendation_filters_meta(current_user: User = Depends(require_recs_viewer)):
     validate_recommendation_schema_ready()
     conn = None
     try:
@@ -3872,7 +3885,7 @@ async def get_internal_recommendation_filters_meta(current_user: User = Depends(
 
 
 @app.get("/internal/recommendations/export.csv")
-async def export_internal_recommendations_csv(current_user: User = Depends(require_internal_user)):
+async def export_internal_recommendations_csv(current_user: User = Depends(require_recs_viewer)):
     validate_recommendation_schema_ready()
     conn = None
     try:
@@ -3914,7 +3927,7 @@ async def export_internal_recommendations_csv(current_user: User = Depends(requi
 
 @app.get("/internal/recommendations/{recommendation_id}", response_model=InternalRecommendationResponse)
 async def get_internal_recommendation_detail(
-    recommendation_id: int, current_user: User = Depends(require_internal_user)
+    recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
     conn = None
@@ -4122,7 +4135,7 @@ async def update_internal_recommendation_review(
 
 @app.get("/internal/recommendations/{recommendation_id}/status-history", response_model=List[RecommendationStatusHistoryResponse])
 async def get_internal_recommendation_history(
-    recommendation_id: int, current_user: User = Depends(require_internal_user)
+    recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
     conn = None
@@ -4140,7 +4153,7 @@ async def get_internal_recommendation_history(
 
 @app.get("/internal/recommendations/{recommendation_id}/supporting-file")
 async def download_internal_recommendation_supporting_file(
-    recommendation_id: int, current_user: User = Depends(require_internal_user)
+    recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
     raise HTTPException(status_code=400, detail="Supporting file downloads are disabled for testing")
@@ -7903,6 +7916,9 @@ async def get_all_scout_reports(
                         f"Applied loan scout filtering for user ID: {current_user.id}, username: {current_user.username}"
                     )
                     logging.info("Loan scout filter: UPPER(PURPOSE) = UPPER('Loan Report')")
+                elif current_user.role == ROLE_INTEL_REVIEWER:
+                    # Intel reviewers see NO scout reports (intel/recs only)
+                    where_clauses.append("1 = 0")
                 # Admin, Senior Manager, and Manager see ALL reports (no filtering)
                 else:
                     logging.info(
@@ -9562,6 +9578,12 @@ async def get_player_profile(
                     f"WHERE {player_id_column} = %s AND UPPER(sr.PURPOSE) = UPPER(%s)",
                 )
                 scout_values = (actual_player_id, "Loan Report")
+            elif current_user.role == ROLE_INTEL_REVIEWER:
+                # Intel reviewers see NO scout reports (intel/recs only)
+                scout_sql = scout_sql.replace(
+                    f"WHERE {player_id_column} = %s",
+                    f"WHERE {player_id_column} = %s AND 1 = 0",
+                )
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
@@ -9601,8 +9623,8 @@ async def get_player_profile(
         intel_reports = []
         intel_values = (actual_player_id,)
         run_intel_query = True
-        if current_user.role in (ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER):
-            pass  # SMT roles see all intel for the player
+        if current_user.role in (ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER, ROLE_INTEL_REVIEWER):
+            pass  # SMT roles + intel reviewer see all intel for the player
         elif current_user.role == ROLE_SCOUT:
             try:
                 # Check if USER_ID column exists (using cached schema)
@@ -9896,6 +9918,9 @@ async def get_player_attributes(
                 # Loan scouts see ALL loan reports and nothing else
                 base_query += " AND UPPER(sr.PURPOSE) = UPPER(%s)"
                 query_params.append("Loan Report")
+            elif current_user.role == ROLE_INTEL_REVIEWER:
+                # Intel reviewers see NO scout reports (intel/recs only)
+                base_query += " AND 1 = 0"
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             # USER_ID column doesn't exist, skip filtering
@@ -10108,6 +10133,9 @@ async def get_player_scout_reports(
                 # Loan scouts see ALL loan reports and nothing else
                 base_query += " AND UPPER(sr.PURPOSE) = UPPER(%s)"
                 query_params.append("Loan Report")
+            elif current_user.role == ROLE_INTEL_REVIEWER:
+                # Intel reviewers see NO scout reports (intel/recs only)
+                base_query += " AND 1 = 0"
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
@@ -10243,6 +10271,9 @@ async def get_player_position_counts(
                 # Loan scouts see ALL loan reports and nothing else
                 base_query += " AND UPPER(sr.PURPOSE) = UPPER(%s)"
                 query_params.append("Loan Report")
+            elif current_user.role == ROLE_INTEL_REVIEWER:
+                # Intel reviewers see NO scout reports (intel/recs only)
+                base_query += " AND 1 = 0"
             # Admin, Senior Manager, and Manager see ALL reports (no filtering)
         except:
             pass
@@ -11169,11 +11200,11 @@ async def get_all_intel_reports(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
 ):
-    # Intel reports are only accessible to Admin and Senior Manager
-    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+    # Intel reports are viewable by Admin, Senior Manager and the read-only Intel Reviewer
+    if current_user.role not in INTEL_VIEW_ROLES:
         raise HTTPException(
             status_code=403,
-            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+            detail="Access denied. Intel reports require Admin, Senior Manager or Intel Reviewer."
         )
 
     conn = None
@@ -11371,11 +11402,11 @@ async def get_all_intel_reports(
 async def get_single_intel_report(
     intel_id: int, current_user: User = Depends(get_current_user)
 ):
-    # Intel reports are only accessible to Admin and Senior Manager
-    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+    # Intel reports are viewable by Admin, Senior Manager and the read-only Intel Reviewer
+    if current_user.role not in INTEL_VIEW_ROLES:
         raise HTTPException(
             status_code=403,
-            detail="Access denied. Intel reports are only accessible to Admin and Senior Manager roles."
+            detail="Access denied. Intel reports require Admin, Senior Manager or Intel Reviewer."
         )
 
     conn = None

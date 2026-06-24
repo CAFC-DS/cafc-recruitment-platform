@@ -29,7 +29,7 @@ import HelpModal from "./HelpModal";
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme, toggleDarkMode } = useTheme();
-  const { user, isAdmin, isSeniorManager, isManager, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists } = useCurrentUser();
+  const { user, isAdmin, isSeniorManager, isManager, isIntelReviewer, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
@@ -418,13 +418,25 @@ const AppNavbar: React.FC = () => {
           <Nav className="me-auto">
             {token && ( // Only show links if authenticated
               <>
-                <Nav.Link as={Link} to="/scouting">
-                  ⚽ Scouting
-                </Nav.Link>
+                {!isIntelReviewer && (
+                  <Nav.Link as={Link} to="/scouting">
+                    ⚽ Scouting
+                  </Nav.Link>
+                )}
                 {canAccessIntel && (
                   <Nav.Link as={Link} to="/intel">
                     🕵️ Intel
                   </Nav.Link>
+                )}
+                {isIntelReviewer && (
+                  <>
+                    <Nav.Link as={Link} to="/lists/external">
+                      📥 External Recs
+                    </Nav.Link>
+                    <Nav.Link as={Link} to="/internal/recommendations">
+                      📨 Internal Recs
+                    </Nav.Link>
+                  </>
                 )}
                 {canAccessLists && (
                   <Nav.Link as={Link} to="/lists">

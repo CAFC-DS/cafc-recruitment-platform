@@ -15,6 +15,7 @@ interface RecommendationReviewModalProps {
   error: string | null;
   onHide: () => void;
   onSubmitReview: (recommendation: InternalRecommendation, newStatus: RecommendationStatus, sharedNotes: string) => void;
+  readOnly?: boolean;
 }
 
 const formatDate = (value?: string | null) => {
@@ -84,6 +85,7 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
   error,
   onHide,
   onSubmitReview,
+  readOnly = false,
 }) => {
   const [statusDraft, setStatusDraft] = useState<RecommendationStatus>('Submitted');
   const [notesDraft, setNotesDraft] = useState('');
@@ -187,7 +189,7 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
                 <div className="d-flex align-items-center gap-2">
                   <Form.Select
                     value={statusDraft}
-                    disabled={savingReview}
+                    disabled={savingReview || readOnly}
                     onChange={(event) => setStatusDraft(event.target.value as RecommendationStatus)}
                   >
                     {statuses.map((status) => (
@@ -215,6 +217,7 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
                   value={notesDraft}
                   onChange={(event) => setNotesDraft(event.target.value)}
                   placeholder="Add notes the agent can read..."
+                  readOnly={readOnly}
                 />
               </Form.Group>
             </div>
@@ -236,20 +239,22 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
         <Button variant="secondary" onClick={onHide} disabled={savingReview}>
           Close
         </Button>
-        <Button
-          variant="primary"
-          onClick={() => onSubmitReview(recommendation, statusDraft, notesDraft)}
-          disabled={savingReview || !isDirty}
-        >
-          {savingReview ? (
-            <>
-              <Spinner animation="border" size="sm" className="me-2" />
-              Saving review...
-            </>
-          ) : (
-            'Submit Review'
-          )}
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="primary"
+            onClick={() => onSubmitReview(recommendation, statusDraft, notesDraft)}
+            disabled={savingReview || !isDirty}
+          >
+            {savingReview ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Saving review...
+              </>
+            ) : (
+              'Submit Review'
+            )}
+          </Button>
+        )}
       </Modal.Footer>
     </Modal>
   );
