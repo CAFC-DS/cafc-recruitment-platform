@@ -9518,7 +9518,7 @@ async def get_player_profile(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
-    cache_key = f"player_profile_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
+    cache_key = f"player_profile_v2_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -9651,11 +9651,16 @@ async def get_player_profile(
         # submissions still surface even though they pre-date the linked column.
         #
         # Agent recommendations carry transfer/agent intel, so they follow the
-        # same access rule as intel reports: visible only to SMT roles
-        # (admin / senior manager / manager). Scouts and loan managers never
-        # see them on the player profile.
+        # same access rule as intel reports on the player profile: visible to
+        # SMT roles plus the read-only intel reviewer. Scouts and loan managers
+        # never see them on the player profile.
         agent_recommendations: List[Dict[str, Any]] = []
-        if current_user.role in (ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER):
+        if current_user.role in (
+            ROLE_ADMIN,
+            ROLE_SENIOR_MANAGER,
+            ROLE_MANAGER,
+            ROLE_INTEL_REVIEWER,
+        ):
             try:
                 external_player_id_for_link = player_data[0]
                 cafc_player_id_for_link = player_data[1]

@@ -62,6 +62,7 @@ export const useCurrentUser = () => {
     // Permission checks
     canAccessAdmin: isAdmin,
     canAccessIntel: isAdmin || isSeniorManager || isIntelReviewer,
+    canManageIntel: isAdmin || isSeniorManager,
     canAccessAnalytics: isAdmin || isSeniorManager || isManager,
     canAccessLists: isAdmin || isSeniorManager,
     // Recommendations (external = agent intake page, internal = staff page)

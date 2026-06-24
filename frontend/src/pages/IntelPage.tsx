@@ -23,6 +23,7 @@ import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 import { getRecommendationColor, getContrastTextColor } from "../utils/colorUtils";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface IntelReport {
   intel_id?: number | null;
@@ -57,6 +58,7 @@ interface IntelReport {
 const IntelPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
+  const { canManageIntel } = useCurrentUser();
   const navigate = useNavigate();
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [intelReports, setIntelReports] = useState<IntelReport[]>([]);
@@ -706,28 +708,32 @@ const IntelPage: React.FC = () => {
                               >
                                 👁️
                               </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => reportId !== null && handleEditReport(reportId)}
-                                disabled={reportId === null || isActionLoading}
-                                title="Edit"
-                                className="btn-action-circle btn-action-edit"
-                              >
-                                {isActionLoading ? (
-                                  <Spinner as="span" animation="border" size="sm" />
-                                ) : (
-                                  "✏️"
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => reportId !== null && handleDeleteReport(reportId)}
-                                disabled={reportId === null}
-                                title="Delete"
-                                className="btn-action-circle btn-action-delete"
-                              >
-                                🗑️
-                              </Button>
+                              {canManageIntel && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => reportId !== null && handleEditReport(reportId)}
+                                    disabled={reportId === null || isActionLoading}
+                                    title="Edit"
+                                    className="btn-action-circle btn-action-edit"
+                                  >
+                                    {isActionLoading ? (
+                                      <Spinner as="span" animation="border" size="sm" />
+                                    ) : (
+                                      "✏️"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => reportId !== null && handleDeleteReport(reportId)}
+                                    disabled={reportId === null}
+                                    title="Delete"
+                                    className="btn-action-circle btn-action-delete"
+                                  >
+                                    🗑️
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -906,24 +912,28 @@ const IntelPage: React.FC = () => {
                               >
                                 👁️
                               </Button>
-                              <Button
-                                size="sm"
-                                className="btn-action-circle btn-action-edit"
-                                title="Edit"
-                                onClick={() => reportId !== null && handleEditReport(reportId)}
-                                disabled={reportId === null || isActionLoading}
-                              >
-                                {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : "✏️"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="btn-action-circle btn-action-delete"
-                                title="Delete"
-                                onClick={() => reportId !== null && handleDeleteReport(reportId)}
-                                disabled={reportId === null}
-                              >
-                                🗑️
-                              </Button>
+                              {canManageIntel && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="btn-action-circle btn-action-edit"
+                                    title="Edit"
+                                    onClick={() => reportId !== null && handleEditReport(reportId)}
+                                    disabled={reportId === null || isActionLoading}
+                                  >
+                                    {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : "✏️"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="btn-action-circle btn-action-delete"
+                                    title="Delete"
+                                    onClick={() => reportId !== null && handleDeleteReport(reportId)}
+                                    disabled={reportId === null}
+                                  >
+                                    🗑️
+                                  </Button>
+                                </>
+                              )}
                               </div>
                             </Col>
                           </Row>
