@@ -4521,7 +4521,7 @@ class AdminUserCreate(BaseModel):
     username: str
     email: str
     password: str
-    role: str  # admin, scout, manager, loan
+    role: str
     firstname: str
     lastname: str
 
@@ -4597,6 +4597,12 @@ async def create_user_as_admin(
     """Create a new user (admin only)"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
+
+    if user.role not in VALID_ROLES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}",
+        )
 
     # Check if username exists
     existing_user = await get_user(user.username)
@@ -12060,7 +12066,7 @@ async def migrate_purpose_values(current_user: User = Depends(get_current_user))
 
 @app.post("/admin/migrate-roles")
 async def migrate_user_roles(current_user: User = Depends(get_current_user)):
-    """Migrate old role names to new 5-tier role system (admin only)"""
+    """Normalize legacy role values to the current canonical role set (admin only)"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
@@ -12088,6 +12094,16 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
             f"Migrated {loan_updates} users from 'loan' to 'loan_manager'"
         )
 
+        # Normalize historical capitalized scout rows.
+        cursor.execute(
+            "UPDATE users SET ROLE = %s WHERE ROLE = %s",
+            (ROLE_SCOUT, "Scout")
+        )
+        scout_updates = cursor.rowcount
+        results.append(
+            f"Normalized {scout_updates} users from 'Scout' to 'scout'"
+        )
+
         conn.commit()
 
         # Verify updates
@@ -12101,6 +12117,7 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
             "message": "Role migration completed successfully",
             "results": results,
             "loan_to_loan_manager_updates": loan_updates,
+            "scout_case_normalization_updates": scout_updates,
         }
 
     except Exception as e:

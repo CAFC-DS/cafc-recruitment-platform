@@ -312,6 +312,25 @@ const ListsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) =>
   return token && canAccessLists ? children : null;
 };
 
+const ScoutingRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessRecommendations, loading, user } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
+    } else if (!loading && !canAccessRecommendations) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessRecommendations, loading, user, navigate, location]);
+
+  return token && canAccessRecommendations ? children : null;
+};
+
 // External recommendations: admin/senior manager (via Lists) + the read-only intel_reviewer.
 const ExternalRecsRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
@@ -403,9 +422,9 @@ function App() {
             <Route
               path="/scouting"
               element={
-                <PrivateRoute>
+                <ScoutingRoute>
                   <ScoutingPage />
-                </PrivateRoute>
+                </ScoutingRoute>
               }
             />
             <Route

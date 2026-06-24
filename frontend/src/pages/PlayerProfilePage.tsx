@@ -347,7 +347,7 @@ const PlayerProfilePage: React.FC = () => {
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
   const { viewMode, setViewMode } = useViewMode();
-  const { canGenerateShareLinks, canManageIntel, canSeeAllReports, isAdmin, user } = useCurrentUser();
+  const { canGenerateShareLinks, canManageIntel, canSeeAllReports, isAdmin, isIntelReviewer, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -427,6 +427,7 @@ const PlayerProfilePage: React.FC = () => {
 
   // Player stages from lists
   const [playerStages, setPlayerStages] = useState<Array<{ list_name: string; stage: string }>>([]);
+  const showScoutingContent = !isIntelReviewer;
 
   // Red-green gradient color functions for scoring (now using utility)
 
@@ -1093,7 +1094,7 @@ const PlayerProfilePage: React.FC = () => {
       fetchPositionCounts();
       fetchPlayerStages();
     }
-  }, [actualPlayerId]);
+  }, [actualPlayerId, showScoutingContent]);
 
   // Update available positions when profile changes
   useEffect(() => {
@@ -1163,6 +1164,12 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   const fetchPlayerAttributes = async () => {
+    if (!showScoutingContent) {
+      setAttributes(null);
+      setAttributesLoading(false);
+      return;
+    }
+
     if (!actualPlayerId) {
       setAttributesLoading(false);
       return;
@@ -1182,6 +1189,12 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   const fetchScoutReports = async () => {
+    if (!showScoutingContent) {
+      setScoutReportsData({ player_id: 0, total_reports: 0, reports: [] });
+      setScoutReportsLoading(false);
+      return;
+    }
+
     if (!actualPlayerId) {
       setScoutReportsLoading(false);
       return;
@@ -1223,6 +1236,11 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   const fetchPositionCounts = async () => {
+    if (!showScoutingContent) {
+      setPositionCounts([]);
+      return;
+    }
+
     if (!actualPlayerId) {
       return;
     }
@@ -1558,6 +1576,7 @@ const PlayerProfilePage: React.FC = () => {
 
         {/* Reports Sections - Full Width Stacked Layout */}
         <div className="mt-4 mb-4">
+          {showScoutingContent && (
           <div className="mb-4">
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
@@ -1740,8 +1759,10 @@ const PlayerProfilePage: React.FC = () => {
               )}
             </div>
           </div>
+          )}
 
           {/* Scouting History Section - Full Width */}
+          {showScoutingContent && (
           <div className="mb-4">
             {/* Recent Scouting History */}
             <div className="horizontal-timeline-section mb-4">
@@ -2329,6 +2350,8 @@ const PlayerProfilePage: React.FC = () => {
               </div>
             )}
             </div>
+          </div>
+          )}
 
             {/* Player Intel Section */}
             {intelFeed.length > 0 ? (
@@ -2872,9 +2895,9 @@ const PlayerProfilePage: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
 
           {/* Attribute Analysis Section - Full Width */}
+          {showScoutingContent && (
           <div>
             <div className="horizontal-timeline-section h-100">
               <div className="radar-charts-section">
@@ -3261,6 +3284,7 @@ const PlayerProfilePage: React.FC = () => {
               </div>
             </div>
           </div>
+          )}
         </div>
       </Container>
 
