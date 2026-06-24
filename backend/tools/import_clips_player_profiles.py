@@ -45,10 +45,18 @@ TEAM_USERNAME = "cafc_analysis_team"
 load_dotenv()
 
 
+# Letters NFD can't decompose into base+accent (distinct letters/ligatures).
+_TRANSLIT = str.maketrans({
+    "ø": "o", "Ø": "o", "æ": "ae", "Æ": "ae", "å": "a", "Å": "a",
+    "ß": "ss", "ð": "d", "Ð": "d", "þ": "th", "Þ": "th", "ł": "l", "Ł": "l",
+})
+
+
 def norm(s):
     if s is None or (isinstance(s, float) and pd.isna(s)):
         return ""
-    s = unicodedata.normalize("NFD", str(s))
+    s = str(s).translate(_TRANSLIT)
+    s = unicodedata.normalize("NFD", s)
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
     return " ".join(s.upper().split())
 
