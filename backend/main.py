@@ -1231,6 +1231,7 @@ class ScoutReport(BaseModel):
     attributeScores: Optional[dict] = None
     reportType: str
     flagCategory: Optional[str] = None
+    clipCategory: Optional[str] = None  # Clip sentiment: Positive / Neutral / Negative
     oppositionDetails: Optional[str] = None
 
 
@@ -6374,6 +6375,7 @@ async def create_scout_report(
         attribute_score = None
         purpose_of_assessment = None
         flag_category = None
+        clip_category = None
         match_id = None
         formation = None
         opposition_details = None
@@ -6393,7 +6395,7 @@ async def create_scout_report(
             formation = report.formation
 
         elif report_type == "Clips":
-            pass  # All relevant fields are already prepared or optional
+            clip_category = report.clipCategory  # Clip sentiment (Positive/Neutral/Negative)
 
         # Validate and resolve player_id using universal ID or dual ID lookup
         if player_id:
@@ -6492,8 +6494,8 @@ async def create_scout_report(
                 INSERT INTO scout_reports (
                     PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
                     SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, IS_POTENTIAL,
-                    PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, CLIP_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             values = (
@@ -6512,6 +6514,7 @@ async def create_scout_report(
                 purpose_of_assessment,
                 scouting_type,
                 flag_category,
+                clip_category,
                 report_type,
                 actual_match_id,
                 formation,
@@ -6668,6 +6671,7 @@ async def create_scout_reports_batch(
             attribute_score = None
             purpose_of_assessment = None
             flag_category = None
+            clip_category = None
             match_id = None
             formation = None
             opposition_details = None
@@ -6687,7 +6691,7 @@ async def create_scout_reports_batch(
                 formation = report.formation
 
             elif report_type == "Clips":
-                pass  # All relevant fields already prepared
+                clip_category = report.clipCategory  # Clip sentiment (Positive/Neutral/Negative)
 
             # Validate and resolve player_id using universal ID or dual ID lookup
             if player_id:
@@ -6764,8 +6768,8 @@ async def create_scout_reports_batch(
                 INSERT INTO scout_reports (
                     PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
                     SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
-                    PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, CLIP_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             values = (
@@ -6783,6 +6787,7 @@ async def create_scout_reports_batch(
                 purpose_of_assessment,
                 scouting_type,
                 flag_category,
+                clip_category,
                 report_type,
                 actual_match_id,
                 formation,
@@ -6936,6 +6941,7 @@ async def update_scout_report(
         attribute_score = None
         purpose_of_assessment = None
         flag_category = None
+        clip_category = None
         match_id = None
         formation = None
         opposition_details = None
@@ -6953,7 +6959,7 @@ async def update_scout_report(
             match_id = report.selectedMatch
             formation = report.formation
         elif report_type == "Clips":
-            pass
+            clip_category = report.clipCategory  # Clip sentiment (Positive/Neutral/Negative)
 
         # Determine which columns to update based on player source
         external_player_id = (
@@ -6968,7 +6974,7 @@ async def update_scout_report(
             UPDATE scout_reports SET
                 PLAYER_ID = %s, CAFC_PLAYER_ID = %s, POSITION = %s, BUILD = %s, HEIGHT = %s, STRENGTHS = %s, WEAKNESSES = %s,
                 SUMMARY = %s, JUSTIFICATION = %s, ATTRIBUTE_SCORE = %s, PERFORMANCE_SCORE = %s, IS_POTENTIAL = %s,
-                PURPOSE = %s, SCOUTING_TYPE = %s, FLAG_CATEGORY = %s, REPORT_TYPE = %s, MATCH_ID = %s, FORMATION = %s, OPPOSITION_DETAILS = %s
+                PURPOSE = %s, SCOUTING_TYPE = %s, FLAG_CATEGORY = %s, CLIP_CATEGORY = %s, REPORT_TYPE = %s, MATCH_ID = %s, FORMATION = %s, OPPOSITION_DETAILS = %s
             WHERE ID = %s
         """
 
@@ -6988,6 +6994,7 @@ async def update_scout_report(
             purpose_of_assessment,
             scouting_type,
             flag_category,
+            clip_category,
             report_type,
             match_id,
             formation,
@@ -8529,7 +8536,8 @@ async def get_single_scout_report(
                 sr.FLAG_CATEGORY,
                 sr.OPPOSITION_DETAILS,
                 sr.IS_ARCHIVED,
-                sr.IS_POTENTIAL
+                sr.IS_POTENTIAL,
+                sr.CLIP_CATEGORY
             FROM scout_reports sr
             LEFT JOIN players p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -8610,6 +8618,8 @@ async def get_single_scout_report(
             "opposition_details": report_data[21],
             "is_archived": report_data[22] if report_data[22] is not None else False,
             "is_potential": report_data[23] if report_data[23] is not None else False,
+            "clip_category": report_data[24],
+            "birth_date": str(report_data[2]) if report_data[2] else None,
             "individual_attribute_scores": individual_attribute_scores,
             "average_attribute_score": round(average_attribute_score, 2),
         }
@@ -10068,6 +10078,7 @@ async def get_player_scout_reports(
                 sr.REPORT_TYPE as report_type,
                 sr.POSITION as position_played,
                 sr.FLAG_CATEGORY as flag_category,
+                sr.CLIP_CATEGORY as clip_category,
                 sr.SCOUTING_TYPE as scouting_type,
                 sr.IS_ARCHIVED as is_archived,
                 sr.SUMMARY as summary,
@@ -10102,7 +10113,7 @@ async def get_player_scout_reports(
             pass
 
         base_query += """
-            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED, sr.SUMMARY, sr.IS_POTENTIAL, sr.USER_ID
+            GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.CLIP_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED, sr.SUMMARY, sr.IS_POTENTIAL, sr.USER_ID
             ORDER BY sr.CREATED_AT DESC
         """
 
@@ -10123,6 +10134,7 @@ async def get_player_scout_reports(
                 report_type,
                 position_played,
                 flag_category,
+                clip_category,
                 scouting_type,
                 is_archived,
                 summary,
@@ -10142,6 +10154,7 @@ async def get_player_scout_reports(
                     "report_type": report_type,
                     "position_played": position_played,
                     "flag_category": flag_category,
+                    "clip_category": clip_category,
                     "scouting_type": scouting_type,
                     "is_archived": is_archived if is_archived is not None else False,
                     "summary": summary,

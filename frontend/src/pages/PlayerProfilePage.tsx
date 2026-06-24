@@ -73,6 +73,7 @@ interface ScoutReport {
   report_type: string | null;
   position_played: string | null;
   flag_category?: string;
+  clip_category?: string;
   scouting_type?: string;
   is_potential?: boolean;
   user_id?: number;
@@ -167,14 +168,31 @@ const getScoutingTypeBadge = (scoutingType: string) => {
   );
 };
 
+// Age at a given date (used so clip cards show the player's age at the report's
+// match date, matching the report modal — not the player's current age).
+const ageAtDate = (
+  birthDateStr?: string | null,
+  atDateStr?: string | null,
+): number | null => {
+  if (!birthDateStr) return null;
+  const bd = new Date(birthDateStr);
+  const at =
+    atDateStr && atDateStr !== "N/A" ? new Date(atDateStr) : new Date();
+  if (isNaN(bd.getTime()) || isNaN(at.getTime())) return null;
+  let age = at.getFullYear() - bd.getFullYear();
+  const m = at.getMonth() - bd.getMonth();
+  if (m < 0 || (m === 0 && at.getDate() < bd.getDate())) age--;
+  return age < 0 || isNaN(age) ? null : age;
+};
+
 const getReportTypeBadge = (
   reportType: string,
   _scoutingType: string,
   report: ScoutReport,
 ) => {
-  // For archived reports in card view, don't show badge in Tags section
-  // (they have ARCHIVED banner at top instead)
-  if (report.is_archived) {
+  // Archived reports show the ARCHIVED banner at the top instead of a tag badge
+  // — except Clips, which still surface their sentiment badge.
+  if (report.is_archived && reportType.toLowerCase() !== "clips") {
     return null;
   }
 
@@ -183,7 +201,27 @@ const getReportTypeBadge = (
     case "flag assessment":
       return getFlagBadge(report);
     case "clips":
-      return <span className="badge badge-neutral-grey">Clips</span>;
+      return (
+        <>
+          <span className="badge badge-neutral-grey" title="Clip">
+            🎬
+          </span>
+          {report.clip_category && (
+            <span
+              className="badge ms-1"
+              style={{
+                backgroundColor: getFlagColor(report.clip_category),
+                color: "white",
+                border: "none",
+                fontWeight: "500",
+              }}
+              title={`Sentiment: ${report.clip_category}`}
+            >
+              {report.clip_category}
+            </span>
+          )}
+        </>
+      );
     case "player assessment":
     case "player":
       return null; // Remove Player Assessment badge
@@ -2045,11 +2083,18 @@ const PlayerProfilePage: React.FC = () => {
                               >
                                 {profile.player_name}
                               </div>
+                              {report.report_type?.toLowerCase() !== "clips" && (
+                                <small className="text-muted d-block">
+                                  Position: {report.position_played || "N/A"}
+                                </small>
+                              )}
                               <small className="text-muted d-block">
-                                Position: {report.position_played || "N/A"}
-                              </small>
-                              <small className="text-muted d-block">
-                                Age: {profile.age || "N/A"}
+                                Age:{" "}
+                                {report.report_type?.toLowerCase() === "clips"
+                                  ? ageAtDate(profile.birth_date, report.report_date) ??
+                                    profile.age ??
+                                    "N/A"
+                                  : profile.age || "N/A"}
                               </small>
                             </div>
                           </Col>
@@ -2071,7 +2116,9 @@ const PlayerProfilePage: React.FC = () => {
                           </Col>
                         </Row>
 
-                        {/* Middle Row - 2 columns */}
+                        {/* Middle Row - fixture + score. Hidden for clips, which
+                            have no fixture or score (avoids redundant N/A labels). */}
+                        {report.report_type?.toLowerCase() !== "clips" && (
                         <Row className="mb-3 pb-2 border-bottom">
                           {/* Left: Fixture Info */}
                           <Col xs={6}>
@@ -2173,6 +2220,7 @@ const PlayerProfilePage: React.FC = () => {
                             </div>
                           </Col>
                         </Row>
+                        )}
 
                         {/* Bottom Row - Tags and Actions */}
                         <Row className="align-items-center">

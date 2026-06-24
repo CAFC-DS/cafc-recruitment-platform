@@ -137,19 +137,41 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     return isNaN(birthDate.getTime()) ? null : birthDate;
   };
 
-  // Function to calculate age at fixture date
+  // Function to calculate age at the report's reference date. Clips have no
+  // fixture, so use the report (match) date; other reports use the fixture date.
   const calculateAgeAtFixture = () => {
-    const fixtureDate = new Date(report.fixture_date);
     const birthDate = getBirthDate();
-
     if (!birthDate) {
       return null;
     }
 
-    const ageInMs = fixtureDate.getTime() - birthDate.getTime();
-    const ageInYears = Math.floor(ageInMs / (365.25 * 24 * 60 * 60 * 1000));
+    const isClip = report.report_type?.toLowerCase() === "clips";
+    const candidates = isClip
+      ? [report.created_at]
+      : [report.fixture_date, report.created_at];
 
-    return ageInYears;
+    let refDate: Date | null = null;
+    for (const c of candidates) {
+      if (c && c !== "N/A") {
+        const d = new Date(c);
+        if (!isNaN(d.getTime())) {
+          refDate = d;
+          break;
+        }
+      }
+    }
+    if (!refDate) {
+      return null;
+    }
+
+    // Calendar age (same method as the card) so the two always agree.
+    let age = refDate.getFullYear() - birthDate.getFullYear();
+    const m = refDate.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && refDate.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    return age < 0 || isNaN(age) ? null : age;
   };
 
   // Function to format birth date with age
@@ -686,6 +708,9 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     report.report_type?.toLowerCase() === "flag" ||
     report.report_type?.toLowerCase() === "flag assessment" ||
     report.report_type?.toLowerCase() === "flag_assessment";
+  // Clips use the same simplified layout as flags (sparse data → no redundant
+  // empty fields), with a sentiment badge instead of a flag/grade badge.
+  const isClipReport = report.report_type?.toLowerCase() === "clips";
 
   return (
     <Modal show={show} onHide={onHide} size="xl" centered>
@@ -706,8 +731,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
           </div>
         )}
 
-        {isFlagReport ? (
-          /* Simplified Flag Report Layout */
+        {isFlagReport || isClipReport ? (
+          /* Simplified Flag / Clip Report Layout */
           <>
             {/* Report Overview */}
             <Card className="mb-4">
@@ -733,11 +758,13 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     </p>
                   </Col>
                   <Col md={4}>
-                    <p className="mb-1">
-                      <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
-                      {report.away_squad_name}
-                    </p>
-                    {!report.is_archived && (
+                    {!isClipReport && (
+                      <p className="mb-1">
+                        <strong>Fixture:</strong> {report.home_squad_name} vs{" "}
+                        {report.away_squad_name}
+                      </p>
+                    )}
+                    {!report.is_archived && !isClipReport && (
                       <>
                         <p className="mb-1">
                           <strong>Position | Formation:</strong>{" "}
@@ -750,7 +777,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                         </p>
                       </>
                     )}
-                    {report.is_archived && (
+                    {report.is_archived && !isClipReport && (
                       <p className="mb-0">
                         <strong>Position:</strong>{" "}
                         {report.position_played || "Not specified"}
@@ -758,12 +785,14 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     )}
                   </Col>
                   <Col md={4}>
-                    <p className="mb-1">
-                      <strong>Fixture Date:</strong>{" "}
-                      {report.fixture_date
-                        ? new Date(report.fixture_date).toLocaleDateString("en-GB")
-                        : "N/A"}
-                    </p>
+                    {!isClipReport && (
+                      <p className="mb-1">
+                        <strong>Fixture Date:</strong>{" "}
+                        {report.fixture_date
+                          ? new Date(report.fixture_date).toLocaleDateString("en-GB")
+                          : "N/A"}
+                      </p>
+                    )}
                     <p className="mb-1">
                       <strong>Report Date:</strong>{" "}
                       {new Date(report.created_at).toLocaleDateString("en-GB")}
@@ -772,7 +801,21 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                       <strong>Scout:</strong> {report.scout_name}
                     </p>
                     <p className="mb-0 mt-2">
-                      {report.is_archived && report.flag_category ? (
+                      {isClipReport ? (
+                        report.clip_category ? (
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor: getFlagColor(report.clip_category),
+                              color: "white",
+                              border: "none",
+                            }}
+                            title={`Sentiment: ${report.clip_category}`}
+                          >
+                            {report.clip_category}
+                          </span>
+                        ) : null
+                      ) : report.is_archived && report.flag_category ? (
                         <>
                           <span
                             className="badge-grade me-2"
