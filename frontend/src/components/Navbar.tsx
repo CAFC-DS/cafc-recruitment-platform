@@ -428,16 +428,6 @@ const AppNavbar: React.FC = () => {
                     🕵️ Intel
                   </Nav.Link>
                 )}
-                {isIntelReviewer && (
-                  <>
-                    <Nav.Link as={Link} to="/lists/external">
-                      📥 External Recs
-                    </Nav.Link>
-                    <Nav.Link as={Link} to="/internal/recommendations">
-                      📨 Internal Recs
-                    </Nav.Link>
-                  </>
-                )}
                 {canAccessLists && (
                   <Nav.Link as={Link} to="/lists">
                     📋 Lists
