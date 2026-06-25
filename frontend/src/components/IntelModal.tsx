@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Modal, Form, Button, Row, Col, Alert, Spinner, ListGroup, Card } from "react-bootstrap";
 import Select from "react-select";
 import axiosInstance from "../axiosInstance";
@@ -53,8 +53,15 @@ const IntelModal: React.FC<IntelModalProps> = ({
   const [searchedPlayer, setSearchedPlayer] = useState<Player | null>(null);
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
   const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+  // Pagination for player search (infinite scroll, mirrors navbar search)
+  const [playerSearchOffset, setPlayerSearchOffset] = useState(0);
+  const [hasMorePlayerResults, setHasMorePlayerResults] = useState(false);
+  const [loadingMorePlayers, setLoadingMorePlayers] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchCacheRef = useRef<Record<string, Player[]>>({});
+  const searchCacheRef = useRef<Record<string, { players: Player[]; hasMore: boolean }>>({});
+  const currentPlayerSearchQueryRef = useRef<string>("");
+  const playerSearchObserverRef = useRef<IntersectionObserver | null>(null);
+  const PLAYER_SEARCH_PAGE_SIZE = 10;
 
   const dealTypeOptions = [
     { value: "free", label: "Free Transfer" },
@@ -134,30 +141,101 @@ const IntelModal: React.FC<IntelModalProps> = ({
 
   const performPlayerSearch = async (query: string) => {
     const trimmedQuery = query.trim();
-    if (searchCacheRef.current[trimmedQuery]) {
-      setSearchedPlayers(searchCacheRef.current[trimmedQuery]);
+    currentPlayerSearchQueryRef.current = trimmedQuery;
+    setPlayerSearchOffset(0);
+
+    const cached = searchCacheRef.current[trimmedQuery];
+    if (cached) {
+      setSearchedPlayers(cached.players);
+      setHasMorePlayerResults(cached.hasMore);
+      // Restore the offset so scrolling continues from the last loaded page
+      // rather than refetching pages already cached (avoids duplicates).
+      setPlayerSearchOffset(Math.max(0, cached.players.length - PLAYER_SEARCH_PAGE_SIZE));
       setPlayerSearchLoading(false);
-      setShowPlayerDropdown(searchCacheRef.current[trimmedQuery].length > 0);
+      setShowPlayerDropdown(cached.players.length > 0);
       return;
     }
 
     try {
       setPlayerSearchLoading(true);
-      const response = await axiosInstance.get(
-        `/players/search?query=${encodeURIComponent(trimmedQuery)}`,
-      );
-      const results = Array.isArray(response.data) ? response.data : response.data?.players || [];
-      searchCacheRef.current[trimmedQuery] = results;
+      const response = await axiosInstance.get(`/players/search`, {
+        params: { query: trimmedQuery, limit: PLAYER_SEARCH_PAGE_SIZE, offset: 0 },
+      });
+      let results: Player[] = [];
+      let hasMore = false;
+      if (Array.isArray(response.data)) {
+        results = response.data;
+      } else if (response.data) {
+        results = response.data.players || [];
+        hasMore = response.data.has_more || false;
+      }
+      // Ignore stale responses if the query changed during the request
+      if (currentPlayerSearchQueryRef.current !== trimmedQuery) return;
+      searchCacheRef.current[trimmedQuery] = { players: results, hasMore };
       setSearchedPlayers(results);
+      setHasMorePlayerResults(hasMore);
       setShowPlayerDropdown(results.length > 0);
     } catch (searchError) {
       console.error("Error searching players:", searchError);
       setSearchedPlayers([]);
+      setHasMorePlayerResults(false);
       setShowPlayerDropdown(false);
     } finally {
       setPlayerSearchLoading(false);
     }
   };
+
+  // Load the next page of player search results (infinite scroll)
+  const loadMorePlayerResults = useCallback(async () => {
+    if (loadingMorePlayers || !hasMorePlayerResults) return;
+    const query = currentPlayerSearchQueryRef.current;
+    if (!query) return;
+
+    setLoadingMorePlayers(true);
+    const nextOffset = playerSearchOffset + PLAYER_SEARCH_PAGE_SIZE;
+
+    try {
+      const response = await axiosInstance.get(`/players/search`, {
+        params: { query, limit: PLAYER_SEARCH_PAGE_SIZE, offset: nextOffset },
+      });
+      let results: Player[] = [];
+      let hasMore = false;
+      if (Array.isArray(response.data)) {
+        results = response.data;
+      } else if (response.data) {
+        results = response.data.players || [];
+        hasMore = response.data.has_more || false;
+      }
+      if (currentPlayerSearchQueryRef.current !== query) return;
+      setSearchedPlayers((prev) => {
+        const merged = [...prev, ...results];
+        // Keep the cache in sync so re-focusing the same query restores all loaded pages
+        searchCacheRef.current[query] = { players: merged, hasMore };
+        return merged;
+      });
+      setHasMorePlayerResults(hasMore);
+      setPlayerSearchOffset(nextOffset);
+    } catch (error) {
+      console.error("Error loading more players:", error);
+    } finally {
+      setLoadingMorePlayers(false);
+    }
+  }, [loadingMorePlayers, hasMorePlayerResults, playerSearchOffset]);
+
+  // Attach an IntersectionObserver to the last result so scrolling loads more
+  const lastPlayerResultRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (loadingMorePlayers) return;
+      if (playerSearchObserverRef.current) playerSearchObserverRef.current.disconnect();
+      playerSearchObserverRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMorePlayerResults) {
+          loadMorePlayerResults();
+        }
+      });
+      if (node) playerSearchObserverRef.current.observe(node);
+    },
+    [loadingMorePlayers, hasMorePlayerResults, loadMorePlayerResults],
+  );
 
   const handlePlayerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
@@ -171,6 +249,8 @@ const IntelModal: React.FC<IntelModalProps> = ({
       setSearchedPlayers([]);
       setShowPlayerDropdown(false);
       setPlayerSearchLoading(false);
+      setHasMorePlayerResults(false);
+      setPlayerSearchOffset(0);
       return;
     }
 
@@ -210,6 +290,8 @@ const IntelModal: React.FC<IntelModalProps> = ({
     setSearchedPlayers([]);
     setSearchedPlayer(null);
     setShowPlayerDropdown(false);
+    setHasMorePlayerResults(false);
+    setPlayerSearchOffset(0);
   };
 
   useEffect(() => {
@@ -498,7 +580,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
                 style={{
                   position: "absolute",
                   zIndex: 1000,
-                  maxHeight: "200px",
+                  maxHeight: "240px",
                   overflowY: "auto",
                   width: "calc(100% - 30px)",
                 }}
@@ -509,10 +591,12 @@ const IntelModal: React.FC<IntelModalProps> = ({
                   const team =
                     player.team || player.club || player.current_team || player.squad_name || "";
                   const age = player.age || "";
+                  const isLast = index === searchedPlayers.length - 1;
 
                   return (
                     <ListGroup.Item
                       key={player.universal_id || `fallback-${index}-${playerName}`}
+                      ref={isLast ? (lastPlayerResultRef as any) : undefined}
                       action
                       onClick={() => handlePlayerSelect(player)}
                     >
@@ -525,6 +609,17 @@ const IntelModal: React.FC<IntelModalProps> = ({
                     </ListGroup.Item>
                   );
                 })}
+                {loadingMorePlayers && (
+                  <ListGroup.Item className="d-flex justify-content-center align-items-center text-muted">
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Loading more...
+                  </ListGroup.Item>
+                )}
+                {!hasMorePlayerResults && !loadingMorePlayers && (
+                  <ListGroup.Item className="text-center text-muted" style={{ fontSize: "0.8rem" }}>
+                    {searchedPlayers.length} result{searchedPlayers.length !== 1 ? "s" : ""}
+                  </ListGroup.Item>
+                )}
               </ListGroup>
             )}
             {searchedPlayer && (

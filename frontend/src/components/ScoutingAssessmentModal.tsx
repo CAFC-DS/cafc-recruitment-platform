@@ -79,6 +79,13 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
   const [playerSearchResults, setPlayerSearchResults] = useState<Player[]>([]);
   const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
   const [playerSearchLoading, setPlayerSearchLoading] = useState(false);
+  // Pagination for player search (infinite scroll, mirrors navbar search)
+  const [playerSearchOffset, setPlayerSearchOffset] = useState(0);
+  const [hasMorePlayerResults, setHasMorePlayerResults] = useState(false);
+  const [loadingMorePlayers, setLoadingMorePlayers] = useState(false);
+  const currentPlayerSearchQueryRef = useRef<string>("");
+  const playerSearchObserverRef = useRef<IntersectionObserver | null>(null);
+  const PLAYER_SEARCH_PAGE_SIZE = 10;
 
   // Selected match state (separate from formData for clarity)
   const [selectedMatch, setSelectedMatch] = useState<string>("");
@@ -312,6 +319,8 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
       setPlayerSearchResults([]);
       setShowPlayerDropdown(false);
       setPlayerSearchLoading(false);
+      setHasMorePlayerResults(false);
+      setPlayerSearchOffset(0);
       return;
     }
 
@@ -320,24 +329,83 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
 
     // Debounce the actual search
     searchTimeoutRef.current = setTimeout(async () => {
+      const trimmedQuery = query.trim();
+      currentPlayerSearchQueryRef.current = trimmedQuery;
       try {
         const response = await axiosInstance.get(`/players/search`, {
-          params: { query: query.trim() }
+          params: { query: trimmedQuery, limit: PLAYER_SEARCH_PAGE_SIZE, offset: 0 }
         });
         // Handle both old format (plain array) and new paginated format ({players, has_more})
-        const results = Array.isArray(response.data)
-          ? response.data
-          : response.data?.players || [];
+        let results: Player[] = [];
+        let hasMore = false;
+        if (Array.isArray(response.data)) {
+          results = response.data;
+        } else if (response.data) {
+          results = response.data.players || [];
+          hasMore = response.data.has_more || false;
+        }
+        // Ignore stale responses if the query changed during the request
+        if (currentPlayerSearchQueryRef.current !== trimmedQuery) return;
         setPlayerSearchResults(results);
+        setHasMorePlayerResults(hasMore);
+        setPlayerSearchOffset(0);
         setShowPlayerDropdown(true);
       } catch (error) {
         console.error("Error searching players:", error);
         setPlayerSearchResults([]);
+        setHasMorePlayerResults(false);
       } finally {
         setPlayerSearchLoading(false);
       }
     }, 300); // 300ms debounce delay
   };
+
+  // Load the next page of player search results (infinite scroll)
+  const loadMorePlayerResults = useCallback(async () => {
+    if (loadingMorePlayers || !hasMorePlayerResults) return;
+    const query = currentPlayerSearchQueryRef.current;
+    if (!query) return;
+
+    setLoadingMorePlayers(true);
+    const nextOffset = playerSearchOffset + PLAYER_SEARCH_PAGE_SIZE;
+
+    try {
+      const response = await axiosInstance.get(`/players/search`, {
+        params: { query, limit: PLAYER_SEARCH_PAGE_SIZE, offset: nextOffset },
+      });
+      let results: Player[] = [];
+      let hasMore = false;
+      if (Array.isArray(response.data)) {
+        results = response.data;
+      } else if (response.data) {
+        results = response.data.players || [];
+        hasMore = response.data.has_more || false;
+      }
+      if (currentPlayerSearchQueryRef.current !== query) return;
+      setPlayerSearchResults((prev) => [...prev, ...results]);
+      setHasMorePlayerResults(hasMore);
+      setPlayerSearchOffset(nextOffset);
+    } catch (error) {
+      console.error("Error loading more players:", error);
+    } finally {
+      setLoadingMorePlayers(false);
+    }
+  }, [loadingMorePlayers, hasMorePlayerResults, playerSearchOffset]);
+
+  // Attach an IntersectionObserver to the last result so scrolling loads more
+  const lastPlayerResultRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (loadingMorePlayers) return;
+      if (playerSearchObserverRef.current) playerSearchObserverRef.current.disconnect();
+      playerSearchObserverRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMorePlayerResults) {
+          loadMorePlayerResults();
+        }
+      });
+      if (node) playerSearchObserverRef.current.observe(node);
+    },
+    [loadingMorePlayers, hasMorePlayerResults, loadMorePlayerResults],
+  );
 
   const handlePlayerSelect = (player: Player) => {
     setSelectedPlayer(player);
@@ -1455,22 +1523,37 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   style={{
                     position: "absolute",
                     zIndex: 1000,
-                    maxHeight: "200px",
+                    maxHeight: "240px",
                     overflowY: "auto",
                     width: "calc(100% - 30px)",
                   }}
                 >
-                  {playerSearchResults.map((player, index) => (
-                    <ListGroup.Item
-                      key={player.universal_id || `player-${index}`}
-                      action
-                      onClick={() => handlePlayerSelect(player)}
-                      className="d-flex justify-content-between align-items-center"
-                    >
-                      <span>{player.player_name}</span>
-                      <small className="text-muted">({player.squad_name})</small>
+                  {playerSearchResults.map((player, index) => {
+                    const isLast = index === playerSearchResults.length - 1;
+                    return (
+                      <ListGroup.Item
+                        key={player.universal_id || `player-${index}`}
+                        ref={isLast ? (lastPlayerResultRef as any) : undefined}
+                        action
+                        onClick={() => handlePlayerSelect(player)}
+                        className="d-flex justify-content-between align-items-center"
+                      >
+                        <span>{player.player_name}</span>
+                        <small className="text-muted">({player.squad_name})</small>
+                      </ListGroup.Item>
+                    );
+                  })}
+                  {loadingMorePlayers && (
+                    <ListGroup.Item className="d-flex justify-content-center align-items-center text-muted">
+                      <Spinner animation="border" size="sm" className="me-2" />
+                      Loading more...
                     </ListGroup.Item>
-                  ))}
+                  )}
+                  {!hasMorePlayerResults && !loadingMorePlayers && (
+                    <ListGroup.Item className="text-center text-muted" style={{ fontSize: "0.8rem" }}>
+                      {playerSearchResults.length} result{playerSearchResults.length !== 1 ? "s" : ""}
+                    </ListGroup.Item>
+                  )}
                 </ListGroup>
               )}
               {selectedPlayer && (
