@@ -1,7 +1,6 @@
 -- Single-use, expiring password reset tokens for admin-generated reset links.
--- The application also creates this table lazily (CREATE TABLE IF NOT EXISTS) via
--- ensure_password_reset_tokens_table() in main.py; this file documents the schema
--- and lets it be applied as part of the normal migration set.
+-- Run this once with a role that has CREATE TABLE on the target schema (the app
+-- role APP_ROLE does not, so the application does NOT create it at runtime).
 --
 -- Security notes:
 --   * TOKEN_HASH stores a SHA-256 hex digest of the raw token, never the token

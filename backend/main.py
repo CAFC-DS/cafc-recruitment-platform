@@ -1038,28 +1038,6 @@ def hash_reset_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
-def ensure_password_reset_tokens_table(cursor):
-    """Create the PASSWORD_RESET_TOKENS table if it does not exist.
-
-    Mirrors the SHARED_REPORT_LINKS token-link pattern but stores a hash of the
-    token rather than the raw value, since a reset token grants a password change.
-    """
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS PASSWORD_RESET_TOKENS (
-            ID INTEGER AUTOINCREMENT,
-            USER_ID INTEGER NOT NULL,
-            TOKEN_HASH VARCHAR(64) NOT NULL,
-            EXPIRES_AT TIMESTAMP_NTZ NOT NULL,
-            USED_AT TIMESTAMP_NTZ,
-            IS_ACTIVE BOOLEAN DEFAULT TRUE,
-            CREATED_BY INTEGER,
-            CREATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-
-
 def _resolve_frontend_url() -> str:
     """Resolve the public frontend base URL (matches the share-link handling)."""
     environment = os.getenv("ENVIRONMENT", "development")
@@ -3131,7 +3109,6 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        ensure_password_reset_tokens_table(cursor)
 
         cursor.execute(
             """
@@ -4997,8 +4974,6 @@ async def admin_generate_reset_link(
             raise HTTPException(status_code=404, detail="User not found")
         target_email = row[2]
         display_name = " ".join(p for p in [row[3], row[4]] if p).strip() or row[1]
-
-        ensure_password_reset_tokens_table(cursor)
 
         # Invalidate any prior unused links for this user
         cursor.execute(
