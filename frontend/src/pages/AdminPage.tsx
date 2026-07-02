@@ -101,6 +101,15 @@ const AdminPage: React.FC = () => {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [userToReset, setUserToReset] = useState<User | null>(null);
+  const [resetLink, setResetLink] = useState<string | null>(null);
+  const [resetExpiresAt, setResetExpiresAt] = useState<string | null>(null);
+  const [resetEmailed, setResetEmailed] = useState(false);
+  const [resetCopied, setResetCopied] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+
   const fetchUsers = async () => {
     try {
       setLoadingUsers(true);
@@ -169,6 +178,44 @@ const AdminPage: React.FC = () => {
       }
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const generateResetLink = async (user: User) => {
+    setUserToReset(user);
+    setResetLink(null);
+    setResetExpiresAt(null);
+    setResetEmailed(false);
+    setResetCopied(false);
+    setResetError(null);
+    setShowResetModal(true);
+    setResetLoading(true);
+    try {
+      const response = await axiosInstance.post(
+        `/admin/users/${user.id}/reset-link`
+      );
+      setResetLink(response.data.reset_link);
+      setResetExpiresAt(response.data.expires_at || null);
+      setResetEmailed(Boolean(response.data.emailed));
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setResetError(err.response.data.detail || "Failed to generate reset link");
+      } else {
+        setResetError("Failed to generate reset link");
+      }
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const copyResetLink = async () => {
+    if (!resetLink) return;
+    try {
+      await navigator.clipboard.writeText(resetLink);
+      setResetCopied(true);
+      setTimeout(() => setResetCopied(false), 2000);
+    } catch {
+      setResetError("Could not copy automatically — select the link and copy it manually.");
     }
   };
 
@@ -359,7 +406,7 @@ const AdminPage: React.FC = () => {
                           <td>
                             <Badge bg="secondary">{getRoleLabel(user.role)}</Badge>
                           </td>
-                          <td className="d-flex gap-2">
+                          <td className="d-flex gap-2 flex-wrap">
                             <Form.Select
                               size="sm"
                               value={user.role}
@@ -376,6 +423,13 @@ const AdminPage: React.FC = () => {
                                 </option>
                               ))}
                             </Form.Select>
+                            <Button
+                              variant="outline-secondary"
+                              size="sm"
+                              onClick={() => generateResetLink(user)}
+                            >
+                              Generate Reset Link
+                            </Button>
                             <Button
                               variant="outline-danger"
                               size="sm"
@@ -585,6 +639,65 @@ const AdminPage: React.FC = () => {
           <Button variant="danger" onClick={handleDeleteUser} disabled={deleteLoading}>
             {deleteLoading ? "Deleting..." : "Delete"}
           </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showResetModal} onHide={() => setShowResetModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Password Reset Link</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-3">
+            One-time reset link for <strong>{userToReset?.username}</strong>
+            {userToReset?.email ? ` (${userToReset.email})` : ""}. Send it to them
+            securely — they set their own password, and the link works once and
+            expires after 24 hours.
+          </p>
+          {resetError && <Alert variant="danger">{resetError}</Alert>}
+          {resetLoading ? (
+            <div className="text-center py-3">
+              <Spinner animation="border" />
+              <p className="mt-2 mb-0">Generating link...</p>
+            </div>
+          ) : resetLink ? (
+            <>
+              {resetEmailed && (
+                <Alert variant="success">
+                  Also emailed to {userToReset?.email}.
+                </Alert>
+              )}
+              <Form.Group className="mb-2">
+                <Form.Label>Reset link</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  readOnly
+                  value={resetLink}
+                  onFocus={(e) => e.target.select()}
+                />
+              </Form.Group>
+              <div className="d-flex align-items-center gap-2">
+                <Button variant="dark" size="sm" onClick={copyResetLink}>
+                  {resetCopied ? "Copied!" : "Copy link"}
+                </Button>
+                {resetExpiresAt && (
+                  <small className="text-muted">
+                    Expires: {new Date(resetExpiresAt).toLocaleString()}
+                  </small>
+                )}
+              </div>
+            </>
+          ) : null}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowResetModal(false)}>
+            Close
+          </Button>
+          {!resetLoading && userToReset && (
+            <Button variant="outline-dark" onClick={() => generateResetLink(userToReset)}>
+              Regenerate
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </Container>

@@ -103,6 +103,9 @@ const AgentLoginPage: React.FC = () => {
             <div style={{ marginTop: '1rem', color: '#64748B', fontSize: '0.9rem' }}>
               Need access? <Link to="/agents/register" className="agent-auth-inline-link">Register here</Link>
             </div>
+            <div style={{ marginTop: '0.5rem', color: '#94A3B8', fontSize: '0.82rem' }}>
+              Forgotten your password? Contact Charlton Athletic to be sent a reset link.
+            </div>
           </div>
         </div>
       </div>

@@ -31,6 +31,11 @@ export const agentRecommendationsService = {
     return response.data;
   },
 
+  async confirmPasswordReset(payload: { token: string; new_password: string }) {
+    const response = await axiosInstance.post<{ message: string }>('/agents/reset-password', payload);
+    return response.data;
+  },
+
   async getMe() {
     const response = await axiosInstance.get<AgentProfile>('/agents/me');
     return response.data;

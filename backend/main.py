@@ -33,6 +33,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
 import uuid
+import secrets
+import hashlib
 import tempfile
 import os.path
 import csv
@@ -1031,6 +1033,47 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)  # pass string
 
 
+def hash_reset_token(raw_token: str) -> str:
+    """Hash a password-reset token for storage/lookup (never store the raw token)."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def ensure_password_reset_tokens_table(cursor):
+    """Create the PASSWORD_RESET_TOKENS table if it does not exist.
+
+    Mirrors the SHARED_REPORT_LINKS token-link pattern but stores a hash of the
+    token rather than the raw value, since a reset token grants a password change.
+    """
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS PASSWORD_RESET_TOKENS (
+            ID INTEGER AUTOINCREMENT,
+            USER_ID INTEGER NOT NULL,
+            TOKEN_HASH VARCHAR(64) NOT NULL,
+            EXPIRES_AT TIMESTAMP_NTZ NOT NULL,
+            USED_AT TIMESTAMP_NTZ,
+            IS_ACTIVE BOOLEAN DEFAULT TRUE,
+            CREATED_BY INTEGER,
+            CREATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+
+def _resolve_frontend_url() -> str:
+    """Resolve the public frontend base URL (matches the share-link handling)."""
+    environment = os.getenv("ENVIRONMENT", "development")
+    if environment == "production":
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            raise HTTPException(
+                status_code=500,
+                detail="FRONTEND_URL environment variable must be set in production. Please add it in your Railway dashboard.",
+            )
+        return frontend_url
+    return os.getenv("FRONTEND_URL", "http://localhost:3001")
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -1197,6 +1240,11 @@ class AgentStatusUpdateRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     username: str
     email: str
+    new_password: str
+
+
+class AgentPasswordResetConfirm(BaseModel):
+    token: str
     new_password: str
 
 
@@ -2115,6 +2163,62 @@ def send_recommendation_status_email(agent_email: str, agent_name: str, player_n
                 pass
 
 
+def send_password_reset_email(to_email: str, display_name: str, reset_link: str, expires_at: datetime) -> bool:
+    """Email a password reset link if SMTP is configured. Returns True if sent.
+
+    Independent of RECOMMENDATION_EMAILS_ENABLED (that flag gates recommendation
+    status emails). If SMTP is not configured, this is a no-op returning False,
+    so the caller falls back to giving the admin the link to deliver manually.
+    """
+    if not to_email:
+        return False
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_username = os.getenv("SMTP_USERNAME")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    smtp_from_email = os.getenv("SMTP_FROM_EMAIL")
+    smtp_from_name = os.getenv("SMTP_FROM_NAME", "Charlton Athletic Recruitment")
+    smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+
+    if not smtp_host or not smtp_port or not smtp_from_email:
+        return False
+
+    msg = MIMEMultipart()
+    msg["From"] = f"{smtp_from_name} <{smtp_from_email}>"
+    msg["To"] = to_email
+    msg["Subject"] = "Reset your Charlton Athletic portal password"
+    body = (
+        f"Hello {display_name or 'there'},\n\n"
+        "A password reset has been requested for your Charlton Athletic portal account.\n\n"
+        f"Use the link below to set a new password (valid until {expires_at.isoformat()}):\n\n"
+        f"{reset_link}\n\n"
+        "If you did not expect this, you can ignore this email and your password will stay the same.\n"
+    )
+    msg.attach(MIMEText(body, "plain"))
+
+    server = None
+    try:
+        server = smtplib.SMTP(smtp_host, int(smtp_port))
+        server.ehlo()
+        if smtp_use_tls:
+            server.starttls()
+            server.ehlo()
+        if smtp_username and smtp_password:
+            server.login(smtp_username, smtp_password)
+        server.sendmail(smtp_from_email, [to_email], msg.as_string())
+        return True
+    except Exception as e:
+        logging.exception(f"Failed to send password reset email: {e}")
+        return False
+    finally:
+        if server:
+            try:
+                server.quit()
+            except Exception:
+                pass
+
+
 def get_agent_profile_row(cursor, user_id: int):
     cursor.execute(
         """
@@ -3004,6 +3108,73 @@ async def register_agent(payload: AgentRegisterRequest):
             conn.rollback()
         logging.exception(f"Agent registration failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to register agent")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/agents/reset-password")
+async def reset_agent_password(request: AgentPasswordResetConfirm):
+    """Set a new password using a single-use reset token from an admin link.
+
+    The token itself is the authorisation: an admin generated it and delivered it
+    to the account holder out-of-band. There is no self-service email flow, so
+    knowing an account's email address alone cannot reset its password.
+    """
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 8 characters long"
+        )
+
+    token_hash = hash_reset_token(request.token.strip())
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        ensure_password_reset_tokens_table(cursor)
+
+        cursor.execute(
+            """
+            SELECT ID, USER_ID, EXPIRES_AT, USED_AT, IS_ACTIVE
+            FROM PASSWORD_RESET_TOKENS
+            WHERE TOKEN_HASH = %s
+            """,
+            (token_hash,),
+        )
+        token_row = cursor.fetchone()
+        if not token_row:
+            raise HTTPException(
+                status_code=400, detail="This reset link is invalid or has expired"
+            )
+
+        token_id, token_user_id, expires_at, used_at, is_active = token_row
+        if used_at is not None or not is_active:
+            raise HTTPException(
+                status_code=400, detail="This reset link has already been used"
+            )
+        if expires_at is not None and datetime.now() > expires_at:
+            raise HTTPException(
+                status_code=400, detail="This reset link is invalid or has expired"
+            )
+
+        new_hashed_password = get_password_hash(request.new_password)
+        cursor.execute(
+            "UPDATE users SET HASHED_PASSWORD = %s WHERE ID = %s",
+            (new_hashed_password, token_user_id),
+        )
+        cursor.execute(
+            "UPDATE PASSWORD_RESET_TOKENS SET USED_AT = CURRENT_TIMESTAMP, IS_ACTIVE = FALSE WHERE ID = %s",
+            (token_id,),
+        )
+        conn.commit()
+        return {"message": "Password reset successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error resetting password: {e}")
     finally:
         if conn:
             conn.close()
@@ -4793,6 +4964,79 @@ async def admin_reset_user_password(
             conn.rollback()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error resetting password: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/admin/users/{user_id}/reset-link")
+async def admin_generate_reset_link(
+    user_id: int, current_user: User = Depends(get_current_user)
+):
+    """Generate a single-use, 24-hour password reset link for a user (admin only).
+
+    The admin delivers the link to the user out-of-band; the user sets their own
+    password via the link, so the admin never learns it. If SMTP is configured,
+    the link is also emailed to the user automatically.
+    """
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Verify user exists and grab email/name for the optional email delivery
+        cursor.execute(
+            "SELECT ID, USERNAME, EMAIL, FIRSTNAME, LASTNAME FROM users WHERE ID = %s",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        target_email = row[2]
+        display_name = " ".join(p for p in [row[3], row[4]] if p).strip() or row[1]
+
+        ensure_password_reset_tokens_table(cursor)
+
+        # Invalidate any prior unused links for this user
+        cursor.execute(
+            "UPDATE PASSWORD_RESET_TOKENS SET IS_ACTIVE = FALSE WHERE USER_ID = %s AND USED_AT IS NULL",
+            (user_id,),
+        )
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hash_reset_token(raw_token)
+        expires_at = datetime.now() + timedelta(hours=24)
+
+        cursor.execute(
+            """
+            INSERT INTO PASSWORD_RESET_TOKENS
+            (USER_ID, TOKEN_HASH, EXPIRES_AT, IS_ACTIVE, CREATED_BY)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (user_id, token_hash, expires_at, True, current_user.id),
+        )
+        conn.commit()
+
+        reset_link = f"{_resolve_frontend_url()}/agents/reset-password?token={raw_token}"
+        emailed = send_password_reset_email(
+            target_email, display_name, reset_link, expires_at
+        )
+
+        return {
+            "reset_link": reset_link,
+            "expires_at": str(expires_at),
+            "emailed": emailed,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error generating reset link: {e}")
     finally:
         if conn:
             conn.close()

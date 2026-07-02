@@ -20,6 +20,7 @@ import SharedReportPage from './pages/SharedReportPage';
 import AgentLandingPage from './pages/agents/AgentLandingPage';
 import AgentLoginPage from './pages/agents/AgentLoginPage';
 import AgentRegisterPage from './pages/agents/AgentRegisterPage';
+import AgentResetPasswordPage from './pages/agents/AgentResetPasswordPage';
 import AgentDashboardPage from './pages/agents/AgentDashboardPage';
 import AgentSubmitPage from './pages/agents/AgentSubmitPage';
 import AgentSubmissionDetailPage from './pages/agents/AgentSubmissionDetailPage';
@@ -413,6 +414,8 @@ function App() {
             <Route path="/agents" element={<PublicAgentRoute><AgentLandingPage /></PublicAgentRoute>} />
             <Route path="/agents/login" element={<PublicAgentRoute><AgentLoginPage /></PublicAgentRoute>} />
             <Route path="/agents/register" element={<PublicAgentRoute><AgentRegisterPage /></PublicAgentRoute>} />
+            {/* Public: admin-issued one-time reset link (agent may be logged out) */}
+            <Route path="/agents/reset-password" element={<AgentResetPasswordPage />} />
             <Route path="/agents/dashboard" element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
             <Route path="/agents/submit" element={<AgentRoute><AgentSubmitPage /></AgentRoute>} />
             <Route path="/agents/submissions/:id" element={<AgentRoute><AgentSubmissionDetailPage /></AgentRoute>} />
