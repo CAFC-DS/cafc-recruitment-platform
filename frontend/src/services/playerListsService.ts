@@ -376,6 +376,31 @@ export const searchPlayers = async (query: string): Promise<any[]> => {
 };
 
 /**
+ * Paginated player search for infinite scroll. Returns a page of results plus
+ * whether more pages exist. Tolerates both the legacy plain-array response and
+ * the paginated { players, has_more } response.
+ */
+export const searchPlayersPaginated = async (
+  query: string,
+  limit: number,
+  offset: number
+): Promise<{ players: any[]; has_more: boolean }> => {
+  if (!query || query.trim().length < 2) {
+    return { players: [], has_more: false };
+  }
+  const response = await axiosInstance.get(`/players/search`, {
+    params: { query: query.trim(), limit, offset },
+  });
+  if (Array.isArray(response.data)) {
+    return { players: response.data, has_more: false };
+  }
+  return {
+    players: response.data?.players || [],
+    has_more: response.data?.has_more || false,
+  };
+};
+
+/**
  * Get valid reasons for stage changes
  */
 export const getStageChangeReasons = async (

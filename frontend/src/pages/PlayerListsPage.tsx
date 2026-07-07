@@ -10,7 +10,7 @@
  * - Optimized data fetching
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Container,
   Button,
@@ -51,7 +51,7 @@ import {
   addPlayerToList,
   bulkRemovePlayersFromList,
   bulkUpdatePlayerStages,
-  searchPlayers,
+  searchPlayersPaginated,
   updatePlayerStage,
   exportPlayersToCSV,
   getBatchPlayerListMemberships,
@@ -247,6 +247,13 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const [playerSearchQuery, setPlayerSearchQuery] = useState("");
   const [playerSearchResults, setPlayerSearchResults] = useState<PlayerSearchResult[]>([]);
   const [searchingPlayers, setSearchingPlayers] = useState(false);
+  // Infinite scroll pagination for the add-player search
+  const [playerSearchOffset, setPlayerSearchOffset] = useState(0);
+  const [hasMorePlayerResults, setHasMorePlayerResults] = useState(false);
+  const [loadingMorePlayers, setLoadingMorePlayers] = useState(false);
+  const currentPlayerSearchQueryRef = useRef<string>("");
+  const playerSearchObserverRef = useRef<IntersectionObserver | null>(null);
+  const PLAYER_SEARCH_PAGE_SIZE = 20;
   const [addingPlayer, setAddingPlayer] = useState(false);
 
   // Player notes and favorites
@@ -686,22 +693,75 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   };
 
   const handlePlayerSearch = async (query: string) => {
-    if (!query.trim()) {
+    const trimmed = query.trim();
+    if (!trimmed) {
       setPlayerSearchResults([]);
+      setHasMorePlayerResults(false);
+      setPlayerSearchOffset(0);
       return;
     }
 
+    currentPlayerSearchQueryRef.current = trimmed;
     try {
       setSearchingPlayers(true);
-      const results = await searchPlayers(query);
-      setPlayerSearchResults(results);
+      const { players, has_more } = await searchPlayersPaginated(
+        trimmed,
+        PLAYER_SEARCH_PAGE_SIZE,
+        0
+      );
+      // Ignore stale responses if the query changed during the request
+      if (currentPlayerSearchQueryRef.current !== trimmed) return;
+      setPlayerSearchResults(players);
+      setHasMorePlayerResults(has_more);
+      setPlayerSearchOffset(0);
     } catch (err) {
       console.error("Error searching players:", err);
       setPlayerSearchResults([]);
+      setHasMorePlayerResults(false);
     } finally {
       setSearchingPlayers(false);
     }
   };
+
+  // Load the next page of player search results (infinite scroll)
+  const loadMorePlayerResults = useCallback(async () => {
+    if (loadingMorePlayers || !hasMorePlayerResults) return;
+    const query = currentPlayerSearchQueryRef.current;
+    if (!query) return;
+
+    setLoadingMorePlayers(true);
+    const nextOffset = playerSearchOffset + PLAYER_SEARCH_PAGE_SIZE;
+    try {
+      const { players, has_more } = await searchPlayersPaginated(
+        query,
+        PLAYER_SEARCH_PAGE_SIZE,
+        nextOffset
+      );
+      if (currentPlayerSearchQueryRef.current !== query) return;
+      setPlayerSearchResults((prev) => [...prev, ...players]);
+      setHasMorePlayerResults(has_more);
+      setPlayerSearchOffset(nextOffset);
+    } catch (err) {
+      console.error("Error loading more players:", err);
+    } finally {
+      setLoadingMorePlayers(false);
+    }
+  }, [loadingMorePlayers, hasMorePlayerResults, playerSearchOffset]);
+
+  // Attach an IntersectionObserver to the last result so scrolling loads more
+  const lastPlayerResultRef = useCallback(
+    (node: HTMLElement | null) => {
+      if (loadingMorePlayers) return;
+      if (playerSearchObserverRef.current) playerSearchObserverRef.current.disconnect();
+      playerSearchObserverRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMorePlayerResults) {
+          loadMorePlayerResults();
+        }
+      });
+      if (node) playerSearchObserverRef.current.observe(node);
+    },
+    [loadingMorePlayers, hasMorePlayerResults, loadMorePlayerResults]
+  );
 
   const handleAddPlayer = async (player: PlayerSearchResult) => {
     // Only allow adding when exactly 1 list is selected
@@ -1820,29 +1880,41 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           )}
 
           {!searchingPlayers && !addingPlayer && playerSearchResults.length > 0 && (
-            <ListGroup>
-              {playerSearchResults.map((player) => (
-                <ListGroup.Item
-                  key={player.universal_id}
-                  action
-                  onClick={() => handleAddPlayer(player)}
-                  className="d-flex justify-content-between align-items-center"
-                  style={{ cursor: "pointer" }}
-                >
-                  <div>
-                    <strong>
-                      {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
-                    </strong>
-                    <div className="text-muted small">
-                      {player.position && `${player.position} • `}
-                      {player.squad_name || "Unknown Club"}
-                      {player.age && ` • Age ${player.age}`}
-                    </div>
-                  </div>
-                  <span style={{ color: colors.primary, fontSize: "0.9rem" }}>Add →</span>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
+            <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+              <ListGroup>
+                {playerSearchResults.map((player, index) => {
+                  const isLast = index === playerSearchResults.length - 1;
+                  return (
+                    <ListGroup.Item
+                      key={player.universal_id}
+                      ref={isLast ? (lastPlayerResultRef as any) : undefined}
+                      action
+                      onClick={() => handleAddPlayer(player)}
+                      className="d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div>
+                        <strong>
+                          {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
+                        </strong>
+                        <div className="text-muted small">
+                          {player.position && `${player.position} • `}
+                          {player.squad_name || "Unknown Club"}
+                          {player.age && ` • Age ${player.age}`}
+                        </div>
+                      </div>
+                      <span style={{ color: colors.primary, fontSize: "0.9rem" }}>Add →</span>
+                    </ListGroup.Item>
+                  );
+                })}
+                {loadingMorePlayers && (
+                  <ListGroup.Item className="d-flex justify-content-center align-items-center text-muted">
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Loading more...
+                  </ListGroup.Item>
+                )}
+              </ListGroup>
+            </div>
           )}
 
           {!searchingPlayers &&
