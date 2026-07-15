@@ -1,9 +1,9 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye, Flag, Goal, Laptop } from "lucide-react";
+import { UserRound, Eye, Goal, Laptop } from "lucide-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
-import { getFlagColor } from "../utils/colorUtils";
+import FlagChip from "../components/FlagChip";
 import "./StyleTilePage.css";
 
 /**
@@ -23,8 +23,9 @@ import "./StyleTilePage.css";
  * scouting-method icon (was a 🏟️/💻 emoji -- reproduced here with lucide's
  * Goal/Laptop). Flags carry no performance_score at all (per the data
  * model, PERFORMANCE_SCORE only exists on Player Assessment rows) -- the
- * Score column shows the flag itself, coloured by the report's sentiment
- * via the existing, unmodified getFlagColor, instead of a GradeChip.
+ * Score column shows a FlagChip (same pill as GradeChip, coloured via the
+ * existing, unmodified getFlagColor) instead of a GradeChip, matching the
+ * real app's colored-badge-with-flag-glyph treatment.
  */
 
 const shortlistPlayers = [
@@ -73,14 +74,7 @@ const ScoreCell: React.FC<{
   flagSentiment?: "positive" | "neutral" | "negative";
 }> = ({ type, score, isPotential, flagSentiment }) =>
   type === "Flag" ? (
-    <span title={`Flag: ${flagSentiment}`}>
-      <Flag
-        size={16}
-        color={getFlagColor(flagSentiment || "neutral")}
-        fill={getFlagColor(flagSentiment || "neutral")}
-        aria-label={`Flag: ${flagSentiment}`}
-      />
-    </span>
+    <FlagChip sentiment={flagSentiment || "neutral"} size="sm" />
   ) : (
     <GradeChip score={score as number} isPotential={isPotential} size="sm" />
   );
