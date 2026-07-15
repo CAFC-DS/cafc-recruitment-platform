@@ -1,6 +1,7 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye, Goal, Laptop } from "lucide-react";
+import { UserRound, Eye, Pencil, Trash2, ClipboardList, Laptop } from "lucide-react";
+import { IconBuildingStadium } from "@tabler/icons-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
 import FlagChip from "../components/FlagChip";
@@ -20,12 +21,14 @@ import "./StyleTilePage.css";
  *
  * The real Type column (getReportTypeBadge + getScoutingTypeBadge in
  * ScoutingPage.tsx) is icon-driven, not text: every row shows a live/video
- * scouting-method icon (was a 🏟️/💻 emoji -- reproduced here with lucide's
- * Goal/Laptop). Flags carry no performance_score at all (per the data
- * model, PERFORMANCE_SCORE only exists on Player Assessment rows) -- the
- * Score column shows a FlagChip (same pill as GradeChip, coloured via the
- * existing, unmodified getFlagColor) instead of a GradeChip, matching the
- * real app's colored-badge-with-flag-glyph treatment.
+ * scouting-method icon (was a 🏟️/💻 emoji). Lucide has no stadium glyph, so
+ * Live uses Tabler's IconBuildingStadium (a second, small icon set used only
+ * for this one glyph) and Video uses lucide's Laptop. Flags carry no
+ * performance_score at all (per the data model, PERFORMANCE_SCORE only
+ * exists on Player Assessment rows) -- the Score column shows a FlagChip
+ * (same pill as GradeChip, coloured via the existing, unmodified
+ * getFlagColor) instead of a GradeChip. Actions mirrors the real 4-button
+ * group (view/edit/delete/add-to-list, was 👁️/✏️/🗑️/📋) with lucide icons.
  */
 
 const shortlistPlayers = [
@@ -60,7 +63,7 @@ const mockReports: Array<{
 const TypeCell: React.FC<{ scoutingType: "Live" | "Video" }> = ({ scoutingType }) => (
   <div className="style-tile-type-icons">
     {scoutingType === "Live" ? (
-      <Goal size={16} aria-label="Live" />
+      <IconBuildingStadium size={18} aria-label="Live" stroke={1.75} />
     ) : (
       <Laptop size={16} aria-label="Video" />
     )}
@@ -155,9 +158,20 @@ const StyleTilePage: React.FC = () => {
                     />
                   </td>
                   <td>
-                    <Button size="sm" variant="outline-secondary" title="View report">
-                      <Eye size={14} />
-                    </Button>
+                    <div className="style-tile-actions">
+                      <Button size="sm" variant="outline-secondary" title="View Report">
+                        <Eye size={14} />
+                      </Button>
+                      <Button size="sm" variant="outline-secondary" title="Edit">
+                        <Pencil size={14} />
+                      </Button>
+                      <Button size="sm" variant="outline-secondary" title="Delete">
+                        <Trash2 size={14} />
+                      </Button>
+                      <Button size="sm" variant="outline-secondary" title="Add to List">
+                        <ClipboardList size={14} />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
