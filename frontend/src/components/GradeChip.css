@@ -10,12 +10,6 @@
   white-space: nowrap;
 }
 
-.grade-chip-denominator {
-  opacity: 0.75;
-  font-weight: 500;
-  margin-left: 0.05em;
-}
-
 .grade-chip-sm {
   font-size: 0.72rem;
   padding: 0.2rem 0.5rem;

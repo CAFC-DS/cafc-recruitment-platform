@@ -8,15 +8,18 @@ interface GradeChipProps {
    * typography/spacing, it never introduces new grade colors. */
   score: number;
   size?: "sm" | "md" | "lg";
-  /** Render "7/10" instead of just "7". Defaults to true. */
-  showDenominator?: boolean;
+  /** A report carries either a performance score or a potential score,
+   * never both -- matches existing convention (colorUtils.ts consumers):
+   * potential scores are marked with a trailing "*" and a tooltip, plain
+   * scores get neither. */
+  isPotential?: boolean;
   className?: string;
 }
 
 export const GradeChip: React.FC<GradeChipProps> = ({
   score,
   size = "md",
-  showDenominator = true,
+  isPotential = false,
   className = "",
 }) => {
   const backgroundColor = getPerformanceScoreColor(score);
@@ -27,10 +30,10 @@ export const GradeChip: React.FC<GradeChipProps> = ({
     <span
       className={`grade-chip grade-chip-${size} ${isStandout ? "grade-chip-standout" : ""} ${className}`}
       style={{ backgroundColor, color }}
-      title={`Performance score: ${score}/10`}
+      title={isPotential ? "Potential Score" : undefined}
     >
       {score}
-      {showDenominator && <span className="grade-chip-denominator">/10</span>}
+      {isPotential && "*"}
     </span>
   );
 };
