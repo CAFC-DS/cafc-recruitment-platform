@@ -1,9 +1,12 @@
 import React, { useState } from "react";
-import { Container, Form, Button, Card, Alert, Spinner } from "react-bootstrap";
+import { Form, Button, Alert, Spinner } from "react-bootstrap";
+import { ArrowRight } from "lucide-react";
 import axiosInstance from "../axiosInstance";
 import axios from "axios"; // Import axios for isAxiosError
 import { useNavigate } from "react-router-dom";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
+import logo from "../assets/logo.png";
+import "./LoginPage.css";
 
 interface LoginPageProps {
   onLoginSuccess: (token: string) => void;
@@ -49,14 +52,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <Container
-      className="d-flex justify-content-center align-items-center"
-      style={{ minHeight: "100vh" }}
-    >
-      <Card style={{ width: "25rem" }}>
-        <Card.Body>
-          <Card.Title className="text-center mb-4">Login</Card.Title>
+    <div className="login-shell">
+      <div className="login-brand-panel">
+        <img src={logo} alt="" className="login-brand-logo" />
+        <h1 className="login-brand-heading">Scouting, organised.</h1>
+        <p className="login-brand-copy">
+          Reports, grades, and recommendations for every player on the radar
+          &mdash; in one place for the whole recruitment team.
+        </p>
+      </div>
+
+      <div className="login-form-panel">
+        <div className="login-form-card">
+          <div className="login-form-eyebrow">Recruitment platform</div>
+          <h2 className="login-form-title">Sign in</h2>
+
           {error && <Alert variant="danger">{error}</Alert>}
+
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3" controlId="username">
               <Form.Label>Username</Form.Label>
@@ -83,21 +95,24 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <Button
               variant="primary"
               type="submit"
-              className="w-100"
+              className="w-100 d-flex align-items-center justify-content-center gap-2"
               disabled={loading}
             >
               {loading ? (
                 <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Logging in...
+                  <Spinner animation="border" size="sm" />
+                  Signing in&hellip;
                 </>
               ) : (
-                "Login"
+                <>
+                  Sign in
+                  <ArrowRight size={16} />
+                </>
               )}
             </Button>
           </Form>
 
-          <div className="text-center mt-3">
+          <div className="login-form-footer">
             <Button
               variant="link"
               className="p-0"
@@ -106,14 +121,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               Forgot your password?
             </Button>
           </div>
-        </Card.Body>
-      </Card>
+        </div>
+      </div>
 
       <ForgotPasswordModal
         show={showForgotPassword}
         onHide={() => setShowForgotPassword(false)}
       />
-    </Container>
+    </div>
   );
 };
 

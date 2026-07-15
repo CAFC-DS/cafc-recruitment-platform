@@ -1,0 +1,147 @@
+.style-tile-page {
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  font-family: var(--font-body);
+}
+
+.style-tile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.style-tile-header .btn {
+  color: var(--color-text);
+}
+
+.style-tile-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.style-tile-title {
+  font-size: 1.9rem;
+  margin: 0;
+}
+
+.style-tile-section {
+  margin-bottom: 2.5rem;
+  max-width: 42rem;
+}
+
+.style-tile-section-title {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 0.9rem;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  padding: 1.1rem 1.3rem;
+}
+
+.player-card-avatar {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+.player-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-card-name {
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+
+.player-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
+}
+
+.player-card-scores {
+  display: flex;
+  gap: 1.4rem;
+}
+
+.player-card-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.player-card-score-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.style-tile-table-wrap {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.style-tile-table {
+  margin-bottom: 0;
+  color: var(--color-text);
+}
+
+.style-tile-table thead th {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.6rem 1rem;
+}
+
+.style-tile-table tbody td {
+  padding: 0.6rem 1rem;
+  font-size: 0.88rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.style-tile-table tbody tr:last-child td {
+  border-bottom: none;
+}

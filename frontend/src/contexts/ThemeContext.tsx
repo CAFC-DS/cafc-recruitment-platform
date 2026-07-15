@@ -5,10 +5,18 @@ interface ThemeColors {
   primary: string;
   primaryDark: string;
 
-  // Status colors (keep vivid for performance indicators)
+  // Status colors (keep vivid for performance indicators -- DO NOT change:
+  // these feed --bs-success/--bs-warning/--bs-danger, consumed by Bootstrap
+  // variant props across grade/flag/recommendation/stage-adjacent UI)
   success: string;
   warning: string;
   danger: string;
+
+  // Generic UI accents (design-system refresh) -- for non-grade,
+  // non-status UI only (toasts, form validation, decorative badges).
+  // Never wired to Bootstrap's success/warning/danger variables.
+  pitch: string;
+  amber: string;
 
   // Neutral colors (professional, minimal)
   background: string;
@@ -28,39 +36,45 @@ interface Theme {
 }
 
 const lightTheme: ThemeColors = {
-  primary: "#b91c1c", // Professional red from screenshots
+  primary: "#b91c1c", // Professional red from screenshots -- unchanged, preserve brand recognition
   primaryDark: "#991b1b",
 
-  success: "#16a34a", // Keep vivid for performance scores
+  success: "#16a34a", // Keep vivid for performance scores -- frozen, do not change
   warning: "#d97706",
   danger: "#dc2626",
 
-  background: "#f8f9fa", // Light gray background
-  surface: "#ffffff",
-  border: "#e5e7eb",
-  text: "#374151",
-  textMuted: "#6b7280",
+  pitch: "#1E7A44", // Muted grass green -- generic UI success/positive only
+  amber: "#B45309", // Generic UI warning/neutral only
 
-  headerBg: "#000000", // Black navbar
-  headerText: "#ffffff",
+  background: "#F6F7F8", // Cool off-white -- deliberately neither Bootstrap grey nor cream
+  surface: "#ffffff",
+  border: "#DDE1E6",
+  text: "#1C1F24",
+  textMuted: "#5B6169", // Cool slate for secondary text
+
+  headerBg: "#181A1F", // Graphite -- softer than pure black, still reads as "black"
+  headerText: "#F6F7F8",
 };
 
 const darkTheme: ThemeColors = {
-  primary: "#ef4444", // Brighter red for dark mode
+  primary: "#ef4444", // Brighter red for dark mode -- unchanged, preserve brand recognition
   primaryDark: "#dc2626",
 
-  success: "#10b981",
+  success: "#10b981", // Frozen, do not change
   warning: "#f59e0b",
   danger: "#ef4444",
 
-  background: "#111827", // Dark but not too dark
-  surface: "#374151", // Much lighter surface for better visibility
-  border: "#6b7280", // More visible borders
-  text: "#f9fafb", // High contrast white text
-  textMuted: "#d1d5db", // Better visibility for muted text
+  pitch: "#22A159", // Brighter than light mode's pitch for dark-mode legibility
+  amber: "#D97B1D",
 
-  headerBg: "#dc2626", // Darker red for dark mode
-  headerText: "#f9fafb",
+  background: "#14161B",
+  surface: "#1D2027", // Proper dark elevated surface (previous #374151 read too light)
+  border: "#3A3F47",
+  text: "#F3F4F6",
+  textMuted: "#9AA1AB",
+
+  headerBg: "#0D0F13", // Deeper than dark-mode background so the brand panel still reads distinct
+  headerText: "#F3F4F6",
 };
 
 interface ThemeContextType {

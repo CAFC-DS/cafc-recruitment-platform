@@ -28,8 +28,7 @@
 
 /* Professional body styling */
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   background-color: var(--color-background, #f8f9fa);
   color: var(--color-text, #374151);
   line-height: 1.5;
