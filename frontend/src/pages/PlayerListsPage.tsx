@@ -36,14 +36,7 @@ import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSe
 import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
 import StageChangeReasonModal from "../components/PlayerLists/StageChangeReasonModal";
 import StageHistoryModal from "../components/PlayerLists/StageHistoryModal";
-import {
-  getPlayerNotes,
-  setPlayerNotes,
-  isPlayerFavorite,
-  togglePlayerFavorite,
-  isPlayerDecision,
-  togglePlayerDecision,
-} from "../utils/playerListPreferences";
+import { getPlayerNotes, setPlayerNotes } from "../utils/playerListPreferences";
 import {
   createPlayerList,
   updatePlayerList,
@@ -58,6 +51,9 @@ import {
   getStageChangeReasons,
   getPlayerStageHistory,
   getCompetitionOptions,
+  getPlayerListFlags,
+  setPlayerFavoriteFlag,
+  setPlayerDecisionFlag,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -819,8 +815,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   };
 
   // Notes and favorites handlers
-  const userId = currentUser?.id?.toString() || "0";
-
   const handleOpenNotesModal = (player: any) => {
     setSelectedPlayerForNotes({
       universalId: player.universal_id,
@@ -834,61 +828,78 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     setShowNotesModal(false);
   };
 
-  const handleToggleFavorite = (universalId: string) => {
-    const newFavStatus = togglePlayerFavorite(userId, universalId);
+  // Favorites/decisions are shared across every user with list access (stored
+  // server-side), not per-account. Update optimistically and roll back on error.
+  const handleToggleFavorite = async (universalId: string) => {
+    const wasFavorite = playerFavorites.has(universalId);
     setPlayerFavorites((prev) => {
       const newSet = new Set(prev);
-      if (newFavStatus) {
-        newSet.add(universalId);
-      } else {
+      if (wasFavorite) {
         newSet.delete(universalId);
+      } else {
+        newSet.add(universalId);
       }
       return newSet;
     });
+
+    try {
+      await setPlayerFavoriteFlag(universalId, !wasFavorite);
+    } catch (err) {
+      console.error("Error updating favorite:", err);
+      setPlayerFavorites((prev) => {
+        const newSet = new Set(prev);
+        if (wasFavorite) {
+          newSet.add(universalId);
+        } else {
+          newSet.delete(universalId);
+        }
+        return newSet;
+      });
+    }
   };
 
-  const handleToggleDecision = (universalId: string) => {
-    const newDecisionStatus = togglePlayerDecision(userId, universalId);
+  const handleToggleDecision = async (universalId: string) => {
+    const wasDecision = playerDecisions.has(universalId);
     setPlayerDecisions((prev) => {
       const newSet = new Set(prev);
-      if (newDecisionStatus) {
-        newSet.add(universalId);
-      } else {
+      if (wasDecision) {
         newSet.delete(universalId);
+      } else {
+        newSet.add(universalId);
       }
       return newSet;
     });
+
+    try {
+      await setPlayerDecisionFlag(universalId, !wasDecision);
+    } catch (err) {
+      console.error("Error updating decision:", err);
+      setPlayerDecisions((prev) => {
+        const newSet = new Set(prev);
+        if (wasDecision) {
+          newSet.add(universalId);
+        } else {
+          newSet.delete(universalId);
+        }
+        return newSet;
+      });
+    }
   };
 
-  // Load user-specific favorites on mount or when lists change
+  // Load shared favorites/decisions (visible to everyone with list access)
   useEffect(() => {
-    if (!userId || lists.length === 0) return;
-
-    const favs = new Set<string>();
-    lists.forEach((list) => {
-      list.players.forEach((player) => {
-        if (isPlayerFavorite(userId, player.universal_id)) {
-          favs.add(player.universal_id);
-        }
-      });
-    });
-    setPlayerFavorites(favs);
-  }, [lists, userId]);
-
-  // Load user-specific decisions on mount or when lists change
-  useEffect(() => {
-    if (!userId || lists.length === 0) return;
-
-    const decisions = new Set<string>();
-    lists.forEach((list) => {
-      list.players.forEach((player) => {
-        if (isPlayerDecision(userId, player.universal_id)) {
-          decisions.add(player.universal_id);
-        }
-      });
-    });
-    setPlayerDecisions(decisions);
-  }, [lists, userId]);
+    let cancelled = false;
+    getPlayerListFlags()
+      .then(({ favorites, decisions }) => {
+        if (cancelled) return;
+        setPlayerFavorites(new Set(favorites));
+        setPlayerDecisions(new Set(decisions));
+      })
+      .catch((err) => console.error("Error loading player list flags:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleStageChange = (itemId: number, newStage: string, player?: any) => {
     // Stage 1 and Archived require reason modal

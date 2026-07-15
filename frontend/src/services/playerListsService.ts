@@ -86,7 +86,49 @@ export interface BulkStageUpdateResponse {
   }>;
 }
 
+export interface PlayerListFlags {
+  favorites: string[];
+  decisions: string[];
+}
+
 // ========== API Methods ==========
+
+/**
+ * Get shared favorite/decision markers for players on internal lists.
+ * These are shared across every user with list access, not per-account.
+ */
+export const getPlayerListFlags = async (): Promise<PlayerListFlags> => {
+  const response = await axiosInstance.get("/player-lists/flags");
+  return response.data;
+};
+
+/**
+ * Set the shared favorite marker for a player (visible to everyone with list access).
+ */
+export const setPlayerFavoriteFlag = async (
+  universalId: string,
+  isFavorite: boolean
+): Promise<boolean> => {
+  const response = await axiosInstance.put(
+    `/player-lists/flags/${encodeURIComponent(universalId)}`,
+    { is_favorite: isFavorite }
+  );
+  return response.data.is_favorite;
+};
+
+/**
+ * Set the shared decision marker for a player (visible to everyone with list access).
+ */
+export const setPlayerDecisionFlag = async (
+  universalId: string,
+  isDecision: boolean
+): Promise<boolean> => {
+  const response = await axiosInstance.put(
+    `/player-lists/flags/${encodeURIComponent(universalId)}`,
+    { is_decision: isDecision }
+  );
+  return response.data.is_decision;
+};
 
 /**
  * Get all player lists (summary only)

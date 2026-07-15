@@ -15137,6 +15137,12 @@ class BulkStageUpdateRequest(BaseModel):
     updates: List[BulkStageUpdateItem]
 
 
+class PlayerListFlagUpdate(BaseModel):
+    # Only the fields provided are updated; omit a field to leave it unchanged.
+    is_favorite: Optional[bool] = None
+    is_decision: Optional[bool] = None
+
+
 # Valid list categories. 'first_team' is the original (and default) shortlist;
 # the two emerging-talent shortlists are independent sets of the same position
 # lists, toggled between U21 and U18 in the UI.
@@ -15817,6 +15823,129 @@ async def get_all_lists_with_details(
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching lists with details: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/player-lists/flags")
+async def get_player_list_flags(current_user: User = Depends(get_current_user)):
+    """Get shared favorite/decision markers for players on internal lists.
+
+    These are shared across every user with list access (not per-account), so
+    everyone sees the same favorites/decisions. Requires the PLAYER_LIST_FLAGS
+    table (see migrations/create_player_list_flags_table.sql).
+    """
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and senior managers can view lists"
+        )
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT UNIVERSAL_ID, IS_FAVORITE, IS_DECISION
+            FROM player_list_flags
+            WHERE IS_FAVORITE = TRUE OR IS_DECISION = TRUE
+            """
+        )
+        favorites = []
+        decisions = []
+        for universal_id, is_favorite, is_decision in cursor.fetchall():
+            if is_favorite:
+                favorites.append(universal_id)
+            if is_decision:
+                decisions.append(universal_id)
+        return {"favorites": favorites, "decisions": decisions}
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching list flags: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.put("/player-lists/flags/{universal_id}")
+async def update_player_list_flag(
+    universal_id: str,
+    payload: PlayerListFlagUpdate,
+    current_user: User = Depends(get_current_user),
+):
+    """Set the shared favorite/decision marker for a player.
+
+    Shared across every user with list access — a favorite/decision set by one
+    admin/senior manager is visible to all of them, unlike the previous
+    per-account (localStorage) behaviour.
+    """
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403, detail="Only admins and senior managers can update lists"
+        )
+
+    if payload.is_favorite is None and payload.is_decision is None:
+        raise HTTPException(status_code=400, detail="No flag provided to update")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        # Ensure a row exists for this player (no-op if already present)
+        cursor.execute(
+            """
+            MERGE INTO player_list_flags target
+            USING (SELECT %s AS UNIVERSAL_ID) source
+            ON target.UNIVERSAL_ID = source.UNIVERSAL_ID
+            WHEN NOT MATCHED THEN INSERT (UNIVERSAL_ID, IS_FAVORITE, IS_DECISION)
+            VALUES (source.UNIVERSAL_ID, FALSE, FALSE)
+            """,
+            (universal_id,),
+        )
+
+        set_clauses = ["UPDATED_AT = CURRENT_TIMESTAMP"]
+        params: List[Any] = []
+        if payload.is_favorite is not None:
+            set_clauses.extend(["IS_FAVORITE = %s", "FAVORITED_BY = %s", "FAVORITED_AT = %s"])
+            params.extend([
+                payload.is_favorite,
+                current_user.id if payload.is_favorite else None,
+                datetime.now() if payload.is_favorite else None,
+            ])
+        if payload.is_decision is not None:
+            set_clauses.extend(["IS_DECISION = %s", "DECISION_BY = %s", "DECISION_AT = %s"])
+            params.extend([
+                payload.is_decision,
+                current_user.id if payload.is_decision else None,
+                datetime.now() if payload.is_decision else None,
+            ])
+
+        params.append(universal_id)
+        cursor.execute(
+            f"UPDATE player_list_flags SET {', '.join(set_clauses)} WHERE UNIVERSAL_ID = %s",
+            params,
+        )
+        conn.commit()
+
+        cursor.execute(
+            "SELECT IS_FAVORITE, IS_DECISION FROM player_list_flags WHERE UNIVERSAL_ID = %s",
+            (universal_id,),
+        )
+        row = cursor.fetchone()
+        return {
+            "universal_id": universal_id,
+            "is_favorite": bool(row[0]) if row else False,
+            "is_decision": bool(row[1]) if row else False,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error updating list flag: {e}")
     finally:
         if conn:
             conn.close()
