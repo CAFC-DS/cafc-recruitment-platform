@@ -33,7 +33,7 @@ export const GradeChip: React.FC<GradeChipProps> = ({
       title={isPotential ? "Potential Score" : undefined}
     >
       {score}
-      {isPotential && "*"}
+      {isPotential && <sup className="grade-chip-potential-mark">*</sup>}
     </span>
   );
 };

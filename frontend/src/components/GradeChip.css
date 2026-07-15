@@ -25,6 +25,12 @@
   padding: 0.4rem 0.85rem;
 }
 
+.grade-chip-potential-mark {
+  font-size: 0.75em;
+  line-height: 0;
+  margin-left: 0.05em;
+}
+
 /* Silver (9) / gold (10) keep their existing shine treatment -- structural
    (border/shadow), not a color change. */
 .grade-chip-standout {

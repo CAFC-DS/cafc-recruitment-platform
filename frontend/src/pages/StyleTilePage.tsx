@@ -18,15 +18,18 @@ const players = [
   { name: "Tunde Okonkwo", position: "Right-winger", age: 20, club: "Barnet", score: 8, isPotential: true, flag: "neutral" },
 ];
 
+// Dates formatted with toLocaleDateString("en-GB") -- matches the existing
+// convention used throughout the app (PlayerReportModal.tsx, IntelReportModal.tsx,
+// etc.), giving dd/mm/yyyy.
 const mockReports = [
-  { player: "J. Whitfield", position: "CB", club: "Leyton Orient", scout: "M. Adeyemi", score: 8, isPotential: false, date: "12 Jul" },
-  { player: "T. Okonkwo", position: "RW", club: "Barnet", scout: "S. Bishop", score: 8, isPotential: true, date: "10 Jul" },
-  { player: "A. Marchetti", position: "GK", club: "Notts County", scout: "M. Adeyemi", score: 9, isPotential: false, date: "08 Jul" },
-  { player: "D. Larsson", position: "CM", club: "Halifax Town", scout: "R. Fenwick", score: 3, isPotential: false, date: "05 Jul" },
-  { player: "K. Osei", position: "LB", club: "Boreham Wood", scout: "S. Bishop", score: 10, isPotential: true, date: "02 Jul" },
-  { player: "R. Coetzee", position: "CB", club: "Dagenham & Red.", scout: "R. Fenwick", score: 5, isPotential: false, date: "30 Jun" },
-  { player: "M. Delacroix", position: "ST", club: "Ebbsfleet Utd", scout: "M. Adeyemi", score: 7, isPotential: false, date: "27 Jun" },
-  { player: "H. Ibrahimovic", position: "CM", club: "Chelmsford City", scout: "S. Bishop", score: 4, isPotential: false, date: "24 Jun" },
+  { player: "J. Whitfield", position: "CB", club: "Leyton Orient", scout: "M. Adeyemi", score: 8, isPotential: false, date: new Date("2026-07-12") },
+  { player: "T. Okonkwo", position: "RW", club: "Barnet", scout: "S. Bishop", score: 8, isPotential: true, date: new Date("2026-07-10") },
+  { player: "A. Marchetti", position: "GK", club: "Notts County", scout: "M. Adeyemi", score: 9, isPotential: false, date: new Date("2026-07-08") },
+  { player: "D. Larsson", position: "CM", club: "Halifax Town", scout: "R. Fenwick", score: 3, isPotential: false, date: new Date("2026-07-05") },
+  { player: "K. Osei", position: "LB", club: "Boreham Wood", scout: "S. Bishop", score: 10, isPotential: true, date: new Date("2026-07-02") },
+  { player: "R. Coetzee", position: "CB", club: "Dagenham & Red.", scout: "R. Fenwick", score: 5, isPotential: false, date: new Date("2026-06-30") },
+  { player: "M. Delacroix", position: "ST", club: "Ebbsfleet Utd", scout: "M. Adeyemi", score: 7, isPotential: false, date: new Date("2026-06-27") },
+  { player: "H. Ibrahimovic", position: "CM", club: "Chelmsford City", scout: "S. Bishop", score: 4, isPotential: false, date: new Date("2026-06-24") },
 ];
 
 const StyleTilePage: React.FC = () => {
@@ -98,7 +101,7 @@ const StyleTilePage: React.FC = () => {
                   <td>
                     <GradeChip score={r.score} isPotential={r.isPotential} size="sm" />
                   </td>
-                  <td className="font-mono-tabular">{r.date}</td>
+                  <td className="font-mono-tabular">{r.date.toLocaleDateString("en-GB")}</td>
                 </tr>
               ))}
             </tbody>
