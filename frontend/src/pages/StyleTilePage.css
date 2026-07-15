@@ -156,3 +156,10 @@
 .style-tile-table tbody tr:last-child td {
   border-bottom: none;
 }
+
+.style-tile-type-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+}

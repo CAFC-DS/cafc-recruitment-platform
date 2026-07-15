@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye } from "lucide-react";
+import { UserRound, Eye, Flag, MapPin, Video } from "lucide-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
 import "./StyleTilePage.css";
@@ -16,6 +16,12 @@ import "./StyleTilePage.css";
  * (player_name, squad_name, age, report_count, avg_performance_score.toFixed(1)),
  * and the report table mirrors pages/ScoutingPage.tsx's <Table> (Report Date,
  * Player, Age, Position, Fixture Date, Fixture, Scout, Type, Score, Actions).
+ *
+ * The real Type column (getReportTypeBadge + getScoutingTypeBadge in
+ * ScoutingPage.tsx) is icon-driven, not text: "Player Assessment" renders no
+ * report-type badge at all, "Flag" renders a flag icon (was a raw emoji),
+ * and every row separately shows a live/video scouting-method icon (was
+ * 🏟️/💻 emoji). Reproduced here with lucide icons instead of the emoji.
  */
 
 const shortlistPlayers = [
@@ -27,12 +33,23 @@ const shortlistPlayers = [
 // convention used throughout the app (PlayerReportModal.tsx, IntelReportModal.tsx,
 // etc.), giving dd/mm/yyyy.
 const mockReports = [
-  { reportDate: new Date("2026-07-12"), player: "J. Whitfield", age: 22, position: "CB", fixtureDate: new Date("2026-07-10"), fixture: "Leyton Orient vs Barnet", scout: "M. Adeyemi", type: "Player Assessment", score: 8, isPotential: false },
-  { reportDate: new Date("2026-07-10"), player: "T. Okonkwo", age: 20, position: "RW", fixtureDate: new Date("2026-07-09"), fixture: "Barnet vs Notts County", scout: "S. Bishop", type: "Player Assessment", score: 8, isPotential: true },
-  { reportDate: new Date("2026-07-08"), player: "A. Marchetti", age: 24, position: "GK", fixtureDate: new Date("2026-07-06"), fixture: "Notts County vs Halifax Town", scout: "M. Adeyemi", type: "Player Assessment", score: 9, isPotential: false },
-  { reportDate: new Date("2026-07-05"), player: "D. Larsson", age: 19, position: "CM", fixtureDate: new Date("2026-07-04"), fixture: "Halifax Town vs Boreham Wood", scout: "R. Fenwick", type: "Flag", score: 3, isPotential: false },
-  { reportDate: new Date("2026-07-02"), player: "K. Osei", age: 18, position: "LB", fixtureDate: new Date("2026-06-30"), fixture: "Boreham Wood vs Dagenham & Red.", scout: "S. Bishop", type: "Player Assessment", score: 10, isPotential: true },
+  { reportDate: new Date("2026-07-12"), player: "J. Whitfield", age: 22, position: "CB", fixtureDate: new Date("2026-07-10"), fixture: "Leyton Orient vs Barnet", scout: "M. Adeyemi", type: "Player Assessment", scoutingType: "Live", score: 8, isPotential: false },
+  { reportDate: new Date("2026-07-10"), player: "T. Okonkwo", age: 20, position: "RW", fixtureDate: new Date("2026-07-09"), fixture: "Barnet vs Notts County", scout: "S. Bishop", type: "Player Assessment", scoutingType: "Video", score: 8, isPotential: true },
+  { reportDate: new Date("2026-07-08"), player: "A. Marchetti", age: 24, position: "GK", fixtureDate: new Date("2026-07-06"), fixture: "Notts County vs Halifax Town", scout: "M. Adeyemi", type: "Player Assessment", scoutingType: "Live", score: 9, isPotential: false },
+  { reportDate: new Date("2026-07-05"), player: "D. Larsson", age: 19, position: "CM", fixtureDate: new Date("2026-07-04"), fixture: "Halifax Town vs Boreham Wood", scout: "R. Fenwick", type: "Flag", scoutingType: "Live", score: 3, isPotential: false },
+  { reportDate: new Date("2026-07-02"), player: "K. Osei", age: 18, position: "LB", fixtureDate: new Date("2026-06-30"), fixture: "Boreham Wood vs Dagenham & Red.", scout: "S. Bishop", type: "Player Assessment", scoutingType: "Video", score: 10, isPotential: true },
 ];
+
+const TypeCell: React.FC<{ type: string; scoutingType: string }> = ({ type, scoutingType }) => (
+  <div className="style-tile-type-icons">
+    {type === "Flag" && <Flag size={15} aria-label="Flag" />}
+    {scoutingType === "Live" ? (
+      <MapPin size={15} aria-label="Live" />
+    ) : (
+      <Video size={15} aria-label="Video" />
+    )}
+  </div>
+);
 
 const StyleTilePage: React.FC = () => {
   return (
@@ -98,7 +115,9 @@ const StyleTilePage: React.FC = () => {
                   <td className="font-mono-tabular">{r.fixtureDate.toLocaleDateString("en-GB")}</td>
                   <td>{r.fixture}</td>
                   <td>{r.scout}</td>
-                  <td>{r.type}</td>
+                  <td>
+                    <TypeCell type={r.type} scoutingType={r.scoutingType} />
+                  </td>
                   <td>
                     <GradeChip score={r.score} isPotential={r.isPotential} size="sm" />
                   </td>
