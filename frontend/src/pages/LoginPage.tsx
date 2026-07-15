@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Form, Button, Alert, Spinner } from "react-bootstrap";
-import { ArrowRight } from "lucide-react";
 import axiosInstance from "../axiosInstance";
 import axios from "axios"; // Import axios for isAxiosError
 import { useNavigate } from "react-router-dom";
@@ -53,74 +52,69 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   return (
     <div className="login-shell">
-      <div className="login-brand-panel">
-        <img src={logo} alt="" className="login-brand-logo" />
-        <h1 className="login-brand-heading">Scouting, organised.</h1>
-        <p className="login-brand-copy">
-          Reports, grades, and recommendations for every player on the radar
-          &mdash; in one place for the whole recruitment team.
-        </p>
-      </div>
+      <div className="login-watermark" aria-hidden="true" />
 
-      <div className="login-form-panel">
-        <div className="login-form-card">
-          <div className="login-form-eyebrow">Recruitment platform</div>
-          <h2 className="login-form-title">Sign in</h2>
-
-          {error && <Alert variant="danger">{error}</Alert>}
-
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-3" controlId="username">
-              <Form.Label>Username</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3" controlId="password">
-              <Form.Label>Password</Form.Label>
-              <Form.Control
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </Form.Group>
-
-            <Button
-              variant="primary"
-              type="submit"
-              className="w-100 d-flex align-items-center justify-content-center gap-2"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Spinner animation="border" size="sm" />
-                  Signing in&hellip;
-                </>
-              ) : (
-                <>
-                  Sign in
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </Button>
-          </Form>
-
-          <div className="login-form-footer">
-            <Button
-              variant="link"
-              className="p-0"
-              onClick={() => setShowForgotPassword(true)}
-            >
-              Forgot your password?
-            </Button>
+      <div className="login-card">
+        <div className="login-card-header">
+          <img src={logo} alt="" className="login-crest" />
+          <div>
+            <div className="login-masthead">Charlton Athletic</div>
+            <h1 className="login-heading">Recruitment &amp; Scouting</h1>
           </div>
+        </div>
+
+        <hr className="login-divider" />
+
+        {error && <Alert variant="danger">{error}</Alert>}
+
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3" controlId="username">
+            <Form.Label>Username</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="Enter username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3" controlId="password">
+            <Form.Label>Password</Form.Label>
+            <Form.Control
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </Form.Group>
+
+          <Button
+            variant="primary"
+            type="submit"
+            className="w-100"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Signing in&hellip;
+              </>
+            ) : (
+              "Sign in"
+            )}
+          </Button>
+        </Form>
+
+        <div className="login-form-footer">
+          <Button
+            variant="link"
+            className="p-0"
+            onClick={() => setShowForgotPassword(true)}
+          >
+            Forgot your password?
+          </Button>
         </div>
       </div>
 
