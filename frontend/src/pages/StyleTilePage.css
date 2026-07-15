@@ -91,19 +91,8 @@
 }
 
 .player-card-name {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
   font-weight: 600;
   font-size: 1rem;
-}
-
-.player-card-flag {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .player-card-meta {

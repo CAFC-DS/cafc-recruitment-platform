@@ -13,6 +13,10 @@ interface GradeChipProps {
    * potential scores are marked with a trailing "*" and a tooltip, plain
    * scores get neither. */
   isPotential?: boolean;
+  /** Player-level average scores (e.g. Kanban cards) render to 1 decimal
+   * place (matches `avg_performance_score.toFixed(1)`); individual report
+   * scores are whole numbers. Defaults to 0. */
+  decimals?: number;
   className?: string;
 }
 
@@ -20,6 +24,7 @@ export const GradeChip: React.FC<GradeChipProps> = ({
   score,
   size = "md",
   isPotential = false,
+  decimals = 0,
   className = "",
 }) => {
   const backgroundColor = getPerformanceScoreColor(score);
@@ -32,7 +37,7 @@ export const GradeChip: React.FC<GradeChipProps> = ({
       style={{ backgroundColor, color }}
       title={isPotential ? "Potential Score" : undefined}
     >
-      {score}
+      {score.toFixed(decimals)}
       {isPotential && <sup className="grade-chip-potential-mark">*</sup>}
     </span>
   );

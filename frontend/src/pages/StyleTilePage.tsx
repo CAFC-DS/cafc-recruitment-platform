@@ -1,9 +1,8 @@
 import React from "react";
-import { Table } from "react-bootstrap";
-import { UserRound } from "lucide-react";
+import { Table, Button } from "react-bootstrap";
+import { UserRound, Eye } from "lucide-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
-import { getFlagColor } from "../utils/colorUtils";
 import "./StyleTilePage.css";
 
 /**
@@ -11,25 +10,28 @@ import "./StyleTilePage.css";
  * production nav -- exists purely so the new tokens/fonts/GradeChip can be
  * reviewed against real layouts before Phase 1 fans them out. Static mock
  * data only, no backend calls.
+ *
+ * Field shapes below are modelled on the real components they stand in for,
+ * not invented: the shortlist card mirrors components/Kanban/PlayerKanbanCard.tsx
+ * (player_name, squad_name, age, report_count, avg_performance_score.toFixed(1)),
+ * and the report table mirrors pages/ScoutingPage.tsx's <Table> (Report Date,
+ * Player, Age, Position, Fixture Date, Fixture, Scout, Type, Score, Actions).
  */
 
-const players = [
-  { name: "Jordan Whitfield", position: "Centre-back", age: 22, club: "Leyton Orient", score: 8, isPotential: false, flag: "positive" },
-  { name: "Tunde Okonkwo", position: "Right-winger", age: 20, club: "Barnet", score: 8, isPotential: true, flag: "neutral" },
+const shortlistPlayers = [
+  { name: "Jordan Whitfield", squadName: "Leyton Orient", age: 22, reportCount: 5, avgScore: 7.6 },
+  { name: "Tunde Okonkwo", squadName: "Barnet", age: 20, reportCount: 3, avgScore: 6.3 },
 ];
 
 // Dates formatted with toLocaleDateString("en-GB") -- matches the existing
 // convention used throughout the app (PlayerReportModal.tsx, IntelReportModal.tsx,
 // etc.), giving dd/mm/yyyy.
 const mockReports = [
-  { player: "J. Whitfield", position: "CB", club: "Leyton Orient", scout: "M. Adeyemi", score: 8, isPotential: false, date: new Date("2026-07-12") },
-  { player: "T. Okonkwo", position: "RW", club: "Barnet", scout: "S. Bishop", score: 8, isPotential: true, date: new Date("2026-07-10") },
-  { player: "A. Marchetti", position: "GK", club: "Notts County", scout: "M. Adeyemi", score: 9, isPotential: false, date: new Date("2026-07-08") },
-  { player: "D. Larsson", position: "CM", club: "Halifax Town", scout: "R. Fenwick", score: 3, isPotential: false, date: new Date("2026-07-05") },
-  { player: "K. Osei", position: "LB", club: "Boreham Wood", scout: "S. Bishop", score: 10, isPotential: true, date: new Date("2026-07-02") },
-  { player: "R. Coetzee", position: "CB", club: "Dagenham & Red.", scout: "R. Fenwick", score: 5, isPotential: false, date: new Date("2026-06-30") },
-  { player: "M. Delacroix", position: "ST", club: "Ebbsfleet Utd", scout: "M. Adeyemi", score: 7, isPotential: false, date: new Date("2026-06-27") },
-  { player: "H. Ibrahimovic", position: "CM", club: "Chelmsford City", scout: "S. Bishop", score: 4, isPotential: false, date: new Date("2026-06-24") },
+  { reportDate: new Date("2026-07-12"), player: "J. Whitfield", age: 22, position: "CB", fixtureDate: new Date("2026-07-10"), fixture: "Leyton Orient vs Barnet", scout: "M. Adeyemi", type: "Player Assessment", score: 8, isPotential: false },
+  { reportDate: new Date("2026-07-10"), player: "T. Okonkwo", age: 20, position: "RW", fixtureDate: new Date("2026-07-09"), fixture: "Barnet vs Notts County", scout: "S. Bishop", type: "Player Assessment", score: 8, isPotential: true },
+  { reportDate: new Date("2026-07-08"), player: "A. Marchetti", age: 24, position: "GK", fixtureDate: new Date("2026-07-06"), fixture: "Notts County vs Halifax Town", scout: "M. Adeyemi", type: "Player Assessment", score: 9, isPotential: false },
+  { reportDate: new Date("2026-07-05"), player: "D. Larsson", age: 19, position: "CM", fixtureDate: new Date("2026-07-04"), fixture: "Halifax Town vs Boreham Wood", scout: "R. Fenwick", type: "Flag", score: 3, isPotential: false },
+  { reportDate: new Date("2026-07-02"), player: "K. Osei", age: 18, position: "LB", fixtureDate: new Date("2026-06-30"), fixture: "Boreham Wood vs Dagenham & Red.", scout: "S. Bishop", type: "Player Assessment", score: 10, isPotential: true },
 ];
 
 const StyleTilePage: React.FC = () => {
@@ -46,30 +48,21 @@ const StyleTilePage: React.FC = () => {
       <section className="style-tile-section style-tile-section-wide">
         <h2 className="style-tile-section-title">Shortlist</h2>
         <div className="player-card-grid">
-          {players.map((p) => (
+          {shortlistPlayers.map((p) => (
             <div className="player-card" key={p.name}>
               <div className="player-card-avatar">
                 <UserRound size={26} />
               </div>
               <div className="player-card-body">
-                <div className="player-card-name">
-                  {p.name}
-                  <span
-                    className="player-card-flag"
-                    style={{ backgroundColor: getFlagColor(p.flag) }}
-                    title={`Flag: ${p.flag}`}
-                  />
-                </div>
-                <div className="player-card-meta">
-                  {p.position} &middot; {p.age} &middot; {p.club}
-                </div>
+                <div className="player-card-name">{p.name}</div>
+                <div className="player-card-meta">{p.squadName}</div>
+                <div className="player-card-meta">Age: {p.age}</div>
+                <div className="player-card-meta">Reports: {p.reportCount}</div>
               </div>
               <div className="player-card-scores">
                 <div className="player-card-score-block">
-                  <span className="player-card-score-label">
-                    {p.isPotential ? "Potential" : "Latest"}
-                  </span>
-                  <GradeChip score={p.score} isPotential={p.isPotential} size="md" />
+                  <span className="player-card-score-label">Score</span>
+                  <GradeChip score={p.avgScore} decimals={1} size="md" />
                 </div>
               </div>
             </div>
@@ -80,28 +73,40 @@ const StyleTilePage: React.FC = () => {
       <section className="style-tile-section style-tile-section-wide">
         <h2 className="style-tile-section-title">Recent reports</h2>
         <div className="style-tile-table-wrap">
-          <Table className="style-tile-table" borderless>
+          <Table className="style-tile-table" borderless responsive>
             <thead>
               <tr>
+                <th>Report Date</th>
                 <th>Player</th>
+                <th>Age</th>
                 <th>Position</th>
-                <th>Club</th>
+                <th>Fixture Date</th>
+                <th>Fixture</th>
                 <th>Scout</th>
+                <th>Type</th>
                 <th>Score</th>
-                <th>Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {mockReports.map((r) => (
-                <tr key={r.player}>
+                <tr key={`${r.player}-${r.reportDate.toISOString()}`}>
+                  <td className="font-mono-tabular">{r.reportDate.toLocaleDateString("en-GB")}</td>
                   <td>{r.player}</td>
+                  <td>{r.age}</td>
                   <td>{r.position}</td>
-                  <td>{r.club}</td>
+                  <td className="font-mono-tabular">{r.fixtureDate.toLocaleDateString("en-GB")}</td>
+                  <td>{r.fixture}</td>
                   <td>{r.scout}</td>
+                  <td>{r.type}</td>
                   <td>
                     <GradeChip score={r.score} isPotential={r.isPotential} size="sm" />
                   </td>
-                  <td className="font-mono-tabular">{r.date.toLocaleDateString("en-GB")}</td>
+                  <td>
+                    <Button size="sm" variant="outline-secondary" title="View report">
+                      <Eye size={14} />
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
