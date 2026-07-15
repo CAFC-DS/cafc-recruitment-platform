@@ -1,8 +1,9 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye, Flag, MapPin, Video } from "lucide-react";
+import { UserRound, Eye, Flag, Goal, Laptop } from "lucide-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
+import { getFlagColor } from "../utils/colorUtils";
 import "./StyleTilePage.css";
 
 /**
@@ -18,10 +19,12 @@ import "./StyleTilePage.css";
  * Player, Age, Position, Fixture Date, Fixture, Scout, Type, Score, Actions).
  *
  * The real Type column (getReportTypeBadge + getScoutingTypeBadge in
- * ScoutingPage.tsx) is icon-driven, not text: "Player Assessment" renders no
- * report-type badge at all, "Flag" renders a flag icon (was a raw emoji),
- * and every row separately shows a live/video scouting-method icon (was
- * 🏟️/💻 emoji). Reproduced here with lucide icons instead of the emoji.
+ * ScoutingPage.tsx) is icon-driven, not text: every row shows a live/video
+ * scouting-method icon (was a 🏟️/💻 emoji -- reproduced here with lucide's
+ * Goal/Laptop). Flags carry no performance_score at all (per the data
+ * model, PERFORMANCE_SCORE only exists on Player Assessment rows) -- the
+ * Score column shows the flag itself, coloured by the report's sentiment
+ * via the existing, unmodified getFlagColor, instead of a GradeChip.
  */
 
 const shortlistPlayers = [
@@ -32,24 +35,55 @@ const shortlistPlayers = [
 // Dates formatted with toLocaleDateString("en-GB") -- matches the existing
 // convention used throughout the app (PlayerReportModal.tsx, IntelReportModal.tsx,
 // etc.), giving dd/mm/yyyy.
-const mockReports = [
+const mockReports: Array<{
+  reportDate: Date;
+  player: string;
+  age: number;
+  position: string;
+  fixtureDate: Date;
+  fixture: string;
+  scout: string;
+  scoutingType: "Live" | "Video";
+  type: "Player Assessment" | "Flag";
+  score: number | null;
+  isPotential: boolean;
+  flagSentiment?: "positive" | "neutral" | "negative";
+}> = [
   { reportDate: new Date("2026-07-12"), player: "J. Whitfield", age: 22, position: "CB", fixtureDate: new Date("2026-07-10"), fixture: "Leyton Orient vs Barnet", scout: "M. Adeyemi", type: "Player Assessment", scoutingType: "Live", score: 8, isPotential: false },
   { reportDate: new Date("2026-07-10"), player: "T. Okonkwo", age: 20, position: "RW", fixtureDate: new Date("2026-07-09"), fixture: "Barnet vs Notts County", scout: "S. Bishop", type: "Player Assessment", scoutingType: "Video", score: 8, isPotential: true },
   { reportDate: new Date("2026-07-08"), player: "A. Marchetti", age: 24, position: "GK", fixtureDate: new Date("2026-07-06"), fixture: "Notts County vs Halifax Town", scout: "M. Adeyemi", type: "Player Assessment", scoutingType: "Live", score: 9, isPotential: false },
-  { reportDate: new Date("2026-07-05"), player: "D. Larsson", age: 19, position: "CM", fixtureDate: new Date("2026-07-04"), fixture: "Halifax Town vs Boreham Wood", scout: "R. Fenwick", type: "Flag", scoutingType: "Live", score: 3, isPotential: false },
+  { reportDate: new Date("2026-07-05"), player: "D. Larsson", age: 19, position: "CM", fixtureDate: new Date("2026-07-04"), fixture: "Halifax Town vs Boreham Wood", scout: "R. Fenwick", type: "Flag", scoutingType: "Live", score: null, isPotential: false, flagSentiment: "negative" },
   { reportDate: new Date("2026-07-02"), player: "K. Osei", age: 18, position: "LB", fixtureDate: new Date("2026-06-30"), fixture: "Boreham Wood vs Dagenham & Red.", scout: "S. Bishop", type: "Player Assessment", scoutingType: "Video", score: 10, isPotential: true },
 ];
 
-const TypeCell: React.FC<{ type: string; scoutingType: string }> = ({ type, scoutingType }) => (
+const TypeCell: React.FC<{ scoutingType: "Live" | "Video" }> = ({ scoutingType }) => (
   <div className="style-tile-type-icons">
-    {type === "Flag" && <Flag size={15} aria-label="Flag" />}
     {scoutingType === "Live" ? (
-      <MapPin size={15} aria-label="Live" />
+      <Goal size={16} aria-label="Live" />
     ) : (
-      <Video size={15} aria-label="Video" />
+      <Laptop size={16} aria-label="Video" />
     )}
   </div>
 );
+
+const ScoreCell: React.FC<{
+  type: "Player Assessment" | "Flag";
+  score: number | null;
+  isPotential: boolean;
+  flagSentiment?: "positive" | "neutral" | "negative";
+}> = ({ type, score, isPotential, flagSentiment }) =>
+  type === "Flag" ? (
+    <span title={`Flag: ${flagSentiment}`}>
+      <Flag
+        size={16}
+        color={getFlagColor(flagSentiment || "neutral")}
+        fill={getFlagColor(flagSentiment || "neutral")}
+        aria-label={`Flag: ${flagSentiment}`}
+      />
+    </span>
+  ) : (
+    <GradeChip score={score as number} isPotential={isPotential} size="sm" />
+  );
 
 const StyleTilePage: React.FC = () => {
   return (
@@ -116,10 +150,15 @@ const StyleTilePage: React.FC = () => {
                   <td>{r.fixture}</td>
                   <td>{r.scout}</td>
                   <td>
-                    <TypeCell type={r.type} scoutingType={r.scoutingType} />
+                    <TypeCell scoutingType={r.scoutingType} />
                   </td>
                   <td>
-                    <GradeChip score={r.score} isPotential={r.isPotential} size="sm" />
+                    <ScoreCell
+                      type={r.type}
+                      score={r.score}
+                      isPotential={r.isPotential}
+                      flagSentiment={r.flagSentiment}
+                    />
                   </td>
                   <td>
                     <Button size="sm" variant="outline-secondary" title="View report">
