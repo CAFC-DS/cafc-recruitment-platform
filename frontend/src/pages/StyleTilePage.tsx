@@ -5,6 +5,7 @@ import { IconBuildingStadium } from "@tabler/icons-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
 import FlagChip from "../components/FlagChip";
+import GradeLabelChip from "../components/GradeLabelChip";
 import "./StyleTilePage.css";
 
 /**
@@ -114,6 +115,15 @@ const StyleTilePage: React.FC = () => {
                 </div>
               </div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="style-tile-section">
+        <h2 className="style-tile-section-title">Archived grade labels</h2>
+        <div className="style-tile-grade-labels">
+          {["Outstanding/Above Level", "Target", "Monitor", "Scout", "No Action"].map((label) => (
+            <GradeLabelChip key={label} label={label} />
           ))}
         </div>
       </section>

@@ -37,8 +37,11 @@ import SubmissionStatusBadge from "../components/agents/SubmissionStatusBadge";
 import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import { getPerformanceScoreColor, getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
+import { getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
+import GradeChip from "../components/GradeChip";
+import FlagChip from "../components/FlagChip";
+import GradeLabelChip from "../components/GradeLabelChip";
 import { getStageBgColor, getStageTextColor } from "../styles/playerLists.theme";
 import {
   PlayerProfile,
@@ -132,25 +135,6 @@ const getFlagBadge = (report: ScoutReport) => {
       title={`Flag: ${report.flag_category || "Unknown"}`}
     >
       🏳️
-    </span>
-  );
-};
-
-const getFlagTypeText = (flagType?: string) => {
-  const flagColor = getFlagColor(flagType || "");
-
-  return (
-    <span
-      className="badge"
-      style={{
-        backgroundColor: flagColor,
-        color: "white",
-        border: "none",
-        fontWeight: "500",
-        fontSize: "0.9rem",
-      }}
-    >
-      {flagType || "Flag"}
     </span>
   );
 };
@@ -1447,22 +1431,7 @@ const PlayerProfilePage: React.FC = () => {
                           <div className="info-row">
                             <span className="info-label">Average Performance Score</span>
                             <div>
-                              <span
-                                className={`badge score-badge ${
-                                  avgScore === 9 ? 'performance-score-9' :
-                                  avgScore === 10 ? 'performance-score-10' : ''
-                                }`}
-                                style={{
-                                  backgroundColor: getPerformanceScoreColor(avgScore),
-                                  color: "white !important",
-                                  fontWeight: "bold",
-                                  fontSize: "0.95rem",
-                                  padding: "0.35rem 0.75rem",
-                                  ...(avgScore !== 9 && avgScore !== 10 ? { border: "none" } : {}),
-                                }}
-                              >
-                                {avgScore}/10
-                              </span>
+                              <GradeChip score={avgScore} decimals={1} size="md" />
                             </div>
                           </div>
                         )}
@@ -1874,17 +1843,11 @@ const PlayerProfilePage: React.FC = () => {
                     {scoutReportsData.reports[0].overall_rating && (
                       <span className="summary-stat">
                         Latest Score:
-                        <span
-                          className="badge ms-1"
-                          style={{
-                            backgroundColor: getPerformanceScoreColor(scoutReportsData.reports[0].overall_rating),
-                            color: "white",
-                            fontSize: "0.7rem",
-                            padding: "2px 6px",
-                          }}
-                        >
-                          {scoutReportsData.reports[0].overall_rating}
-                        </span>
+                        <GradeChip
+                          score={scoutReportsData.reports[0].overall_rating}
+                          size="sm"
+                          className="ms-1"
+                        />
                       </span>
                     )}
                     {(() => {
@@ -1957,27 +1920,7 @@ const PlayerProfilePage: React.FC = () => {
                             )}
                             {report.is_archived && report.flag_category && (
                               <span className="ms-1">
-                                <span
-                                  className="badge-grade"
-                                  style={{
-                                    backgroundColor: getGradeColor(report.flag_category),
-                                    color: "white",
-                                    fontSize: "0.65rem",
-                                    padding: "2px 6px",
-                                    fontWeight: "500",
-                                    lineHeight: "1.2",
-                                  }}
-                                  title={`Grade: ${report.flag_category}`}
-                                >
-                                  {report.flag_category.includes('/')
-                                    ? report.flag_category.split('/').map((part, index, array) => (
-                                        <React.Fragment key={index}>
-                                          {part.trim()}{index < array.length - 1 && '/'}
-                                          {index < array.length - 1 && <br />}
-                                        </React.Fragment>
-                                      ))
-                                    : report.flag_category}
-                                </span>
+                                <GradeLabelChip label={report.flag_category} size="sm" />
                               </span>
                             )}
                           </td>
@@ -1992,24 +1935,18 @@ const PlayerProfilePage: React.FC = () => {
                           <td>{report.position_played || "N/A"}</td>
                           <td>
                             <div className="d-flex align-items-center justify-content-center gap-1">
-                              <span
-                                className={`badge ${
-                                  report.overall_rating === 9 ? 'performance-score-9' :
-                                  report.overall_rating === 10 ? 'performance-score-10' : ''
-                                }`}
-                                style={{
-                                  backgroundColor: getPerformanceScoreColor(
-                                    report.overall_rating || 0,
-                                  ),
-                                  color: "white !important",
-                                  fontWeight: "bold",
-                                  fontSize: "0.9rem",
-                                  ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
-                                }}
-                                title={report.is_potential ? "Potential Score" : undefined}
-                              >
-                                {report.overall_rating}{report.is_potential && "*"}
-                              </span>
+                              {report.report_type?.toLowerCase() !== "flag" &&
+                              report.report_type?.toLowerCase() !== "flag assessment" ? (
+                                report.overall_rating && (
+                                  <GradeChip
+                                    score={report.overall_rating}
+                                    isPotential={!!report.is_potential}
+                                    size="sm"
+                                  />
+                                )
+                              ) : (
+                                <FlagChip sentiment={report.flag_category || ""} size="sm" />
+                              )}
                             </div>
                           </td>
                           <td>
@@ -2207,23 +2144,7 @@ const PlayerProfilePage: React.FC = () => {
                             <div>
                               {report.is_archived && report.flag_category ? (
                                 <>
-                                  <span
-                                    className="badge-grade d-block mb-1"
-                                    style={{
-                                      backgroundColor: getGradeColor(report.flag_category),
-                                      fontSize: "0.7rem",
-                                      lineHeight: "1.2",
-                                    }}
-                                  >
-                                    {report.flag_category.includes('/')
-                                      ? report.flag_category.split('/').map((part, index, array) => (
-                                          <React.Fragment key={index}>
-                                            {part.trim()}{index < array.length - 1 && '/'}
-                                            {index < array.length - 1 && <br />}
-                                          </React.Fragment>
-                                        ))
-                                      : report.flag_category}
-                                  </span>
+                                  <GradeLabelChip label={report.flag_category} size="sm" className="d-block mb-1" />
                                   {report.summary && extractVSSScore(report.summary!) && (
                                     <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
                                       VSS Score: {extractVSSScore(report.summary)}/32
@@ -2235,28 +2156,15 @@ const PlayerProfilePage: React.FC = () => {
                                 <>
                                   <small className="text-muted fw-semibold d-block">Score</small>
                                   {report.overall_rating && (
-                                    <span
-                                      className={`badge ${
-                                        report.overall_rating === 9 ? 'performance-score-9' :
-                                        report.overall_rating === 10 ? 'performance-score-10' : ''
-                                      }`}
-                                      style={{
-                                        backgroundColor: getPerformanceScoreColor(
-                                          report.overall_rating,
-                                        ),
-                                        color: "white !important",
-                                        fontWeight: "bold",
-                                        fontSize: "0.9rem",
-                                        ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
-                                      }}
-                                      title={report.is_potential ? "Potential Score" : undefined}
-                                    >
-                                      {report.overall_rating}{report.is_potential && "*"}
-                                    </span>
+                                    <GradeChip
+                                      score={report.overall_rating}
+                                      isPotential={!!report.is_potential}
+                                      size="sm"
+                                    />
                                   )}
                                 </>
                               ) : (
-                                getFlagTypeText(report.flag_category)
+                                <FlagChip sentiment={report.flag_category || ""} size="sm" />
                               )}
                             </div>
                           </Col>
