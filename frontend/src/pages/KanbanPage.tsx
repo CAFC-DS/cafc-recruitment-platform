@@ -1319,7 +1319,6 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
           message="Create your first player list to start organizing your recruitment pipeline."
           actionLabel="Create Your First List"
           onAction={openCreateModal}
-          icon="📋"
         />
       ) : (
         <>

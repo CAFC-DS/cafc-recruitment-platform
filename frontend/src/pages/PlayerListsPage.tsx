@@ -57,10 +57,23 @@ import {
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
+import GradeChip from "../components/GradeChip";
 import {
-  getPerformanceScoreColor,
-  getContrastTextColor,
-} from "../utils/colorUtils";
+  Goal,
+  Plus,
+  Settings,
+  Kanban,
+  Pencil,
+  Trash2,
+  FileSpreadsheet,
+  Radar,
+  StickyNote,
+  History,
+  Star,
+  CircleAlert,
+  Circle,
+} from "lucide-react";
+import { IconBuildingStadium } from "@tabler/icons-react";
 import {
   colors,
   borderRadius,
@@ -1264,7 +1277,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           message="Create your first player list to start organizing your recruitment pipeline."
           actionLabel="Create Your First List"
           onAction={openCreateModal}
-          icon="📋"
         />
       ) : (
         <>
@@ -1287,8 +1299,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 variant="link"
                 onClick={() => setPitchViewExpanded(!pitchViewExpanded)}
                 style={{ fontWeight: pitchViewExpanded ? "bold" : "normal" }}
+                className="d-inline-flex align-items-center gap-1"
               >
-                {pitchViewExpanded ? "▼ Hide Pitch" : "⚽ Show Pitch"}
+                <Goal size={14} />
+                {pitchViewExpanded ? "Hide Pitch" : "Show Pitch"}
               </Button>
             </div>
 
@@ -1367,8 +1381,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 size="sm"
                 variant="dark"
                 onClick={openCreateModal}
+                className="d-inline-flex align-items-center gap-1"
               >
-                ➕ New List
+                <Plus size={14} />
+                New List
               </Button>
 
               {/* Add Player Button - Only visible when single list is selected */}
@@ -1389,23 +1405,28 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     variant="dark"
                     size="sm"
                   >
-                    ⚙️ List Actions
+                    <Settings size={14} className="me-1" />
+                    List Actions
                   </Dropdown.Toggle>
 
                     <Dropdown.Menu>
-                      <Dropdown.Item onClick={() => navigate(kanbanPath)}>
-                        🔄 Switch to Kanban View
+                      <Dropdown.Item onClick={() => navigate(kanbanPath)} className="d-flex align-items-center gap-2">
+                        <Kanban size={15} />
+                        Switch to Kanban View
                       </Dropdown.Item>
                       <Dropdown.Divider />
-                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)}>
-                        ✏️ Edit List
+                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)} className="d-flex align-items-center gap-2">
+                        <Pencil size={15} />
+                        Edit List
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)}>
-                        🗑️ Delete List
+                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)} className="d-flex align-items-center gap-2">
+                        <Trash2 size={15} />
+                        Delete List
                       </Dropdown.Item>
                       <Dropdown.Divider />
-                      <Dropdown.Item onClick={handleExport}>
-                        📊 Export CSV
+                      <Dropdown.Item onClick={handleExport} className="d-flex align-items-center gap-2">
+                        <FileSpreadsheet size={15} />
+                        Export CSV
                       </Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
@@ -1468,7 +1489,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                   message={currentList ? "Add players to start building your recruitment pipeline." : "No players in the selected lists."}
                   actionLabel={currentList ? "Add Player" : undefined}
                   onAction={currentList ? () => setShowAddPlayerModal(true) : undefined}
-                  icon="📋"
                 />
               ) : (
                 // Table View
@@ -1503,10 +1523,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     </thead>
                     <tbody>
                       {sortedPlayers.map((player) => {
-                        const scoreColor = player.avg_performance_score
-                          ? getPerformanceScoreColor(player.avg_performance_score)
-                          : colors.gray[400];
-                        const textColor = getContrastTextColor(scoreColor);
 
                         // Check for pending changes (for visual indicators)
                         const hasPendingStageChange = pendingStageChanges.has(player.item_id);
@@ -1546,14 +1562,11 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 </strong>
                                 {getPlayerNotes(player.universal_id) && (
                                   <span
-                                    className="ms-2"
-                                    style={{
-                                      fontSize: "0.85rem",
-                                      opacity: 0.7,
-                                    }}
+                                    className="ms-2 d-inline-flex align-items-center"
+                                    style={{ opacity: 0.7 }}
                                     title="Has notes"
                                   >
-                                    📝
+                                    <StickyNote size={13} />
                                   </span>
                                 )}
                                 {hasPendingStageChange && (
@@ -1687,18 +1700,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             </td>
                             <td>
                               {player.avg_performance_score !== null ? (
-                                <Badge
-                                  bg=""
-                                  style={{
-                                    backgroundColor: scoreColor,
-                                    color: textColor,
-                                    fontSize: "0.85rem",
-                                    fontWeight: "bold",
-                                    padding: "4px 10px",
-                                  }}
-                                >
-                                  {player.avg_performance_score.toFixed(1)}
-                                </Badge>
+                                <GradeChip score={player.avg_performance_score} decimals={1} size="sm" />
                               ) : (
                                 <span className="text-muted">N/A</span>
                               )}
@@ -1708,7 +1710,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                               {player.live_reports > 0 && (
                                 <Badge
                                   bg=""
-                                  className="ms-2"
+                                  className="ms-2 d-inline-flex align-items-center gap-1"
                                   title={`${player.live_reports} live report${player.live_reports === 1 ? "" : "s"}`}
                                   style={{
                                     backgroundColor: "#ffffff",
@@ -1718,13 +1720,14 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                     padding: "3px 6px",
                                   }}
                                 >
-                                  🏟️ {player.live_reports}
+                                  <IconBuildingStadium size={12} stroke={1.75} />
+                                  {player.live_reports}
                                 </Badge>
                               )}
                               {(player.intel_reports_count || 0) > 0 && (
                                 <Badge
                                   bg=""
-                                  className="ms-2"
+                                  className="ms-2 d-inline-flex align-items-center gap-1"
                                   title={`${player.intel_reports_count} intel report${player.intel_reports_count === 1 ? "" : "s"}`}
                                   style={{
                                     backgroundColor: "#ffffff",
@@ -1734,7 +1737,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                     padding: "3px 6px",
                                   }}
                                 >
-                                  🔍 {player.intel_reports_count}
+                                  <Radar size={12} />
+                                  {player.intel_reports_count}
                                 </Badge>
                               )}
                             </td>
@@ -1747,7 +1751,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   onClick={() => handleOpenNotesModal(player)}
                                   className="btn-action-circle btn-action-edit"
                                 >
-                                  📝
+                                  <StickyNote size={13} />
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1756,7 +1760,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   className="btn-action-circle"
                                   disabled={!currentList}
                                 >
-                                  📊
+                                  <History size={13} />
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1765,7 +1769,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   className="btn-action-circle"
                                   style={{ color: playerFavorites.has(player.universal_id) ? "#FFD700" : "#6b7280" }}
                                 >
-                                  {playerFavorites.has(player.universal_id) ? "⭐" : "☆"}
+                                  <Star size={13} fill={playerFavorites.has(player.universal_id) ? "currentColor" : "none"} />
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1776,7 +1780,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                     color: playerDecisions.has(player.universal_id) ? "#111827" : "#6b7280",
                                   }}
                                 >
-                                  {playerDecisions.has(player.universal_id) ? "⁉️" : "○"}
+                                  {playerDecisions.has(player.universal_id) ? <CircleAlert size={13} /> : <Circle size={13} />}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1785,7 +1789,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   className="btn-action-circle btn-action-delete"
                                   disabled={!currentList || pendingRemoval}
                                 >
-                                  {pendingRemoval ? "..." : "🗑️"}
+                                  {pendingRemoval ? "..." : <Trash2 size={13} />}
                                 </Button>
                               </div>
                             </td>
