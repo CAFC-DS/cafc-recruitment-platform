@@ -42,6 +42,21 @@ import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
 import FlagChip from "../components/FlagChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import {
+  Flag,
+  Laptop,
+  Clapperboard,
+  TriangleAlert,
+  History,
+  Calendar,
+  Eye,
+  Link2,
+  Pencil,
+  Trash2,
+  ClipboardList,
+  BarChart3,
+} from "lucide-react";
+import { IconBuildingStadium } from "@tabler/icons-react";
 import { getStageBgColor, getStageTextColor } from "../styles/playerLists.theme";
 import {
   PlayerProfile,
@@ -134,20 +149,24 @@ const getFlagBadge = (report: ScoutReport) => {
       }}
       title={`Flag: ${report.flag_category || "Unknown"}`}
     >
-      🏳️
+      <Flag size={12} fill="white" stroke="white" />
     </span>
   );
 };
 
 const getScoutingTypeBadge = (scoutingType: string) => {
-  const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
+  const isLive = scoutingType.toLowerCase() === "live";
   return (
     <span
       className="badge badge-neutral-grey"
-      style={{ cursor: "pointer", fontSize: "16px" }}
+      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
       title={`Scouting Type: ${scoutingType}`}
     >
-      {icon}
+      {isLive ? (
+        <IconBuildingStadium size={16} stroke={1.75} aria-label="Live" />
+      ) : (
+        <Laptop size={14} aria-label="Video" />
+      )}
     </span>
   );
 };
@@ -188,7 +207,7 @@ const getReportTypeBadge = (
       return (
         <>
           <span className="badge badge-neutral-grey" title="Clip">
-            🎬
+            <Clapperboard size={13} />
           </span>
           {report.clip_category && (
             <span
@@ -1365,7 +1384,10 @@ const PlayerProfilePage: React.FC = () => {
       <Container className="mt-5">
         <div className="error-container">
           <Alert variant="danger" className="clean-alert">
-            <h5>⚠️ {error || "Player not found"}</h5>
+            <h5 className="d-flex align-items-center gap-2">
+              <TriangleAlert size={18} />
+              {error || "Player not found"}
+            </h5>
             <Button
               variant="outline-dark"
               size="sm"
@@ -1550,7 +1572,10 @@ const PlayerProfilePage: React.FC = () => {
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex align-items-center gap-2">
-                  <h4 className="section-title mb-0">🔄 Flow History</h4>
+                  <h4 className="section-title mb-0 d-flex align-items-center gap-2">
+                    <History size={18} />
+                    Flow History
+                  </h4>
                   <Button
                     variant="link"
                     size="sm"
@@ -1737,7 +1762,10 @@ const PlayerProfilePage: React.FC = () => {
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex align-items-center gap-2">
-                  <h4 className="section-title mb-0">📅 Scouting History</h4>
+                  <h4 className="section-title mb-0 d-flex align-items-center gap-2">
+                    <Calendar size={18} />
+                    Scouting History
+                  </h4>
                   <Button
                     variant="link"
                     size="sm"
@@ -1974,7 +2002,7 @@ const PlayerProfilePage: React.FC = () => {
                                 {loadingReportId === report.report_id ? (
                                   <Spinner as="span" animation="border" size="sm" />
                                 ) : (
-                                  "👁️"
+                                  <Eye size={13} />
                                 )}
                               </Button>
                               {canGenerateShareLinks && (
@@ -1987,7 +2015,7 @@ const PlayerProfilePage: React.FC = () => {
                                   title="Generate shareable link"
                                   className="btn-action-circle ms-1"
                                 >
-                                  🔗
+                                  <Link2 size={13} />
                                 </Button>
                               )}
                               {(canSeeAllReports || report.user_id === user?.id) && (
@@ -1998,7 +2026,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Edit Report"
                                     className="btn-action-circle btn-action-edit ms-1"
                                   >
-                                    ✏️
+                                    <Pencil size={13} />
                                   </Button>
                                   <Button
                                     size="sm"
@@ -2006,7 +2034,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Delete Report"
                                     className="btn-action-circle btn-action-delete ms-1"
                                   >
-                                    🗑️
+                                    <Trash2 size={13} />
                                   </Button>
                                 </>
                               )}
@@ -2203,7 +2231,7 @@ const PlayerProfilePage: React.FC = () => {
                                 {loadingReportId === report.report_id ? (
                                   <Spinner as="span" animation="border" size="sm" />
                                 ) : (
-                                  "👁️"
+                                  <Eye size={13} />
                                 )}
                               </Button>
                               {canGenerateShareLinks && (
@@ -2216,7 +2244,7 @@ const PlayerProfilePage: React.FC = () => {
                                   title="Generate shareable link"
                                   className="btn-action-circle"
                                 >
-                                  🔗
+                                  <Link2 size={13} />
                                 </Button>
                               )}
                               {(canSeeAllReports || report.user_id === user?.id) && (
@@ -2227,7 +2255,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Edit Report"
                                     className="btn-action-circle btn-action-edit"
                                   >
-                                    ✏️
+                                    <Pencil size={13} />
                                   </Button>
                                   <Button
                                     size="sm"
@@ -2235,7 +2263,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Delete Report"
                                     className="btn-action-circle btn-action-delete"
                                   >
-                                    🗑️
+                                    <Trash2 size={13} />
                                   </Button>
                                 </>
                               )}
@@ -2266,7 +2294,10 @@ const PlayerProfilePage: React.FC = () => {
               <div className="horizontal-timeline-section">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <h4 className="section-title mb-0">📋 Intel History</h4>
+                    <h4 className="section-title mb-0 d-flex align-items-center gap-2">
+                      <ClipboardList size={18} />
+                      Intel History
+                    </h4>
                     <Button
                       variant="link"
                       size="sm"
@@ -2412,7 +2443,7 @@ const PlayerProfilePage: React.FC = () => {
                                         setShowAgentRecommendationModal(true);
                                       }}
                                     >
-                                      👁️
+                                      <Eye size={13} />
                                     </Button>
                                   </div>
                                 </td>
@@ -2471,7 +2502,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="View Intel Report"
                                     className="btn-action-circle btn-action-view"
                                   >
-                                    👁️
+                                    <Eye size={13} />
                                   </Button>
                                   {canManageIntel && (
                                     <>
@@ -2485,7 +2516,7 @@ const PlayerProfilePage: React.FC = () => {
                                         {isActionLoading ? (
                                           <Spinner as="span" animation="border" size="sm" />
                                         ) : (
-                                          "✏️"
+                                          <Pencil size={13} />
                                         )}
                                       </Button>
                                       <Button
@@ -2495,7 +2526,7 @@ const PlayerProfilePage: React.FC = () => {
                                         title="Delete"
                                         className="btn-action-circle btn-action-delete"
                                       >
-                                        🗑️
+                                        <Trash2 size={13} />
                                       </Button>
                                     </>
                                   )}
@@ -2757,7 +2788,7 @@ const PlayerProfilePage: React.FC = () => {
                                         disabled={intelReportId === null}
                                         title="View Report"
                                       >
-                                        👁️
+                                        <Eye size={13} />
                                       </Button>
                                       {canManageIntel && (
                                         <>
@@ -2768,7 +2799,7 @@ const PlayerProfilePage: React.FC = () => {
                                             onClick={() => intelReportId !== null && handleEditIntelReport(intelReportId)}
                                             disabled={intelReportId === null || isActionLoading}
                                           >
-                                            {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : "✏️"}
+                                            {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : <Pencil size={13} />}
                                           </Button>
                                           <Button
                                             size="sm"
@@ -2777,7 +2808,7 @@ const PlayerProfilePage: React.FC = () => {
                                             onClick={() => intelReportId !== null && handleDeleteIntelReport(intelReportId)}
                                             disabled={intelReportId === null}
                                           >
-                                            🗑️
+                                            <Trash2 size={13} />
                                           </Button>
                                         </>
                                       )}
@@ -2797,7 +2828,10 @@ const PlayerProfilePage: React.FC = () => {
               </div>
             ) : (
               <div className="horizontal-timeline-section h-100">
-                <h4 className="section-title mb-3">📋 Intel History</h4>
+                <h4 className="section-title mb-3 d-flex align-items-center gap-2">
+                  <ClipboardList size={18} />
+                  Intel History
+                </h4>
                 <div className="empty-state-compact">
                   <p>No intel reports available yet.</p>
                 </div>
@@ -2810,7 +2844,13 @@ const PlayerProfilePage: React.FC = () => {
             <div className="horizontal-timeline-section h-100">
               <div className="radar-charts-section">
           <div className="radar-header mb-3">
-            <h4 className="section-title mb-0" style={{ display: "inline-block", borderBottom: "2px solid #e5e7eb", paddingBottom: "0.5rem" }}>📊 Attribute Analysis</h4>
+            <h4
+              className="section-title mb-0 d-inline-flex align-items-center gap-2"
+              style={{ borderBottom: "2px solid #e5e7eb", paddingBottom: "0.5rem" }}
+            >
+              <BarChart3 size={18} />
+              Attribute Analysis
+            </h4>
           </div>
 
           {(() => {
@@ -3108,7 +3148,10 @@ const PlayerProfilePage: React.FC = () => {
                         <Card.Header
                           style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
                         >
-                          <h6 className="mb-0">📋 Attribute Breakdown</h6>
+                          <h6 className="mb-0 d-flex align-items-center gap-2">
+                            <ClipboardList size={15} />
+                            Attribute Breakdown
+                          </h6>
                         </Card.Header>
                         <Card.Body>
                             {hasChartData ? (
