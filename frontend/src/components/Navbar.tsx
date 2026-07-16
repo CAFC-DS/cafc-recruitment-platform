@@ -14,6 +14,30 @@ import {
   Toast,
   ToastContainer,
 } from "react-bootstrap";
+import {
+  Goal,
+  Radar,
+  ClipboardList,
+  BarChart3,
+  Wrench,
+  Search,
+  ClipboardCheck,
+  FileText,
+  CalendarPlus,
+  UserPlus,
+  MessageSquare,
+  Clock,
+  Trash2,
+  ListChecks,
+  Settings as SettingsIcon,
+  User,
+  Sun,
+  Moon,
+  CircleHelp,
+  LogOut,
+  Pencil,
+  Check,
+} from "lucide-react";
 import { useAuth } from "../App"; // Import useAuth
 import { useTheme } from "../contexts/ThemeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -181,13 +205,13 @@ const AppNavbar: React.FC = () => {
     setSubmittingBatch(false);
 
     if (failCount === 0) {
-      alert(`✅ All ${successCount} reports submitted successfully!`);
+      alert(`All ${successCount} reports submitted successfully!`);
       localStorage.removeItem('reportQueue');
       setQueuedReports([]);
       setQueueCount(0);
       setShowQueueModal(false);
     } else {
-      alert(`⚠️ ${successCount} succeeded, ${failCount} failed. Failed reports kept in queue.`);
+      alert(`${successCount} succeeded, ${failCount} failed. Failed reports kept in queue.`);
       localStorage.setItem('reportQueue', JSON.stringify(failedReports));
       setQueuedReports(failedReports);
       setQueueCount(failedReports.length);
@@ -419,28 +443,28 @@ const AppNavbar: React.FC = () => {
             {token && ( // Only show links if authenticated
               <>
                 {!isIntelReviewer && (
-                  <Nav.Link as={Link} to="/scouting">
-                    ⚽ Scouting
+                  <Nav.Link as={Link} to="/scouting" className="d-flex align-items-center gap-1">
+                    <Goal size={16} /> Scouting
                   </Nav.Link>
                 )}
                 {canAccessIntel && (
-                  <Nav.Link as={Link} to="/intel">
-                    🕵️ Intel
+                  <Nav.Link as={Link} to="/intel" className="d-flex align-items-center gap-1">
+                    <Radar size={16} /> Intel
                   </Nav.Link>
                 )}
                 {canAccessLists && (
-                  <Nav.Link as={Link} to="/lists">
-                    📋 Lists
+                  <Nav.Link as={Link} to="/lists" className="d-flex align-items-center gap-1">
+                    <ClipboardList size={16} /> Lists
                   </Nav.Link>
                 )}
                 {canAccessAnalytics && (
-                  <Nav.Link as={Link} to="/analytics">
-                    📊 Analytics
+                  <Nav.Link as={Link} to="/analytics" className="d-flex align-items-center gap-1">
+                    <BarChart3 size={16} /> Analytics
                   </Nav.Link>
                 )}
                 {canAccessAdmin && (
-                  <Nav.Link as={Link} to="/admin">
-                    🔧 Admin
+                  <Nav.Link as={Link} to="/admin" className="d-flex align-items-center gap-1">
+                    <Wrench size={16} /> Admin
                   </Nav.Link>
                 )}
               </>
@@ -493,7 +517,7 @@ const AppNavbar: React.FC = () => {
                     {isSearching ? (
                       <Spinner animation="border" size="sm" style={{ width: "16px", height: "16px" }} />
                     ) : (
-                      "🔍"
+                      <Search size={16} />
                     )}
                   </div>
                 </div>
@@ -657,25 +681,25 @@ const AppNavbar: React.FC = () => {
                   + Add New
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  <Dropdown.Item onClick={() => setShowAssessmentModal(true)}>
-                    📊 Add Assessment
+                  <Dropdown.Item onClick={() => setShowAssessmentModal(true)} className="d-flex align-items-center gap-2">
+                    <ClipboardCheck size={16} /> Add Assessment
                   </Dropdown.Item>
                   {(isAdmin || isSeniorManager || isManager) && (
                     <>
-                      <Dropdown.Item onClick={() => setShowIntelModal(true)}>
-                        📝 Add Intel
+                      <Dropdown.Item onClick={() => setShowIntelModal(true)} className="d-flex align-items-center gap-2">
+                        <FileText size={16} /> Add Intel
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setShowFixtureModal(true)}>
-                        ⚽ Add Fixture
+                      <Dropdown.Item onClick={() => setShowFixtureModal(true)} className="d-flex align-items-center gap-2">
+                        <CalendarPlus size={16} /> Add Fixture
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => setShowAddPlayerModal(true)}>
-                        👤 Add Player
+                      <Dropdown.Item onClick={() => setShowAddPlayerModal(true)} className="d-flex align-items-center gap-2">
+                        <UserPlus size={16} /> Add Player
                       </Dropdown.Item>
                     </>
                   )}
                   <Dropdown.Divider />
-                  <Dropdown.Item onClick={() => setShowFeedbackModal(true)}>
-                    💬 Send Feedback
+                  <Dropdown.Item onClick={() => setShowFeedbackModal(true)} className="d-flex align-items-center gap-2">
+                    <MessageSquare size={16} /> Send Feedback
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
@@ -689,23 +713,23 @@ const AppNavbar: React.FC = () => {
                   style={{ fontWeight: 600 }}
                   id="in-progress-dropdown"
                 >
-                  🔄 In Progress
+                  <Clock size={16} className="me-1" /> In Progress
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
                   {hasSavedDraft && (
                     <>
                       <Dropdown.Header>Draft</Dropdown.Header>
-                      <Dropdown.Item onClick={() => navigate('/scouting?openDraft=true')}>
-                        📝 Open Draft
+                      <Dropdown.Item onClick={() => navigate('/scouting?openDraft=true')} className="d-flex align-items-center gap-2">
+                        <Pencil size={16} /> Open Draft
                       </Dropdown.Item>
                       <Dropdown.Item
                         onClick={() => {
                           localStorage.removeItem('scoutingAssessmentDraft');
                           setHasSavedDraft(false);
                         }}
-                        className="text-danger"
+                        className="text-danger d-flex align-items-center gap-2"
                       >
-                        🗑️ Clear Draft
+                        <Trash2 size={16} /> Clear Draft
                       </Dropdown.Item>
                     </>
                   )}
@@ -713,8 +737,8 @@ const AppNavbar: React.FC = () => {
                   {queueCount > 0 && (
                     <>
                       <Dropdown.Header>Queue ({queueCount})</Dropdown.Header>
-                      <Dropdown.Item onClick={() => setShowQueueModal(true)}>
-                        📝 View Queue
+                      <Dropdown.Item onClick={() => setShowQueueModal(true)} className="d-flex align-items-center gap-2">
+                        <ListChecks size={16} /> View Queue
                       </Dropdown.Item>
                       <Dropdown.Item
                         onClick={() => {
@@ -724,9 +748,9 @@ const AppNavbar: React.FC = () => {
                             setQueuedReports([]);
                           }
                         }}
-                        className="text-danger"
+                        className="text-danger d-flex align-items-center gap-2"
                       >
-                        🗑️ Clear Queue
+                        <Trash2 size={16} /> Clear Queue
                       </Dropdown.Item>
                     </>
                   )}
@@ -742,24 +766,24 @@ const AppNavbar: React.FC = () => {
                   style={{ fontWeight: 600 }}
                   id="settings-dropdown"
                 >
-                  ⚙️ Settings
+                  <SettingsIcon size={16} className="me-1" /> Settings
                 </Dropdown.Toggle>
                 <Dropdown.Menu align="end">
                   {user?.role !== "agent" && (
-                    <Dropdown.Item onClick={() => navigate("/me")}>
-                      👤 Profile
+                    <Dropdown.Item onClick={() => navigate("/me")} className="d-flex align-items-center gap-2">
+                      <User size={16} /> Profile
                     </Dropdown.Item>
                   )}
-                  <Dropdown.Item onClick={toggleDarkMode}>
-                    {theme.isDark ? "☀️ Light Mode" : "🌙 Dark Mode"}
+                  <Dropdown.Item onClick={toggleDarkMode} className="d-flex align-items-center gap-2">
+                    {theme.isDark ? (<><Sun size={16} /> Light Mode</>) : (<><Moon size={16} /> Dark Mode</>)}
                   </Dropdown.Item>
-                  <Dropdown.Item onClick={() => setShowHelpModal(true)}>
-                    ❓ Help
+                  <Dropdown.Item onClick={() => setShowHelpModal(true)} className="d-flex align-items-center gap-2">
+                    <CircleHelp size={16} /> Help
                   </Dropdown.Item>
                   {user?.role !== "agent" && <Dropdown.Divider />}
                   <Dropdown.Divider />
-                  <Dropdown.Item onClick={logout}>
-                    🚪 Logout
+                  <Dropdown.Item onClick={logout} className="d-flex align-items-center gap-2">
+                    <LogOut size={16} /> Logout
                   </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
@@ -825,7 +849,9 @@ const AppNavbar: React.FC = () => {
       {/* Queue Review Modal */}
       <Modal show={showQueueModal} onHide={() => setShowQueueModal(false)} size="lg">
         <Modal.Header closeButton style={{ backgroundColor: "#007bff", color: "white" }}>
-          <Modal.Title>📋 Queued Reports ({queueCount})</Modal.Title>
+          <Modal.Title className="d-flex align-items-center gap-2">
+            <ClipboardList size={20} /> Queued Reports ({queueCount})
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {queuedReports.length === 0 ? (
@@ -880,16 +906,17 @@ const AppNavbar: React.FC = () => {
                             setShowQueueModal(false);
                             setShowAssessmentModal(true);
                           }}
-                          className="me-2"
+                          className="me-2 d-inline-flex align-items-center gap-1"
                         >
-                          ✏️ Edit
+                          <Pencil size={14} /> Edit
                         </Button>
                         <Button
                           size="sm"
                           variant="outline-danger"
                           onClick={() => handleRemoveFromQueue(report.id)}
+                          className="d-inline-flex align-items-center gap-1"
                         >
-                          🗑️ Remove
+                          <Trash2 size={14} /> Remove
                         </Button>
                       </div>
                     </ListGroup.Item>
@@ -914,7 +941,10 @@ const AppNavbar: React.FC = () => {
                 Submitting {queuedReports.length} reports...
               </>
             ) : (
-              `✅ Submit All (${queuedReports.length} reports)`
+              <>
+                <Check size={16} className="me-1" />
+                Submit All ({queuedReports.length} reports)
+              </>
             )}
           </Button>
         </Modal.Footer>
