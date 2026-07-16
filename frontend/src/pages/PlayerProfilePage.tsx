@@ -40,7 +40,6 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
-import FlagChip from "../components/FlagChip";
 import GradeLabelChip from "../components/GradeLabelChip";
 import {
   Flag,
@@ -1936,21 +1935,17 @@ const PlayerProfilePage: React.FC = () => {
                           </td>
                           <td>{report.scout_name || "N/A"}</td>
                           <td>
-                            {getReportTypeBadge(
-                              report.report_type || "",
-                              report.scouting_type || "",
-                              report,
-                            )}
-                            {report.scouting_type && (
-                              <span className="ms-1">
-                                {getScoutingTypeBadge(report.scouting_type)}
-                              </span>
-                            )}
-                            {report.is_archived && report.flag_category && (
-                              <span className="ms-1">
+                            <div className="d-flex align-items-center justify-content-center gap-1">
+                              {getReportTypeBadge(
+                                report.report_type || "",
+                                report.scouting_type || "",
+                                report,
+                              )}
+                              {report.scouting_type && getScoutingTypeBadge(report.scouting_type)}
+                              {report.is_archived && report.flag_category && (
                                 <GradeLabelChip label={report.flag_category} size="sm" />
-                              </span>
-                            )}
+                              )}
+                            </div>
                           </td>
                           <td>
                             {report.fixture_date
@@ -1963,17 +1958,12 @@ const PlayerProfilePage: React.FC = () => {
                           <td>{report.position_played || "N/A"}</td>
                           <td>
                             <div className="d-flex align-items-center justify-content-center gap-1">
-                              {report.report_type?.toLowerCase() !== "flag" &&
-                              report.report_type?.toLowerCase() !== "flag assessment" ? (
-                                report.overall_rating && (
-                                  <GradeChip
-                                    score={report.overall_rating}
-                                    isPotential={!!report.is_potential}
-                                    size="sm"
-                                  />
-                                )
-                              ) : (
-                                <FlagChip sentiment={report.flag_category || ""} size="sm" />
+                              {report.overall_rating && (
+                                <GradeChip
+                                  score={report.overall_rating}
+                                  isPotential={!!report.is_potential}
+                                  size="sm"
+                                />
                               )}
                             </div>
                           </td>
@@ -2179,20 +2169,17 @@ const PlayerProfilePage: React.FC = () => {
                                     </span>
                                   )}
                                 </>
-                              ) : report.report_type?.toLowerCase() !== "flag" &&
-                                report.report_type?.toLowerCase() !== "flag assessment" ? (
-                                <>
-                                  <small className="text-muted fw-semibold d-block">Score</small>
-                                  {report.overall_rating && (
+                              ) : (
+                                report.overall_rating && (
+                                  <>
+                                    <small className="text-muted fw-semibold d-block">Score</small>
                                     <GradeChip
                                       score={report.overall_rating}
                                       isPotential={!!report.is_potential}
                                       size="sm"
                                     />
-                                  )}
-                                </>
-                              ) : (
-                                <FlagChip sentiment={report.flag_category || ""} size="sm" />
+                                  </>
+                                )
                               )}
                             </div>
                           </Col>

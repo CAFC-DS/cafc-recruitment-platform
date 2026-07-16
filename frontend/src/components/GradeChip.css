@@ -5,7 +5,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  border-radius: 999px; /* pill reserved for status/grade chips only, per design tokens */
+  border-radius: 6px;
   line-height: 1;
   white-space: nowrap;
 }

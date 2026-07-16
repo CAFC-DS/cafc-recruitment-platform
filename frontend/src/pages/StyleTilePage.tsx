@@ -1,11 +1,11 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye, Pencil, Trash2, ClipboardList, Laptop } from "lucide-react";
+import { UserRound, Eye, Pencil, Trash2, ClipboardList, Laptop, Flag } from "lucide-react";
 import { IconBuildingStadium } from "@tabler/icons-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
-import FlagChip from "../components/FlagChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import { getFlagColor, getContrastTextColor } from "../utils/colorUtils";
 import "./StyleTilePage.css";
 
 /**
@@ -22,14 +22,16 @@ import "./StyleTilePage.css";
  *
  * The real Type column (getReportTypeBadge + getScoutingTypeBadge in
  * ScoutingPage.tsx) is icon-driven, not text: every row shows a live/video
- * scouting-method icon (was a 🏟️/💻 emoji). Lucide has no stadium glyph, so
- * Live uses Tabler's IconBuildingStadium (a second, small icon set used only
- * for this one glyph) and Video uses lucide's Laptop. Flags carry no
- * performance_score at all (per the data model, PERFORMANCE_SCORE only
- * exists on Player Assessment rows) -- the Score column shows a FlagChip
- * (same pill as GradeChip, coloured via the existing, unmodified
- * getFlagColor) instead of a GradeChip. Actions mirrors the real 4-button
- * group (view/edit/delete/add-to-list, was 👁️/✏️/🗑️/📋) with lucide icons.
+ * scouting-method icon (was a 🏟️/💻 emoji), plus a report-type icon for
+ * Flag reports (a flag glyph coloured via the existing, unmodified
+ * getFlagColor). Lucide has no stadium glyph, so Live uses Tabler's
+ * IconBuildingStadium (a second, small icon set used only for this one
+ * glyph) and Video uses lucide's Laptop. Flags carry no performance_score
+ * at all (per the data model, PERFORMANCE_SCORE only exists on Player
+ * Assessment rows) -- since the sentiment is already shown in Type, the
+ * Score column is simply empty for Flag rows rather than duplicating it.
+ * Actions mirrors the real 4-button group (view/edit/delete/add-to-list,
+ * was 👁️/✏️/🗑️/📋) with lucide icons.
  */
 
 const shortlistPlayers = [
@@ -61,27 +63,37 @@ const mockReports: Array<{
   { reportDate: new Date("2026-07-02"), player: "K. Osei", age: 18, position: "LB", fixtureDate: new Date("2026-06-30"), fixture: "Boreham Wood vs Dagenham & Red.", scout: "S. Bishop", type: "Player Assessment", scoutingType: "Video", score: 10, isPotential: true },
 ];
 
-const TypeCell: React.FC<{ scoutingType: "Live" | "Video" }> = ({ scoutingType }) => (
-  <div className="style-tile-type-icons">
-    {scoutingType === "Live" ? (
-      <IconBuildingStadium size={18} aria-label="Live" stroke={1.75} />
-    ) : (
-      <Laptop size={16} aria-label="Video" />
-    )}
-  </div>
-);
+const TypeCell: React.FC<{
+  type: "Player Assessment" | "Flag";
+  scoutingType: "Live" | "Video";
+  flagSentiment?: "positive" | "neutral" | "negative";
+}> = ({ type, scoutingType, flagSentiment }) => {
+  const flagColor = getFlagColor(flagSentiment || "");
+  return (
+    <div className="style-tile-type-icons">
+      {type === "Flag" && (
+        <span
+          className="style-tile-flag-icon"
+          style={{ backgroundColor: flagColor, color: getContrastTextColor(flagColor) }}
+          title={`Flag: ${flagSentiment || "Unknown"}`}
+        >
+          <Flag size={11} fill="currentColor" />
+        </span>
+      )}
+      {scoutingType === "Live" ? (
+        <IconBuildingStadium size={18} aria-label="Live" stroke={1.75} />
+      ) : (
+        <Laptop size={16} aria-label="Video" />
+      )}
+    </div>
+  );
+};
 
 const ScoreCell: React.FC<{
-  type: "Player Assessment" | "Flag";
   score: number | null;
   isPotential: boolean;
-  flagSentiment?: "positive" | "neutral" | "negative";
-}> = ({ type, score, isPotential, flagSentiment }) =>
-  type === "Flag" ? (
-    <FlagChip sentiment={flagSentiment || "neutral"} size="sm" />
-  ) : (
-    <GradeChip score={score as number} isPotential={isPotential} size="sm" />
-  );
+}> = ({ score, isPotential }) =>
+  score === null ? null : <GradeChip score={score} isPotential={isPotential} size="sm" />;
 
 const StyleTilePage: React.FC = () => {
   return (
@@ -157,15 +169,10 @@ const StyleTilePage: React.FC = () => {
                   <td>{r.fixture}</td>
                   <td>{r.scout}</td>
                   <td>
-                    <TypeCell scoutingType={r.scoutingType} />
+                    <TypeCell type={r.type} scoutingType={r.scoutingType} flagSentiment={r.flagSentiment} />
                   </td>
                   <td>
-                    <ScoreCell
-                      type={r.type}
-                      score={r.score}
-                      isPotential={r.isPotential}
-                      flagSentiment={r.flagSentiment}
-                    />
+                    <ScoreCell score={r.score} isPotential={r.isPotential} />
                   </td>
                   <td>
                     <div className="style-tile-actions">

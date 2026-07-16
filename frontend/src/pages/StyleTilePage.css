@@ -161,8 +161,18 @@
 .style-tile-type-icons {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   color: var(--color-text-muted);
+}
+
+.style-tile-flag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
 }
 
 .style-tile-actions {
