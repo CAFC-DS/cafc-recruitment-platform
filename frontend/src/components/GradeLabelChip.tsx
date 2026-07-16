@@ -31,6 +31,7 @@ export const GradeLabelChip: React.FC<GradeLabelChipProps> = ({
         ? parts.map((part, index) => (
             <React.Fragment key={index}>
               {part.trim()}
+              {index < parts.length - 1 && "/"}
               {index < parts.length - 1 && <br />}
             </React.Fragment>
           ))
