@@ -25,13 +25,27 @@ import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
-  getPerformanceScoreColor,
   getFlagColor,
   getGradeColor,
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
+import GradeChip from "../components/GradeChip";
+import GradeLabelChip from "../components/GradeLabelChip";
+import {
+  Flag,
+  Laptop,
+  Clapperboard,
+  Eye,
+  Pencil,
+  Trash2,
+  ClipboardList,
+  RotateCcw,
+  SlidersHorizontal,
+  Check,
+} from "lucide-react";
+import { IconBuildingStadium } from "@tabler/icons-react";
 
 interface ScoutReport {
   report_id: number;
@@ -447,7 +461,11 @@ const ScoutingPage: React.FC = () => {
       case "flag assessment":
         return getFlagBadge(report);
       case "clips":
-        return <span className="badge badge-neutral-grey">Clips</span>;
+        return (
+          <span className="badge badge-neutral-grey" title="Clip">
+            <Clapperboard size={13} />
+          </span>
+        );
       case "player assessment":
       case "player":
         return null; // Remove Player Assessment badge
@@ -490,63 +508,24 @@ const ScoutingPage: React.FC = () => {
         }}
         title={`Flag: ${report.flag_category || "Unknown"}`}
       >
-        🏳️
-      </span>
-    );
-  };
-
-  const getFlagTypeText = (report: ScoutReport) => {
-    // For archived reports, show grade badge instead of regular flag badge
-    if (report.is_archived && report.flag_category) {
-      const vssScore = report.summary ? extractVSSScore(report.summary) : null;
-      return (
-        <div className="d-flex flex-column align-items-end gap-1">
-          <span
-            className="badge-grade"
-            style={{
-              backgroundColor: getGradeColor(report.flag_category),
-              color: "white",
-              fontSize: "0.7rem",
-            }}
-          >
-            {report.flag_category}
-          </span>
-          {vssScore && (
-            <span className="badge-vss" style={{ fontSize: "0.7rem" }}>
-              VSS Score: {vssScore}/32
-            </span>
-          )}
-        </div>
-      );
-    }
-
-    // For regular flag reports, show flag color
-    const flagColor = getFlagColor(report.flag_category || "");
-    return (
-      <span
-        className="badge"
-        style={{
-          backgroundColor: flagColor,
-          color: "white",
-          border: "none",
-          fontWeight: "500",
-          fontSize: "0.9rem",
-        }}
-      >
-        {report.flag_category || "Flag"}
+        <Flag size={12} fill="white" stroke="white" />
       </span>
     );
   };
 
   const getScoutingTypeBadge = (scoutingType: string) => {
-    const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
+    const isLive = scoutingType.toLowerCase() === "live";
     return (
       <span
         className="badge badge-neutral-grey"
-        style={{ cursor: "pointer", fontSize: "16px" }}
+        style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
         title={`Scouting Type: ${scoutingType}`}
       >
-        {icon}
+        {isLive ? (
+          <IconBuildingStadium size={16} stroke={1.75} aria-label="Live" />
+        ) : (
+          <Laptop size={14} aria-label="Video" />
+        )}
       </span>
     );
   };
@@ -739,7 +718,10 @@ const ScoutingPage: React.FC = () => {
                   Marking...
                 </>
               ) : (
-                <>✓ Mark All as Read</>
+                <>
+                  <Check size={16} className="me-1" />
+                  Mark All as Read
+                </>
               )}
             </Button>
           )}
@@ -792,7 +774,10 @@ const ScoutingPage: React.FC = () => {
       <Card className="mb-3">
         <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
           <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0 text-white">🔍 Advanced Filters</h6>
+            <h6 className="mb-0 text-white d-flex align-items-center gap-2">
+              <SlidersHorizontal size={16} />
+              Advanced Filters
+            </h6>
             <Button
               variant="outline-secondary"
               size="sm"
@@ -1108,9 +1093,10 @@ const ScoutingPage: React.FC = () => {
                       setFixtureFilter("");
                       setFixtureQuery("");
                     }}
-                    className="w-100"
+                    className="w-100 d-flex align-items-center justify-content-center gap-1"
                   >
-                    🔄 Clear All Filters
+                    <RotateCcw size={15} />
+                    Clear All Filters
                   </Button>
                 </Form.Group>
               </Col>
@@ -1210,54 +1196,27 @@ const ScoutingPage: React.FC = () => {
                       </td>
                       <td>{report.scout_name}</td>
                       <td>
-                        {getReportTypeBadge(
-                          report.report_type,
-                          report.scouting_type,
-                          report,
-                        )}
-                        {report.scouting_type && (
-                          <span className="ms-1">
-                            {getScoutingTypeBadge(report.scouting_type)}
-                          </span>
-                        )}
-                        {report.is_archived && report.flag_category && (
-                          <span className="ms-1">
-                            <span
-                              className="badge-grade"
-                              style={{
-                                backgroundColor: getGradeColor(report.flag_category),
-                                color: "white",
-                                fontSize: "0.65rem",
-                                padding: "2px 6px",
-                                fontWeight: "500",
-                              }}
-                              title={`Grade: ${report.flag_category}`}
-                            >
-                              {report.flag_category}
-                            </span>
-                          </span>
-                        )}
+                        <div className="d-flex align-items-center justify-content-center gap-1">
+                          {getReportTypeBadge(
+                            report.report_type,
+                            report.scouting_type,
+                            report,
+                          )}
+                          {report.scouting_type && getScoutingTypeBadge(report.scouting_type)}
+                          {report.is_archived && report.flag_category && (
+                            <GradeLabelChip label={report.flag_category} size="sm" />
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div className="d-flex align-items-center justify-content-center gap-1">
-                          <span
-                            className={`badge ${
-                              report.performance_score === 9 ? 'performance-score-9' :
-                              report.performance_score === 10 ? 'performance-score-10' : ''
-                            }`}
-                            style={{
-                              backgroundColor: getPerformanceScoreColor(
-                                report.performance_score,
-                              ),
-                              color: "white !important",
-                              fontWeight: "bold",
-                              fontSize: "0.9rem",
-                              ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
-                            }}
-                            title={report.is_potential ? "Potential Score" : undefined}
-                          >
-                            {report.performance_score}{report.is_potential && "*"}
-                          </span>
+                          {report.performance_score && (
+                            <GradeChip
+                              score={report.performance_score}
+                              isPotential={!!report.is_potential}
+                              size="sm"
+                            />
+                          )}
                         </div>
                       </td>
                       <td>
@@ -1277,7 +1236,7 @@ const ScoutingPage: React.FC = () => {
                             {loadingReportId === report.report_id ? (
                               <Spinner as="span" animation="border" size="sm" />
                             ) : (
-                              "👁️"
+                              <Eye size={13} />
                             )}
                           </Button>
                           <Button
@@ -1290,7 +1249,7 @@ const ScoutingPage: React.FC = () => {
                             {loadingReportId === report.report_id ? (
                               <Spinner as="span" animation="border" size="sm" />
                             ) : (
-                              "✏️"
+                              <Pencil size={13} />
                             )}
                           </Button>
                           <Button
@@ -1299,7 +1258,7 @@ const ScoutingPage: React.FC = () => {
                             onClick={() => handleDeleteReport(report.report_id)}
                             className="btn-action-circle btn-action-delete"
                           >
-                            🗑️
+                            <Trash2 size={13} />
                           </Button>
                           {canAccessLists && (
                             <Button
@@ -1308,7 +1267,7 @@ const ScoutingPage: React.FC = () => {
                               onClick={() => handleAddToList(report)}
                               className="btn-action-circle btn-action-primary"
                             >
-                              📋
+                              <ClipboardList size={13} />
                             </Button>
                           )}
                         </div>
@@ -1464,33 +1423,28 @@ const ScoutingPage: React.FC = () => {
                         {/* Right: Score */}
                         <Col xs={6} className="text-end">
                           <div>
-                            {report.report_type?.toLowerCase() !== "flag" &&
-                            report.report_type?.toLowerCase() !== "flag assessment" ? (
+                            {report.is_archived && report.flag_category ? (
                               <>
-                                <small className="text-muted fw-semibold d-block">
-                                  Score
-                                </small>
-                                <span
-                                  className={`badge ${
-                                    report.performance_score === 9 ? 'performance-score-9' :
-                                    report.performance_score === 10 ? 'performance-score-10' : ''
-                                  }`}
-                                  style={{
-                                    backgroundColor: getPerformanceScoreColor(
-                                      report.performance_score,
-                                    ),
-                                    color: "white !important",
-                                    fontWeight: "bold",
-                                    fontSize: "0.9rem",
-                                    ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
-                                  }}
-                                  title={report.is_potential ? "Potential Score" : undefined}
-                                >
-                                  {report.performance_score}{report.is_potential && "*"}
-                                </span>
+                                <GradeLabelChip label={report.flag_category} size="sm" className="d-block mb-1" />
+                                {report.summary && extractVSSScore(report.summary) && (
+                                  <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
+                                    VSS Score: {extractVSSScore(report.summary)}/32
+                                  </span>
+                                )}
                               </>
                             ) : (
-                              getFlagTypeText(report)
+                              report.performance_score && (
+                                <>
+                                  <small className="text-muted fw-semibold d-block">
+                                    Score
+                                  </small>
+                                  <GradeChip
+                                    score={report.performance_score}
+                                    isPotential={!!report.is_potential}
+                                    size="sm"
+                                  />
+                                </>
+                              )
                             )}
                           </div>
                         </Col>
@@ -1536,7 +1490,7 @@ const ScoutingPage: React.FC = () => {
                                   size="sm"
                                 />
                               ) : (
-                                "👁️"
+                                <Eye size={13} />
                               )}
                             </Button>
                             <Button
@@ -1553,7 +1507,7 @@ const ScoutingPage: React.FC = () => {
                                   size="sm"
                                 />
                               ) : (
-                                "✏️"
+                                <Pencil size={13} />
                               )}
                             </Button>
                             <Button
@@ -1564,7 +1518,7 @@ const ScoutingPage: React.FC = () => {
                                 handleDeleteReport(report.report_id)
                               }
                             >
-                              🗑️
+                              <Trash2 size={13} />
                             </Button>
                             {canAccessLists && (
                               <Button
@@ -1573,7 +1527,7 @@ const ScoutingPage: React.FC = () => {
                                 title="Add to List"
                                 onClick={() => handleAddToList(report)}
                               >
-                                📋
+                                <ClipboardList size={13} />
                               </Button>
                             )}
                           </div>
