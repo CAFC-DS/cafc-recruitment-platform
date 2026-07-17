@@ -158,14 +158,27 @@ also holds the frozen Bootstrap variant colors, so a blind sweep risks nicking o
 user-visible payoff. Cleanup folds into each page's own migration instead; leftovers swept in
 Phase 5.
 
-**Phase 2 — Highest-value pages — IN PROGRESS.**
+**Phase 2 — Highest-value pages — Track 1 DONE for all 5; Track 2 not started for any.**
 `PlayerProfilePage.tsx` (132 hardcoded colors), `HomePage.tsx`, `PlayerListsPage.tsx`,
 `ScoutingPage.tsx`, rest of `Navbar.tsx`.
 - `PlayerProfilePage.tsx`: chip rollout done (6 score sites → `GradeChip`/`GradeLabelChip`,
   `FlagChip` removed per the correction above), emoji→icon done, Type-column centering done.
-  **Not yet done**: full-page chrome/token recolor (backgrounds, borders, remaining
-  hardcoded neutrals, inline-`style` consolidation).
-- `HomePage.tsx`, `PlayerListsPage.tsx`, `ScoutingPage.tsx`, rest of `Navbar.tsx`: not started.
+- `HomePage.tsx`: chip rollout done (`performance_score` → `GradeChip`, archived
+  `flag_category` → `GradeLabelChip`), 12 emoji→icon. `attribute_score` badges and the flag
+  sentiment text badge deliberately left as-is (different metric / no Type-column redundancy
+  to resolve on this page — see commit message for full reasoning).
+- `PlayerListsPage.tsx`: avg-score badge → `GradeChip`, ~20 emoji→icon across list actions,
+  report-type badges, row actions. Frozen favorite-star (`#FFD700`) and decision-marker
+  (`#111827`) hex preserved byte-for-byte — only the glyph swapped to a matching-color icon.
+  `EmptyState.tsx`'s `icon` prop widened to `React.ReactNode` as a direct dependency.
+- `ScoutingPage.tsx`: chip rollout + emoji→icon done, Score column simplified to `GradeChip`
+  only (no Flag branch), Type column centered, `getFlagTypeText` dead code removed.
+- `Navbar.tsx`: emoji→icon done (Phase 1). Hardcoded-hex audit complete — no Track-1-safe
+  substitutions found; the two remaining hex blocks are theme-independent overlays,
+  documented as Track 2 items below.
+- **Not yet done for any of the 5**: full-page chrome/token recolor (backgrounds, borders,
+  remaining hardcoded neutrals, inline-`style` consolidation) — this is Track 2 and needs the
+  user's own eyeball pass in their logged-in browser, per the acceptance criteria below.
 
 **Phase 3 — Remaining internal app.**
 `KanbanPage.tsx`, `PlayerReportModal.tsx`, `ScoutingAssessmentModal.tsx` (chrome only, colors
@@ -213,6 +226,18 @@ rollouts, hex→token substitutions with no layout change, dead-CSS removal) can
 continuously, page after page, without stopping for sign-off on each one — the checks above
 are the gate.
 
+**Caveat on "hex→token substitution":** this is only Track 1 when the element's foreground
+*and* background both come from the same theme-reactive source today. A hex→token swap is
+**not** mechanical — it's a Track 2 design decision — whenever a color is deliberately
+theme-*independent*: an overlay panel with a fixed light (or dark) background regardless of
+app theme, paired with fixed text/border colors chosen for contrast against that fixed
+background. Tokenizing only one side of such a pair (e.g. swapping the text color to
+`var(--color-text)` while the background stays a hardcoded near-white) silently breaks
+contrast in one theme — with zero layout change and zero type/lint error, so none of the
+other Track 1 gates catch it. Confirm foreground and background genuinely move together in
+*both* themes before tokenizing; if that's not already true today, leave the block hardcoded
+and flag it as Track 2 (see Navbar.tsx findings below).
+
 ### Track 2 — human-gated, explicitly not self-certified
 
 - Any change to chrome layout, spacing, backgrounds, borders, or "how a whole page looks" is
@@ -229,6 +254,18 @@ are the gate.
   agent's Track 1 checks plus a code-level self-review, and then the user's own eyeball pass
   in their logged-in browser — the doc should not claim more verification happened than
   actually did.
+- `Navbar.tsx` hardcoded-hex audit (Phase 2) found two theme-independent overlay blocks that
+  were deliberately left hardcoded rather than tokenized, per the caveat above — both are
+  Track 2 (a real design choice: should this become theme-adaptive?), not Track 1 leftovers:
+  - The search-results dropdown (~lines 485-664): a light panel (`rgba(255,255,255,0.95)` /
+    `#ffffff` background, `#374151`/`#6b7280`/`#666`/`#000000`/`#f3f4f6`/`#eee`/`#f0f9ff`
+    text/border) that overlays the dark navbar in both app themes by design. Foreground and
+    background are a coordinated fixed-light pair; tokenizing only the text broke dark-mode
+    contrast (caught and reverted before commit).
+  - The Queue Review Modal (~lines 851, 862): `Modal.Header` (`#007bff` bg, white text) and a
+    `Card` (`#f0f8ff` bg, `#007bff` border) — literal Bootstrap-blue chrome, not brand tokens,
+    coordinated the same way. Whether this should move onto the app's red/graphite palette
+    (and/or theme-swap) is a Track 2 call, not a mechanical substitution.
 
 ### Operating mode
 
