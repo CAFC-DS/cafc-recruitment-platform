@@ -1093,6 +1093,15 @@ body {
   border-color: rgba(75, 85, 99, 0.75);
 }
 
+/* .flow-history-node-title/.flow-history-detail-title/.flow-history-detail-value use
+   var(--bs-gray-900, #111827) -- Bootstrap's raw gray scale is static and never theme-swaps,
+   so without this override they stay near-black against the dark backgrounds set above. */
+[data-bs-theme="dark"] .flow-history-node-title,
+[data-bs-theme="dark"] .flow-history-detail-title,
+[data-bs-theme="dark"] .flow-history-detail-value {
+  color: var(--color-text);
+}
+
 /* Compact Attributes Styles - DEPRECATED (removed from layout) */
 /* .attributes-section-compact {
   background: var(--color-surface, #ffffff);
@@ -1676,7 +1685,7 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 }
 
 .navbar .dropdown-item:hover {
-  background-color: var(--bs-gray-100, #f8f9fa);
+  background-color: var(--color-border);
   color: var(--color-text, #374151);
 }
 
@@ -1813,7 +1822,7 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 }
 
 .list-enhanced li:hover {
-  background-color: var(--bs-gray-50, #f8f9fa);
+  background-color: var(--color-border);
 }
 
 /* Responsive text adjustments */

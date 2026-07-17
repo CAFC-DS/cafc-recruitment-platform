@@ -37,6 +37,7 @@ import SubmissionStatusBadge from "../components/agents/SubmissionStatusBadge";
 import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useTheme } from "../contexts/ThemeContext";
 import { getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
@@ -276,16 +277,24 @@ const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"]) => 
   return styles[eventType] || styles.list_added;
 };
 
-const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"]) => {
-  const colors: Record<FlowHistoryEvent["event_type"], string> = {
+const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"], isDark: boolean) => {
+  const lightColors: Record<FlowHistoryEvent["event_type"], string> = {
     list_added: "#b91c1c",
     stage_changed: "#374151",
     recommendation_submitted: "#d97706",
     recommendation_status_changed: "#0f766e",
     recommendation_agent_status_changed: "#6d28d9",
   };
+  const darkColors: Record<FlowHistoryEvent["event_type"], string> = {
+    list_added: "#ef4444",
+    stage_changed: "#9ca3af",
+    recommendation_submitted: "#f59e0b",
+    recommendation_status_changed: "#2dd4bf",
+    recommendation_agent_status_changed: "#a78bfa",
+  };
 
-  return colors[eventType] || "#b91c1c";
+  const colors = isDark ? darkColors : lightColors;
+  return colors[eventType] || (isDark ? "#ef4444" : "#b91c1c");
 };
 
 const formatFlowHistoryTimestamp = (value?: string | null) =>
@@ -348,6 +357,7 @@ const PlayerProfilePage: React.FC = () => {
   // Determine which ID to use - external or manual
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const { viewMode, setViewMode } = useViewMode();
   const { canGenerateShareLinks, canManageIntel, canSeeAllReports, isAdmin, isIntelReviewer, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
@@ -1650,7 +1660,7 @@ const PlayerProfilePage: React.FC = () => {
                                     )
                                   }
                                   style={{
-                                    ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type),
+                                    ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type, theme.isDark),
                                   }}
                                 >
                                   <div className="flow-history-node-dot" />
@@ -1677,7 +1687,7 @@ const PlayerProfilePage: React.FC = () => {
                         <div
                           className="flow-history-detail-card"
                           style={{
-                            ["--flow-accent" as any]: getFlowHistoryAccentColor(selectedFlowHistoryEvent.event_type),
+                            ["--flow-accent" as any]: getFlowHistoryAccentColor(selectedFlowHistoryEvent.event_type, theme.isDark),
                           }}
                         >
                           <div className="flow-history-detail-header">
@@ -2879,12 +2889,16 @@ const PlayerProfilePage: React.FC = () => {
                                     font: {
                                       size: 10,
                                     },
+                                    color: theme.isDark ? "#F3F4F6" : "#212529",
+                                    backdropColor: "transparent",
                                   },
                                   grid: {
                                     display: true, // Show the grid lines
+                                    color: theme.isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.1)",
                                   },
                                   angleLines: {
                                     display: true, // Show the angle lines radiating from center
+                                    color: theme.isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.1)",
                                   },
                                   pointLabels: {
                                     display: true,
@@ -2892,7 +2906,7 @@ const PlayerProfilePage: React.FC = () => {
                                       size: 12, // Larger font for better readability
                                       weight: "bold",
                                     },
-                                    color: "#212529",
+                                    color: theme.isDark ? "#F3F4F6" : "#212529",
                                     padding: 15, // Reduced padding for compact A4 layout
                                     centerPointLabels: true, // Center labels on their segments
                                     callback: function (value: any, index: number) {
@@ -2926,6 +2940,7 @@ const PlayerProfilePage: React.FC = () => {
                                 legend: {
                                   position: "bottom",
                                   labels: {
+                                    color: theme.isDark ? "#F3F4F6" : "#212529",
                                     generateLabels: () => {
                                       return [
                                         {

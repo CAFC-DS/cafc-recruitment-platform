@@ -23,6 +23,16 @@ import {
   getGradeColor,
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
+import { useTheme } from "../contexts/ThemeContext";
+
+// Chart label/grid colors for the light (on-screen light mode, and forced for PDF export) vs
+// dark (on-screen dark mode) surfaces -- PDF export always renders on a forced white page
+// (see handleExportPDF), so the chart must be switched back to these light-safe values and
+// redrawn immediately before html2canvas captures it, since it copies the canvas as a bitmap.
+const CHART_TEXT_COLOR_LIGHT = "#212529";
+const CHART_TEXT_COLOR_DARK = "#F3F4F6";
+const CHART_GRID_COLOR_LIGHT = "rgba(0, 0, 0, 0.1)";
+const CHART_GRID_COLOR_DARK = "rgba(255, 255, 255, 0.15)";
 
 ChartJS.register(
   RadialLinearScale,
@@ -47,6 +57,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
   report,
 }) => {
   const modalContentRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
+  const { theme } = useTheme();
   const [playerData, setPlayerData] = useState<any>(null);
   const [, setLoadingPlayerData] = useState(false);
 
@@ -216,6 +228,22 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
           (modalBackdrop as HTMLElement).style.display = "none";
         if (modalFooter) (modalFooter as HTMLElement).style.display = "none";
 
+        // The PDF page is always forced to a white background (see backgroundColor below),
+        // but html2canvas copies the attribute chart's <canvas> as a bitmap of whatever is
+        // currently drawn -- if dark mode is active, its labels are light-colored and would
+        // be invisible on the white page. Force it back to light-safe colors and redraw
+        // before capture, then restore the on-screen dark-mode colors right after.
+        const chart = chartRef.current;
+        const chartWasDark = theme.isDark && !!chart;
+        if (chartWasDark) {
+          chart.options.scales.r.ticks.color = CHART_TEXT_COLOR_LIGHT;
+          chart.options.scales.r.grid.color = CHART_GRID_COLOR_LIGHT;
+          chart.options.scales.r.angleLines.color = CHART_GRID_COLOR_LIGHT;
+          chart.options.scales.r.pointLabels.color = CHART_TEXT_COLOR_LIGHT;
+          chart.options.plugins.legend.labels.color = CHART_TEXT_COLOR_LIGHT;
+          chart.update("none");
+        }
+
         // Wait for layout to settle before capture
         await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -227,6 +255,15 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
           backgroundColor: "#ffffff",
           logging: false,
         });
+
+        if (chartWasDark) {
+          chart.options.scales.r.ticks.color = CHART_TEXT_COLOR_DARK;
+          chart.options.scales.r.grid.color = CHART_GRID_COLOR_DARK;
+          chart.options.scales.r.angleLines.color = CHART_GRID_COLOR_DARK;
+          chart.options.scales.r.pointLabels.color = CHART_TEXT_COLOR_DARK;
+          chart.options.plugins.legend.labels.color = CHART_TEXT_COLOR_DARK;
+          chart.update("none");
+        }
 
         // Create PDF based on the actual content dimensions to avoid stretching
         const imgData = canvas.toDataURL("image/png", 1.0); // High quality PNG
@@ -535,12 +572,16 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
           font: {
             size: 10,
           },
+          color: theme.isDark ? CHART_TEXT_COLOR_DARK : CHART_TEXT_COLOR_LIGHT,
+          backdropColor: "transparent",
         },
         grid: {
           display: true, // Show the grid lines
+          color: theme.isDark ? CHART_GRID_COLOR_DARK : CHART_GRID_COLOR_LIGHT,
         },
         angleLines: {
           display: true, // Show the angle lines radiating from center
+          color: theme.isDark ? CHART_GRID_COLOR_DARK : CHART_GRID_COLOR_LIGHT,
         },
         pointLabels: {
           display: true,
@@ -548,7 +589,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
             size: 12, // Larger font for better readability
             weight: "bold",
           },
-          color: "#212529",
+          color: theme.isDark ? CHART_TEXT_COLOR_DARK : CHART_TEXT_COLOR_LIGHT,
           padding: 15, // Reduced padding for compact A4 layout
           centerPointLabels: true, // Center labels on their segments
           callback: function (value: any, index: number) {
@@ -582,6 +623,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
       legend: {
         position: "bottom",
         labels: {
+          color: theme.isDark ? CHART_TEXT_COLOR_DARK : CHART_TEXT_COLOR_LIGHT,
           generateLabels: () => {
             return [
               {
@@ -1007,6 +1049,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                         >
                           <div style={{ width: "680px", height: "680px" }}>
                             <PolarArea
+                              ref={chartRef}
                               data={polarAreaChartData}
                               options={polarAreaChartOptions}
                             />
@@ -1038,7 +1081,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                                 </span>
                               </div>
                               <small
-                                style={{ fontSize: "10px", color: "#666" }}
+                                style={{ fontSize: "10px", color: "var(--color-text-muted)" }}
                               >
                                 Average Attribute Score
                               </small>
@@ -1061,7 +1104,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                                 </span>
                               </div>
                               <small
-                                style={{ fontSize: "10px", color: "#666" }}
+                                style={{ fontSize: "10px", color: "var(--color-text-muted)" }}
                               >
                                 Total Attribute Score
                               </small>
@@ -1073,19 +1116,19 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                         <Card
                           className="mb-3 flex-fill ms-3"
                           style={{
-                            backgroundColor: "#f0f9f0",
-                            border: "1px solid #d4edda",
+                            backgroundColor: theme.isDark ? "rgba(16, 185, 129, 0.12)" : "#f0f9f0",
+                            border: `1px solid ${theme.isDark ? "rgba(16, 185, 129, 0.4)" : "#d4edda"}`,
                           }}
                         >
                           <Card.Header
                             className="py-2 px-3"
                             style={{
-                              backgroundColor: "#e8f5e8",
-                              borderBottom: "1px solid #d4edda",
+                              backgroundColor: theme.isDark ? "rgba(16, 185, 129, 0.2)" : "#e8f5e8",
+                              borderBottom: `1px solid ${theme.isDark ? "rgba(16, 185, 129, 0.4)" : "#d4edda"}`,
                             }}
                           >
                             <strong
-                              style={{ fontSize: "12px", color: "#155724" }}
+                              style={{ fontSize: "12px", color: theme.isDark ? "#6ee7b7" : "#155724" }}
                             >
                               ✅ Strengths
                             </strong>
@@ -1126,19 +1169,19 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                         <Card
                           className="flex-fill ms-3"
                           style={{
-                            backgroundColor: "#fef8f0",
-                            border: "1px solid #fce4b3",
+                            backgroundColor: theme.isDark ? "rgba(245, 158, 11, 0.12)" : "#fef8f0",
+                            border: `1px solid ${theme.isDark ? "rgba(245, 158, 11, 0.4)" : "#fce4b3"}`,
                           }}
                         >
                           <Card.Header
                             className="py-2 px-3"
                             style={{
-                              backgroundColor: "#fcf4e6",
-                              borderBottom: "1px solid #fce4b3",
+                              backgroundColor: theme.isDark ? "rgba(245, 158, 11, 0.2)" : "#fcf4e6",
+                              borderBottom: `1px solid ${theme.isDark ? "rgba(245, 158, 11, 0.4)" : "#fce4b3"}`,
                             }}
                           >
                             <strong
-                              style={{ fontSize: "12px", color: "#8b5a00" }}
+                              style={{ fontSize: "12px", color: theme.isDark ? "#fcd34d" : "#8b5a00" }}
                             >
                               ⚠️ Areas for Improvement
                             </strong>

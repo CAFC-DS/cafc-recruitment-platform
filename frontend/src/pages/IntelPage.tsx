@@ -424,11 +424,11 @@ const IntelPage: React.FC = () => {
               style={
                 viewMode === "cards"
                   ? {
-                      backgroundColor: "#000000",
-                      borderColor: "#000000",
-                      color: "white",
+                      backgroundColor: "var(--color-text)",
+                      borderColor: "var(--color-text)",
+                      color: "var(--color-surface)",
                     }
-                  : { color: "#000000", borderColor: "#000000" }
+                  : { color: "var(--color-text)", borderColor: "var(--color-text)" }
               }
             >
               Cards
@@ -440,11 +440,11 @@ const IntelPage: React.FC = () => {
               style={
                 viewMode === "table"
                   ? {
-                      backgroundColor: "#000000",
-                      borderColor: "#000000",
-                      color: "white",
+                      backgroundColor: "var(--color-text)",
+                      borderColor: "var(--color-text)",
+                      color: "var(--color-surface)",
                     }
-                  : { color: "#000000", borderColor: "#000000" }
+                  : { color: "var(--color-text)", borderColor: "var(--color-text)" }
               }
             >
               Table
