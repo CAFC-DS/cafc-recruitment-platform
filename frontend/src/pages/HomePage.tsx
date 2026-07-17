@@ -17,12 +17,13 @@ import { useAuth } from "../App";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import PlayerReportModal from "../components/PlayerReportModal";
 import {
-  getPerformanceScoreColor,
   getAttributeScoreColor,
   getFlagColor,
-  getGradeColor,
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
+import GradeChip from "../components/GradeChip";
+import GradeLabelChip from "../components/GradeLabelChip";
+import { Users, Goal, Info, Flag, Trophy, Eye } from "lucide-react";
 
 interface ScoutReport {
   report_id: number;
@@ -336,8 +337,8 @@ const HomePage: React.FC = () => {
               {databaseMetadata && !databaseMetadata.error && (
                 <div className="d-flex flex-column gap-1 mt-2">
                   {databaseMetadata.players_table && (
-                    <small className="text-muted d-flex align-items-center justify-content-end">
-                      👥 Players:{" "}
+                    <small className="text-muted d-flex align-items-center justify-content-end gap-1">
+                      <Users size={13} /> Players:{" "}
                       {databaseMetadata.players_table.count?.toLocaleString() ||
                         "0"}{" "}
                       records
@@ -353,8 +354,8 @@ const HomePage: React.FC = () => {
                     </small>
                   )}
                   {databaseMetadata.matches_table && (
-                    <small className="text-muted d-flex align-items-center justify-content-end">
-                      ⚽ Matches:{" "}
+                    <small className="text-muted d-flex align-items-center justify-content-end gap-1">
+                      <Goal size={13} /> Matches:{" "}
                       {databaseMetadata.matches_table.count?.toLocaleString() ||
                         "0"}{" "}
                       records
@@ -382,8 +383,8 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0 d-flex align-items-center">
-                    ⚽{" "}
+                  <h5 className="mb-0 d-flex align-items-center gap-1">
+                    <Goal size={17} />
                     {userRole === "scout"
                       ? "Your Recent Scout Reports"
                       : "Recent Scout Reports"}{" "}
@@ -396,8 +397,8 @@ const HomePage: React.FC = () => {
                         </Tooltip>
                       }
                     >
-                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
-                        ℹ️
+                      <span className="ms-2 d-inline-flex" style={{ cursor: "help", color: "#6c757d" }}>
+                        <Info size={14} />
                       </span>
                     </OverlayTrigger>
                   </h5>
@@ -439,7 +440,7 @@ const HomePage: React.FC = () => {
                             {loadingReportId === report.report_id ? (
                               <Spinner as="span" animation="border" size="sm" />
                             ) : (
-                              "👁️"
+                              <Eye size={13} />
                             )}
                           </Button>
                           <div>
@@ -462,24 +463,12 @@ const HomePage: React.FC = () => {
                           {report.is_archived && (
                             <span className="badge-archived d-block mb-1">ARCHIVED</span>
                           )}
-                          <div className="mb-1">
-                            <span
-                              className={`badge me-1 ${
-                                report.performance_score === 9 ? 'performance-score-9' :
-                                report.performance_score === 10 ? 'performance-score-10' : ''
-                              }`}
-                              style={{
-                                backgroundColor: getPerformanceScoreColor(
-                                  report.performance_score,
-                                ),
-                                color: "white",
-                                fontWeight: "bold",
-                                ...(report.performance_score !== 9 && report.performance_score !== 10 ? { border: "none" } : {}),
-                              }}
-                              title={report.is_potential ? "Potential Score" : undefined}
-                            >
-                              {report.performance_score}{report.is_potential && "*"}
-                            </span>
+                          <div className="mb-1 d-flex align-items-center justify-content-end gap-1">
+                            <GradeChip
+                              score={report.performance_score}
+                              isPotential={!!report.is_potential}
+                              size="sm"
+                            />
                             <span
                               className="badge"
                               style={{
@@ -538,8 +527,8 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0 d-flex align-items-center">
-                    🏳️{" "}
+                  <h5 className="mb-0 d-flex align-items-center gap-1">
+                    <Flag size={16} />
                     {userRole === "scout"
                       ? "Your Recent Flag Reports"
                       : "Recent Flag Reports"}{" "}
@@ -552,8 +541,8 @@ const HomePage: React.FC = () => {
                         </Tooltip>
                       }
                     >
-                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
-                        ℹ️
+                      <span className="ms-2 d-inline-flex" style={{ cursor: "help", color: "#6c757d" }}>
+                        <Info size={14} />
                       </span>
                     </OverlayTrigger>
                   </h5>
@@ -596,7 +585,7 @@ const HomePage: React.FC = () => {
                             {loadingReportId === report.report_id ? (
                               <Spinner as="span" animation="border" size="sm" />
                             ) : (
-                              "👁️"
+                              <Eye size={13} />
                             )}
                           </Button>
                           <div>
@@ -621,13 +610,8 @@ const HomePage: React.FC = () => {
                               <span className="badge-archived me-1">ARCHIVED</span>
                             )}
                             {report.is_archived && report.flag_category ? (
-                              <span
-                                className="badge-grade me-1"
-                                style={{
-                                  backgroundColor: getGradeColor(report.flag_category),
-                                }}
-                              >
-                                {report.flag_category}
+                              <span className="me-1 d-inline-block">
+                                <GradeLabelChip label={report.flag_category} size="sm" />
                               </span>
                             ) : (
                               <span
@@ -696,8 +680,8 @@ const HomePage: React.FC = () => {
             <Card className="h-100">
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0 d-flex align-items-center">
-                    🏆{" "}
+                  <h5 className="mb-0 d-flex align-items-center gap-1">
+                    <Trophy size={16} />
                     {userRole === "scout"
                       ? "Your Highest Attribute Scores"
                       : "Highest Attribute Scores"}{" "}
@@ -710,8 +694,8 @@ const HomePage: React.FC = () => {
                         </Tooltip>
                       }
                     >
-                      <span className="ms-2" style={{ cursor: "help", fontSize: "0.85rem", color: "#6c757d" }}>
-                        ℹ️
+                      <span className="ms-2 d-inline-flex" style={{ cursor: "help", color: "#6c757d" }}>
+                        <Info size={14} />
                       </span>
                     </OverlayTrigger>
                   </h5>
@@ -752,7 +736,7 @@ const HomePage: React.FC = () => {
                             {loadingReportId === report.report_id ? (
                               <Spinner as="span" animation="border" size="sm" />
                             ) : (
-                              "👁️"
+                              <Eye size={13} />
                             )}
                           </Button>
                           <div>
