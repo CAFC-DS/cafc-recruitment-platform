@@ -1237,7 +1237,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     {report.opposition_details && (
                       <div className="mb-3">
                         <div className="d-flex align-items-center mb-1">
-                          <strong style={{ fontSize: "12px", color: "#333" }}>
+                          <strong style={{ fontSize: "12px", color: "var(--color-text)" }}>
                             Opposition Details:
                           </strong>
                         </div>
@@ -1258,7 +1258,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
 
                     <div className="mb-3">
                       <div className="d-flex align-items-center mb-1">
-                        <strong style={{ fontSize: "12px", color: "#333" }}>
+                        <strong style={{ fontSize: "12px", color: "var(--color-text)" }}>
                           Summary:
                         </strong>
                       </div>
@@ -1279,7 +1279,7 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     {report.justification && (
                       <div>
                         <div className="d-flex align-items-center mb-1">
-                          <strong style={{ fontSize: "12px", color: "#333" }}>
+                          <strong style={{ fontSize: "12px", color: "var(--color-text)" }}>
                             Justification & Rationale:
                           </strong>
                         </div>

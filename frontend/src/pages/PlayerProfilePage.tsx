@@ -1591,7 +1591,7 @@ const PlayerProfilePage: React.FC = () => {
                     onClick={() => setFlowHistoryExpanded(!flowHistoryExpanded)}
                     style={{
                       textDecoration: "none",
-                      color: "#666",
+                      color: "var(--color-text-muted)",
                       fontSize: "1.2rem",
                       padding: "0",
                     }}
@@ -1781,7 +1781,7 @@ const PlayerProfilePage: React.FC = () => {
                     onClick={() => setScoutingHistoryExpanded(!scoutingHistoryExpanded)}
                     style={{
                       textDecoration: "none",
-                      color: "#666",
+                      color: "var(--color-text-muted)",
                       fontSize: "1.2rem",
                       padding: "0",
                     }}
@@ -1799,11 +1799,11 @@ const PlayerProfilePage: React.FC = () => {
                       style={
                         viewMode === "cards"
                           ? {
-                              backgroundColor: "#000000",
-                              borderColor: "#000000",
-                              color: "white",
+                              backgroundColor: "var(--color-text)",
+                              borderColor: "var(--color-text)",
+                              color: "var(--color-surface)",
                             }
-                          : { color: "#000000", borderColor: "#000000" }
+                          : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                       }
                     >
                       Cards
@@ -1815,11 +1815,11 @@ const PlayerProfilePage: React.FC = () => {
                       style={
                         viewMode === "table"
                           ? {
-                              backgroundColor: "#000000",
-                              borderColor: "#000000",
-                              color: "white",
+                              backgroundColor: "var(--color-text)",
+                              borderColor: "var(--color-text)",
+                              color: "var(--color-surface)",
                             }
-                          : { color: "#000000", borderColor: "#000000" }
+                          : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                       }
                     >
                       Table
@@ -1841,10 +1841,10 @@ const PlayerProfilePage: React.FC = () => {
                 flexDirection: "column",
                 gap: "0.4rem",
                 fontSize: "0.85rem",
-                backgroundColor: "#ffffff",
+                backgroundColor: "var(--color-surface)",
                 padding: "0.75rem",
                 borderRadius: "6px",
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--color-border)",
                 textAlign: "center"
               }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "center" }}>
@@ -2071,7 +2071,7 @@ const PlayerProfilePage: React.FC = () => {
                           >
                             <Card
                               className={`shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
-                              style={{ borderRadius: "8px", border: "1px solid #dee2e6", height: "100%" }}
+                              style={{ borderRadius: "8px", border: "1px solid var(--color-border)", height: "100%" }}
                             >
                       <Card.Body className="p-3">
                         {/* Top Row - 2 columns */}
@@ -2082,7 +2082,7 @@ const PlayerProfilePage: React.FC = () => {
                               <div
                                 className="fw-bold d-block mb-1"
                                 style={{
-                                  color: "#212529",
+                                  color: "var(--color-text)",
                                   fontSize: "1rem",
                                   textAlign: "left",
                                 }}
@@ -2301,7 +2301,7 @@ const PlayerProfilePage: React.FC = () => {
                       onClick={() => setIntelExpanded(!intelExpanded)}
                       style={{
                         textDecoration: "none",
-                        color: "#666",
+                        color: "var(--color-text-muted)",
                         fontSize: "1.2rem",
                         padding: "0",
                       }}
@@ -2319,11 +2319,11 @@ const PlayerProfilePage: React.FC = () => {
                         style={
                           intelViewMode === "cards"
                             ? {
-                                backgroundColor: "#000000",
-                                borderColor: "#000000",
-                                color: "white",
+                                backgroundColor: "var(--color-text)",
+                                borderColor: "var(--color-text)",
+                                color: "var(--color-surface)",
                               }
-                            : { color: "#000000", borderColor: "#000000" }
+                            : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                         }
                       >
                         Cards
@@ -2335,11 +2335,11 @@ const PlayerProfilePage: React.FC = () => {
                         style={
                           intelViewMode === "table"
                             ? {
-                                backgroundColor: "#000000",
-                                borderColor: "#000000",
-                                color: "white",
+                                backgroundColor: "var(--color-text)",
+                                borderColor: "var(--color-text)",
+                                color: "var(--color-surface)",
                               }
-                            : { color: "#000000", borderColor: "#000000" }
+                            : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                         }
                       >
                         Table
@@ -2678,7 +2678,7 @@ const PlayerProfilePage: React.FC = () => {
                             >
                               <Card
                                 className="h-100 shadow-sm hover-card"
-                                style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                                style={{ borderRadius: "8px", border: "1px solid var(--color-border)" }}
                               >
                                 <Card.Body className="p-3">
                                   <Row className="mb-3 pb-2 border-bottom">
@@ -2687,7 +2687,7 @@ const PlayerProfilePage: React.FC = () => {
                                         <div
                                           className="fw-bold d-block mb-1"
                                           style={{
-                                            color: "#212529",
+                                            color: "var(--color-text)",
                                             fontSize: "1rem",
                                             textAlign: "left",
                                           }}
@@ -3148,7 +3148,7 @@ const PlayerProfilePage: React.FC = () => {
                         style={{ borderRadius: "12px" }}
                       >
                         <Card.Header
-                          style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
+                          style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
                         >
                           <h6 className="mb-0 d-flex align-items-center gap-2">
                             <ClipboardList size={15} />

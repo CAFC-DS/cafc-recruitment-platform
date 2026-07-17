@@ -534,8 +534,8 @@ const AppNavbar: React.FC = () => {
                     top: "100%",
                     left: 0,
                     right: 0,
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e5e7eb",
+                    backgroundColor: "var(--color-surface)",
+                    border: "1px solid var(--color-border)",
                     borderRadius: "8px",
                     boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
                     zIndex: 9999,
@@ -549,7 +549,7 @@ const AppNavbar: React.FC = () => {
                   {isSearching && (
                     <div style={{ padding: "8px 16px" }}>
                       {Array.from({ length: 5 }).map((_, idx) => (
-                        <div key={`shimmer-${idx}`} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
+                        <div key={`shimmer-${idx}`} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}>
                           <div className="shimmer-line mb-2" style={{ width: `${140 + idx * 20}px`, height: "16px" }} />
                           <div className="shimmer-line" style={{ width: "100px", height: "12px" }} />
                         </div>
@@ -564,7 +564,7 @@ const AppNavbar: React.FC = () => {
                         style={{
                           padding: "16px",
                           textAlign: "center",
-                          color: "#6b7280",
+                          color: "var(--color-text-muted)",
                         }}
                       >
                         No players found for "{searchQuery}"
@@ -576,8 +576,8 @@ const AppNavbar: React.FC = () => {
                       style={{
                         padding: "8px 16px",
                         fontSize: "12px",
-                        color: "#666",
-                        borderBottom: "1px solid #eee",
+                        color: "var(--color-text-muted)",
+                        borderBottom: "1px solid var(--color-border)",
                         fontWeight: "600",
                       }}
                     >
@@ -616,11 +616,11 @@ const AppNavbar: React.FC = () => {
                             cursor: "pointer",
                             borderBottom:
                               index < searchResults.length - 1
-                                ? "1px solid #f3f4f6"
+                                ? "1px solid var(--color-border)"
                                 : "none",
                             backgroundColor:
-                              selectedIndex === index ? "#f0f9ff" : "white",
-                            color: "#000000",
+                              selectedIndex === index ? "var(--color-border)" : "var(--color-surface)",
+                            color: "var(--color-text)",
                             fontSize: "14px",
                             fontWeight: "600",
                           }}
@@ -629,7 +629,7 @@ const AppNavbar: React.FC = () => {
                         >
                           <div
                             style={{
-                              color: "#000000",
+                              color: "var(--color-text)",
                               fontSize: "14px",
                               fontWeight: "600",
                               marginBottom: "4px",
@@ -640,7 +640,7 @@ const AppNavbar: React.FC = () => {
                           {(team || age) && (
                             <div
                               style={{
-                                color: "#666666",
+                                color: "var(--color-text-muted)",
                                 fontSize: "12px",
                                 fontWeight: "500",
                               }}
@@ -656,7 +656,7 @@ const AppNavbar: React.FC = () => {
                   {loadingMoreResults && (
                     <div style={{ padding: "8px 16px" }}>
                       {Array.from({ length: 3 }).map((_, idx) => (
-                        <div key={`shimmer-more-${idx}`} style={{ padding: "10px 0", borderBottom: "1px solid #f3f4f6" }}>
+                        <div key={`shimmer-more-${idx}`} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}>
                           <div className="shimmer-line mb-2" style={{ width: `${120 + idx * 25}px`, height: "16px" }} />
                           <div className="shimmer-line" style={{ width: "90px", height: "12px" }} />
                         </div>
