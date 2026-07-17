@@ -158,7 +158,7 @@ also holds the frozen Bootstrap variant colors, so a blind sweep risks nicking o
 user-visible payoff. Cleanup folds into each page's own migration instead; leftovers swept in
 Phase 5.
 
-**Phase 2 — Highest-value pages — Track 1 DONE for all 5; Track 2 not started for any.**
+**Phase 2 — Highest-value pages — Track 1 DONE for all 5; Track 2 underway.**
 `PlayerProfilePage.tsx` (132 hardcoded colors), `HomePage.tsx`, `PlayerListsPage.tsx`,
 `ScoutingPage.tsx`, rest of `Navbar.tsx`.
 - `PlayerProfilePage.tsx`: chip rollout done (6 score sites → `GradeChip`/`GradeLabelChip`,
@@ -176,6 +176,22 @@ Phase 5.
 - `Navbar.tsx`: emoji→icon done (Phase 1). Hardcoded-hex audit complete — no Track-1-safe
   substitutions found; the two remaining hex blocks are theme-independent overlays,
   documented as Track 2 items below.
+- **Track 2, round 1 (user's first logged-in dark-mode pass) — DONE, fixed:** `.btn-action-circle`
+  family was hardcoded `#000000` border/text on transparent bg, invisible in dark mode — now
+  `var(--color-text)`/`var(--color-surface)`, fixes the primitive across all 8 consuming files.
+  Player-name link colors on `ScoutingPage.tsx`/`PlayerListsPage.tsx` (`#0d6efd`/`#212529`/
+  `colors.primary`) were fixed hex, not theme-reactive — now swap per `theme.isDark` (kept the
+  existing light-mode hex exactly; picked Bootstrap's/Tailwind's own established dark-mode
+  companion shades rather than inventing new ones). `.age-text`/`.position-text` referenced a
+  never-defined `--color-text-secondary` var (dead reference, always fell back to hardcoded
+  `#6b7280`) — fixed to the real `--color-text-muted`. `PlayerListsPage.tsx`'s live/intel badges
+  and `ArchiveInfoContent` popover text were also fixed-hex, now theme-reactive. Decision-marker
+  frozen `#111827` got a dark-mode-only exception (`#E5E7EB`) — explicit user sign-off, light
+  mode unchanged. Intel icon changed `Radar`→`FileSearch` on both the Navbar Intel link and the
+  Lists badge (user chose both, to avoid a split icon vocabulary). `HomePage.tsx`: removed the
+  "View All" button from all three widgets, swapped Recent Scout Reports' icon to tabler's
+  `IconBallFootball`. Full reasoning in the two commits following "Close Navbar.tsx hex audit."
+  Not yet reviewed by the user: whether these fixes read correctly in their browser.
 - **Not yet done for any of the 5**: full-page chrome/token recolor (backgrounds, borders,
   remaining hardcoded neutrals, inline-`style` consolidation) — this is Track 2 and needs the
   user's own eyeball pass in their logged-in browser, per the acceptance criteria below.
