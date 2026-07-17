@@ -201,6 +201,27 @@ Phase 5.
 stay frozen), `IntelPage.tsx`/`IntelModal.tsx`, `AnalyticsPage.tsx`, `AdminPage.tsx`,
 `ExternalRecommendationsListPage.tsx`, `internal/InternalRecommendationsPage.tsx`,
 `SharedReportPage.tsx`.
+- `PlayerReportModal.tsx`, `PlayerProfilePage.tsx` (Flow History), and `IntelPage.tsx` each got
+  a **scoped dark-mode-legibility-only** pass out of order (Track 2 round 2, driven by user
+  screenshots of the live app), not their full Phase 3 migration — chip rollout, emoji→icon,
+  and chrome/token recolor are still outstanding on all three. Don't treat them as "done" for
+  Phase 3 just because dark mode now reads correctly on them.
+
+**Phase 3.5 — Interaction states: hover, loading, shimmer.**
+Explicitly called out by the user as its own workstream, not yet started: "incorrect loading
+states, not proper loading states, shimmer animations all need work." Scope not yet fully
+audited. One data point already checked: `ShimmerLoading.tsx` / `.shimmer-line` /
+`.shimmer-card` (`professional-theme.css` ~L2226-2298) already have a real
+`[data-bs-theme="dark"]` variant (different gradient stops, dark card bg/border, even a
+`prefers-reduced-motion` fallback for both themes) — so shimmer is not universally broken,
+whatever's wrong is likely narrower (a specific loading spot, a specific page) or about
+correctness/timing (a shimmer that doesn't match its real content's layout, or a spinner used
+where a shimmer would read better) rather than color. Still to audit: spinner usage
+consistency across pages, loading-state correctness (right skeleton shape for the content it
+precedes), and hover states on chrome beyond the two dead-`--bs-gray` cases already fixed in
+round 2 (that fix was incidental, found while sweeping dead color-variable references, not
+from a dedicated hover audit — there may be more). Needs its own survey pass before estimating
+further; don't assume the two data points above generalize.
 
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
