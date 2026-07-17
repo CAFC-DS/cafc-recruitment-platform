@@ -24,6 +24,7 @@ import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
 import { Users, Goal, Info, Flag, Trophy, Eye } from "lucide-react";
+import { IconBallFootball } from "@tabler/icons-react";
 
 interface ScoutReport {
   report_id: number;
@@ -384,7 +385,7 @@ const HomePage: React.FC = () => {
               <Card.Header className="bg-light border-bottom">
                 <div className="d-flex justify-content-between align-items-center">
                   <h5 className="mb-0 d-flex align-items-center gap-1">
-                    <Goal size={17} />
+                    <IconBallFootball size={17} stroke={1.75} />
                     {userRole === "scout"
                       ? "Your Recent Scout Reports"
                       : "Recent Scout Reports"}{" "}
@@ -393,7 +394,7 @@ const HomePage: React.FC = () => {
                       placement="top"
                       overlay={
                         <Tooltip>
-                          Shows the 10 most recent Player Assessment reports within the selected time period. Click "View All" to see the complete list with advanced filters.
+                          Shows the 10 most recent Player Assessment reports within the selected time period.
                         </Tooltip>
                       }
                     >
@@ -402,13 +403,6 @@ const HomePage: React.FC = () => {
                       </span>
                     </OverlayTrigger>
                   </h5>
-                  <Button
-                    variant="outline-dark"
-                    size="sm"
-                    onClick={() => navigate("/scouting")}
-                  >
-                    View All
-                  </Button>
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
@@ -546,13 +540,6 @@ const HomePage: React.FC = () => {
                       </span>
                     </OverlayTrigger>
                   </h5>
-                  <Button
-                    variant="outline-dark"
-                    size="sm"
-                    onClick={() => navigate("/scouting")}
-                  >
-                    View All
-                  </Button>
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
@@ -690,7 +677,7 @@ const HomePage: React.FC = () => {
                       placement="top"
                       overlay={
                         <Tooltip>
-                          Shows the top 10 Player Assessment reports ranked by total attribute score (highest to lowest). Click "View All" to see the complete list.
+                          Shows the top 10 Player Assessment reports ranked by total attribute score (highest to lowest).
                         </Tooltip>
                       }
                     >
@@ -699,13 +686,6 @@ const HomePage: React.FC = () => {
                       </span>
                     </OverlayTrigger>
                   </h5>
-                  <Button
-                    variant="outline-dark"
-                    size="sm"
-                    onClick={() => navigate("/scouting")}
-                  >
-                    View All
-                  </Button>
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
