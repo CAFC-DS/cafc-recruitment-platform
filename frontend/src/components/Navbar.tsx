@@ -16,7 +16,7 @@ import {
 } from "react-bootstrap";
 import {
   Goal,
-  Radar,
+  FileSearch,
   ClipboardList,
   BarChart3,
   Wrench,
@@ -449,7 +449,7 @@ const AppNavbar: React.FC = () => {
                 )}
                 {canAccessIntel && (
                   <Nav.Link as={Link} to="/intel" className="d-flex align-items-center gap-1">
-                    <Radar size={16} /> Intel
+                    <FileSearch size={16} /> Intel
                   </Nav.Link>
                 )}
                 {canAccessLists && (

@@ -342,7 +342,7 @@ body {
 .table-compact .age-text,
 .table-compact .position-text {
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-muted);
 }
 
 .table-compact .btn-link {
@@ -1412,11 +1412,11 @@ body {
    ACTION BUTTON STYLES
    ================================ */
 
-/* Black outline circle action buttons */
+/* Outline circle action buttons -- theme-reactive so they stay visible in dark mode */
 .btn-action-circle {
-  border: 2px solid #000000 !important;
+  border: 2px solid var(--color-text) !important;
   background-color: transparent !important;
-  color: #000000 !important;
+  color: var(--color-text) !important;
   border-radius: 50% !important;
   width: 32px !important;
   height: 32px !important;
@@ -1429,49 +1429,63 @@ body {
 }
 
 .btn-action-circle:hover {
-  background-color: #000000 !important;
-  color: #ffffff !important;
-  border-color: #000000 !important;
+  background-color: var(--color-text) !important;
+  color: var(--color-surface) !important;
+  border-color: var(--color-text) !important;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-action-circle:focus {
-  background-color: #000000 !important;
-  color: #ffffff !important;
-  border-color: #000000 !important;
+  background-color: var(--color-text) !important;
+  color: var(--color-surface) !important;
+  border-color: var(--color-text) !important;
   box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Specific action button variants with black outlines */
+/* Specific action button variants -- theme-reactive outlines */
 .btn-action-view {
-  border: 2px solid #000000 !important;
-  color: #000000 !important;
+  border: 2px solid var(--color-text) !important;
+  color: var(--color-text) !important;
 }
 
 .btn-action-view:hover {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+  background-color: var(--color-text) !important;
+  color: var(--color-surface) !important;
 }
 
 .btn-action-edit {
-  border: 2px solid #000000 !important;
-  color: #000000 !important;
+  border: 2px solid var(--color-text) !important;
+  color: var(--color-text) !important;
 }
 
 .btn-action-edit:hover {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+  background-color: var(--color-text) !important;
+  color: var(--color-surface) !important;
 }
 
 .btn-action-delete {
-  border: 2px solid #000000 !important;
-  color: #000000 !important;
+  border: 2px solid var(--color-text) !important;
+  color: var(--color-text) !important;
 }
 
 .btn-action-delete:hover {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+  background-color: var(--color-text) !important;
+  color: var(--color-surface) !important;
+}
+
+/* Stateful action-button colors (favorite / decision markers) -- two
+   classes so specificity beats .btn-action-circle's !important color */
+.btn-action-circle.btn-action-favorite-active {
+  color: #FFD700 !important; /* frozen -- shared with Kanban favorite marker, do not change */
+}
+
+.btn-action-circle.btn-action-decision-active {
+  color: #111827 !important; /* frozen -- shared with Kanban decision marker, do not change */
+}
+
+body.theme-dark .btn-action-circle.btn-action-decision-active {
+  color: #E5E7EB !important; /* dark-mode-only exception: #111827 is invisible against the dark background */
 }
 
 .intel-card-nowrap,

@@ -24,6 +24,7 @@ import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../App";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   getFlagColor,
   getGradeColor,
@@ -76,6 +77,7 @@ const ScoutingPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const { canAccessLists } = useCurrentUser();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
@@ -646,11 +648,11 @@ const ScoutingPage: React.FC = () => {
               style={
                 viewMode === "cards"
                   ? {
-                      backgroundColor: "#000000",
-                      borderColor: "#000000",
-                      color: "white",
+                      backgroundColor: "var(--color-text)",
+                      borderColor: "var(--color-text)",
+                      color: "var(--color-surface)",
                     }
-                  : { color: "#000000", borderColor: "#000000" }
+                  : { color: "var(--color-text)", borderColor: "var(--color-text)" }
               }
             >
               Cards
@@ -662,11 +664,11 @@ const ScoutingPage: React.FC = () => {
               style={
                 viewMode === "table"
                   ? {
-                      backgroundColor: "#000000",
-                      borderColor: "#000000",
-                      color: "white",
+                      backgroundColor: "var(--color-text)",
+                      borderColor: "var(--color-text)",
+                      color: "var(--color-surface)",
                     }
-                  : { color: "#000000", borderColor: "#000000" }
+                  : { color: "var(--color-text)", borderColor: "var(--color-text)" }
               }
             >
               Table
@@ -703,8 +705,8 @@ const ScoutingPage: React.FC = () => {
               disabled={markingAllAsRead || loading}
               style={{
                 width: "150px",
-                color: "#000000",
-                borderColor: "#000000"
+                color: "var(--color-text)",
+                borderColor: "var(--color-text)"
               }}
             >
               {markingAllAsRead ? (
@@ -1170,7 +1172,7 @@ const ScoutingPage: React.FC = () => {
                             e.preventDefault();
                             navigate(getPlayerProfilePath(report as any));
                           }}
-                          style={{ textDecoration: "none", color: "#0d6efd", cursor: "pointer" }}
+                          style={{ textDecoration: "none", color: theme.isDark ? "#6ea8fe" : "#0d6efd", cursor: "pointer" }}
                         >
                           {report.player_name}
                         </a>
@@ -1315,7 +1317,7 @@ const ScoutingPage: React.FC = () => {
                               href={getPlayerProfilePath(report as any)}
                               className="text-decoration-none fw-bold d-block mb-1"
                               style={{
-                                color: "#212529",
+                                color: "var(--color-text)",
                                 fontSize: "1rem",
                                 textAlign: "left",
                                 cursor: "pointer",

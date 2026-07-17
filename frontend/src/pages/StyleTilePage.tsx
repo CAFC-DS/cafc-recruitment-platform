@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye, Pencil, Trash2, ClipboardList, Laptop, Flag } from "lucide-react";
+import { UserRound, Eye, Pencil, Trash2, ClipboardList, Laptop, Flag, Star, CircleAlert } from "lucide-react";
 import { IconBuildingStadium } from "@tabler/icons-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
@@ -176,17 +176,23 @@ const StyleTilePage: React.FC = () => {
                   </td>
                   <td>
                     <div className="style-tile-actions">
-                      <Button size="sm" variant="outline-secondary" title="View Report">
-                        <Eye size={14} />
+                      <Button size="sm" title="View Report" className="btn-action-circle btn-action-view">
+                        <Eye size={13} />
                       </Button>
-                      <Button size="sm" variant="outline-secondary" title="Edit">
-                        <Pencil size={14} />
+                      <Button size="sm" title="Edit" className="btn-action-circle btn-action-edit">
+                        <Pencil size={13} />
                       </Button>
-                      <Button size="sm" variant="outline-secondary" title="Delete">
-                        <Trash2 size={14} />
+                      <Button size="sm" title="Delete" className="btn-action-circle btn-action-delete">
+                        <Trash2 size={13} />
                       </Button>
-                      <Button size="sm" variant="outline-secondary" title="Add to List">
-                        <ClipboardList size={14} />
+                      <Button size="sm" title="Add to List" className="btn-action-circle btn-action-primary">
+                        <ClipboardList size={13} />
+                      </Button>
+                      <Button size="sm" title="Favorite (active)" className="btn-action-circle btn-action-favorite-active">
+                        <Star size={13} fill="currentColor" />
+                      </Button>
+                      <Button size="sm" title="Decision (active)" className="btn-action-circle btn-action-decision-active">
+                        <CircleAlert size={13} />
                       </Button>
                     </div>
                   </td>
