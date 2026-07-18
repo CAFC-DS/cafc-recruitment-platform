@@ -388,6 +388,7 @@ const IntelPage: React.FC = () => {
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>

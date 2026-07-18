@@ -2843,7 +2843,7 @@ const PlayerProfilePage: React.FC = () => {
           <div className="radar-header mb-3">
             <h4
               className="section-title mb-0 d-inline-flex align-items-center gap-2"
-              style={{ borderBottom: "2px solid #e5e7eb", paddingBottom: "0.5rem" }}
+              style={{ borderBottom: "2px solid var(--color-border)", paddingBottom: "0.5rem" }}
             >
               <BarChart3 size={18} />
               Attribute Analysis
@@ -3333,6 +3333,7 @@ const PlayerProfilePage: React.FC = () => {
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -3363,6 +3364,7 @@ const PlayerProfilePage: React.FC = () => {
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -3400,7 +3402,7 @@ const PlayerProfilePage: React.FC = () => {
       <style>{`
         .player-profile-page {
           min-height: 100vh;
-          background: #fafafa;
+          background: var(--color-background);
           padding: 1rem 0;
         }
 
@@ -3415,7 +3417,7 @@ const PlayerProfilePage: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 1rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-size: 0.95rem;
         }
 
@@ -3434,7 +3436,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .profile-header {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 2rem 2rem 1.5rem;
           box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -3457,7 +3459,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .player-firstname {
           font-size: 1.1rem;
-          color: #888;
+          color: var(--color-text-muted);
           font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -3466,7 +3468,7 @@ const PlayerProfilePage: React.FC = () => {
         .player-lastname {
           font-size: 2.8rem;
           font-weight: 700;
-          color: #222;
+          color: var(--color-text);
           margin: -0.2rem 0 0.8rem 0;
           line-height: 1;
         }
@@ -3476,7 +3478,7 @@ const PlayerProfilePage: React.FC = () => {
           flex-direction: column;
           align-items: flex-start;
           gap: 0.25rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-size: 0.95rem;
         }
 
@@ -3486,11 +3488,11 @@ const PlayerProfilePage: React.FC = () => {
 
         .club-name {
           font-weight: 500;
-          color: #333;
+          color: var(--color-text);
         }
 
         .position-age {
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .header-actions {
@@ -3499,18 +3501,18 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-btn {
-          border: 1px solid #ddd;
-          background: white;
-          color: #666;
+          border: 1px solid var(--color-border);
+          background: var(--color-surface);
+          color: var(--color-text-muted);
           border-radius: 8px;
           font-size: 0.9rem;
           padding: 0.5rem 1rem;
         }
 
         .clean-btn:hover {
-          background: #f8f9fa;
-          border-color: #bbb;
-          color: #333;
+          background: var(--color-background);
+          border-color: var(--color-border);
+          color: var(--color-text);
         }
 
         /* Info Row Styles */
@@ -3533,7 +3535,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .info-label {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
           font-weight: 500;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -3542,7 +3544,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .info-value {
           font-size: 0.95rem;
-          color: #333;
+          color: var(--color-text);
           font-weight: 500;
         }
 
@@ -3554,14 +3556,14 @@ const PlayerProfilePage: React.FC = () => {
           width: 18px;
           height: 18px;
           font-size: 14px;
-          color: #999;
+          color: var(--color-text-muted);
           cursor: pointer;
           transition: color 0.2s ease;
           user-select: none;
         }
 
         .info-icon:hover {
-          color: #666;
+          color: var(--color-text);
         }
 
         /* Popover Styles */
@@ -3584,24 +3586,24 @@ const PlayerProfilePage: React.FC = () => {
         .popover-list-header {
           font-size: 0.9rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin-bottom: 0.25rem;
         }
 
         .popover-list-detail {
           font-size: 0.85rem;
-          color: #555;
+          color: var(--color-text-muted);
           line-height: 1.5;
         }
 
         .popover-list-meta {
           font-size: 0.8rem;
-          color: #999;
+          color: var(--color-text-muted);
           line-height: 1.5;
         }
 
         .attributes-legend {
-          background: #f8f9fa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 1rem 1.5rem;
           border-left: 4px solid #22c55e;
@@ -3610,13 +3612,13 @@ const PlayerProfilePage: React.FC = () => {
         .legend-title {
           font-size: 1.1rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin: 0 0 0.5rem 0;
         }
 
         .legend-text {
           font-size: 0.85rem;
-          color: #666;
+          color: var(--color-text-muted);
           margin: 0;
           display: flex;
           align-items: center;
@@ -3630,29 +3632,29 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .no-attributes-section {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 2rem;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
           margin-bottom: 1.5rem;
-          border: 2px dashed #e0e0e0;
+          border: 2px dashed var(--color-border);
           text-align: center;
         }
 
         .no-attributes-content h4 {
-          color: #333;
+          color: var(--color-text);
           font-weight: 600;
           margin-bottom: 1rem;
         }
 
         .no-attributes-content p {
-          color: #666;
+          color: var(--color-text-muted);
           margin-bottom: 0;
           line-height: 1.6;
         }
 
         .attribute-section {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 1.5rem;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -3662,9 +3664,9 @@ const PlayerProfilePage: React.FC = () => {
         .section-title {
           font-size: 1.1rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin-bottom: 1rem;
-          border-bottom: 2px solid #f0f0f0;
+          border-bottom: 2px solid var(--color-border);
           padding-bottom: 0.4rem;
         }
 
@@ -3683,7 +3685,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .attribute-label {
           font-weight: 500;
-          color: #333;
+          color: var(--color-text);
           min-width: 150px;
           font-size: 0.9rem;
         }
@@ -3701,7 +3703,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .score-text {
           font-size: 0.8rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-weight: 500;
           min-width: 35px;
         }
@@ -3710,7 +3712,7 @@ const PlayerProfilePage: React.FC = () => {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          border: 1px solid #ddd;
+          border: 1px solid var(--color-border);
         }
 
         .dot.filled {
@@ -3719,13 +3721,13 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .dot.empty {
-          background: white;
-          border-color: #ddd;
+          background: var(--color-surface);
+          border-color: var(--color-border);
         }
 
 
         .tabs-section {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 0.5rem;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -3734,7 +3736,7 @@ const PlayerProfilePage: React.FC = () => {
         .clean-tabs .nav-link {
           background: transparent;
           border: none;
-          color: #666;
+          color: var(--color-text-muted);
           font-weight: 500;
           padding: 1rem 2rem;
           border-radius: 12px;
@@ -3742,9 +3744,9 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-tabs .nav-link.active {
-          background: #f8f9fa;
-          color: #333;
-          border: 1px solid #e9ecef;
+          background: var(--color-background);
+          color: var(--color-text);
+          border: 1px solid var(--color-border);
         }
 
         .tab-content-wrapper {
@@ -3758,15 +3760,15 @@ const PlayerProfilePage: React.FC = () => {
         .report-title {
           font-size: 1.2rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin-bottom: 1.5rem;
         }
 
         .empty-state {
           text-align: center;
-          color: #888;
+          color: var(--color-text-muted);
           padding: 2rem;
-          background: #f8f9fa;
+          background: var(--color-background);
           border-radius: 12px;
           font-style: italic;
         }
@@ -3778,10 +3780,10 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .report-card {
-          background: #fafafa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 1.5rem;
-          border: 1px solid #f0f0f0;
+          border: 1px solid var(--color-border);
         }
 
         .report-header {
@@ -3804,11 +3806,11 @@ const PlayerProfilePage: React.FC = () => {
 
         .report-date {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .report-summary {
-          color: #555;
+          color: var(--color-text-muted);
           font-size: 0.9rem;
           line-height: 1.5;
           margin-bottom: 1rem;
@@ -3823,7 +3825,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .report-scout {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .report-scores {
@@ -3845,32 +3847,32 @@ const PlayerProfilePage: React.FC = () => {
         .contact-org {
           display: block;
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
           font-weight: normal;
         }
 
         .transfer-fee {
           font-size: 0.8rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-weight: 500;
         }
 
         .data-table {
-          background: #fafafa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 2rem;
         }
 
         .clean-table {
-          background: white;
+          background: var(--color-surface);
           border-radius: 8px;
           overflow: hidden;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .clean-table th {
-          background: #f8f9fa;
-          color: #666;
+          background: var(--color-background);
+          color: var(--color-text-muted);
           font-weight: 600;
           border: none;
           font-size: 0.85rem;
@@ -3881,7 +3883,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .clean-table td {
           border: none;
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid var(--color-border);
           padding: 1rem 0.75rem;
           font-size: 0.9rem;
         }
@@ -3900,7 +3902,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .notes-section {
-          background: #fafafa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 2rem;
         }
@@ -3925,7 +3927,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .note-card {
-          background: white;
+          background: var(--color-surface);
           border-radius: 10px;
           padding: 1.5rem;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -3951,11 +3953,11 @@ const PlayerProfilePage: React.FC = () => {
 
         .note-date {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .note-content {
-          color: #555;
+          color: var(--color-text-muted);
           font-size: 0.9rem;
           line-height: 1.6;
           margin: 0;
@@ -3968,7 +3970,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-modal .modal-header {
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid var(--color-border);
           padding: 1.5rem 2rem 1rem;
         }
 
@@ -3977,18 +3979,18 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-modal .modal-footer {
-          border-top: 1px solid #f0f0f0;
+          border-top: 1px solid var(--color-border);
           padding: 1rem 2rem 1.5rem;
         }
 
         .clean-textarea {
-          border: 1px solid #e0e0e0;
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           font-size: 0.9rem;
         }
 
         .clean-textarea:focus {
-          border-color: #666;
+          border-color: var(--color-text-muted);
           box-shadow: 0 0 0 2px rgba(102,102,102,0.1);
         }
 

@@ -36,6 +36,7 @@ import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
 import StageChangeReasonModal from "../components/PlayerLists/StageChangeReasonModal";
 import StageHistoryModal from "../components/PlayerLists/StageHistoryModal";
 import { getPlayerNotes, setPlayerNotes } from "../utils/playerListPreferences";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   createPlayerList,
   updatePlayerList,
@@ -95,6 +96,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   headerAccessory = null,
 }) => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
   // Advanced Filters State
@@ -1741,7 +1743,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
                           {player.age && ` • Age ${player.age}`}
                         </div>
                       </div>
-                      <span style={{ color: "#0d6efd", fontSize: "0.9rem" }}>Add →</span>
+                      <span style={{ color: theme.isDark ? "#6ea8fe" : "#0d6efd", fontSize: "0.9rem" }}>Add →</span>
                     </ListGroup.Item>
                   );
                 })}

@@ -491,9 +491,9 @@ const AppNavbar: React.FC = () => {
                     onKeyDown={handleKeyDown}
                     size="sm"
                     style={{
-                      backgroundColor: "rgba(255, 255, 255, 0.95)",
-                      borderColor: "rgba(255, 255, 255, 0.3)",
-                      color: "#374151",
+                      backgroundColor: "var(--color-surface)",
+                      borderColor: "var(--color-border)",
+                      color: "var(--color-text)",
                       fontWeight: "500",
                       paddingLeft: "0.75rem",
                       paddingRight: "2.5rem",
@@ -508,7 +508,7 @@ const AppNavbar: React.FC = () => {
                       right: "12px",
                       top: "50%",
                       transform: "translateY(-50%)",
-                      color: "#6b7280",
+                      color: "var(--color-text-muted)",
                       pointerEvents: "none",
                       display: "flex",
                       alignItems: "center",

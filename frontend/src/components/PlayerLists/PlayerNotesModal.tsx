@@ -59,6 +59,7 @@ const PlayerNotesModal: React.FC<PlayerNotesModalProps> = ({
       <Modal.Header
         closeButton
         style={{ backgroundColor: "#000000", color: "white" }}
+        className="modal-header-dark"
       >
         <Modal.Title>
           📝 Notes for {playerName}

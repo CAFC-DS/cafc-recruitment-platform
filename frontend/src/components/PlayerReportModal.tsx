@@ -1316,6 +1316,10 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
       <style>{`
         .modal-header-dark .btn-close {
           filter: invert(1) grayscale(100%) brightness(200%);
+          opacity: 0.9;
+        }
+        .modal-header-dark .btn-close:hover {
+          opacity: 1;
         }
       `}</style>
     </Modal>

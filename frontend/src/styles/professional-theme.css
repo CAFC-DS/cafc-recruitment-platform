@@ -1405,7 +1405,7 @@ body {
 /* Neutral grey badge for all type badges (report types, scouting types, etc.) */
 .badge-neutral-grey {
   background-color: transparent !important;
-  color: #374151 !important;
+  color: var(--color-text, #374151) !important;
   border: none;
   font-weight: 500;
 }
@@ -1509,24 +1509,24 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 
 /* Enhanced search input styling */
 .navbar .navbar-search-input {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  color: #374151 !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text) !important;
   font-weight: 500;
   transition: all 0.3s ease;
   border-radius: 0.375rem 0 0 0.375rem !important;
 }
 
 .navbar .navbar-search-input::placeholder {
-  color: rgba(55, 65, 81, 0.6);
+  color: var(--color-text-muted);
   font-weight: 400;
 }
 
 .navbar .navbar-search-input:focus {
-  background-color: rgba(255, 255, 255, 1) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.2) !important;
-  color: #374151 !important;
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 0.2rem var(--color-border) !important;
+  color: var(--color-text) !important;
   transform: translateY(-1px);
 }
 
@@ -1549,9 +1549,8 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 /* Enhanced search dropdown - with stronger overrides for visibility */
 .navbar-search-dropdown {
   animation: slideDown 0.3s ease !important;
-  border: 1px solid #e5e7eb !important;
-  background: #ffffff !important;
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border) !important;
+  background: var(--color-surface) !important;
   position: absolute !important;
   z-index: 9999 !important;
   display: block !important;
@@ -1567,17 +1566,17 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 /* Force visibility of search result text with ultra-specific selectors */
 .navbar-search-dropdown .search-result-item,
 .navbar-search-dropdown .navbar-search-item {
-  color: #000000 !important;
+  color: var(--color-text) !important;
   font-weight: 600 !important;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
-  background-color: white !important;
+  background-color: var(--color-surface) !important;
 }
 
 .navbar-search-dropdown .search-result-item div,
 .navbar-search-dropdown .navbar-search-item div {
-  color: #000000 !important;
+  color: var(--color-text) !important;
   font-weight: 600 !important;
   display: block !important;
   visibility: visible !important;
@@ -1588,13 +1587,13 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 
 .navbar-search-dropdown .search-result-item:hover,
 .navbar-search-dropdown .navbar-search-item:hover {
-  color: #0369a1 !important;
-  background-color: #f0f9ff !important;
+  color: var(--color-primary) !important;
+  background-color: var(--color-border) !important;
 }
 
 .navbar-search-dropdown .search-result-item:hover div,
 .navbar-search-dropdown .navbar-search-item:hover div {
-  color: #0369a1 !important;
+  color: var(--color-primary) !important;
 }
 
 /* Secondary text styling with ultra-specific selectors */
@@ -1602,7 +1601,7 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 .navbar-search-dropdown .search-result-item div:last-child,
 .navbar-search-dropdown .navbar-search-item div:nth-child(2),
 .navbar-search-dropdown .navbar-search-item div:last-child {
-  color: #666666 !important;
+  color: var(--color-text-muted) !important;
   font-weight: 500 !important;
   font-size: 12px !important;
 }
@@ -1611,7 +1610,7 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 .navbar-search-dropdown .search-result-item:hover div:last-child,
 .navbar-search-dropdown .navbar-search-item:hover div:nth-child(2),
 .navbar-search-dropdown .navbar-search-item:hover div:last-child {
-  color: #0284c7 !important;
+  color: var(--color-text) !important;
 }
 
 @keyframes slideDown {
@@ -1631,7 +1630,7 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 }
 
 .navbar-search-item:hover {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  background: var(--color-border) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -2105,7 +2104,7 @@ span.badge.performance-score-9, span.badge.performance-score-10 {
 
 span.badge.badge-neutral-grey {
   background-color: transparent !important;
-  color: #374151 !important;
+  color: var(--color-text, #374151) !important;
   font-weight: 500 !important;
 }
 
@@ -4075,6 +4074,25 @@ span.badge.badge-neutral-grey {
 
 .external-recommendation-review-modal .modal-header-dark .btn-close {
   filter: invert(1) grayscale(100%) brightness(200%);
+  opacity: 0.9;
+}
+
+.external-recommendation-review-modal .modal-header-dark .btn-close:hover {
+  opacity: 1;
+}
+
+/* Global fallback: any modal using .modal-header-dark (black header) gets a
+   legible close button, regardless of whether that modal defines its own
+   scoped override above. Bootstrap's default close-button SVG is black; on a
+   literal-black header (both light and dark app theme) it's invisible
+   without this. */
+.modal-header-dark .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+  opacity: 0.9;
+}
+
+.modal-header-dark .btn-close:hover {
+  opacity: 1;
 }
 
 .external-recommendation-review-modal .modal-body {

@@ -206,22 +206,132 @@ stay frozen), `IntelPage.tsx`/`IntelModal.tsx`, `AnalyticsPage.tsx`, `AdminPage.
   screenshots of the live app), not their full Phase 3 migration — chip rollout, emoji→icon,
   and chrome/token recolor are still outstanding on all three. Don't treat them as "done" for
   Phase 3 just because dark mode now reads correctly on them.
+- **Track 2 round 3 (user's third dark-mode pass, driven by 3 more screenshots) — DONE:**
+  `PlayerReportModal.tsx`'s `.btn-close` was inverted-to-white but inherited Bootstrap's default
+  0.5 opacity, reading as too faint against the black modal header — bumped to 0.9/1.0 on hover.
+  `.badge-neutral-grey` (used by the "Tags:" row on Scouting/Intel History cards, both here and
+  reused on `AnalyticsPage.tsx`/`PersonalAnalyticsPage.tsx`/`ScoutingPage.tsx`/
+  `StageMovementAnalyticsTab.tsx`) had `color: #374151 !important` hardcoded against a
+  `background: transparent` badge — invisible on dark cards; now `var(--color-text, #374151)`.
+  **Root-cause finding on `PlayerProfilePage.tsx`:** the page has two entirely separate styling
+  systems — scattered inline `style={{}}` (the target of rounds 1-2's fixes) and a ~630-line
+  embedded `<style>{\`...\`}</style>` block at the end of the file (was L3400-4030) defining
+  every custom class used via `className` (`.profile-header`, `.attribute-section`,
+  `.tabs-section`, `.report-card`, `.notes-section`, `.clean-table`, `.no-attributes-section`,
+  etc.) — 100% hardcoded to light-mode hex with zero dark-mode selectors. This is why the page
+  kept reading as "still the same" after two rounds of inline-only fixes. Fixed by tokenizing
+  every rule in place (not adding a parallel dark block): flat surfaces (`white`, used for
+  raised cards) → `var(--color-surface)`; sunken/recessed panels (`#fafafa`/`#f8f9fa`) →
+  `var(--color-background)` — kept as two distinct tokens to preserve the page's existing
+  raised/sunken depth hierarchy rather than flattening both to one grey; text `#222`/`#333` →
+  `var(--color-text)`, `#555`/`#666`/`#888`/`#999` → `var(--color-text-muted)`; borders
+  `#ddd`/`#e0e0e0`/`#f0f0f0`/`#e9ecef`/`#bbb` → `var(--color-border)`. Left untouched as
+  intentional: `.badge.bg-gold`/`.badge.bg-silver` (black-on-gradient medal badges, readable in
+  both themes by construction, same reasoning as the frozen gold/silver grade special-case),
+  the `#22c55e` filled-dot score indicator (semantic, matches the frozen grade-color family),
+  and both Delete Confirmation Modal headers' `#000000`/white (same always-black-header pattern
+  as the report modal and `ScoutingAssessmentModal.tsx`). Also fixed one inline override that
+  survived the class-level fix: the "Attribute Analysis" heading's `borderBottom` was
+  re-hardcoded to `#e5e7eb` on top of the (now-tokenized) `.section-title` class.
+  **Correction to a stale conclusion in this doc:** the Phase 2 Track 2 note below previously
+  claimed `Navbar.tsx`'s search dropdown was "a coordinated fixed-light pair" left hardcoded on
+  purpose, and that tokenizing broke contrast. That was a misdiagnosis — the real cause was
+  `professional-theme.css`'s `.navbar-search-input`/`.navbar-search-dropdown`/
+  `.search-result-item` rules (L1511-1636), a second, `!important`-flagged styling system for
+  the same markup that silently overrode the JSX's already-tokenized inline styles (CSS
+  `!important` beats a plain inline style regardless of specificity). Fixed by tokenizing that
+  CSS block too (`var(--color-surface)`/`var(--color-border)`/`var(--color-text)`/
+  `var(--color-text-muted)`/`var(--color-primary)`, `!important` kept), plus the search icon's
+  inline `color: "#6b7280"` in `Navbar.tsx`. Foreground and background now move together
+  because there's only one system left, not two disagreeing ones — no user re-verification yet.
+- **Track 2 round 4 (user asked for the same pass across "all pages," granted browser access
+  to an already-authenticated session — agent did not and will not enter credentials) — DONE:**
+  Two bug classes found this round, both bigger than "dark mode":
+  - **Missing `modal-header-dark` class = invisible close button in every theme, not just
+    dark.** A literal-black `Modal.Header` only gets its close-button `filter: invert(...)`
+    override when tagged `className="modal-header-dark"`; without it, Bootstrap's default
+    black-X SVG renders on a black background — invisible in light mode too. Audited every
+    `backgroundColor: "#000000"`/`"#000"` `Modal.Header` app-wide (grep, not sampling) and added
+    the class to the ones missing it: `PlayerLists/PlayerNotesModal.tsx`,
+    `PlayerLists/StageChangeReasonModal.tsx`, `PlayerLists/StageHistoryModal.tsx`,
+    `IntelPage.tsx`, `ScoutingPage.tsx`, `PlayerProfilePage.tsx` (both Delete Confirmation
+    modals), `PersonalAnalyticsPage.tsx`, `FeedbackModal.tsx`. `Card.Header`s with the same
+    black background (no close button, no bug) were left alone. Also consolidated the
+    close-button opacity fix (round 3's `0.9`/hover-`1.0`, previously only in
+    `PlayerReportModal.tsx`) into one global `.modal-header-dark .btn-close` rule in
+    `professional-theme.css`, so `AddPlayerModal.tsx`/`IntelReportModal.tsx`/
+    `AgentRecommendationModal.tsx`/`AddFixtureModal.tsx` (which had no local override at all —
+    the worst case, permanently invisible) get it too, without editing those 4 files directly.
+    This global rule also improves `ScoutingAssessmentModal.tsx`'s close button as a side
+    effect (same class, same selector) — that file itself was not edited, per its freeze.
+  - **A second, separate CSS-leak bug, same shape as round 3's search-box `!important`
+    override:** `FeedbackModal.tsx` (mounted globally via `Navbar.tsx`, so always present in
+    the DOM) declared `.modal-header .btn-close { filter: invert(1)... }` — scoped to
+    Bootstrap's generic `.modal-header` class, not `.modal-header-dark`. Since every modal in
+    the app carries `.modal-header`, this one rule was inverting the close-button icon on
+    *every* modal in the app to white, all the time — invisible-on-invisible for any modal with
+    a normal light header. Rescoped to `.modal-header-dark` (matching the pattern everywhere
+    else) and gave `FeedbackModal`'s own header the class it was relying on implicitly.
+  - **Chrome tokenization**, same pattern as prior rounds: `AnalyticsPage.tsx` and
+    `PersonalAnalyticsPage.tsx`'s embedded `<style>` blocks (tabs, tables, hover states — chart
+    dataset colors in `PersonalAnalyticsPage.tsx`'s line-chart config left untouched, genuine
+    data-viz, not chrome); `IntelModal.tsx`'s `.intel-type-card` border/hover; the duplicated
+    autocomplete-dropdown chrome in `AddPlayerModal.tsx`/`AddFixtureModal.tsx` (fixed
+    background, no dark-mode reactivity, 2 occurrences each); one player-name link color in
+    `PersonalAnalyticsPage.tsx` and one "Add →" accent in `KanbanPage.tsx`, both swapped to the
+    established `theme.isDark ? "#6ea8fe" : "#0d6efd"` pattern.
+  - **Explicitly deferred, not overlooked:** `ScoutingAssessmentModal.tsx` (frozen, per the
+    constraint at the top of this doc — not edited beyond the incidental global CSS effect
+    above). `SharedReportPage.tsx` (30 hex hits, ~20 of them the frozen radar triad; the rest —
+    Strengths/Areas-for-Improvement card colors, text — left alone because the page has zero
+    `useTheme` wiring and no dark-mode toggle exposed; it reads as an intentionally
+    fixed-appearance external-facing artifact, same spirit as "no crest watermark on PDF
+    export," not a page that silently inherited the internal app's dark mode by omission —
+    worth a direct confirm with the user before wiring it up either way).
+    `ExternalRecommendationsListPage.tsx` and `pages/internal/InternalRecommendationsPage.tsx`
+    (both lean on `agent-portal-*` CSS classes / literal Bootstrap-blue "Queue Review Modal"
+    chrome already flagged elsewhere in this doc as Phase 4 territory, not a Phase 2/3
+    mechanical token swap — touching only the 2-3 stray hex values on top of unreconciled
+    agent-portal CSS would patch inconsistently rather than fix). `Kanban` card-state border
+    colors and `playerLists.theme.ts`-sourced colors (e.g. `KanbanPage.tsx`'s save-progress
+    error text, which mixes frozen `colors.gray[700]` with a literal `#b91c1c` — can't cleanly
+    fix half of a frozen-coupled expression) — untouched, per the existing freeze.
+  - Full Track 1 verification (`tsc`, `eslint` diffed against the pre-round baseline via
+    `git stash`, zero-emoji scan, frozen-file diff against `main`) — all clean, identical
+    warning counts, zero errors, zero frozen-file changes. Live-verified in an
+    already-authenticated browser tab (existing session, not a new login) before it expired:
+    homepage, `ScoutingPage.tsx` cards + Cards/Table toggle + Player Assessment Report modal
+    (chart colors, close button computed style confirmed `opacity: 0.9` / correct invert
+    filter). Everything from this round past that point (`AnalyticsPage.tsx`,
+    `PersonalAnalyticsPage.tsx`, `KanbanPage.tsx`, the other modals) is Track 1 + code-review
+    verified only, not yet seen live — same standing limitation as every prior round.
 
 **Phase 3.5 — Interaction states: hover, loading, shimmer.**
-Explicitly called out by the user as its own workstream, not yet started: "incorrect loading
-states, not proper loading states, shimmer animations all need work." Scope not yet fully
-audited. One data point already checked: `ShimmerLoading.tsx` / `.shimmer-line` /
-`.shimmer-card` (`professional-theme.css` ~L2226-2298) already have a real
-`[data-bs-theme="dark"]` variant (different gradient stops, dark card bg/border, even a
-`prefers-reduced-motion` fallback for both themes) — so shimmer is not universally broken,
-whatever's wrong is likely narrower (a specific loading spot, a specific page) or about
-correctness/timing (a shimmer that doesn't match its real content's layout, or a spinner used
-where a shimmer would read better) rather than color. Still to audit: spinner usage
-consistency across pages, loading-state correctness (right skeleton shape for the content it
-precedes), and hover states on chrome beyond the two dead-`--bs-gray` cases already fixed in
-round 2 (that fix was incidental, found while sweeping dead color-variable references, not
-from a dedicated hover audit — there may be more). Needs its own survey pass before estimating
-further; don't assume the two data points above generalize.
+Explicitly called out by the user as its own workstream: "incorrect loading states, not proper
+loading states, shimmer animations all need work." One data point already checked:
+`ShimmerLoading.tsx` / `.shimmer-line` / `.shimmer-card` (`professional-theme.css`
+~L2226-2298) already have a real `[data-bs-theme="dark"]` variant (different gradient stops,
+dark card bg/border, even a `prefers-reduced-motion` fallback for both themes) — so shimmer is
+not universally broken, whatever's wrong is likely narrower (a specific loading spot, a
+specific page) or about correctness/timing rather than color. Still to audit: spinner usage
+consistency across pages and loading-state correctness (right skeleton shape for the content
+it precedes) — needs its own survey pass; don't assume the shimmer data point generalizes.
+
+**Loading-language decision (explicit, per user request):**
+- **Shimmer** = the default for *content* that's about to render in a known shape: report
+  lists, tables, cards, search results. The skeleton should approximate the real layout it's
+  about to replace (line-height/width proportions matching the actual text it stands in for),
+  not a generic grey block — a mismatched skeleton reads as "incorrect loading state," which is
+  exactly what the user flagged.
+- **Spinner** = reserved for *actions* with no predictable content shape: form submits, button
+  clicks, PDF export, save/delete confirmations. A spinner on a button or over a modal, never a
+  full page.
+- **Never both** for the same loading event — a spinner inside a shimmer card (or vice versa)
+  is the "not proper loading state" pattern to eliminate wherever found.
+- Any full-page load (initial page mount before data arrives) should prefer a shimmer skeleton
+  of the page's real layout over a centered spinner, consistent with the content rule above —
+  `PlayerProfilePage.tsx`'s own `.loading-container`/`.loading-content` (currently a centered
+  spinner + text) is a candidate to convert during that page's next visit, not yet done.
 
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
@@ -231,6 +341,58 @@ of one shared auth-page layout between internal login and agent login, properly 
 
 **Phase 5 — Cleanup & verification.**
 Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
+
+## Empty states
+
+Added per explicit user request. Not yet built — this section records the design direction so
+it doesn't get reinvented ad hoc per page.
+
+- **Motif: the club crest, faint, as a watermark.** User's own suggestion, confirmed: a large,
+  low-opacity version of the club crest sitting behind/within an empty-state panel (e.g. "no
+  reports yet," "no players in this list," the radar chart's "no attribute data" branch) —
+  reinforces "empty," not "broken," and ties the empty state back to the brand anchor
+  (Charlton crest) rather than a generic icon-and-caption box.
+- **Explicit exclusion, confirmed by the user: never on PDF export.** Exported report PDFs
+  must not carry the crest watermark even where the on-screen equivalent shows it — it's a
+  screen-only affordance, not part of the printed/exported artifact. Whatever component ends
+  up rendering the watermark needs a prop/flag to suppress it specifically in the
+  `html2canvas` export path (the same code path already has to special-case dark-mode chart
+  colors before capture — see `PlayerReportModal.tsx`'s `handleExportPDF`, add this alongside
+  it rather than as a separate mechanism).
+- **Existing precedent, not yet unified:** `components/PlayerLists/EmptyState.tsx` is the only
+  dedicated empty-state component today, scoped to one page. Everywhere else, "empty" is an
+  inline `text-center text-muted` paragraph (e.g. `PlayerProfilePage.tsx`'s `.empty-state`
+  class, now tokenized for dark mode but still just a caption, no watermark). Consolidating
+  these into one shared component (crest watermark + heading + caption + optional action) is
+  the natural next step once this section is acted on, following the same
+  "component wraps the design decision once" pattern already used for `GradeChip`.
+- Scope: applies to genuinely-empty states (no data exists), not loading states (Phase 3.5,
+  shimmer) or zero-result search/filter states (arguably still "empty," worth revisiting
+  whether those should carry the same treatment or something lighter — not decided).
+
+## Elevation scale
+
+Added per explicit user request. Today, shadows are ad hoc inline `box-shadow` values repeated
+per component with no shared scale (e.g. `PlayerProfilePage.tsx`'s embedded stylesheet alone
+has `rgba(0,0,0,0.05)`, `0.08`, `0.1`, `0.15` all in play for what are conceptually the same two
+or three levels of "how raised is this"). Proposed consolidation, three levels:
+
+- **Resting** — the default raised-card state (page-level cards, list rows): `0 2px 8px
+  rgba(0, 0, 0, 0.08)`.
+- **Raised** — hover/focus lift, or a card that needs to stand out from sibling cards on the
+  same page (e.g. an expanded/selected state): `0 4px 16px rgba(0, 0, 0, 0.12)`.
+- **Modal** — anything in an overlay (modals, dropdowns, popovers): `0 10px 40px
+  rgba(0, 0, 0, 0.15)` — matches what `PlayerProfilePage.tsx`'s `.clean-modal .modal-content`
+  and `Navbar.tsx`'s search dropdown already independently converged on, so this is
+  formalizing an existing convention more than inventing a new one.
+- Values are intentionally unchanged between themes for now — a black shadow at low opacity
+  reads as "recessed/raised" against both a light and a dark surface; revisit only if a
+  specific dark-mode case shows the shadow disappearing against a dark background.
+- Not yet wired up as reusable tokens (e.g. `--shadow-resting`/`--shadow-raised`/
+  `--shadow-modal` in `ThemeContext.tsx` or `professional-theme.css`) — this section records
+  the target scale; migrating existing inline `box-shadow` values onto it is Phase 5 cleanup
+  work, done opportunistically per page like the rest of the radius/font-size consolidation
+  already decided in Phase 1.
 
 ## Acceptance criteria
 
@@ -291,18 +453,19 @@ and flag it as Track 2 (see Navbar.tsx findings below).
   agent's Track 1 checks plus a code-level self-review, and then the user's own eyeball pass
   in their logged-in browser — the doc should not claim more verification happened than
   actually did.
-- `Navbar.tsx` hardcoded-hex audit (Phase 2) found two theme-independent overlay blocks that
-  were deliberately left hardcoded rather than tokenized, per the caveat above — both are
-  Track 2 (a real design choice: should this become theme-adaptive?), not Track 1 leftovers:
-  - The search-results dropdown (~lines 485-664): a light panel (`rgba(255,255,255,0.95)` /
-    `#ffffff` background, `#374151`/`#6b7280`/`#666`/`#000000`/`#f3f4f6`/`#eee`/`#f0f9ff`
-    text/border) that overlays the dark navbar in both app themes by design. Foreground and
-    background are a coordinated fixed-light pair; tokenizing only the text broke dark-mode
-    contrast (caught and reverted before commit).
+- `Navbar.tsx` hardcoded-hex audit (Phase 2) found two theme-independent overlay blocks.
+  - **Superseded (see Track 2 round 3 above):** the search-results dropdown was originally
+    assumed to be "a coordinated fixed-light pair" left hardcoded by design, and an early
+    attempt to tokenize just the JSX text was reverted after it broke contrast. That diagnosis
+    was wrong — the actual cause was a second, `!important`-flagged rule set in
+    `professional-theme.css` (`.navbar-search-input`/`.navbar-search-dropdown`/
+    `.search-result-item`, L1511-1636) silently overriding the JSX's inline tokens regardless of
+    what the JSX said. Round 3 tokenized that CSS block too, so foreground and background now
+    move together under one system. Not yet re-verified by the user in their browser.
   - The Queue Review Modal (~lines 851, 862): `Modal.Header` (`#007bff` bg, white text) and a
     `Card` (`#f0f8ff` bg, `#007bff` border) — literal Bootstrap-blue chrome, not brand tokens,
-    coordinated the same way. Whether this should move onto the app's red/graphite palette
-    (and/or theme-swap) is a Track 2 call, not a mechanical substitution.
+    left hardcoded and untouched this round (not raised by the user; still an open Track 2 call
+    on whether it should move onto the app's red/graphite palette and/or theme-swap).
 
 ### Operating mode
 

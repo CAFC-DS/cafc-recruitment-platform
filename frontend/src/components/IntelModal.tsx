@@ -1127,11 +1127,11 @@ const IntelModal: React.FC<IntelModalProps> = ({
         }
         .intel-type-card {
           cursor: pointer;
-          border: 1px solid #d9dfe5;
+          border: 1px solid var(--color-border);
           transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
         }
         .intel-type-card:hover {
-          border-color: #000000;
+          border-color: var(--color-text);
           transform: translateY(-2px);
           box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
         }

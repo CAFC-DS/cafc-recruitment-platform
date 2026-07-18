@@ -169,6 +169,7 @@ const StageHistoryModal: React.FC<StageHistoryModalProps> = ({
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>
             📊 Stage History - {playerName}

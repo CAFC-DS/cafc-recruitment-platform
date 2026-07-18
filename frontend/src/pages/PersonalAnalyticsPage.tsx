@@ -36,11 +36,13 @@ import {
 } from "../utils/colorUtils";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath, getPlayerProfilePathFromSource } from "../utils/playerNavigation";
+import { useTheme } from "../contexts/ThemeContext";
 
 const REPORTS_PAGE_SIZE = 20;
 
 const PersonalAnalyticsPage: React.FC = () => {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const { user, loading: currentUserLoading, canAccessLists } = useCurrentUser();
   const [analytics, setAnalytics] = useState<PersonalAnalyticsResponse | null>(null);
   const [reportsData, setReportsData] =
@@ -774,7 +776,7 @@ const PersonalAnalyticsPage: React.FC = () => {
                                   }}
                                   style={{
                                     textDecoration: "none",
-                                    color: "#0d6efd",
+                                    color: theme.isDark ? "#6ea8fe" : "#0d6efd",
                                     cursor: "pointer",
                                   }}
                                 >
@@ -980,6 +982,7 @@ const PersonalAnalyticsPage: React.FC = () => {
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -1036,8 +1039,8 @@ const PersonalAnalyticsPage: React.FC = () => {
           position: sticky;
           top: 0;
           z-index: 2;
-          background: #f8fafc;
-          border-bottom: 1px solid #dbe3ee;
+          background: var(--color-background);
+          border-bottom: 1px solid var(--color-border);
         }
 
         .personal-analytics-reports-table td,
@@ -1064,7 +1067,7 @@ const PersonalAnalyticsPage: React.FC = () => {
 
         .personal-analytics-sort-indicator {
           font-size: 0.72rem;
-          color: #667085;
+          color: var(--color-text-muted);
         }
 
         .personal-analytics-report-loading {
