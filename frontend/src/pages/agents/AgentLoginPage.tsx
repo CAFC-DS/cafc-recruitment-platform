@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
 import { useAuth } from '../../App';
-import logo from '../../assets/logo.png';
+import AuthShell from '../../components/auth/AuthShell';
 
 const AgentLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,77 +39,55 @@ const AgentLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="agent-auth-page">
-      <div className="agent-auth-layout">
-        <div className="agent-auth-brand-panel">
-          <div className="agent-auth-brand-content">
-            <img src={logo} alt="Charlton Athletic FC" style={{ width: 96, height: 96, marginBottom: '1.5rem', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }} />
-            <h1 className="agent-auth-heading">Charlton Athletic FC</h1>
-            <p className="agent-auth-badge">External Recommendation Portal</p>
-            <p className="agent-auth-copy">
-              Use your registered agent account to access submitted recommendations and track each player&apos;s review status.
-            </p>
-          </div>
-        </div>
+    <AuthShell eyebrow="Charlton Athletic FC" heading="External Recommendation Portal">
+      <h2 className="agent-auth-title">Sign in</h2>
+      <p className="agent-auth-subtitle">Enter your credentials to access the external recommendation portal.</p>
 
-        <div className="agent-auth-form-panel">
-          <div className="agent-auth-card">
-            <div className="agent-mobile-brand">
-              <img src={logo} alt="CAFC" style={{ width: 40, height: 40 }} />
-              <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0F172A' }}>Charlton Athletic FC</span>
-            </div>
+      {error ? <Alert variant="danger" className="agent-auth-alert">{error}</Alert> : null}
 
-            <h2 className="agent-auth-title">Sign in</h2>
-            <p className="agent-auth-subtitle">Enter your credentials to access the external recommendation portal.</p>
+      <Form onSubmit={handleSubmit}>
+        <Form.Group className="mb-3">
+          <Form.Label className="agent-auth-label">Email</Form.Label>
+          <Form.Control
+            className="agent-auth-input"
+            type="email"
+            placeholder="Enter email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </Form.Group>
+        <Form.Group className="mb-4">
+          <Form.Label className="agent-auth-label">Password</Form.Label>
+          <Form.Control
+            className="agent-auth-input"
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </Form.Group>
 
-            {error ? <Alert variant="danger" className="agent-auth-alert">{error}</Alert> : null}
+        <Button type="submit" className="agent-auth-button w-100" disabled={loading}>
+          {loading ? (
+            <>
+              <Spinner animation="border" size="sm" className="me-2" />
+              Signing in...
+            </>
+          ) : (
+            'Sign in'
+          )}
+        </Button>
+      </Form>
 
-            <Form onSubmit={handleSubmit}>
-              <Form.Group className="mb-3">
-                <Form.Label className="agent-auth-label">Email</Form.Label>
-                <Form.Control
-                  className="agent-auth-input"
-                  type="email"
-                  placeholder="Enter email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mb-4">
-                <Form.Label className="agent-auth-label">Password</Form.Label>
-                <Form.Control
-                  className="agent-auth-input"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </Form.Group>
-
-              <Button type="submit" className="agent-auth-button w-100" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Spinner animation="border" size="sm" className="me-2" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign in'
-                )}
-              </Button>
-            </Form>
-
-            <div style={{ marginTop: '1rem', color: '#64748B', fontSize: '0.9rem' }}>
-              Need access? <Link to="/agents/register" className="agent-auth-inline-link">Register here</Link>
-            </div>
-            <div style={{ marginTop: '0.5rem', color: '#94A3B8', fontSize: '0.82rem' }}>
-              Forgotten your password? Contact Charlton Athletic to be sent a reset link.
-            </div>
-          </div>
-        </div>
+      <div style={{ marginTop: '1rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+        Need access? <Link to="/agents/register" className="agent-auth-inline-link">Register here</Link>
       </div>
-    </div>
+      <div style={{ marginTop: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.82rem' }}>
+        Forgotten your password? Contact Charlton Athletic to be sent a reset link.
+      </div>
+    </AuthShell>
   );
 };
 
