@@ -333,6 +333,53 @@ it precedes) — needs its own survey pass; don't assume the shimmer data point 
   `PlayerProfilePage.tsx`'s own `.loading-container`/`.loading-content` (currently a centered
   spinner + text) is a candidate to convert during that page's next visit, not yet done.
 
+**Rendering strategy: progressive, section-by-section — not one gate for the whole page.**
+When a page fetches multiple independent things (e.g. `PlayerProfilePage.tsx`'s profile header,
+scout reports, flow history, and attribute scores are four separate requests), each section
+should show its own shape-matched skeleton and swap in as soon as its own data arrives, rather
+than blocking the entire page behind a single spinner/shimmer until the slowest request
+finishes. Reasons, in order:
+- **Perceived speed.** A page that paints its header and known-fast sections immediately reads
+  as faster than one that shows nothing until everything is ready, even when total load time is
+  identical.
+- **Failure isolation.** If one section's request fails or is slow (e.g. flow history), the rest
+  of the page shouldn't be held hostage — it should render normally and let that one section show
+  its own error/retry state.
+- **It's what `AnalyticsPage.tsx` already does, correctly**, and is worth treating as the
+  reference pattern: the page shell only gates on the permission check (`userLoading`); each tab
+  component (`StageMovementAnalyticsTab.tsx`, `PlayerAnalyticsTab.tsx`, etc.) owns and renders
+  its own loading state independently. `PersonalAnalyticsPage.tsx` does this partially too —
+  page-level `loading` gates the summary stats, a separate `reportsLoading` gates only the
+  reports table underneath.
+
+**Exception — gate together when sections are visually or logically coupled.** If several pieces
+of UI are meant to be read as one unit (e.g. a summary card whose fields all come from the same
+response, or a chart plus its legend), splitting them into independently-arriving fragments
+causes layout jitter and half-rendered-looking states that are worse than a single brief wait.
+Rule of thumb: **one skeleton per independent fetch, not per DOM element** — group sections that
+share a request behind one shimmer, and give sections with their own request their own shimmer,
+timed to when that specific data resolves.
+
+**Per-page scope, current state vs. target (Track 1 mechanical + Track 2 visual, per page):**
+
+| Page | Sections w/ independent loads | Current state | Target |
+|---|---|---|---|
+| `HomePage.tsx` | page shell; per-row action (view report) | Page shell already uses a hand-built shimmer skeleton (header + 3-card grid) — **reference pattern, no change needed.** Row actions correctly use inline spinners. | No change. |
+| `PlayerProfilePage.tsx` | profile header/tabs shell; scout reports list; flow history; attribute scores; per-row actions | Shell = centered spinner (documented candidate, not yet converted). Scout reports + flow history = inline text-with-spinner (`"Loading scout reports..."`, `"Loading flow history..."`). **`attributesLoading` state is declared and set but never read anywhere in the render** — the Attribute Analysis section currently has *no* loading indicator at all, it just pops in empty→populated. This is the clearest concrete "incorrect loading state" bug found this pass. | Shell → page-shaped shimmer. Scout reports + flow history → each gets its own `shimmer` list skeleton (they already load independently, keep it that way). Attribute section → wire `attributesLoading` to an actual shimmer skeleton of the score-bar layout (currently silently dead code). |
+| `PlayerListsPage.tsx` / `KanbanPage.tsx` | list/board shell; add-player search; membership popover | Shell = centered spinner ("Loading player lists..."). Search/add/membership = correctly-scoped inline spinners (async actions, no predictable shape). | Shell → shimmer matching the list/card grid or kanban column skeleton. Leave the action spinners as-is. |
+| `AnalyticsPage.tsx` | page shell (permission gate only); each tab owns its own data load | Shell = spinner, but it's gating a *permission check*, not content — arguably fine as a spinner since it's genuinely unpredictable-shape (could deny access). Each tab component has its own `Spinner`, not shimmer. | Shell: leave as spinner (action/gate, not content). Each tab: convert to a shimmer matching that tab's chart/table shape — same "own request, own skeleton" pattern already correctly structured, just wrong mark type today. |
+| `PersonalAnalyticsPage.tsx` | page shell; reports table; per-row report load | Already two-tier (page `loading` + separate `reportsLoading`) — good structure. Both currently render as spinners. | Keep the two-tier structure. Page shell → shimmer of the stats-card layout. Reports table → shimmer table rows (shaped to its actual columns, not the generic `ShimmerLoading` "table" variant, which is a different column shape). |
+| `AdminPage.tsx` | 3 independent tabs (Data Quality incl. 2 sub-tabs, User Management, System Ops) | Each tab/sub-tab loads and renders independently already (`loadingUsers`, `resetLoading`, plus `DataClashesTab`/`InternalPlayerAuditTab` have their own spinners) — correct isolation. All currently spinners. | Convert User Management's table load to a shimmer table (shaped to its own columns). Data Quality sub-tabs and System Ops' one-off action (generate reset link) stay spinners — the former is closer to a data grid worth shimmer, the latter is a real single action. |
+| `IntelPage.tsx` / `ScoutingPage.tsx` | report list/table | Already correctly using `ShimmerLoading` (`card`/`table` variant) — **reference pattern.** | No change. |
+| `SharedReportPage.tsx` | whole page (single fetch, single token) | Centered spinner — appropriate here specifically, since there's exactly one request gating exactly one shape and no independent sections to stagger. | Leave as-is; not a violation of the rule, just a page with nothing to make progressive. |
+| `ExternalRecommendationsListPage.tsx` / `internal/InternalRecommendationsPage.tsx` | list; per-row history expand | Deferred with the rest of this pair (Phase 4-adjacent, see above) — noted here for completeness, not scoped further yet. | Revisit alongside Phase 4. |
+
+**Key finding to lead with:** the only outright *bug* (not just a stylistic mismatch) found in
+this pass is `PlayerProfilePage.tsx`'s dead `attributesLoading` state — it's tracked but never
+consulted, so that section has no loading state at all today. Everything else in the table above
+is "spinner where a shimmer would better match the loading-language rule," which is a real but
+lower-severity gap than a section with zero loading feedback.
+
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
 `#0f172a`, unloaded 'Inter' intent, `#cc0000`). Bring onto the same token system as a
