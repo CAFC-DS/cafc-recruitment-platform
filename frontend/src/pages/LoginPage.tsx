@@ -4,8 +4,7 @@ import axiosInstance from "../axiosInstance";
 import axios from "axios"; // Import axios for isAxiosError
 import { useNavigate } from "react-router-dom";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
-import logo from "../assets/logo.png";
-import "./LoginPage.css";
+import AuthShell from "../components/auth/AuthShell";
 
 interface LoginPageProps {
   onLoginSuccess: (token: string) => void;
@@ -51,78 +50,64 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="login-shell">
-      <div className="login-watermark" aria-hidden="true" />
+    <AuthShell eyebrow="Charlton Athletic" heading="Recruitment & Scouting">
+      {error && <Alert variant="danger">{error}</Alert>}
 
-      <div className="login-card">
-        <div className="login-card-header">
-          <img src={logo} alt="" className="login-crest" />
-          <div>
-            <div className="login-masthead">Charlton Athletic</div>
-            <h1 className="login-heading">Recruitment &amp; Scouting</h1>
-          </div>
-        </div>
+      <Form onSubmit={handleSubmit}>
+        <Form.Group className="mb-3" controlId="username">
+          <Form.Label>Username</Form.Label>
+          <Form.Control
+            type="text"
+            placeholder="Enter username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </Form.Group>
 
-        <hr className="login-divider" />
+        <Form.Group className="mb-3" controlId="password">
+          <Form.Label>Password</Form.Label>
+          <Form.Control
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </Form.Group>
 
-        {error && <Alert variant="danger">{error}</Alert>}
+        <Button
+          variant="primary"
+          type="submit"
+          className="w-100"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Spinner animation="border" size="sm" className="me-2" />
+              Signing in&hellip;
+            </>
+          ) : (
+            "Sign in"
+          )}
+        </Button>
+      </Form>
 
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3" controlId="username">
-            <Form.Label>Username</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Enter username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3" controlId="password">
-            <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </Form.Group>
-
-          <Button
-            variant="primary"
-            type="submit"
-            className="w-100"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Spinner animation="border" size="sm" className="me-2" />
-                Signing in&hellip;
-              </>
-            ) : (
-              "Sign in"
-            )}
-          </Button>
-        </Form>
-
-        <div className="login-form-footer">
-          <Button
-            variant="link"
-            className="p-0"
-            onClick={() => setShowForgotPassword(true)}
-          >
-            Forgot your password?
-          </Button>
-        </div>
+      <div className="login-form-footer">
+        <Button
+          variant="link"
+          className="p-0"
+          onClick={() => setShowForgotPassword(true)}
+        >
+          Forgot your password?
+        </Button>
       </div>
 
       <ForgotPasswordModal
         show={showForgotPassword}
         onHide={() => setShowForgotPassword(false)}
       />
-    </div>
+    </AuthShell>
   );
 };
 
