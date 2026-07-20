@@ -413,6 +413,27 @@ a bug), `AnalyticsPage.tsx` (Player/Match & Team/Stage Movement tabs), `Personal
 `AdminPage.tsx` User Management (real 224-row table, correct 6-column shimmer shape), and
 `IntelPage.tsx` chrome. No visual regressions found. This closes out Phase 3.5.
 
+**External/Internal Recommendations pages, done.** Investigating these two deferred pages
+surfaced a bigger, systemic gap: both inherit their entire visual language from a shared
+`.agent-portal-*`/`.agent-status-*`/`.agent-availability-*` CSS block in
+`professional-theme.css` (241 selectors) that had zero dark-mode support at all, and that block
+is also consumed by `PlayerListsPage.tsx`, `KanbanPage.tsx`, and `ListsGatewayPage.tsx` —
+explaining the white "Lists Workspace"/header cards seen (and incorrectly written off as
+pre-existing/out-of-scope) during the Phase 3.5 live-verification round above. A separate,
+similarly hardcoded-light `.external-recommendations-*` table system
+(`ExternalRecommendationsListPage.tsx`'s own table, not shared) had the same problem.
+Given the user's explicit choice between "patch the two pages" vs. "fix the shared surface,"
+went with the latter: **additive** `[data-bs-theme="dark"]` overrides only — every light-mode
+rule is byte-for-byte untouched, confirmed by toggling light mode live and comparing against
+the pre-change screenshot. Scoped to the classes actually consumed by the five affected pages,
+not a blind full-file conversion; `pages/agents/*`'s own auth/submission-flow classes
+(`agent-auth-*` beyond what's shared, `agent-rec-card-*`) were deliberately left for Phase 4
+proper. A handful of page-local inline hex values (the floating "unsaved changes" bar, a few
+`#111827` text colors) were also tokenized directly. Verified: `tsc --noEmit` clean, `eslint`
+clean, frozen-file diff empty, and live in both themes — `ListsGatewayPage.tsx`'s cards and
+`PlayerListsPage.tsx`'s shell shimmer now render correctly dark, `ExternalRecommendationsListPage.tsx`'s
+table striping/text is fully legible where it was previously white-on-white in several rows.
+
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
 `#0f172a`, unloaded 'Inter' intent, `#cc0000`). Bring onto the same token system as a
