@@ -434,6 +434,27 @@ clean, frozen-file diff empty, and live in both themes — `ListsGatewayPage.tsx
 `PlayerListsPage.tsx`'s shell shimmer now render correctly dark, `ExternalRecommendationsListPage.tsx`'s
 table striping/text is fully legible where it was previously white-on-white in several rows.
 
+**Post-verification fixes, from the user's own pass on the live pages.**
+- **Mismatched shimmer shape on `PlayerListsPage.tsx`.** The shell loading state used the
+  `ShimmerLoading` "card" variant, but the page's real content is always a 9-column table
+  (Player/Age/Club/Stage/Lists/Score/Reports/Last Report/Actions) — never cards. This is the
+  exact "mismatched skeleton = incorrect loading state" bug the Phase 3.5 rule exists to catch;
+  it slipped through because the earlier round didn't check the real content shape closely
+  enough before picking a shimmer. Replaced with a table-shaped shimmer matching the actual
+  columns. `KanbanPage.tsx`'s column/card shimmer was re-checked against its real content
+  (genuinely `KanbanColumn` components, no table) and confirmed correct, no change needed.
+- **`RecommendationReviewModal.tsx`'s "Review Decision"/"Shared Notes" sections unreadable in
+  dark mode.** Root cause: its `.modal-body`/`.modal-footer` were hardcoded to a fixed white/
+  light-grey background in all themes, but the Bootstrap `Form.Label` elements inside have no
+  explicit color, so they inherited the app's dark-mode text color (near-white) — rendering as
+  invisible white-on-white text on the forced-white background. This is a different component
+  from the `.external-recommendations-*` table system fixed above (separate `.external-review-*`
+  class prefix), so it wasn't caught by that pass. Added the same additive-only dark-mode
+  treatment. Also fixed a related bug on `InternalRecommendationsPage.tsx`'s own Review Panel:
+  the player-name heading used Bootstrap's `text-dark` utility (a fixed color, not theme-aware),
+  causing low contrast on the dark card — replaced with `var(--color-text)`.
+Both verified live in both themes (light mode confirmed byte-for-byte unchanged).
+
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
 `#0f172a`, unloaded 'Inter' intent, `#cc0000`). Bring onto the same token system as a
