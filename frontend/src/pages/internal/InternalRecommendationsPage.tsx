@@ -292,7 +292,7 @@ const InternalRecommendationsPage: React.FC = () => {
               ) : (
                 <div className="agent-portal-review-stack">
                   <div>
-                    <h2 className="h4 mb-1 text-dark">{selected.player_name}</h2>
+                    <h2 className="h4 mb-1" style={{ color: 'var(--color-text)' }}>{selected.player_name}</h2>
                     <div className="agent-portal-meta">{selected.agent_name} {selected.agency ? `- ${selected.agency}` : ''}</div>
                   </div>
 

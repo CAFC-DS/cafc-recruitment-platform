@@ -4749,3 +4749,45 @@ span.badge.badge-neutral-grey {
 [data-bs-theme="dark"] .page-lists-cafc .form-control {
   border-color: var(--color-border);
 }
+
+/* Dark-mode overrides for RecommendationReviewModal.tsx. Its modal-body/
+   modal-footer were hardcoded white/light-grey regardless of app theme,
+   which is why "Review Decision" and "Shared Notes" (plain Bootstrap
+   Form.Label elements with no explicit color, inheriting the app's dark
+   text color) were rendering as near-white text on a forced-white
+   background -- invisible. Additive only. */
+[data-bs-theme="dark"] .external-recommendation-review-modal .modal-body {
+  background: var(--color-surface);
+}
+
+[data-bs-theme="dark"] .external-recommendation-review-modal .modal-footer {
+  background: var(--color-background);
+  border-top-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-review-section-heading h6 {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-review-status-summary > div {
+  background: var(--color-background);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-review-status-summary span {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .external-review-detail span {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .external-review-detail strong {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-review-copy-block {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
