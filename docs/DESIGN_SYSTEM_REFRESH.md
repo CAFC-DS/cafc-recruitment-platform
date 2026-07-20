@@ -467,6 +467,24 @@ and flag it as Track 2 (see Navbar.tsx findings below).
     left hardcoded and untouched this round (not raised by the user; still an open Track 2 call
     on whether it should move onto the app's red/graphite palette and/or theme-swap).
 
+- **Track 2 round 5** — swept the remaining Phase 3 internal-app pages for leftover hardcoded
+  hex not covered by the earlier chrome/close-button passes: `IntelPage.tsx` (card border,
+  player-name link color in both table and card views, card title text color — all now theme
+  tokens) and `IntelModal.tsx` (the "Selected player" info box background, previously a fixed
+  light-blue `#eef3f7`, now `var(--color-background)`). `AdminPage.tsx` and `KanbanPage.tsx`
+  were re-audited and found already clean (no hardcoded hex outside the already-approved brand
+  primary and player-name-link pattern). This closes out Phase 3 for the pages that are purely
+  internal-app surfaces. Verified via `tsc --noEmit` (clean) and `eslint` on the two changed
+  files (clean); frozen-file diff against `main` (`colorUtils.ts`, `playerLists.theme.ts`)
+  confirmed empty. Not yet re-verified by the user in their browser (same session
+  auth-blocked-screenshot limitation as above).
+  Three pages remain deliberately deferred, unchanged from earlier reasoning:
+  - `SharedReportPage.tsx` — no `useTheme` wiring, reads as an intentional fixed-appearance
+    external-facing artifact; needs explicit confirmation before wiring up dark-mode support.
+  - `ExternalRecommendationsListPage.tsx` / `pages/internal/InternalRecommendationsPage.tsx` —
+    lean on `agent-portal-*` classes, entangled with the Phase 4 Agent Portal reconciliation
+    rather than a standalone token swap.
+
 ### Operating mode
 
 Two tracks running concurrently: Track 1 work (mechanical, low taste-risk) proceeds
