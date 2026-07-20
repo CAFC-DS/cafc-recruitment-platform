@@ -623,7 +623,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
               </ListGroup>
             )}
             {searchedPlayer && (
-              <div className="mt-2 p-2" style={{ backgroundColor: "#eef3f7", borderRadius: "4px" }}>
+              <div className="mt-2 p-2" style={{ backgroundColor: "var(--color-background)", borderRadius: "4px" }}>
                 <strong>Selected:</strong> {searchedPlayer.player_name || searchedPlayer.name} (
                 {searchedPlayer.squad_name || searchedPlayer.team || "No club"})
               </div>

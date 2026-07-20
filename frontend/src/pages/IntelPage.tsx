@@ -24,6 +24,7 @@ import { useViewMode } from "../contexts/ViewModeContext";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 import { getRecommendationColor, getContrastTextColor } from "../utils/colorUtils";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useTheme } from "../contexts/ThemeContext";
 
 interface IntelReport {
   intel_id?: number | null;
@@ -59,6 +60,7 @@ const IntelPage: React.FC = () => {
   const { token } = useAuth();
   const { viewMode, setViewMode, initializeUserViewMode } = useViewMode();
   const { canManageIntel } = useCurrentUser();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [showIntelModal, setShowIntelModal] = useState(false);
   const [intelReports, setIntelReports] = useState<IntelReport[]>([]);
@@ -676,7 +678,7 @@ const IntelPage: React.FC = () => {
                                 }}
                                 style={{
                                   textDecoration: "none",
-                                  color: "#0d6efd",
+                                  color: theme.isDark ? "#6ea8fe" : "#0d6efd",
                                   cursor: "pointer",
                                 }}
                               >
@@ -770,7 +772,7 @@ const IntelPage: React.FC = () => {
                     >
                       <Card
                         className="h-100 shadow-sm hover-card"
-                        style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                        style={{ borderRadius: "8px", border: "1px solid var(--color-border)" }}
                       >
                         <Card.Body className="p-3">
                           <Row className="mb-3 pb-2 border-bottom">
@@ -781,7 +783,7 @@ const IntelPage: React.FC = () => {
                                   href={getPlayerProfilePath(report as any)}
                                   className="text-decoration-none fw-bold d-block mb-1"
                                   style={{
-                                    color: "#212529",
+                                    color: "var(--color-text)",
                                     fontSize: "1rem",
                                     textAlign: "left",
                                     cursor: "pointer",
@@ -797,7 +799,7 @@ const IntelPage: React.FC = () => {
                                 <div
                                   className="fw-bold d-block mb-1"
                                   style={{
-                                    color: "#212529",
+                                    color: "var(--color-text)",
                                     fontSize: "1rem",
                                     textAlign: "left",
                                   }}
