@@ -58,6 +58,7 @@ import {
   PlayerListFilters,
 } from "../services/playerListsService";
 import GradeChip from "../components/GradeChip";
+import ShimmerLoading from "../components/ShimmerLoading";
 import {
   Goal,
   Plus,
@@ -1244,12 +1245,16 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             <div className="agent-portal-section-copy">{headerCopy}</div>
           </div>
         </div>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
-          <div className="text-center">
-            <Spinner animation="border" variant="primary" style={{ width: "3rem", height: "3rem" }} />
-            <p className="mt-3 text-muted">Loading player lists...</p>
-          </div>
+        <div className="mb-3 d-flex gap-2">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="shimmer-line"
+              style={{ width: "90px", height: "28px", borderRadius: "14px" }}
+            />
+          ))}
         </div>
+        <ShimmerLoading variant="card" count={8} />
       </Container>
     );
   }

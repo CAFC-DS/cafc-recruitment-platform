@@ -1285,11 +1285,33 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
             <div className="agent-portal-section-copy">{headerCopy}</div>
           </div>
         </div>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
-          <div className="text-center">
-            <Spinner animation="border" variant="primary" style={{ width: "3rem", height: "3rem" }} />
-            <p className="mt-3 text-muted">Loading player lists...</p>
-          </div>
+        <div className="d-flex gap-3" style={{ overflowX: "hidden" }}>
+          {Array.from({ length: 5 }).map((_, colIdx) => (
+            <div key={colIdx} style={{ minWidth: "260px", flex: "1 1 0" }}>
+              <div
+                className="shimmer-line mb-3"
+                style={{ width: "70%", height: "20px" }}
+              />
+              {Array.from({ length: 3 }).map((_, cardIdx) => (
+                <div
+                  key={cardIdx}
+                  className="card shimmer-card mb-2"
+                  style={{ height: "90px" }}
+                >
+                  <div className="card-body">
+                    <div
+                      className="shimmer-line mb-2"
+                      style={{ width: "80%", height: "16px" }}
+                    />
+                    <div
+                      className="shimmer-line"
+                      style={{ width: "50%", height: "14px" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </Container>
     );
