@@ -380,6 +380,32 @@ consulted, so that section has no loading state at all today. Everything else in
 is "spinner where a shimmer would better match the loading-language rule," which is a real but
 lower-severity gap than a section with zero loading feedback.
 
+**Phase 3.5 — build-out, done.** All six pages/sub-widgets from the target matrix converted:
+- `PlayerProfilePage.tsx`: fixed the dead `attributesLoading` bug (Attribute Analysis section
+  now shows a circular-chart-shaped shimmer instead of no feedback at all); page shell, flow
+  history, and scout reports converted from spinner to shape-matched shimmer (the latter reuses
+  `ShimmerLoading`'s `card` variant, since it's genuinely the same report-card shape it was built
+  for). Removed the now-dead `.loading-container`/`.loading-content` CSS.
+- `PlayerListsPage.tsx` / `KanbanPage.tsx`: shell spinner → shimmer matching the filter-pills +
+  card-grid layout and the multi-column board layout respectively.
+- `AnalyticsPage.tsx` tabs: new shared `components/analytics/AnalyticsDashboardShimmer.tsx`
+  (stat-row / chart-block / table-block, each independently toggleable via props) rather than
+  four bespoke one-off skeletons, since `MatchTeamAnalyticsTab`, `ScoutAnalyticsTab`,
+  `StageMovementAnalyticsTab`, and `PlayerAnalyticsTab` all share the same underlying dashboard
+  shape (they just show/hide pieces of it) — genuine reuse, not the mismatched-shape trap. Two
+  nested sub-widgets (`AttributeFilterSection`'s attribute grid, `EnhancedTimeline`'s bar chart)
+  converted separately since they load on their own schedule inside the tab.
+- `PersonalAnalyticsPage.tsx`: shell → `AnalyticsDashboardShimmer`; reports table → a bespoke
+  shimmer tbody matched to its actual 10-column layout (deliberately *not* the generic
+  `ShimmerLoading` `table` variant, which is an 11-column shape built for a different table).
+- `AdminPage.tsx`: User Management table → shimmer tbody matched to its own 6-column layout.
+  Left as spinners, per the matrix: `AnalyticsPage.tsx`'s own shell (a permission gate, not
+  content), and every actual button/save/delete action spinner across all of the above.
+Verified via `tsc --noEmit` (clean) and `eslint` per changed file (zero new warnings vs. `main`
+baseline) plus a frozen-file diff (`colorUtils.ts`, `playerLists.theme.ts`, the three Kanban
+card-state-border files, `ScoutingAssessmentModal.tsx`) — all empty. Not yet re-verified live in
+the browser (same standing auth-blocked-screenshot limitation as every prior round).
+
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
 `#0f172a`, unloaded 'Inter' intent, `#cc0000`). Bring onto the same token system as a
