@@ -58,7 +58,6 @@ import {
   PlayerListFilters,
 } from "../services/playerListsService";
 import GradeChip from "../components/GradeChip";
-import ShimmerLoading from "../components/ShimmerLoading";
 import {
   Goal,
   Plus,
@@ -1254,7 +1253,38 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             />
           ))}
         </div>
-        <ShimmerLoading variant="card" count={8} />
+        <div className="table-responsive">
+          <Table responsive hover className="table-compact table-sm">
+            <thead className="table-dark">
+              <tr>
+                <th>Player</th>
+                <th>Age</th>
+                <th>Club</th>
+                <th>Stage</th>
+                <th>Lists</th>
+                <th>Score</th>
+                <th>Reports</th>
+                <th>Last Report</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 10 }).map((_, idx) => (
+                <tr key={idx}>
+                  <td><div className="shimmer-line" style={{ width: "140px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "100px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "70px", height: "20px", borderRadius: "10px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "90px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "36px", height: "20px", borderRadius: "10px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "80px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "60px", height: "24px" }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
       </Container>
     );
   }
