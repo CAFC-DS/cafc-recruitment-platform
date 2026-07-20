@@ -42,6 +42,7 @@ import { getFlagColor, getRecommendationColor, getContrastTextColor, getGradeCol
 import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import ShimmerLoading from "../components/ShimmerLoading";
 import {
   Flag,
   Laptop,
@@ -1379,12 +1380,69 @@ const PlayerProfilePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-content">
-          <Spinner animation="border" size="sm" />
-          <span>Loading player profile...</span>
+      <Container fluid className="py-4">
+        <div className="mb-4 d-flex align-items-center gap-3">
+          <div
+            className="shimmer-line"
+            style={{ width: "96px", height: "96px", borderRadius: "50%" }}
+          />
+          <div className="flex-grow-1">
+            <div
+              className="shimmer-line mb-2"
+              style={{ width: "260px", height: "28px" }}
+            />
+            <div
+              className="shimmer-line"
+              style={{ width: "180px", height: "16px" }}
+            />
+          </div>
         </div>
-      </div>
+        <Row className="mb-4 g-3">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <Col md={3} key={idx}>
+              <div className="card shimmer-card" style={{ height: "90px" }}>
+                <div className="card-body">
+                  <div
+                    className="shimmer-line mb-2"
+                    style={{ width: "60%", height: "14px" }}
+                  />
+                  <div
+                    className="shimmer-line"
+                    style={{ width: "40%", height: "20px" }}
+                  />
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+        <div className="shimmer-line mb-3" style={{ width: "220px", height: "24px" }} />
+        <Row className="g-3">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <Col md={4} key={idx}>
+              <div className="card shimmer-card" style={{ height: "160px" }}>
+                <div className="card-body">
+                  <div
+                    className="shimmer-line mb-3"
+                    style={{ width: "50%", height: "18px" }}
+                  />
+                  <div
+                    className="shimmer-line mb-2"
+                    style={{ width: "90%", height: "14px" }}
+                  />
+                  <div
+                    className="shimmer-line mb-2"
+                    style={{ width: "75%", height: "14px" }}
+                  />
+                  <div
+                    className="shimmer-line"
+                    style={{ width: "80%", height: "14px" }}
+                  />
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+      </Container>
     );
   }
 
@@ -1603,9 +1661,19 @@ const PlayerProfilePage: React.FC = () => {
               </div>
 
               {flowHistoryLoading ? (
-                <div className="text-center py-3">
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Loading flow history...
+                <div className="py-2">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="d-flex align-items-center gap-2 mb-2">
+                      <div
+                        className="shimmer-line"
+                        style={{ width: "8px", height: "8px", borderRadius: "50%" }}
+                      />
+                      <div
+                        className="shimmer-line"
+                        style={{ width: "70%", height: "14px" }}
+                      />
+                    </div>
+                  ))}
                 </div>
               ) : flowHistoryError ? (
                 <Alert variant="warning" className="mb-0">
@@ -1829,10 +1897,7 @@ const PlayerProfilePage: React.FC = () => {
               </div>
 
           {scoutReportsLoading ? (
-            <div className="text-center py-3">
-              <Spinner animation="border" size="sm" className="me-2" />
-              Loading scout reports...
-            </div>
+            <ShimmerLoading variant="card" count={4} />
           ) : scoutReportsData && scoutReportsData.reports.length > 0 ? (
             <>
               {/* Summary Stats - Always Visible */}
@@ -2850,7 +2915,42 @@ const PlayerProfilePage: React.FC = () => {
             </h4>
           </div>
 
-          {(() => {
+          {attributesLoading ? (
+            <Row>
+              <Col lg={12} className="mb-4">
+                <div
+                  style={{
+                    height: "800px",
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "1.5rem",
+                  }}
+                >
+                  <div
+                    className="shimmer-line"
+                    style={{
+                      width: "480px",
+                      height: "480px",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <div className="d-flex gap-3">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="shimmer-line"
+                        style={{ width: "110px", height: "16px" }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          ) : (
+          (() => {
               const chartData = getPolarAreaChartData();
               const hasChartData = chartData && chartData.labels.length > 0;
 
@@ -3233,7 +3333,8 @@ const PlayerProfilePage: React.FC = () => {
                   </Row>
                 </>
               );
-            })()}
+            })()
+          )}
               </div>
             </div>
           </div>
@@ -3404,21 +3505,6 @@ const PlayerProfilePage: React.FC = () => {
           min-height: 100vh;
           background: var(--color-background);
           padding: 1rem 0;
-        }
-
-        .loading-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 50vh;
-        }
-
-        .loading-content {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          color: var(--color-text-muted);
-          font-size: 0.95rem;
         }
 
         .error-container {
