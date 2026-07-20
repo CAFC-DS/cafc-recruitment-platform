@@ -951,12 +951,12 @@ const ExternalRecommendationsListPage: React.FC = () => {
             alignItems: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             borderRadius: '16px',
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--color-surface)',
             padding: '12px 16px',
-            border: '2px solid #111827',
+            border: '2px solid var(--color-text)',
           }}
         >
-          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#374151' }}>
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)' }}>
             {pendingStatusChanges.size} unsaved change{pendingStatusChanges.size > 1 ? 's' : ''}
           </span>
           <Button variant="outline-secondary" size="sm" onClick={discardPendingStatusChanges} disabled={savingPendingStatusChanges}>

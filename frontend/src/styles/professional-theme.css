@@ -4560,3 +4560,192 @@ span.badge.badge-neutral-grey {
   background: rgba(185, 28, 28, 0.08);
   color: #8f1b1c;
 }
+
+/* Dark-mode overrides for the shared agent-portal / agent-auth CSS surface.
+   Additive only -- every light-mode rule above is untouched. Scoped to the
+   classes actually consumed by PlayerListsPage, KanbanPage, ListsGatewayPage,
+   and the External/Internal Recommendations pages; the Agent Portal's own
+   pages (pages/agents) get a full pass under Phase 4. */
+[data-bs-theme="dark"] .agent-portal-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+
+[data-bs-theme="dark"] .agent-portal-section-title {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-portal-section-copy,
+[data-bs-theme="dark"] .agent-portal-muted,
+[data-bs-theme="dark"] .agent-portal-kpi-copy,
+[data-bs-theme="dark"] .agent-portal-meta,
+[data-bs-theme="dark"] .agent-portal-empty {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .agent-portal-table th {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-portal-table td {
+  color: var(--color-text);
+  border-top-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .agent-portal-table tbody tr:nth-child(odd) td {
+  background: var(--color-surface);
+}
+
+[data-bs-theme="dark"] .agent-auth-label,
+[data-bs-theme="dark"] .agent-portal-label {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .agent-auth-input,
+[data-bs-theme="dark"] .agent-auth-phone-input,
+[data-bs-theme="dark"] .agent-portal-input,
+[data-bs-theme="dark"] .agent-portal-select,
+[data-bs-theme="dark"] .agent-portal-textarea {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-portal-input[readonly],
+[data-bs-theme="dark"] .agent-portal-input:disabled,
+[data-bs-theme="dark"] .agent-portal-select:disabled,
+[data-bs-theme="dark"] .agent-portal-textarea:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .agent-portal-surface-muted {
+  background: var(--color-background);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .agent-portal-button-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-portal-button-secondary:hover {
+  background: var(--color-text);
+  color: var(--color-surface);
+}
+
+[data-bs-theme="dark"] .agent-portal-info-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .agent-portal-kpi-value {
+  color: var(--color-text);
+}
+
+/* Dark-mode overrides for the External Recommendations table system
+   (ExternalRecommendationsListPage.tsx), a separate hardcoded-light CSS
+   surface from the agent-portal classes above. Additive only. The black
+   legend-toggle bar and its near-white pill chips are left untouched --
+   that bar is already black in both themes by design. */
+[data-bs-theme="dark"] .external-recommendations-table-wrap {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table thead th {
+  background: var(--color-background);
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table td,
+[data-bs-theme="dark"] .external-recommendations-table th {
+  border-right-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table td {
+  color: var(--color-text);
+  border-top-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table tbody tr:nth-child(even) td {
+  background: var(--color-background);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table tbody tr:hover td {
+  background: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table tbody tr.is-selected td {
+  background: rgba(185, 28, 28, 0.15);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table .cell-flag {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-recommendations-table .cell-date,
+[data-bs-theme="dark"] .external-recommendations-table .cell-age {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .external-recommendations-player-cell a {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-recommendations-result-title {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-recommendations-result-copy {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .external-recommendations-score-badge {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-history-table-wrap {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-history-table thead th {
+  background: var(--color-background);
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-history-table td {
+  color: var(--color-text);
+  border-top-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-history-table tbody tr:nth-child(even) td {
+  background: var(--color-background);
+}
+
+[data-bs-theme="dark"] .external-review-history-item,
+[data-bs-theme="dark"] .external-review-empty-history {
+  background: var(--color-background);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .external-review-history-item strong {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .external-review-history-item span,
+[data-bs-theme="dark"] .external-review-empty-history {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .page-lists-cafc .form-select,
+[data-bs-theme="dark"] .page-lists-cafc .form-control {
+  border-color: var(--color-border);
+}
