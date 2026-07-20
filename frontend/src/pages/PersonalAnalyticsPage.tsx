@@ -37,6 +37,7 @@ import {
 import { Player } from "../types/Player";
 import { getPlayerProfilePath, getPlayerProfilePathFromSource } from "../utils/playerNavigation";
 import { useTheme } from "../contexts/ThemeContext";
+import AnalyticsDashboardShimmer from "../components/analytics/AnalyticsDashboardShimmer";
 
 const REPORTS_PAGE_SIZE = 20;
 
@@ -364,8 +365,12 @@ const PersonalAnalyticsPage: React.FC = () => {
 
   if (currentUserLoading || loading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" />
+      <Container className="mt-4 mb-5 personal-analytics-page">
+        <div className="mb-4">
+          <div className="shimmer-line mb-2" style={{ width: "220px", height: "28px" }} />
+          <div className="shimmer-line" style={{ width: "340px", height: "16px" }} />
+        </div>
+        <AnalyticsDashboardShimmer statCount={4} />
       </Container>
     );
   }
@@ -707,9 +712,47 @@ const PersonalAnalyticsPage: React.FC = () => {
             </Card.Header>
             <Card.Body className="p-0">
               {reportsLoading ? (
-                <div className="text-center py-4">
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Loading reports...
+                <div className="table-responsive personal-analytics-reports-shell">
+                  <Table
+                    responsive
+                    className="table-compact table-sm mb-0 align-middle personal-analytics-reports-table"
+                    style={{ textAlign: "center" }}
+                  >
+                    <thead>
+                      <tr>
+                        <th style={{ width: "30px" }}></th>
+                        <th>Report Date</th>
+                        <th>Player</th>
+                        <th>Age</th>
+                        <th>Position</th>
+                        <th>Fixture Date</th>
+                        <th>Fixture</th>
+                        <th>Type</th>
+                        <th>Score</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: 6 }).map((_, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <div
+                              className="shimmer-line"
+                              style={{ width: "8px", height: "8px", borderRadius: "50%", margin: "0 auto" }}
+                            />
+                          </td>
+                          {Array.from({ length: 9 }).map((__, colIdx) => (
+                            <td key={colIdx}>
+                              <div
+                                className="shimmer-line"
+                                style={{ width: "80%", height: "14px", margin: "0 auto" }}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
                 </div>
               ) : (
                 <div className="table-responsive personal-analytics-reports-shell">
