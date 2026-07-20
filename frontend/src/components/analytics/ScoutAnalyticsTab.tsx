@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Spinner, Form, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip } from "react-bootstrap";
+import { Row, Col, Form, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleLineChart from "./SimpleLineChart";
+import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
 
 interface ScoutAnalytics {
   scout_stats: Array<{
@@ -82,11 +83,7 @@ const ScoutAnalyticsTab: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="text-center py-5">
-        <Spinner animation="border" variant="primary" />
-      </div>
-    );
+    return <AnalyticsDashboardShimmer statCount={0} />;
   }
 
   if (!data) {

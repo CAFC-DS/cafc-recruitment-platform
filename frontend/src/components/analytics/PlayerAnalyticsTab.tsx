@@ -14,6 +14,7 @@ import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
 import { getPerformanceScoreColor, getAttributeScoreColor } from "../../utils/colorUtils";
 import PositionMultiSelect from "./PositionMultiSelect";
 import { POSITION_ORDER } from "../../constants/positions";
+import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
 
 interface PlayerAnalytics {
   total_player_assessments: number;
@@ -234,12 +235,8 @@ const PlayerAnalyticsTab: React.FC = () => {
   return (
     <div>
 
-      {/* ✅ LOADING STATE */}
-      {loading && (
-        <div className="text-center py-5">
-          <Spinner animation="border" variant="primary" />
-        </div>
-      )}
+      {/* Loading state */}
+      {loading && <AnalyticsDashboardShimmer statCount={4} />}
 
       {/* ✅ NO DATA */}
       {!loading && !data && (

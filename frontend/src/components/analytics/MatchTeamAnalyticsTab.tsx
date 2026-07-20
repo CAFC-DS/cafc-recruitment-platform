@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Spinner, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip, Form, InputGroup } from "react-bootstrap";
+import { Row, Col, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip, Form, InputGroup } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
 import SimpleBarChart from "./SimpleBarChart";
 import TeamCoverageTable from "./TeamCoverageTable";
+import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
 
 interface MatchTeamAnalytics {
   total_reports: number;
@@ -78,11 +79,7 @@ const MatchTeamAnalyticsTab: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="text-center py-5">
-        <Spinner animation="border" variant="primary" />
-      </div>
-    );
+    return <AnalyticsDashboardShimmer statCount={4} />;
   }
 
   if (!data) {

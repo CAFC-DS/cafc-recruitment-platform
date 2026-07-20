@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Card, Form, Row, Col, Spinner } from "react-bootstrap";
+import { Card, Form, Row, Col } from "react-bootstrap";
 import { Bar } from "react-chartjs-2";
 import ExportButton from "./ExportButton";
 
@@ -212,11 +212,7 @@ const EnhancedTimeline: React.FC<EnhancedTimelineProps> = ({
 
         {/* Chart */}
         {loading ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" role="status">
-              <span className="visually-hidden">Loading timeline...</span>
-            </Spinner>
-          </div>
+          <div className="shimmer-line" style={{ width: "100%", height: "400px" }} />
         ) : data.length > 0 ? (
           <div ref={chartRef} style={{ height: "400px" }}>
             <Bar
