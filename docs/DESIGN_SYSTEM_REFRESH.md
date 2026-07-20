@@ -403,8 +403,15 @@ lower-severity gap than a section with zero loading feedback.
   content), and every actual button/save/delete action spinner across all of the above.
 Verified via `tsc --noEmit` (clean) and `eslint` per changed file (zero new warnings vs. `main`
 baseline) plus a frozen-file diff (`colorUtils.ts`, `playerLists.theme.ts`, the three Kanban
-card-state-border files, `ScoutingAssessmentModal.tsx`) — all empty. Not yet re-verified live in
-the browser (same standing auth-blocked-screenshot limitation as every prior round).
+card-state-border files, `ScoutingAssessmentModal.tsx`) — all empty.
+
+**Live-verified, Phase 3.5 signed off.** The user logged into a local instance of this branch
+(backend on :8000, frontend on :3001) and walked through `PlayerProfilePage.tsx` (caught the
+actual page-shell shimmer mid-load — avatar circle, name lines, stat-card row, content-card row,
+all correct in dark mode; confirmed the Attribute Analysis empty state is expected behavior, not
+a bug), `AnalyticsPage.tsx` (Player/Match & Team/Stage Movement tabs), `PersonalAnalyticsPage.tsx`,
+`AdminPage.tsx` User Management (real 224-row table, correct 6-column shimmer shape), and
+`IntelPage.tsx` chrome. No visual regressions found. This closes out Phase 3.5.
 
 **Phase 4 — Agent Portal reconciliation.**
 `pages/agents/*` / `components/agents/*` currently has its own distinct look (slate
