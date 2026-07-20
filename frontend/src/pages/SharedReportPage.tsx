@@ -32,6 +32,7 @@ import {
   getGradeColor,
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
+import { useTheme } from "../contexts/ThemeContext";
 
 ChartJS.register(
   RadialLinearScale,
@@ -45,6 +46,7 @@ ChartJS.register(
 );
 
 const SharedReportPage: React.FC = () => {
+  const { theme } = useTheme();
   const { token } = useParams<{ token: string }>();
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -458,7 +460,7 @@ const SharedReportPage: React.FC = () => {
             size: 12,
             weight: "bold",
           },
-          color: "#212529",
+          color: theme.isDark ? "#e5e7eb" : "#212529",
           padding: 15,
           centerPointLabels: true,
           callback: function (value: any, index: number) {
@@ -616,7 +618,7 @@ const SharedReportPage: React.FC = () => {
     report.report_type?.toLowerCase() === "flag_assessment";
 
   return (
-    <div style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+    <div style={{ backgroundColor: "var(--color-background)", minHeight: "100vh", color: "var(--color-text)" }}>
       <Container fluid="xl" className="py-4">
         {/* Page Header */}
         <div className="mb-4 d-flex justify-content-between align-items-center">
@@ -931,7 +933,7 @@ const SharedReportPage: React.FC = () => {
                                   </span>
                                 </div>
                                 <small
-                                  style={{ fontSize: "10px", color: "#666" }}
+                                  style={{ fontSize: "10px", color: "var(--color-text-muted)" }}
                                 >
                                   Average Attribute Score
                                 </small>
@@ -954,7 +956,7 @@ const SharedReportPage: React.FC = () => {
                                   </span>
                                 </div>
                                 <small
-                                  style={{ fontSize: "10px", color: "#666" }}
+                                  style={{ fontSize: "10px", color: "var(--color-text-muted)" }}
                                 >
                                   Total Attribute Score
                                 </small>
@@ -965,19 +967,36 @@ const SharedReportPage: React.FC = () => {
                           <Card
                             className="mb-3 flex-fill ms-3"
                             style={{
-                              backgroundColor: "#f0f9f0",
-                              border: "1px solid #d4edda",
+                              backgroundColor: theme.isDark
+                                ? "rgba(16, 185, 129, 0.12)"
+                                : "#f0f9f0",
+                              border: `1px solid ${
+                                theme.isDark
+                                  ? "rgba(16, 185, 129, 0.35)"
+                                  : "#d4edda"
+                              }`,
                             }}
                           >
                             <Card.Header
                               className="py-2 px-3"
                               style={{
-                                backgroundColor: "#e8f5e8",
-                                borderBottom: "1px solid #d4edda",
+                                backgroundColor: theme.isDark
+                                  ? "rgba(16, 185, 129, 0.18)"
+                                  : "#e8f5e8",
+                                borderBottom: `1px solid ${
+                                  theme.isDark
+                                    ? "rgba(16, 185, 129, 0.35)"
+                                    : "#d4edda"
+                                }`,
                               }}
                             >
                               <strong
-                                style={{ fontSize: "12px", color: "#155724" }}
+                                style={{
+                                  fontSize: "12px",
+                                  color: theme.isDark
+                                    ? theme.colors.success
+                                    : "#155724",
+                                }}
                               >
                                 ✅ Strengths
                               </strong>
@@ -992,7 +1011,7 @@ const SharedReportPage: React.FC = () => {
                                         key={index}
                                         className="badge me-2 mb-2"
                                         style={{
-                                          backgroundColor: "#16a34a",
+                                          backgroundColor: theme.colors.success,
                                           color: "white",
                                           fontSize: "10px",
                                           padding: "4px 7px",
@@ -1017,19 +1036,36 @@ const SharedReportPage: React.FC = () => {
                           <Card
                             className="flex-fill ms-3"
                             style={{
-                              backgroundColor: "#fef8f0",
-                              border: "1px solid #fce4b3",
+                              backgroundColor: theme.isDark
+                                ? "rgba(245, 158, 11, 0.12)"
+                                : "#fef8f0",
+                              border: `1px solid ${
+                                theme.isDark
+                                  ? "rgba(245, 158, 11, 0.35)"
+                                  : "#fce4b3"
+                              }`,
                             }}
                           >
                             <Card.Header
                               className="py-2 px-3"
                               style={{
-                                backgroundColor: "#fcf4e6",
-                                borderBottom: "1px solid #fce4b3",
+                                backgroundColor: theme.isDark
+                                  ? "rgba(245, 158, 11, 0.18)"
+                                  : "#fcf4e6",
+                                borderBottom: `1px solid ${
+                                  theme.isDark
+                                    ? "rgba(245, 158, 11, 0.35)"
+                                    : "#fce4b3"
+                                }`,
                               }}
                             >
                               <strong
-                                style={{ fontSize: "12px", color: "#8b5a00" }}
+                                style={{
+                                  fontSize: "12px",
+                                  color: theme.isDark
+                                    ? theme.colors.warning
+                                    : "#8b5a00",
+                                }}
                               >
                                 ⚠️ Areas for Improvement
                               </strong>
@@ -1044,7 +1080,7 @@ const SharedReportPage: React.FC = () => {
                                         key={index}
                                         className="badge me-2 mb-2"
                                         style={{
-                                          backgroundColor: "#d97706",
+                                          backgroundColor: theme.colors.warning,
                                           color: "white",
                                           fontSize: "10px",
                                           padding: "4px 7px",
@@ -1085,7 +1121,7 @@ const SharedReportPage: React.FC = () => {
                         <div className="mb-3">
                           <div className="d-flex align-items-center mb-1">
                             <strong
-                              style={{ fontSize: "12px", color: "#333" }}
+                              style={{ fontSize: "12px", color: "var(--color-text)" }}
                             >
                               Opposition Details:
                             </strong>
@@ -1108,7 +1144,7 @@ const SharedReportPage: React.FC = () => {
                       <div className="mb-3">
                         <div className="d-flex align-items-center mb-1">
                           <strong
-                            style={{ fontSize: "12px", color: "#333" }}
+                            style={{ fontSize: "12px", color: "var(--color-text)" }}
                           >
                             Summary:
                           </strong>
@@ -1131,7 +1167,7 @@ const SharedReportPage: React.FC = () => {
                         <div>
                           <div className="d-flex align-items-center mb-1">
                             <strong
-                              style={{ fontSize: "12px", color: "#333" }}
+                              style={{ fontSize: "12px", color: "var(--color-text)" }}
                             >
                               Justification & Rationale:
                             </strong>

@@ -466,6 +466,28 @@ and flag it as Track 2 (see Navbar.tsx findings below).
     `Card` (`#f0f8ff` bg, `#007bff` border) — literal Bootstrap-blue chrome, not brand tokens,
     left hardcoded and untouched this round (not raised by the user; still an open Track 2 call
     on whether it should move onto the app's red/graphite palette and/or theme-swap).
+- **Track 2 round 6 — `SharedReportPage.tsx` dark-mode wiring (supersedes the earlier
+  "leave it fixed-appearance" deferral).** The user clarified this page should follow the same
+  styling/typography/feel as the rest of the app, including dark mode, not stay a frozen
+  external artifact. Wired up `useTheme` and tokenized: the page background
+  (`var(--color-background)`), body text color, the two small muted/label text colors (`#666`
+  → `var(--color-text-muted)`, `#333` → `var(--color-text)`), and the PolarArea chart's
+  point-label text color (theme-aware `#212529`/`#e5e7eb`, since this is axis-label text, not
+  part of the frozen radar-group triad). The Strengths/Areas-for-Improvement panels (previously
+  fixed light-green/light-amber tints) now swap to translucent dark-mode-appropriate tints in
+  dark theme, and their badges now consume `theme.colors.success`/`theme.colors.warning`
+  (the existing frozen tokens, unchanged values) instead of hardcoding the same hex literally.
+  Left untouched, all confirmed frozen/intentional: the `getAttributeGroupColor` triad
+  (`#009FB7`/`#9370DB`/`#7FC8F8`) and its legend swatches; the chart's white datalabel text
+  (sits on colored chart segments, matches the pattern elsewhere); the `Card.Header`
+  `bg-light`/`text-dark` combo on the flag-report branch (already forced to the app-wide dark
+  `#212529` header by a global `professional-theme.css` rule, so no page-specific fix needed);
+  and the PDF-export `html2canvas` capture background (`#ffffff`, intentional — exports render
+  on light/paper background regardless of theme, consistent with the earlier PDF-export
+  exclusion decision for the crest watermark). Verified via `tsc --noEmit` and `eslint` (both
+  clean) and a frozen-file diff against `main`. Not yet re-verified by the user in their
+  browser (same auth-blocked-screenshot limitation noted above — this page is unauthenticated
+  by design, but real report data needs a live share token to render).
 
 - **Track 2 round 5** — swept the remaining Phase 3 internal-app pages for leftover hardcoded
   hex not covered by the earlier chrome/close-button passes: `IntelPage.tsx` (card border,
