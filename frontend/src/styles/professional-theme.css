@@ -4792,6 +4792,11 @@ span.badge.badge-neutral-grey {
   border-color: var(--color-border);
 }
 
+[data-bs-theme="dark"] .agent-portal-kpi {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
 [data-bs-theme="dark"] .agent-portal-kpi-value {
   color: var(--color-text);
 }
