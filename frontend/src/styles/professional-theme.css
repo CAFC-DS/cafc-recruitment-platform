@@ -2819,11 +2819,21 @@ span.badge.badge-neutral-grey {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+[data-bs-theme="dark"] .agent-select-trigger {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
 .agent-select-trigger.open,
 .agent-select-trigger:focus {
   outline: none;
-  border-color: #cc0000;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 4px rgba(204, 0, 0, 0.1);
+}
+
+[data-bs-theme="dark"] .agent-select-chevron {
+  color: var(--color-text-muted);
 }
 
 .agent-select-chevron {
@@ -2846,6 +2856,11 @@ span.badge.badge-neutral-grey {
   overscroll-behavior: contain;
 }
 
+[data-bs-theme="dark"] .agent-select-menu {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
 .agent-select-option {
   width: 100%;
   background: #ffffff;
@@ -2861,6 +2876,12 @@ span.badge.badge-neutral-grey {
   text-align: left;
 }
 
+[data-bs-theme="dark"] .agent-select-option {
+  background: var(--color-surface);
+  border-bottom-color: var(--color-border);
+  color: var(--color-text);
+}
+
 .agent-select-option:last-child {
   border-bottom: none;
 }
@@ -2869,6 +2890,14 @@ span.badge.badge-neutral-grey {
 .agent-select-option.active {
   background: #fff1f2;
   color: #9f1239;
+}
+
+[data-bs-theme="dark"] .agent-select-option:hover,
+[data-bs-theme="dark"] .agent-select-option.active,
+[data-bs-theme="dark"] .agent-player-search-option:hover,
+[data-bs-theme="dark"] .agent-player-search-option.active {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
 }
 
 .agent-select-check {
@@ -2891,6 +2920,11 @@ span.badge.badge-neutral-grey {
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
 }
 
+[data-bs-theme="dark"] .agent-wage-basis-toggle {
+  background: var(--color-background);
+  border-color: var(--color-border);
+}
+
 .agent-wage-basis-option {
   border: 1px solid transparent;
   border-radius: 8px;
@@ -2901,11 +2935,21 @@ span.badge.badge-neutral-grey {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+[data-bs-theme="dark"] .agent-wage-basis-option {
+  color: var(--color-text-muted);
+}
+
 .agent-wage-basis-option:hover,
 .agent-wage-basis-option:focus {
   outline: none;
   color: #111827;
   border-color: #cbd5e1;
+}
+
+[data-bs-theme="dark"] .agent-wage-basis-option:hover,
+[data-bs-theme="dark"] .agent-wage-basis-option:focus {
+  color: var(--color-text);
+  border-color: var(--color-border);
 }
 
 .agent-wage-basis-option.active {
@@ -2939,6 +2983,11 @@ span.badge.badge-neutral-grey {
   overflow-y: auto;
 }
 
+[data-bs-theme="dark"] .agent-player-search-menu {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
 .agent-player-search-option {
   width: 100%;
   background: #ffffff;
@@ -2952,6 +3001,12 @@ span.badge.badge-neutral-grey {
   padding: 0.65rem 0.95rem;
   font-size: 0.92rem;
   text-align: left;
+}
+
+[data-bs-theme="dark"] .agent-player-search-option {
+  background: var(--color-surface);
+  border-bottom-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .agent-player-search-option-text {
@@ -2971,6 +3026,10 @@ span.badge.badge-neutral-grey {
   text-overflow: ellipsis;
 }
 
+[data-bs-theme="dark"] .agent-player-search-option-name {
+  color: var(--color-text);
+}
+
 .agent-player-search-option-meta {
   font-size: 0.78rem;
   color: #64748b;
@@ -2978,6 +3037,10 @@ span.badge.badge-neutral-grey {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+[data-bs-theme="dark"] .agent-player-search-option-meta {
+  color: var(--color-text-muted);
 }
 
 .agent-player-search-option:last-child {
@@ -3001,18 +3064,38 @@ span.badge.badge-neutral-grey {
   line-height: 1.3;
 }
 
+[data-bs-theme="dark"] .agent-player-search-divider {
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-top-color: var(--color-border);
+  border-bottom-color: var(--color-border);
+}
+
 .agent-player-search-divider strong {
   color: #111827;
   font-weight: 700;
+}
+
+[data-bs-theme="dark"] .agent-player-search-divider strong {
+  color: var(--color-text);
 }
 
 .agent-player-search-suggestion {
   background: #fafbfc;
 }
 
+[data-bs-theme="dark"] .agent-player-search-suggestion {
+  background: var(--color-background);
+}
+
 .agent-player-search-suggestion:hover,
 .agent-player-search-suggestion.active {
   background: #fff1f2;
+}
+
+[data-bs-theme="dark"] .agent-player-search-suggestion:hover,
+[data-bs-theme="dark"] .agent-player-search-suggestion.active {
+  background: rgba(239, 68, 68, 0.15);
 }
 
 .agent-player-selected-card {
@@ -3025,6 +3108,11 @@ span.badge.badge-neutral-grey {
   border-left: 4px solid #10b981;
   border-radius: 10px;
   min-height: 46px;
+}
+
+[data-bs-theme="dark"] .agent-player-selected-card {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
 }
 
 .agent-player-selected-icon {
@@ -3055,6 +3143,10 @@ span.badge.badge-neutral-grey {
   text-overflow: ellipsis;
 }
 
+[data-bs-theme="dark"] .agent-player-selected-name {
+  color: var(--color-text);
+}
+
 .agent-player-selected-meta {
   font-size: 0.78rem;
   color: #047857;
@@ -3077,6 +3169,11 @@ span.badge.badge-neutral-grey {
   border-radius: 6px;
 }
 
+[data-bs-theme="dark"] .agent-player-selected-meta,
+[data-bs-theme="dark"] .agent-player-selected-change {
+  color: #6ee7b7;
+}
+
 .agent-player-selected-change:hover {
   background: rgba(16, 185, 129, 0.12);
   text-decoration: underline;
@@ -3090,6 +3187,11 @@ span.badge.badge-neutral-grey {
   font-weight: 700;
   padding: 0.22rem 0.55rem;
   white-space: nowrap;
+}
+
+[data-bs-theme="dark"] .agent-player-score-badge {
+  background: var(--color-border);
+  color: var(--color-text);
 }
 
 .agent-manual-toggle {
@@ -3108,10 +3210,16 @@ span.badge.badge-neutral-grey {
   user-select: none;
 }
 
+[data-bs-theme="dark"] .agent-manual-toggle {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
 .agent-manual-toggle input[type='checkbox'] {
   width: 18px;
   height: 18px;
-  accent-color: #b32627;
+  accent-color: var(--color-primary);
   cursor: pointer;
 }
 
