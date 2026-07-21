@@ -533,6 +533,29 @@ verified at the CSS/diff level only (two independent task reviews, each confirmi
 matches the spec exactly) — flagging this honestly rather than claiming a live check that didn't
 happen.
 
+**Pass 2c — done (`RecommendationForm.tsx` dark-mode fixes).** The last sub-pass of Phase 4
+Pass 2 — the biggest, most bespoke file in the Agent Portal (custom player-search autocomplete,
+custom multi-select, wage-basis toggle, manual-entry toggle), with zero inline hardcoded colors
+itself. Full audit found 21 CSS rule groups needing dark-mode treatment: dropdown/menu surfaces
+(select trigger/menu/options, search menu/options, wage-basis toggle, manual-entry toggle),
+hover/active tints on select and search options (pink → translucent dark-red, same method as
+every prior tint fix), the green "player selected" confirmation card (translucent green tint,
+reusing the exact `#6ee7b7` text color from the Pass 2a success banner), and one neutral score
+badge (same treatment as `.external-recommendations-score-badge` from an earlier round). Plus
+two in-place, non-theme-conditional near-brand-red corrections
+(`.agent-select-trigger`'s focus border, `.agent-manual-toggle`'s checkbox accent color) —
+deliberately scoped to only those two selectors, since the same hex values repeat at several
+other untouched locations in the file. Left alone, self-contained:
+`.agent-player-selected-icon` and `.agent-wage-basis-option.active` (solid backgrounds + matching
+text, same reasoning as every prior self-contained-pill exception). Verified live: logged in as
+an agent, opened the Submit form, typed a partial player name and confirmed the search dropdown
+and its active/hover tint via `getComputedStyle` (dark: graphite surface, `#fca5a5` active-tint
+text; matched the spec exactly), opened the custom multi-select and confirmed its dark surface
+and focus-state red border, and confirmed the wage-basis toggle and manual-entry toggle both
+render correctly dark. Light mode reconfirmed byte-identical to before (white trigger, original
+values). This closes out **all of Phase 4 Pass 2** — only Phase 5 (cleanup & verification)
+remains on the overall design-system-refresh plan.
+
 **Phase 5 — Cleanup & verification.**
 Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
 
