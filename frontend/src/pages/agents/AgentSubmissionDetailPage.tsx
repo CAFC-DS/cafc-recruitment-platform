@@ -117,7 +117,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
               <h2 className="agent-portal-current-status-title" style={{ marginBottom: '0.35rem' }}>
                 {currentStatusConfig.displayLabel}
               </h2>
-              <p className="agent-portal-meta" style={{ color: '#111827' }}>
+              <p className="agent-portal-meta" style={{ color: 'var(--color-text)' }}>
                 {currentStatusConfig.summary}
               </p>
             </div>
@@ -139,14 +139,14 @@ const AgentSubmissionDetailPage: React.FC = () => {
               ].map(([label, value]) => (
                 <div key={label} className="agent-portal-info-card">
                   <div className="agent-portal-label">{label}</div>
-                  <div className="agent-portal-meta" style={{ color: '#111827', wordBreak: 'break-word' }}>{value}</div>
+                  <div className="agent-portal-meta" style={{ color: 'var(--color-text)', wordBreak: 'break-word' }}>{value}</div>
                 </div>
               ))}
             </div>
 
             <div className="agent-portal-surface-muted" style={{ marginTop: '1.5rem' }}>
               <div className="agent-portal-label">Additional information provided</div>
-              <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+              <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: 'var(--color-text)' }}>
                 {item.additional_information || 'No additional information provided.'}
               </div>
             </div>
@@ -156,7 +156,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
               style={{ marginTop: '1.5rem' }}
             >
               <div className="agent-portal-label">Shared notes from the club</div>
-              <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: '#111827' }}>
+              <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: 'var(--color-text)' }}>
                 {item.shared_notes || 'No shared notes yet.'}
               </div>
             </div>
