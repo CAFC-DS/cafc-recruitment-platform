@@ -514,6 +514,25 @@ either page. Verified live by reading computed styles directly (`getComputedStyl
 themes on the real error-banner path (`/agents/submissions/:id/edit` with an invalid id) —
 dark mode shows the intended translucent tint, light mode confirmed byte-identical to before.
 
+**Pass 2b — done (`AgentDashboardPage`/`AgentSubmissionDetailPage`/`SubmissionStatusBadge`
+dark-mode fixes).** Full audit found ~25 CSS rule groups with no dark-mode treatment across four
+patterns: white/light card backgrounds + their text (mobile cards, stage cards, submission
+cards, process cards, progress markers, history cards), muted caption/label text, three tinted
+callout boxes (status note, current-status hero card, notes panel — same translucent-tint
+approach as the Pass 2a banner fix), and one near-brand-red link color (`#b32627` →
+`var(--color-primary)`, scoped to only the two selectors this pass's files actually use — the
+same hex pair repeats elsewhere in the file and was deliberately left alone). Plus 6 inline
+`#111827` hex values across the two pages tokenized to `var(--color-text)`. Deliberately left
+untouched: `SubmissionStatusBadge.tsx`'s actual status/availability pills and the progress-
+marker's complete/current states — confirmed self-contained (own background + matching text,
+same reasoning as flag/grade badges elsewhere in the app). Verified live via `getComputedStyle`
+on the Agent Dashboard's KPI cards in both themes (dark: graphite card/light text; light:
+byte-identical to before — white card, `#111827` text). The mobile-card/submission-detail views
+couldn't be exercised live since the test agent account has zero submissions; those were
+verified at the CSS/diff level only (two independent task reviews, each confirming every rule
+matches the spec exactly) — flagging this honestly rather than claiming a live check that didn't
+happen.
+
 **Phase 5 — Cleanup & verification.**
 Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
 
