@@ -556,6 +556,19 @@ render correctly dark. Light mode reconfirmed byte-identical to before (white tr
 values). This closes out **all of Phase 4 Pass 2** — only Phase 5 (cleanup & verification)
 remains on the overall design-system-refresh plan.
 
+**Post-Pass-2c bug fix — `AgentDashboardPage.tsx` KPI panels illegible in dark mode.** User-
+reported: the "Total submissions" / "Still active" / "Latest update" panels were hard to read in
+dark mode. Root cause: `.agent-portal-kpi` (the card itself) never got a dark-mode background/
+border override in Pass 2b, while its text children (`.agent-portal-kpi-value`,
+`.agent-portal-kpi-copy`, `.agent-portal-label`) already had — light text on a leftover white
+`#fff` card. Fix: added `[data-bs-theme="dark"] .agent-portal-kpi { background: var(--color-surface); border-color: var(--color-border); }`,
+matching the same background/border already used on the parent `.agent-portal-card` (both share
+one background value in light mode too, `#fff`/`#fff` — the boxes are visually separated by
+border only, by original design, not a gap in this fix). Verified live via `getComputedStyle`:
+all three KPI cards now render `rgb(29, 32, 39)` background, and the `-value-small` variant
+(used only by "Latest update") confirmed to be a font-size-only modifier that correctly inherits
+the fixed text color.
+
 **Phase 5 — Cleanup & verification.**
 Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
 
