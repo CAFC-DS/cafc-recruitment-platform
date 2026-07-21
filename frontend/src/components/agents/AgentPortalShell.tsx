@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Sun, Moon } from 'lucide-react';
 import logo from '../../assets/logo.png';
 import { useAuth } from '../../App';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface AgentPortalShellProps {
   title: string;
@@ -14,6 +16,7 @@ const AgentPortalShell: React.FC<AgentPortalShellProps> = ({ title, subtitle, ch
   const location = useLocation();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { theme, toggleDarkMode } = useTheme();
 
   const navClassName = (path: string) =>
     `agent-portal-nav-link${location.pathname === path ? ' active' : ''}`;
@@ -43,6 +46,15 @@ const AgentPortalShell: React.FC<AgentPortalShellProps> = ({ title, subtitle, ch
               <Link to="/agents/submit" className={navClassName('/agents/submit')}>
                 Submit a Player
               </Link>
+              <button
+                type="button"
+                className="agent-portal-nav-link"
+                style={{ border: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                onClick={toggleDarkMode}
+              >
+                {theme.isDark ? <Sun size={15} /> : <Moon size={15} />}
+                {theme.isDark ? 'Light' : 'Dark'}
+              </button>
               <button
                 type="button"
                 className="agent-portal-nav-link"

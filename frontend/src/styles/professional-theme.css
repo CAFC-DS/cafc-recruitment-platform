@@ -2481,8 +2481,8 @@ span.badge.badge-neutral-grey {
 
 .agent-portal-shell {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
-  font-family: 'Inter', sans-serif;
+  background: var(--color-background);
+  font-family: var(--font-body);
 }
 
 .agent-portal-shell-inner {
@@ -2492,7 +2492,7 @@ span.badge.badge-neutral-grey {
 }
 
 .agent-portal-header {
-  background: #0f172a;
+  background: var(--color-header-bg);
   border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   color: #fff;
@@ -2512,7 +2512,7 @@ span.badge.badge-neutral-grey {
   position: absolute;
   inset: 0 0 auto 0;
   height: 4px;
-  background: #cc0000;
+  background: var(--color-primary);
 }
 
 .agent-portal-header-content {
@@ -2571,7 +2571,7 @@ span.badge.badge-neutral-grey {
 
 .agent-portal-nav-link:hover,
 .agent-portal-nav-link.active {
-  background: #cc0000;
+  background: var(--color-primary);
   color: #fff;
 }
 
