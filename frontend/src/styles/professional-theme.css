@@ -4215,14 +4215,6 @@ span.badge.badge-neutral-grey {
 }
 
 @media (max-width: 991px) {
-  .agent-auth-brand-panel {
-    display: none;
-  }
-
-  .agent-mobile-brand {
-    display: flex;
-  }
-
   .agent-portal-grid.two-up,
   .agent-portal-grid.three-up,
   .agent-portal-grid.detail,
