@@ -461,6 +461,46 @@ Both verified live in both themes (light mode confirmed byte-for-byte unchanged)
 harmonized "external" variant, not a third unreconciled look. Adopt the stale branch's idea
 of one shared auth-page layout between internal login and agent login, properly this time.
 
+**Pass 1 — done (auth pages + portal shell), executed via subagent-driven development.**
+Full design spec and implementation plan at
+`docs/superpowers/specs/2026-07-20-agent-portal-phase4-pass1-design.md` and
+`docs/superpowers/plans/2026-07-20-agent-portal-phase4-pass1.md`. Summary:
+- New `frontend/src/components/auth/AuthShell.tsx` — the internal `LoginPage.tsx`'s existing
+  crest-watermark/centered-card shell (already fully `var(--color-*)`/`var(--font-*)`
+  token-based), extracted into a reusable component (`eyebrow`/`heading`/`wide`/`children`
+  props). `LoginPage.tsx` now renders through it — verified live, pixel-identical to before.
+- `AgentLoginPage.tsx`, `AgentRegisterPage.tsx` (wide), `AgentResetPasswordPage.tsx`, and
+  `AgentLandingPage.tsx` (pulled forward from a later pass during spec self-review — it shared
+  the same CSS classes as the other three, so deleting those classes without migrating it too
+  would have been unsafe) all migrated off the old split-panel layout onto `AuthShell`. Both
+  internal staff and external agents now share one visual auth language.
+- `AgentPortalShell.tsx` (the nav header on logged-in agent pages): `font-family: 'Inter'`
+  (never loaded) → `var(--font-body)`; `#cc0000` → `var(--color-primary)`; `#0f172a` header bg
+  → `var(--color-header-bg)` (matches the internal Navbar's always-dark chrome). Gained a
+  working dark-mode toggle in the nav — previously the Agent Portal had no settings menu of any
+  kind, so dark mode would have been CSS-capable but unreachable without this.
+- Dead split-panel CSS removed once all four pages migrated off it. Caught and fixed one
+  self-inconsistency in the plan along the way (`.agent-auth-badge` was listed as dead but
+  `AgentLandingPage.tsx`'s own migrated code still used it) — the task's pre-deletion safety
+  grep caught it before anything broke.
+- **Live verification found one real bug** the diff-only task reviews couldn't have caught:
+  `.agent-auth-title`/`.agent-auth-subtitle` (the page headings/subtitles inside the new dark-
+  capable `AuthShell` card) had hardcoded light-only colors from the old layout, never
+  previously touched by any task since they were only ever flagged "don't delete." In dark mode
+  the title was nearly unreadable (near-black on a dark card). Fixed with additive
+  `[data-bs-theme="dark"]` overrides, verified live before/after on the reset-password page —
+  light mode confirmed unaffected.
+- Verified in both themes: internal login unchanged, all four migrated agent auth pages render
+  through the shared shell correctly, `AgentPortalShell`'s header/nav/toggle all correct
+  (toggle actually switches the theme, confirmed via direct interaction).
+
+**Deferred to Pass 2:** `AgentDashboardPage.tsx`, `AgentSubmitPage.tsx`,
+`AgentEditSubmissionPage.tsx`, `AgentSubmissionDetailPage.tsx`, `RecommendationForm.tsx`,
+`SubmissionStatusBadge.tsx` — the actual dashboard/submission-form content is still on the old,
+unreconciled look; only the chrome around it (nav shell) is fixed. Visible live on the Agent
+Dashboard screenshot taken during this pass's verification — white "At a glance" stat cards
+sitting under the now-correctly-dark nav header.
+
 **Phase 5 — Cleanup & verification.**
 Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
 
