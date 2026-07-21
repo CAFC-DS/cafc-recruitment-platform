@@ -134,13 +134,19 @@ Once `AgentLoginPage.tsx`, `AgentRegisterPage.tsx`, `AgentResetPasswordPage.tsx`
 get removed in the same pass (not deferred to Phase 5, since we're already touching every
 consumer):
 `.agent-auth-page`, `.agent-auth-layout`, `.agent-auth-brand-panel`, `.agent-auth-brand-content`,
-`.agent-auth-heading`, `.agent-auth-badge`, `.agent-auth-copy`, `.agent-auth-form-panel`,
-`.agent-auth-card`, `.agent-auth-card-wide`, `.agent-mobile-brand`, `.agent-auth-title`,
-`.agent-auth-subtitle`.
+`.agent-auth-heading`, `.agent-auth-copy`, `.agent-auth-form-panel`, `.agent-auth-card`,
+`.agent-auth-card-wide`, `.agent-mobile-brand`.
 
-Classes that stay (still consumed by the dashboard/submission side, Pass 2 territory, or by the
-new `AuthShell` forms): `.agent-auth-label`, `.agent-auth-input`, `.agent-auth-phone-input`,
-`.agent-auth-button`, `.agent-auth-alert`, `.agent-auth-inline-link`, `.agent-auth-actions`.
+**Correction found during implementation planning:** `.agent-auth-badge` and `.agent-auth-title`/
+`.agent-auth-subtitle` were originally listed here too, but all three are still genuinely used —
+`AgentLandingPage.tsx` keeps one `.agent-auth-badge` (its second, kept badge instance) and all
+five migrated pages render `.agent-auth-title`/`.agent-auth-subtitle` inside `AuthShell`'s
+children. None of the three are dead; moved to the "stays" list below.
+
+Classes that stay (still consumed by the migrated `AuthShell` forms, the dashboard/submission
+side, or Pass 2 territory): `.agent-auth-badge`, `.agent-auth-title`, `.agent-auth-subtitle`,
+`.agent-auth-label`, `.agent-auth-input`, `.agent-auth-phone-input`, `.agent-auth-button`,
+`.agent-auth-alert`, `.agent-auth-inline-link`, `.agent-auth-actions`.
 
 ## Verification
 

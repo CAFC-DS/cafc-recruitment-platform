@@ -1031,11 +1031,21 @@ git commit -m "Migrate AgentLandingPage to shared AuthShell (wide variant)"
 
 ```bash
 cd frontend/src
-grep -rl "agent-auth-page\|agent-auth-layout\|agent-auth-brand-panel\|agent-auth-brand-content\|agent-auth-heading\b\|agent-auth-badge\|agent-auth-copy\|agent-auth-form-panel\|agent-auth-card\b\|agent-auth-card-wide\|agent-mobile-brand" pages/ components/
+grep -rl "agent-auth-page\|agent-auth-layout\|agent-auth-brand-panel\|agent-auth-brand-content\|agent-auth-heading\b\|agent-auth-copy\|agent-auth-form-panel\|agent-auth-card\b\|agent-auth-card-wide\|agent-mobile-brand" pages/ components/
 ```
-Expected output: nothing (all four migrated pages no longer reference these classes; if
+Expected output: nothing (all five migrated pages no longer reference these classes; if
 anything is listed, stop and investigate before deleting — do not proceed to Step 2 until this
 is empty).
+
+**Correction found during Task 6's implementer run (plan bug, fixed here):** `.agent-auth-badge`
+was originally in both this grep and the Step 2 deletion list below. It is NOT actually dead —
+Task 5's `AgentLandingPage.tsx` deliberately keeps one `<p className="agent-auth-badge">CAFC
+Recruitment</p>` (the second, differently-worded badge that survives after removing the
+duplicate brand-panel block — see Task 5's own text above). The Task 6 implementer's pre-deletion
+grep correctly caught this contradiction between Task 5 and Task 6's original text and stopped
+rather than deleting a class still in use. `.agent-auth-badge` is removed from the "confirm
+unused" grep above and from the Step 2 deletion list below, and added to the "classes that stay"
+list in the CSS cleanup section.
 
 - [ ] **Step 2: Delete the dead CSS block**
 
@@ -1058,7 +1068,6 @@ earlier edits in this session):
   z-index: 1;
 }
 .agent-auth-brand-content { ... }   /* the standalone rule below the shared one above */
-.agent-auth-badge { ... }
 .agent-auth-heading { ... }
 .agent-auth-copy { ... }
 .agent-auth-form-panel { ... }
