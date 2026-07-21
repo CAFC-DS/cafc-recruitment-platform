@@ -2328,7 +2328,7 @@ span.badge.badge-neutral-grey {
 }
 
 .agent-auth-badge {
-  color: #cc0000;
+  color: var(--color-primary);
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -4505,6 +4505,14 @@ span.badge.badge-neutral-grey {
 
 [data-bs-theme="dark"] .agent-auth-label,
 [data-bs-theme="dark"] .agent-portal-label {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .agent-auth-title {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-auth-subtitle {
   color: var(--color-text-muted);
 }
 
