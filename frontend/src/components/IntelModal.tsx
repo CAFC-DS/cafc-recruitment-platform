@@ -3,6 +3,8 @@ import { Modal, Form, Button, Row, Col, Alert, Spinner, ListGroup, Card } from "
 import Select from "react-select";
 import axiosInstance from "../axiosInstance";
 import { Player } from "../types/Player";
+import { useTheme } from "../contexts/ThemeContext";
+import { getReactSelectStyles } from "../utils/reactSelectTheme";
 
 type IntelType = "player_information" | "general_note" | "reference_form";
 
@@ -44,6 +46,9 @@ const IntelModal: React.FC<IntelModalProps> = ({
   reportId = null,
   existingReportData = null,
 }) => {
+  const { theme } = useTheme();
+  const selectStyles = getReactSelectStyles(theme.colors, theme.isDark);
+
   const [intelType, setIntelType] = useState<IntelType | null>(null);
   const [formData, setFormData] = useState(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -701,6 +706,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
             Potential Deal Types <span className="text-danger">*</span>
           </Form.Label>
           <Select
+            styles={selectStyles}
             isMulti
             options={dealTypeOptions}
             value={dealTypeOptions.filter((option) =>
@@ -894,6 +900,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
             Relationship To Player <span className="text-danger">*</span>
           </Form.Label>
           <Select
+            styles={selectStyles}
             isMulti
             options={relationshipToPlayerOptions}
             value={relationshipToPlayerOptions.filter((option) =>

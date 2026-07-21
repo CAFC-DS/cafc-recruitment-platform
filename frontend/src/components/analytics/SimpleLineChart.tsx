@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, ButtonGroup, Button } from 'react-bootstrap';
 import { Line } from 'react-chartjs-2';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -47,20 +48,24 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
   datasets,
   height = 300
 }) => {
+  const { theme } = useTheme();
+  const defaultLineColor = theme.isDark ? theme.colors.text : '#000000';
+  const secondaryLineColor = theme.isDark ? theme.colors.textMuted : '#6c757d';
+
   const chartData = {
     labels: labels || [],
     datasets: (datasets || []).map((ds, index) => ({
       label: ds.label || '',
       data: ds.data || [],
-      borderColor: ds.borderColor || (index === 0 ? '#000000' : '#6c757d'),
+      borderColor: ds.borderColor || (index === 0 ? defaultLineColor : secondaryLineColor),
       backgroundColor: ds.backgroundColor || 'transparent',
       tension: 0.4,
       fill: true,
       borderWidth: 3,
       pointRadius: 5,
       pointHoverRadius: 7,
-      pointBackgroundColor: ds.borderColor || '#000000',
-      pointBorderColor: '#fff',
+      pointBackgroundColor: ds.borderColor || defaultLineColor,
+      pointBorderColor: theme.colors.surface,
       pointBorderWidth: 2
     }))
   };
@@ -95,7 +100,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
       tooltip: {
         mode: 'index' as const,
         intersect: false,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: theme.isDark ? 'rgba(20, 22, 27, 0.95)' : 'rgba(0, 0, 0, 0.8)',
         padding: 12,
         titleFont: {
           size: 13,
@@ -118,7 +123,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
         },
         color: (context: any) => {
           // Use the border color of the dataset for the label
-          return context.dataset.borderColor || '#000000';
+          return context.dataset.borderColor || defaultLineColor;
         }
       }
     },
@@ -131,11 +136,11 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
             size: 13,
             weight: 500
           },
-          color: '#495057',
+          color: theme.colors.textMuted,
           padding: 8
         },
         grid: {
-          color: 'rgba(0, 0, 0, 0.08)',
+          color: theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
           drawBorder: false,
           lineWidth: 1
         }
@@ -146,7 +151,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
             size: 13,
             weight: 500
           },
-          color: '#495057',
+          color: theme.colors.textMuted,
           padding: 8
         },
         grid: {

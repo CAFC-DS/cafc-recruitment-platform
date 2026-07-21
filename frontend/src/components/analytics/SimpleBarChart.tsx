@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from 'react-bootstrap';
 import { Bar } from 'react-chartjs-2';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -38,6 +39,8 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   color = '#e31e24',
   height = 300
 }) => {
+  const { theme } = useTheme();
+
   const chartData = {
     labels: labels || [],
     datasets: [
@@ -67,7 +70,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
         }
       },
       datalabels: {
-        color: '#000000',
+        color: theme.colors.text,
         font: {
           size: 13,
           weight: 'bold' as const
@@ -88,11 +91,11 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
           font: {
             size: 11
           },
-          color: '#6c757d'
+          color: theme.colors.textMuted
         },
         grid: {
           display: true,
-          color: 'rgba(0, 0, 0, 0.05)',
+          color: theme.isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
           drawBorder: false
         }
       },
@@ -102,7 +105,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
             size: 12,
             weight: 'bold' as const
           },
-          color: '#000000'
+          color: theme.colors.text
         },
         grid: {
           display: false,

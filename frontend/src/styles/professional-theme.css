@@ -2743,6 +2743,12 @@ span.badge.badge-neutral-grey {
   white-space: nowrap;
 }
 
+.deal-type-badge-neutral {
+  background: rgba(55, 65, 81, 0.08);
+  color: #374151;
+  border: 1px solid rgba(55, 65, 81, 0.35);
+}
+
 .external-recommendations-toolbar {
   display: flex;
   align-items: center;
@@ -3563,6 +3569,12 @@ span.badge.badge-neutral-grey {
 [data-bs-theme="dark"] .external-recommendations-score-badge {
   background: var(--color-border);
   color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .deal-type-badge-neutral {
+  background: rgba(243, 244, 246, 0.12);
+  color: var(--color-text);
+  border-color: var(--color-border);
 }
 
 [data-bs-theme="dark"] .external-history-table-wrap {

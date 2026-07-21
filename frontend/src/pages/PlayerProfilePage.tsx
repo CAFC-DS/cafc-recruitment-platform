@@ -1100,6 +1100,7 @@ const PlayerProfilePage: React.FC = () => {
 
   useEffect(() => {
     if (actualPlayerId) {
+      setLoading(true);
       fetchPlayerProfile();
       fetchPlayerAttributes();
       fetchScoutReports();
