@@ -501,6 +501,19 @@ unreconciled look; only the chrome around it (nav shell) is fixed. Visible live 
 Dashboard screenshot taken during this pass's verification — white "At a glance" stat cards
 sitting under the now-correctly-dark nav header.
 
+**Pass 2a — done (`.agent-portal-banner` dark-mode fix).** Sequencing for Pass 2, per the user:
+simple pages first (2a), then `AgentDashboardPage`/`AgentSubmissionDetailPage`/
+`SubmissionStatusBadge` (2b), then `RecommendationForm.tsx` (715 lines, the biggest/most bespoke
+file) on its own (2c). Full audit of `AgentSubmitPage.tsx`/`AgentEditSubmissionPage.tsx` found
+both already fully dark-mode-safe except one shared-CSS gap: `.agent-portal-banner`/
+`.agent-portal-banner-success` (the error/success message strip) had no dark override, rendering
+as a light pastel patch on the dark page — same bug class as the `SharedReportPage.tsx` panel fix
+earlier this session. Fixed with additive `[data-bs-theme="dark"]` rules derived from
+`ThemeContext.tsx`'s actual dark-theme `danger`/`success` tokens. No `.tsx` changes needed for
+either page. Verified live by reading computed styles directly (`getComputedStyle`) in both
+themes on the real error-banner path (`/agents/submissions/:id/edit` with an invalid id) —
+dark mode shows the intended translucent tint, light mode confirmed byte-identical to before.
+
 **Phase 5 — Cleanup & verification.**
 Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
 
