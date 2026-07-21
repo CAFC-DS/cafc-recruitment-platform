@@ -2322,57 +2322,9 @@ span.badge.badge-neutral-grey {
 }
 
 /* Agent portal */
-.agent-auth-page {
-  display: flex;
-  min-height: 100vh;
-  font-family: 'Inter', sans-serif;
-  background: #f8fafc;
-}
-
-.agent-auth-layout {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-}
-
-.agent-auth-brand-panel {
-  width: 44%;
-  background: #0f172a;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  padding: 2rem;
-}
-
-.agent-auth-brand-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 1px, transparent 40px);
-}
-
-.agent-auth-brand-panel::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: #cc0000;
-}
-
-.agent-auth-brand-content,
 .agent-portal-shell-inner {
   position: relative;
   z-index: 1;
-}
-
-.agent-auth-brand-content {
-  text-align: center;
-  max-width: 320px;
 }
 
 .agent-auth-badge {
@@ -2382,45 +2334,6 @@ span.badge.badge-neutral-grey {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   margin-bottom: 2rem;
-}
-
-.agent-auth-heading {
-  color: #fff;
-  font-size: 1.85rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.65rem;
-}
-
-.agent-auth-copy {
-  color: rgba(255,255,255,0.62);
-  font-size: 0.96rem;
-  line-height: 1.8;
-}
-
-.agent-auth-form-panel {
-  flex: 1;
-  background: #f8fafc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.agent-auth-card {
-  width: 100%;
-  max-width: 420px;
-}
-
-.agent-auth-card.agent-auth-card-wide {
-  max-width: 680px;
-}
-
-.agent-mobile-brand {
-  display: none;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
 }
 
 .agent-auth-title {
@@ -2553,7 +2466,7 @@ span.badge.badge-neutral-grey {
 }
 
 .agent-auth-inline-link {
-  color: #cc0000;
+  color: var(--color-primary);
   font-weight: 600;
   text-decoration: none;
 }
