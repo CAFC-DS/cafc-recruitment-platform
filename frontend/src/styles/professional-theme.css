@@ -3203,6 +3203,18 @@ span.badge.badge-neutral-grey {
   color: #166534;
 }
 
+[data-bs-theme="dark"] .agent-portal-banner {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .agent-portal-banner.agent-portal-banner-success {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+}
+
 .agent-portal-kpi-value {
   color: #111827;
   font-size: 2.1rem;
