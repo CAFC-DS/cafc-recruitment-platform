@@ -569,8 +569,40 @@ all three KPI cards now render `rgb(29, 32, 39)` background, and the `-value-sma
 (used only by "Latest update") confirmed to be a font-size-only modifier that correctly inherits
 the fixed text color.
 
-**Phase 5 — Cleanup & verification.**
-Remove now-dead tokens/CSS as pages migrate off old classes. Full verification pass (below).
+**Phase 5 — Cleanup & verification. Done.**
+Swept `professional-theme.css` for selectors with zero references anywhere in `frontend/src`
+(`.tsx`/`.ts`), confirmed dead on `main` before this branch existed — not something this
+engagement's own migrations left behind (those were already cleaned up inline, per-pass, as
+each one happened: e.g. Pass 1's split-panel auth CSS deletion). Removed ~1,300 lines across
+five clusters: an abandoned Scout Reports Timeline component (`.timeline-*`, `.summary-stats`,
+`.stat-number/-label`), a compact-attributes variant already marked `DEPRECATED` in its own
+source comment, an unused Tailwind-style utility layer (`.spacing-*`, `.margin-*`,
+`.text-{xs..2xl}`, `.rounded-*`, `.font-{weight}`, `.transition-*`, `.hover-lift`,
+`.list-enhanced`), PDF-export-optimization rules gated on a `.pdf-export-optimized` class that
+none of the three real `html2canvas` call sites (`PlayerReportModal.tsx`,
+`SharedReportPage.tsx`, `analytics/ExportButton.tsx`) ever apply, and several Agent Portal
+selectors (`.agent-portal-progress-*`, `.agent-portal-timeline-item`, `.agent-portal-submission-*`,
+`.agent-portal-history-*`, etc.) left over from an earlier, more elaborate markup draft that was
+simplified before the real `AgentDashboardPage.tsx`/`AgentSubmissionDetailPage.tsx` were written.
+Selectors sharing a comma-separated rule with a still-live selector (e.g.
+`.agent-auth-button, .agent-portal-button-primary`) had only the dead alternative removed.
+
+`ThemeContext.tsx`'s `pitch`/`amber` tokens are *not* dead despite having no CSS consumer yet —
+they're intentional, plan-documented forward-looking tokens for future generic-UI use (toasts,
+form validation), left in place.
+
+Verified: brace-balance check, `tsc --noEmit` (clean), `eslint` (only pre-existing warnings, no
+new ones — CSS-only change), frozen-file diff (`colorUtils.ts`, `playerLists.theme.ts`, the
+`getAttributeGroupColor` blocks, Kanban card-state borders, `ScoutingAssessmentModal.tsx` — all
+empty), and a live check of the agent dashboard/kanban/navbar in both themes (no visual
+regressions, dark-mode KPI fix from the same session still renders correctly). Backend diff
+against `main` for this entire branch is empty, so the per-role data-visibility spot-check
+called for in this doc's Verification section is not applicable here — nothing in this
+CSS/component-styling-only effort could have touched role-based filtering.
+
+Not chased in this pass (documented as deliberately out of scope, not an oversight): the
+opportunistic radius/shadow-token consolidation mentioned in the Elevation scale section above
+— still genuinely opportunistic/optional work, not a Phase 5 gate.
 
 ## Empty states
 
