@@ -51,6 +51,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
   const { theme } = useTheme();
   const defaultLineColor = theme.isDark ? theme.colors.text : '#000000';
   const secondaryLineColor = theme.isDark ? theme.colors.textMuted : '#6c757d';
+  const axisTickColor = theme.isDark ? theme.colors.textMuted : '#495057';
 
   const chartData = {
     labels: labels || [],
@@ -136,7 +137,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
             size: 13,
             weight: 500
           },
-          color: theme.colors.textMuted,
+          color: axisTickColor,
           padding: 8
         },
         grid: {
@@ -151,7 +152,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
             size: 13,
             weight: 500
           },
-          color: theme.colors.textMuted,
+          color: axisTickColor,
           padding: 8
         },
         grid: {

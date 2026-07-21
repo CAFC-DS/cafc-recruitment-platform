@@ -40,6 +40,8 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
   height = 300
 }) => {
   const { theme } = useTheme();
+  const textColor = theme.isDark ? theme.colors.text : '#000000';
+  const mutedTextColor = theme.isDark ? theme.colors.textMuted : '#6c757d';
 
   const chartData = {
     labels: labels || [],
@@ -70,7 +72,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
         }
       },
       datalabels: {
-        color: theme.colors.text,
+        color: textColor,
         font: {
           size: 13,
           weight: 'bold' as const
@@ -91,7 +93,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
           font: {
             size: 11
           },
-          color: theme.colors.textMuted
+          color: mutedTextColor
         },
         grid: {
           display: true,
@@ -105,7 +107,7 @@ const SimpleBarChart: React.FC<SimpleBarChartProps> = ({
             size: 12,
             weight: 'bold' as const
           },
-          color: theme.colors.text
+          color: textColor
         },
         grid: {
           display: false,
