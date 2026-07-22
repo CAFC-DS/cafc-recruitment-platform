@@ -8742,6 +8742,58 @@ async def get_top_attribute_reports(
             conn.close()
 
 
+@app.get("/squad-changes/recent")
+async def get_recent_squad_changes(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get squad changes detected in the last 7 days, for the homepage Transfer News
+    bulletin. Reads from RECRUITMENT_TEST.PUBLIC.SQUAD_CHANGE_LOG, a separate
+    Snowflake database from the app's usual CAFC_DB -- reachable via a fully
+    qualified table name on the same connection, no separate credentials needed.
+    """
+    cache_key = "recent_squad_changes"
+    cached_data = get_cache(cache_key)
+    if cached_data is not None:
+        return cached_data
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT PLAYERNAME, OLD_SQUADNAME, NEW_SQUADNAME, DETECTED_AT, SEASON, COMPETITIONNAME
+            FROM RECRUITMENT_TEST.PUBLIC.SQUAD_CHANGE_LOG
+            WHERE DETECTED_AT >= DATEADD(day, -7, CURRENT_TIMESTAMP())
+            ORDER BY DETECTED_AT DESC
+            """
+        )
+        changes = [
+            {
+                "player_name": row[0],
+                "old_squad": row[1],
+                "new_squad": row[2],
+                "detected_at": serialize_datetime(row[3]),
+                "season": row[4],
+                "competition": row[5],
+            }
+            for row in cursor.fetchall()
+        ]
+
+        result = {"changes": changes}
+        set_cache(cache_key, result, expiry_minutes=5)
+        return result
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching recent squad changes: {e}"
+        )
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/scout_reports/{report_id}")
 async def get_single_scout_report(
     report_id: int, current_user: User = Depends(get_current_user)
