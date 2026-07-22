@@ -448,6 +448,30 @@ body {
   z-index: 1;
 }
 
+[data-bs-theme="dark"] .admin-console .admin-card {
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .admin-console .admin-tabs .nav-link {
+  color: var(--color-text-muted) !important;
+}
+
+[data-bs-theme="dark"] .admin-console .admin-tabs .nav-link.active {
+  color: var(--color-text) !important;
+}
+
+[data-bs-theme="dark"] .admin-metric-card {
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .admin-metric-card .metric-title {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .admin-metric-card .metric-value {
+  color: var(--color-text);
+}
+
 /* Responsive timeline */
 @media (max-width: 768px) {
 }
