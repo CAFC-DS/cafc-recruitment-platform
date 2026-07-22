@@ -37,8 +37,27 @@ import SubmissionStatusBadge from "../components/agents/SubmissionStatusBadge";
 import ShareLinkModal from "../components/ShareLinkModal";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
-import { getPerformanceScoreColor, getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
+import { useTheme } from "../contexts/ThemeContext";
+import { getFlagColor, getRecommendationColor, getContrastTextColor, getGradeColor } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
+import GradeChip from "../components/GradeChip";
+import GradeLabelChip from "../components/GradeLabelChip";
+import ShimmerLoading from "../components/ShimmerLoading";
+import {
+  Flag,
+  Laptop,
+  Clapperboard,
+  TriangleAlert,
+  History,
+  Calendar,
+  Eye,
+  Link2,
+  Pencil,
+  Trash2,
+  ClipboardList,
+  BarChart3,
+} from "lucide-react";
+import { IconBuildingStadium } from "@tabler/icons-react";
 import { getStageBgColor, getStageTextColor } from "../styles/playerLists.theme";
 import {
   PlayerProfile,
@@ -131,39 +150,24 @@ const getFlagBadge = (report: ScoutReport) => {
       }}
       title={`Flag: ${report.flag_category || "Unknown"}`}
     >
-      🏳️
-    </span>
-  );
-};
-
-const getFlagTypeText = (flagType?: string) => {
-  const flagColor = getFlagColor(flagType || "");
-
-  return (
-    <span
-      className="badge"
-      style={{
-        backgroundColor: flagColor,
-        color: "white",
-        border: "none",
-        fontWeight: "500",
-        fontSize: "0.9rem",
-      }}
-    >
-      {flagType || "Flag"}
+      <Flag size={12} fill="white" stroke="white" />
     </span>
   );
 };
 
 const getScoutingTypeBadge = (scoutingType: string) => {
-  const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
+  const isLive = scoutingType.toLowerCase() === "live";
   return (
     <span
       className="badge badge-neutral-grey"
-      style={{ cursor: "pointer", fontSize: "16px" }}
+      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
       title={`Scouting Type: ${scoutingType}`}
     >
-      {icon}
+      {isLive ? (
+        <IconBuildingStadium size={16} stroke={1.75} aria-label="Live" />
+      ) : (
+        <Laptop size={14} aria-label="Video" />
+      )}
     </span>
   );
 };
@@ -204,7 +208,7 @@ const getReportTypeBadge = (
       return (
         <>
           <span className="badge badge-neutral-grey" title="Clip">
-            🎬
+            <Clapperboard size={13} />
           </span>
           {report.clip_category && (
             <span
@@ -274,16 +278,24 @@ const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"]) => 
   return styles[eventType] || styles.list_added;
 };
 
-const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"]) => {
-  const colors: Record<FlowHistoryEvent["event_type"], string> = {
+const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"], isDark: boolean) => {
+  const lightColors: Record<FlowHistoryEvent["event_type"], string> = {
     list_added: "#b91c1c",
     stage_changed: "#374151",
     recommendation_submitted: "#d97706",
     recommendation_status_changed: "#0f766e",
     recommendation_agent_status_changed: "#6d28d9",
   };
+  const darkColors: Record<FlowHistoryEvent["event_type"], string> = {
+    list_added: "#ef4444",
+    stage_changed: "#9ca3af",
+    recommendation_submitted: "#f59e0b",
+    recommendation_status_changed: "#2dd4bf",
+    recommendation_agent_status_changed: "#a78bfa",
+  };
 
-  return colors[eventType] || "#b91c1c";
+  const colors = isDark ? darkColors : lightColors;
+  return colors[eventType] || (isDark ? "#ef4444" : "#b91c1c");
 };
 
 const formatFlowHistoryTimestamp = (value?: string | null) =>
@@ -346,6 +358,7 @@ const PlayerProfilePage: React.FC = () => {
   // Determine which ID to use - external or manual
   const actualPlayerId = playerId || cafcPlayerId;
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const { viewMode, setViewMode } = useViewMode();
   const { canGenerateShareLinks, canManageIntel, canSeeAllReports, isAdmin, isIntelReviewer, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
@@ -1087,6 +1100,7 @@ const PlayerProfilePage: React.FC = () => {
 
   useEffect(() => {
     if (actualPlayerId) {
+      setLoading(true);
       fetchPlayerProfile();
       fetchPlayerAttributes();
       fetchScoutReports();
@@ -1367,12 +1381,69 @@ const PlayerProfilePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-content">
-          <Spinner animation="border" size="sm" />
-          <span>Loading player profile...</span>
+      <Container fluid className="py-4">
+        <div className="mb-4 d-flex align-items-center gap-3">
+          <div
+            className="shimmer-line"
+            style={{ width: "96px", height: "96px", borderRadius: "50%" }}
+          />
+          <div className="flex-grow-1">
+            <div
+              className="shimmer-line mb-2"
+              style={{ width: "260px", height: "28px" }}
+            />
+            <div
+              className="shimmer-line"
+              style={{ width: "180px", height: "16px" }}
+            />
+          </div>
         </div>
-      </div>
+        <Row className="mb-4 g-3">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <Col md={3} key={idx}>
+              <div className="card shimmer-card" style={{ height: "90px" }}>
+                <div className="card-body">
+                  <div
+                    className="shimmer-line mb-2"
+                    style={{ width: "60%", height: "14px" }}
+                  />
+                  <div
+                    className="shimmer-line"
+                    style={{ width: "40%", height: "20px" }}
+                  />
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+        <div className="shimmer-line mb-3" style={{ width: "220px", height: "24px" }} />
+        <Row className="g-3">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <Col md={4} key={idx}>
+              <div className="card shimmer-card" style={{ height: "160px" }}>
+                <div className="card-body">
+                  <div
+                    className="shimmer-line mb-3"
+                    style={{ width: "50%", height: "18px" }}
+                  />
+                  <div
+                    className="shimmer-line mb-2"
+                    style={{ width: "90%", height: "14px" }}
+                  />
+                  <div
+                    className="shimmer-line mb-2"
+                    style={{ width: "75%", height: "14px" }}
+                  />
+                  <div
+                    className="shimmer-line"
+                    style={{ width: "80%", height: "14px" }}
+                  />
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+      </Container>
     );
   }
 
@@ -1381,7 +1452,10 @@ const PlayerProfilePage: React.FC = () => {
       <Container className="mt-5">
         <div className="error-container">
           <Alert variant="danger" className="clean-alert">
-            <h5>⚠️ {error || "Player not found"}</h5>
+            <h5 className="d-flex align-items-center gap-2">
+              <TriangleAlert size={18} />
+              {error || "Player not found"}
+            </h5>
             <Button
               variant="outline-dark"
               size="sm"
@@ -1447,22 +1521,7 @@ const PlayerProfilePage: React.FC = () => {
                           <div className="info-row">
                             <span className="info-label">Average Performance Score</span>
                             <div>
-                              <span
-                                className={`badge score-badge ${
-                                  avgScore === 9 ? 'performance-score-9' :
-                                  avgScore === 10 ? 'performance-score-10' : ''
-                                }`}
-                                style={{
-                                  backgroundColor: getPerformanceScoreColor(avgScore),
-                                  color: "white !important",
-                                  fontWeight: "bold",
-                                  fontSize: "0.95rem",
-                                  padding: "0.35rem 0.75rem",
-                                  ...(avgScore !== 9 && avgScore !== 10 ? { border: "none" } : {}),
-                                }}
-                              >
-                                {avgScore}/10
-                              </span>
+                              <GradeChip score={avgScore} decimals={1} size="md" />
                             </div>
                           </div>
                         )}
@@ -1581,14 +1640,17 @@ const PlayerProfilePage: React.FC = () => {
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex align-items-center gap-2">
-                  <h4 className="section-title mb-0">🔄 Flow History</h4>
+                  <h4 className="section-title mb-0 d-flex align-items-center gap-2">
+                    <History size={18} />
+                    Flow History
+                  </h4>
                   <Button
                     variant="link"
                     size="sm"
                     onClick={() => setFlowHistoryExpanded(!flowHistoryExpanded)}
                     style={{
                       textDecoration: "none",
-                      color: "#666",
+                      color: "var(--color-text-muted)",
                       fontSize: "1.2rem",
                       padding: "0",
                     }}
@@ -1600,9 +1662,19 @@ const PlayerProfilePage: React.FC = () => {
               </div>
 
               {flowHistoryLoading ? (
-                <div className="text-center py-3">
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Loading flow history...
+                <div className="py-2">
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} className="d-flex align-items-center gap-2 mb-2">
+                      <div
+                        className="shimmer-line"
+                        style={{ width: "8px", height: "8px", borderRadius: "50%" }}
+                      />
+                      <div
+                        className="shimmer-line"
+                        style={{ width: "70%", height: "14px" }}
+                      />
+                    </div>
+                  ))}
                 </div>
               ) : flowHistoryError ? (
                 <Alert variant="warning" className="mb-0">
@@ -1657,7 +1729,7 @@ const PlayerProfilePage: React.FC = () => {
                                     )
                                   }
                                   style={{
-                                    ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type),
+                                    ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type, theme.isDark),
                                   }}
                                 >
                                   <div className="flow-history-node-dot" />
@@ -1684,7 +1756,7 @@ const PlayerProfilePage: React.FC = () => {
                         <div
                           className="flow-history-detail-card"
                           style={{
-                            ["--flow-accent" as any]: getFlowHistoryAccentColor(selectedFlowHistoryEvent.event_type),
+                            ["--flow-accent" as any]: getFlowHistoryAccentColor(selectedFlowHistoryEvent.event_type, theme.isDark),
                           }}
                         >
                           <div className="flow-history-detail-header">
@@ -1768,14 +1840,17 @@ const PlayerProfilePage: React.FC = () => {
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <div className="d-flex align-items-center gap-2">
-                  <h4 className="section-title mb-0">📅 Scouting History</h4>
+                  <h4 className="section-title mb-0 d-flex align-items-center gap-2">
+                    <Calendar size={18} />
+                    Scouting History
+                  </h4>
                   <Button
                     variant="link"
                     size="sm"
                     onClick={() => setScoutingHistoryExpanded(!scoutingHistoryExpanded)}
                     style={{
                       textDecoration: "none",
-                      color: "#666",
+                      color: "var(--color-text-muted)",
                       fontSize: "1.2rem",
                       padding: "0",
                     }}
@@ -1793,11 +1868,11 @@ const PlayerProfilePage: React.FC = () => {
                       style={
                         viewMode === "cards"
                           ? {
-                              backgroundColor: "#000000",
-                              borderColor: "#000000",
-                              color: "white",
+                              backgroundColor: "var(--color-text)",
+                              borderColor: "var(--color-text)",
+                              color: "var(--color-surface)",
                             }
-                          : { color: "#000000", borderColor: "#000000" }
+                          : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                       }
                     >
                       Cards
@@ -1809,11 +1884,11 @@ const PlayerProfilePage: React.FC = () => {
                       style={
                         viewMode === "table"
                           ? {
-                              backgroundColor: "#000000",
-                              borderColor: "#000000",
-                              color: "white",
+                              backgroundColor: "var(--color-text)",
+                              borderColor: "var(--color-text)",
+                              color: "var(--color-surface)",
                             }
-                          : { color: "#000000", borderColor: "#000000" }
+                          : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                       }
                     >
                       Table
@@ -1823,10 +1898,7 @@ const PlayerProfilePage: React.FC = () => {
               </div>
 
           {scoutReportsLoading ? (
-            <div className="text-center py-3">
-              <Spinner animation="border" size="sm" className="me-2" />
-              Loading scout reports...
-            </div>
+            <ShimmerLoading variant="card" count={4} />
           ) : scoutReportsData && scoutReportsData.reports.length > 0 ? (
             <>
               {/* Summary Stats - Always Visible */}
@@ -1835,10 +1907,10 @@ const PlayerProfilePage: React.FC = () => {
                 flexDirection: "column",
                 gap: "0.4rem",
                 fontSize: "0.85rem",
-                backgroundColor: "#ffffff",
+                backgroundColor: "var(--color-surface)",
                 padding: "0.75rem",
                 borderRadius: "6px",
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--color-border)",
                 textAlign: "center"
               }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "center" }}>
@@ -1874,17 +1946,11 @@ const PlayerProfilePage: React.FC = () => {
                     {scoutReportsData.reports[0].overall_rating && (
                       <span className="summary-stat">
                         Latest Score:
-                        <span
-                          className="badge ms-1"
-                          style={{
-                            backgroundColor: getPerformanceScoreColor(scoutReportsData.reports[0].overall_rating),
-                            color: "white",
-                            fontSize: "0.7rem",
-                            padding: "2px 6px",
-                          }}
-                        >
-                          {scoutReportsData.reports[0].overall_rating}
-                        </span>
+                        <GradeChip
+                          score={scoutReportsData.reports[0].overall_rating}
+                          size="sm"
+                          className="ms-1"
+                        />
                       </span>
                     )}
                     {(() => {
@@ -1945,41 +2011,17 @@ const PlayerProfilePage: React.FC = () => {
                           </td>
                           <td>{report.scout_name || "N/A"}</td>
                           <td>
-                            {getReportTypeBadge(
-                              report.report_type || "",
-                              report.scouting_type || "",
-                              report,
-                            )}
-                            {report.scouting_type && (
-                              <span className="ms-1">
-                                {getScoutingTypeBadge(report.scouting_type)}
-                              </span>
-                            )}
-                            {report.is_archived && report.flag_category && (
-                              <span className="ms-1">
-                                <span
-                                  className="badge-grade"
-                                  style={{
-                                    backgroundColor: getGradeColor(report.flag_category),
-                                    color: "white",
-                                    fontSize: "0.65rem",
-                                    padding: "2px 6px",
-                                    fontWeight: "500",
-                                    lineHeight: "1.2",
-                                  }}
-                                  title={`Grade: ${report.flag_category}`}
-                                >
-                                  {report.flag_category.includes('/')
-                                    ? report.flag_category.split('/').map((part, index, array) => (
-                                        <React.Fragment key={index}>
-                                          {part.trim()}{index < array.length - 1 && '/'}
-                                          {index < array.length - 1 && <br />}
-                                        </React.Fragment>
-                                      ))
-                                    : report.flag_category}
-                                </span>
-                              </span>
-                            )}
+                            <div className="d-flex align-items-center justify-content-center gap-1">
+                              {getReportTypeBadge(
+                                report.report_type || "",
+                                report.scouting_type || "",
+                                report,
+                              )}
+                              {report.scouting_type && getScoutingTypeBadge(report.scouting_type)}
+                              {report.is_archived && report.flag_category && (
+                                <GradeLabelChip label={report.flag_category} size="sm" />
+                              )}
+                            </div>
                           </td>
                           <td>
                             {report.fixture_date
@@ -1992,24 +2034,13 @@ const PlayerProfilePage: React.FC = () => {
                           <td>{report.position_played || "N/A"}</td>
                           <td>
                             <div className="d-flex align-items-center justify-content-center gap-1">
-                              <span
-                                className={`badge ${
-                                  report.overall_rating === 9 ? 'performance-score-9' :
-                                  report.overall_rating === 10 ? 'performance-score-10' : ''
-                                }`}
-                                style={{
-                                  backgroundColor: getPerformanceScoreColor(
-                                    report.overall_rating || 0,
-                                  ),
-                                  color: "white !important",
-                                  fontWeight: "bold",
-                                  fontSize: "0.9rem",
-                                  ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
-                                }}
-                                title={report.is_potential ? "Potential Score" : undefined}
-                              >
-                                {report.overall_rating}{report.is_potential && "*"}
-                              </span>
+                              {report.overall_rating && (
+                                <GradeChip
+                                  score={report.overall_rating}
+                                  isPotential={!!report.is_potential}
+                                  size="sm"
+                                />
+                              )}
                             </div>
                           </td>
                           <td>
@@ -2037,7 +2068,7 @@ const PlayerProfilePage: React.FC = () => {
                                 {loadingReportId === report.report_id ? (
                                   <Spinner as="span" animation="border" size="sm" />
                                 ) : (
-                                  "👁️"
+                                  <Eye size={13} />
                                 )}
                               </Button>
                               {canGenerateShareLinks && (
@@ -2050,7 +2081,7 @@ const PlayerProfilePage: React.FC = () => {
                                   title="Generate shareable link"
                                   className="btn-action-circle ms-1"
                                 >
-                                  🔗
+                                  <Link2 size={13} />
                                 </Button>
                               )}
                               {(canSeeAllReports || report.user_id === user?.id) && (
@@ -2061,7 +2092,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Edit Report"
                                     className="btn-action-circle btn-action-edit ms-1"
                                   >
-                                    ✏️
+                                    <Pencil size={13} />
                                   </Button>
                                   <Button
                                     size="sm"
@@ -2069,7 +2100,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Delete Report"
                                     className="btn-action-circle btn-action-delete ms-1"
                                   >
-                                    🗑️
+                                    <Trash2 size={13} />
                                   </Button>
                                 </>
                               )}
@@ -2106,7 +2137,7 @@ const PlayerProfilePage: React.FC = () => {
                           >
                             <Card
                               className={`shadow-sm hover-card ${report.is_archived ? 'report-card-archived' : ''}`}
-                              style={{ borderRadius: "8px", border: "1px solid #dee2e6", height: "100%" }}
+                              style={{ borderRadius: "8px", border: "1px solid var(--color-border)", height: "100%" }}
                             >
                       <Card.Body className="p-3">
                         {/* Top Row - 2 columns */}
@@ -2117,7 +2148,7 @@ const PlayerProfilePage: React.FC = () => {
                               <div
                                 className="fw-bold d-block mb-1"
                                 style={{
-                                  color: "#212529",
+                                  color: "var(--color-text)",
                                   fontSize: "1rem",
                                   textAlign: "left",
                                 }}
@@ -2207,56 +2238,24 @@ const PlayerProfilePage: React.FC = () => {
                             <div>
                               {report.is_archived && report.flag_category ? (
                                 <>
-                                  <span
-                                    className="badge-grade d-block mb-1"
-                                    style={{
-                                      backgroundColor: getGradeColor(report.flag_category),
-                                      fontSize: "0.7rem",
-                                      lineHeight: "1.2",
-                                    }}
-                                  >
-                                    {report.flag_category.includes('/')
-                                      ? report.flag_category.split('/').map((part, index, array) => (
-                                          <React.Fragment key={index}>
-                                            {part.trim()}{index < array.length - 1 && '/'}
-                                            {index < array.length - 1 && <br />}
-                                          </React.Fragment>
-                                        ))
-                                      : report.flag_category}
-                                  </span>
+                                  <GradeLabelChip label={report.flag_category} size="sm" className="d-block mb-1" />
                                   {report.summary && extractVSSScore(report.summary!) && (
                                     <span className="badge-vss d-block" style={{ fontSize: "0.7rem" }}>
                                       VSS Score: {extractVSSScore(report.summary)}/32
                                     </span>
                                   )}
                                 </>
-                              ) : report.report_type?.toLowerCase() !== "flag" &&
-                                report.report_type?.toLowerCase() !== "flag assessment" ? (
-                                <>
-                                  <small className="text-muted fw-semibold d-block">Score</small>
-                                  {report.overall_rating && (
-                                    <span
-                                      className={`badge ${
-                                        report.overall_rating === 9 ? 'performance-score-9' :
-                                        report.overall_rating === 10 ? 'performance-score-10' : ''
-                                      }`}
-                                      style={{
-                                        backgroundColor: getPerformanceScoreColor(
-                                          report.overall_rating,
-                                        ),
-                                        color: "white !important",
-                                        fontWeight: "bold",
-                                        fontSize: "0.9rem",
-                                        ...(report.overall_rating !== 9 && report.overall_rating !== 10 ? { border: "none" } : {}),
-                                      }}
-                                      title={report.is_potential ? "Potential Score" : undefined}
-                                    >
-                                      {report.overall_rating}{report.is_potential && "*"}
-                                    </span>
-                                  )}
-                                </>
                               ) : (
-                                getFlagTypeText(report.flag_category)
+                                report.overall_rating && (
+                                  <>
+                                    <small className="text-muted fw-semibold d-block">Score</small>
+                                    <GradeChip
+                                      score={report.overall_rating}
+                                      isPotential={!!report.is_potential}
+                                      size="sm"
+                                    />
+                                  </>
+                                )
                               )}
                             </div>
                           </Col>
@@ -2295,7 +2294,7 @@ const PlayerProfilePage: React.FC = () => {
                                 {loadingReportId === report.report_id ? (
                                   <Spinner as="span" animation="border" size="sm" />
                                 ) : (
-                                  "👁️"
+                                  <Eye size={13} />
                                 )}
                               </Button>
                               {canGenerateShareLinks && (
@@ -2308,7 +2307,7 @@ const PlayerProfilePage: React.FC = () => {
                                   title="Generate shareable link"
                                   className="btn-action-circle"
                                 >
-                                  🔗
+                                  <Link2 size={13} />
                                 </Button>
                               )}
                               {(canSeeAllReports || report.user_id === user?.id) && (
@@ -2319,7 +2318,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Edit Report"
                                     className="btn-action-circle btn-action-edit"
                                   >
-                                    ✏️
+                                    <Pencil size={13} />
                                   </Button>
                                   <Button
                                     size="sm"
@@ -2327,7 +2326,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="Delete Report"
                                     className="btn-action-circle btn-action-delete"
                                   >
-                                    🗑️
+                                    <Trash2 size={13} />
                                   </Button>
                                 </>
                               )}
@@ -2358,14 +2357,17 @@ const PlayerProfilePage: React.FC = () => {
               <div className="horizontal-timeline-section">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <div className="d-flex align-items-center gap-2">
-                    <h4 className="section-title mb-0">📋 Intel History</h4>
+                    <h4 className="section-title mb-0 d-flex align-items-center gap-2">
+                      <ClipboardList size={18} />
+                      Intel History
+                    </h4>
                     <Button
                       variant="link"
                       size="sm"
                       onClick={() => setIntelExpanded(!intelExpanded)}
                       style={{
                         textDecoration: "none",
-                        color: "#666",
+                        color: "var(--color-text-muted)",
                         fontSize: "1.2rem",
                         padding: "0",
                       }}
@@ -2383,11 +2385,11 @@ const PlayerProfilePage: React.FC = () => {
                         style={
                           intelViewMode === "cards"
                             ? {
-                                backgroundColor: "#000000",
-                                borderColor: "#000000",
-                                color: "white",
+                                backgroundColor: "var(--color-text)",
+                                borderColor: "var(--color-text)",
+                                color: "var(--color-surface)",
                               }
-                            : { color: "#000000", borderColor: "#000000" }
+                            : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                         }
                       >
                         Cards
@@ -2399,11 +2401,11 @@ const PlayerProfilePage: React.FC = () => {
                         style={
                           intelViewMode === "table"
                             ? {
-                                backgroundColor: "#000000",
-                                borderColor: "#000000",
-                                color: "white",
+                                backgroundColor: "var(--color-text)",
+                                borderColor: "var(--color-text)",
+                                color: "var(--color-surface)",
                               }
-                            : { color: "#000000", borderColor: "#000000" }
+                            : { color: "var(--color-text)", borderColor: "var(--color-text)" }
                         }
                       >
                         Table
@@ -2504,7 +2506,7 @@ const PlayerProfilePage: React.FC = () => {
                                         setShowAgentRecommendationModal(true);
                                       }}
                                     >
-                                      👁️
+                                      <Eye size={13} />
                                     </Button>
                                   </div>
                                 </td>
@@ -2563,7 +2565,7 @@ const PlayerProfilePage: React.FC = () => {
                                     title="View Intel Report"
                                     className="btn-action-circle btn-action-view"
                                   >
-                                    👁️
+                                    <Eye size={13} />
                                   </Button>
                                   {canManageIntel && (
                                     <>
@@ -2577,7 +2579,7 @@ const PlayerProfilePage: React.FC = () => {
                                         {isActionLoading ? (
                                           <Spinner as="span" animation="border" size="sm" />
                                         ) : (
-                                          "✏️"
+                                          <Pencil size={13} />
                                         )}
                                       </Button>
                                       <Button
@@ -2587,7 +2589,7 @@ const PlayerProfilePage: React.FC = () => {
                                         title="Delete"
                                         className="btn-action-circle btn-action-delete"
                                       >
-                                        🗑️
+                                        <Trash2 size={13} />
                                       </Button>
                                     </>
                                   )}
@@ -2742,7 +2744,7 @@ const PlayerProfilePage: React.FC = () => {
                             >
                               <Card
                                 className="h-100 shadow-sm hover-card"
-                                style={{ borderRadius: "8px", border: "1px solid #dee2e6" }}
+                                style={{ borderRadius: "8px", border: "1px solid var(--color-border)" }}
                               >
                                 <Card.Body className="p-3">
                                   <Row className="mb-3 pb-2 border-bottom">
@@ -2751,7 +2753,7 @@ const PlayerProfilePage: React.FC = () => {
                                         <div
                                           className="fw-bold d-block mb-1"
                                           style={{
-                                            color: "#212529",
+                                            color: "var(--color-text)",
                                             fontSize: "1rem",
                                             textAlign: "left",
                                           }}
@@ -2849,7 +2851,7 @@ const PlayerProfilePage: React.FC = () => {
                                         disabled={intelReportId === null}
                                         title="View Report"
                                       >
-                                        👁️
+                                        <Eye size={13} />
                                       </Button>
                                       {canManageIntel && (
                                         <>
@@ -2860,7 +2862,7 @@ const PlayerProfilePage: React.FC = () => {
                                             onClick={() => intelReportId !== null && handleEditIntelReport(intelReportId)}
                                             disabled={intelReportId === null || isActionLoading}
                                           >
-                                            {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : "✏️"}
+                                            {isActionLoading ? <Spinner as="span" animation="border" size="sm" /> : <Pencil size={13} />}
                                           </Button>
                                           <Button
                                             size="sm"
@@ -2869,7 +2871,7 @@ const PlayerProfilePage: React.FC = () => {
                                             onClick={() => intelReportId !== null && handleDeleteIntelReport(intelReportId)}
                                             disabled={intelReportId === null}
                                           >
-                                            🗑️
+                                            <Trash2 size={13} />
                                           </Button>
                                         </>
                                       )}
@@ -2889,7 +2891,10 @@ const PlayerProfilePage: React.FC = () => {
               </div>
             ) : (
               <div className="horizontal-timeline-section h-100">
-                <h4 className="section-title mb-3">📋 Intel History</h4>
+                <h4 className="section-title mb-3 d-flex align-items-center gap-2">
+                  <ClipboardList size={18} />
+                  Intel History
+                </h4>
                 <div className="empty-state-compact">
                   <p>No intel reports available yet.</p>
                 </div>
@@ -2902,10 +2907,51 @@ const PlayerProfilePage: React.FC = () => {
             <div className="horizontal-timeline-section h-100">
               <div className="radar-charts-section">
           <div className="radar-header mb-3">
-            <h4 className="section-title mb-0" style={{ display: "inline-block", borderBottom: "2px solid #e5e7eb", paddingBottom: "0.5rem" }}>📊 Attribute Analysis</h4>
+            <h4
+              className="section-title mb-0 d-inline-flex align-items-center gap-2"
+              style={{ borderBottom: "2px solid var(--color-border)", paddingBottom: "0.5rem" }}
+            >
+              <BarChart3 size={18} />
+              Attribute Analysis
+            </h4>
           </div>
 
-          {(() => {
+          {attributesLoading ? (
+            <Row>
+              <Col lg={12} className="mb-4">
+                <div
+                  style={{
+                    height: "800px",
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "1.5rem",
+                  }}
+                >
+                  <div
+                    className="shimmer-line"
+                    style={{
+                      width: "480px",
+                      height: "480px",
+                      borderRadius: "50%",
+                    }}
+                  />
+                  <div className="d-flex gap-3">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="shimmer-line"
+                        style={{ width: "110px", height: "16px" }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          ) : (
+          (() => {
               const chartData = getPolarAreaChartData();
               const hasChartData = chartData && chartData.labels.length > 0;
 
@@ -2944,12 +2990,16 @@ const PlayerProfilePage: React.FC = () => {
                                     font: {
                                       size: 10,
                                     },
+                                    color: theme.isDark ? "#F3F4F6" : "#212529",
+                                    backdropColor: "transparent",
                                   },
                                   grid: {
                                     display: true, // Show the grid lines
+                                    color: theme.isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.1)",
                                   },
                                   angleLines: {
                                     display: true, // Show the angle lines radiating from center
+                                    color: theme.isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.1)",
                                   },
                                   pointLabels: {
                                     display: true,
@@ -2957,7 +3007,7 @@ const PlayerProfilePage: React.FC = () => {
                                       size: 12, // Larger font for better readability
                                       weight: "bold",
                                     },
-                                    color: "#212529",
+                                    color: theme.isDark ? "#F3F4F6" : "#212529",
                                     padding: 15, // Reduced padding for compact A4 layout
                                     centerPointLabels: true, // Center labels on their segments
                                     callback: function (value: any, index: number) {
@@ -2991,6 +3041,7 @@ const PlayerProfilePage: React.FC = () => {
                                 legend: {
                                   position: "bottom",
                                   labels: {
+                                    color: theme.isDark ? "#F3F4F6" : "#212529",
                                     generateLabels: () => {
                                       return [
                                         {
@@ -3198,9 +3249,12 @@ const PlayerProfilePage: React.FC = () => {
                         style={{ borderRadius: "12px" }}
                       >
                         <Card.Header
-                          style={{ backgroundColor: "#f8f9fa", color: "#495057" }}
+                          style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
                         >
-                          <h6 className="mb-0">📋 Attribute Breakdown</h6>
+                          <h6 className="mb-0 d-flex align-items-center gap-2">
+                            <ClipboardList size={15} />
+                            Attribute Breakdown
+                          </h6>
                         </Card.Header>
                         <Card.Body>
                             {hasChartData ? (
@@ -3280,7 +3334,8 @@ const PlayerProfilePage: React.FC = () => {
                   </Row>
                 </>
               );
-            })()}
+            })()
+          )}
               </div>
             </div>
           </div>
@@ -3380,6 +3435,7 @@ const PlayerProfilePage: React.FC = () => {
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -3410,6 +3466,7 @@ const PlayerProfilePage: React.FC = () => {
         <Modal.Header
           closeButton
           style={{ backgroundColor: "#000000", color: "white" }}
+          className="modal-header-dark"
         >
           <Modal.Title>Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -3447,23 +3504,8 @@ const PlayerProfilePage: React.FC = () => {
       <style>{`
         .player-profile-page {
           min-height: 100vh;
-          background: #fafafa;
+          background: var(--color-background);
           padding: 1rem 0;
-        }
-
-        .loading-container {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 50vh;
-        }
-
-        .loading-content {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          color: #666;
-          font-size: 0.95rem;
         }
 
         .error-container {
@@ -3481,7 +3523,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .profile-header {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 2rem 2rem 1.5rem;
           box-shadow: 0 2px 12px rgba(0,0,0,0.08);
@@ -3504,7 +3546,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .player-firstname {
           font-size: 1.1rem;
-          color: #888;
+          color: var(--color-text-muted);
           font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 1px;
@@ -3513,7 +3555,7 @@ const PlayerProfilePage: React.FC = () => {
         .player-lastname {
           font-size: 2.8rem;
           font-weight: 700;
-          color: #222;
+          color: var(--color-text);
           margin: -0.2rem 0 0.8rem 0;
           line-height: 1;
         }
@@ -3523,7 +3565,7 @@ const PlayerProfilePage: React.FC = () => {
           flex-direction: column;
           align-items: flex-start;
           gap: 0.25rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-size: 0.95rem;
         }
 
@@ -3533,11 +3575,11 @@ const PlayerProfilePage: React.FC = () => {
 
         .club-name {
           font-weight: 500;
-          color: #333;
+          color: var(--color-text);
         }
 
         .position-age {
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .header-actions {
@@ -3546,18 +3588,18 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-btn {
-          border: 1px solid #ddd;
-          background: white;
-          color: #666;
+          border: 1px solid var(--color-border);
+          background: var(--color-surface);
+          color: var(--color-text-muted);
           border-radius: 8px;
           font-size: 0.9rem;
           padding: 0.5rem 1rem;
         }
 
         .clean-btn:hover {
-          background: #f8f9fa;
-          border-color: #bbb;
-          color: #333;
+          background: var(--color-background);
+          border-color: var(--color-border);
+          color: var(--color-text);
         }
 
         /* Info Row Styles */
@@ -3580,7 +3622,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .info-label {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
           font-weight: 500;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -3589,7 +3631,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .info-value {
           font-size: 0.95rem;
-          color: #333;
+          color: var(--color-text);
           font-weight: 500;
         }
 
@@ -3601,14 +3643,14 @@ const PlayerProfilePage: React.FC = () => {
           width: 18px;
           height: 18px;
           font-size: 14px;
-          color: #999;
+          color: var(--color-text-muted);
           cursor: pointer;
           transition: color 0.2s ease;
           user-select: none;
         }
 
         .info-icon:hover {
-          color: #666;
+          color: var(--color-text);
         }
 
         /* Popover Styles */
@@ -3631,24 +3673,24 @@ const PlayerProfilePage: React.FC = () => {
         .popover-list-header {
           font-size: 0.9rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin-bottom: 0.25rem;
         }
 
         .popover-list-detail {
           font-size: 0.85rem;
-          color: #555;
+          color: var(--color-text-muted);
           line-height: 1.5;
         }
 
         .popover-list-meta {
           font-size: 0.8rem;
-          color: #999;
+          color: var(--color-text-muted);
           line-height: 1.5;
         }
 
         .attributes-legend {
-          background: #f8f9fa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 1rem 1.5rem;
           border-left: 4px solid #22c55e;
@@ -3657,13 +3699,13 @@ const PlayerProfilePage: React.FC = () => {
         .legend-title {
           font-size: 1.1rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin: 0 0 0.5rem 0;
         }
 
         .legend-text {
           font-size: 0.85rem;
-          color: #666;
+          color: var(--color-text-muted);
           margin: 0;
           display: flex;
           align-items: center;
@@ -3677,29 +3719,29 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .no-attributes-section {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 2rem;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
           margin-bottom: 1.5rem;
-          border: 2px dashed #e0e0e0;
+          border: 2px dashed var(--color-border);
           text-align: center;
         }
 
         .no-attributes-content h4 {
-          color: #333;
+          color: var(--color-text);
           font-weight: 600;
           margin-bottom: 1rem;
         }
 
         .no-attributes-content p {
-          color: #666;
+          color: var(--color-text-muted);
           margin-bottom: 0;
           line-height: 1.6;
         }
 
         .attribute-section {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 1.5rem;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -3709,9 +3751,9 @@ const PlayerProfilePage: React.FC = () => {
         .section-title {
           font-size: 1.1rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin-bottom: 1rem;
-          border-bottom: 2px solid #f0f0f0;
+          border-bottom: 2px solid var(--color-border);
           padding-bottom: 0.4rem;
         }
 
@@ -3730,7 +3772,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .attribute-label {
           font-weight: 500;
-          color: #333;
+          color: var(--color-text);
           min-width: 150px;
           font-size: 0.9rem;
         }
@@ -3748,7 +3790,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .score-text {
           font-size: 0.8rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-weight: 500;
           min-width: 35px;
         }
@@ -3757,7 +3799,7 @@ const PlayerProfilePage: React.FC = () => {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          border: 1px solid #ddd;
+          border: 1px solid var(--color-border);
         }
 
         .dot.filled {
@@ -3766,13 +3808,13 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .dot.empty {
-          background: white;
-          border-color: #ddd;
+          background: var(--color-surface);
+          border-color: var(--color-border);
         }
 
 
         .tabs-section {
-          background: white;
+          background: var(--color-surface);
           border-radius: 16px;
           padding: 0.5rem;
           box-shadow: 0 2px 8px rgba(0,0,0,0.05);
@@ -3781,7 +3823,7 @@ const PlayerProfilePage: React.FC = () => {
         .clean-tabs .nav-link {
           background: transparent;
           border: none;
-          color: #666;
+          color: var(--color-text-muted);
           font-weight: 500;
           padding: 1rem 2rem;
           border-radius: 12px;
@@ -3789,9 +3831,9 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-tabs .nav-link.active {
-          background: #f8f9fa;
-          color: #333;
-          border: 1px solid #e9ecef;
+          background: var(--color-background);
+          color: var(--color-text);
+          border: 1px solid var(--color-border);
         }
 
         .tab-content-wrapper {
@@ -3805,15 +3847,15 @@ const PlayerProfilePage: React.FC = () => {
         .report-title {
           font-size: 1.2rem;
           font-weight: 600;
-          color: #333;
+          color: var(--color-text);
           margin-bottom: 1.5rem;
         }
 
         .empty-state {
           text-align: center;
-          color: #888;
+          color: var(--color-text-muted);
           padding: 2rem;
-          background: #f8f9fa;
+          background: var(--color-background);
           border-radius: 12px;
           font-style: italic;
         }
@@ -3825,10 +3867,10 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .report-card {
-          background: #fafafa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 1.5rem;
-          border: 1px solid #f0f0f0;
+          border: 1px solid var(--color-border);
         }
 
         .report-header {
@@ -3851,11 +3893,11 @@ const PlayerProfilePage: React.FC = () => {
 
         .report-date {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .report-summary {
-          color: #555;
+          color: var(--color-text-muted);
           font-size: 0.9rem;
           line-height: 1.5;
           margin-bottom: 1rem;
@@ -3870,7 +3912,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .report-scout {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .report-scores {
@@ -3892,32 +3934,32 @@ const PlayerProfilePage: React.FC = () => {
         .contact-org {
           display: block;
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
           font-weight: normal;
         }
 
         .transfer-fee {
           font-size: 0.8rem;
-          color: #666;
+          color: var(--color-text-muted);
           font-weight: 500;
         }
 
         .data-table {
-          background: #fafafa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 2rem;
         }
 
         .clean-table {
-          background: white;
+          background: var(--color-surface);
           border-radius: 8px;
           overflow: hidden;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .clean-table th {
-          background: #f8f9fa;
-          color: #666;
+          background: var(--color-background);
+          color: var(--color-text-muted);
           font-weight: 600;
           border: none;
           font-size: 0.85rem;
@@ -3928,7 +3970,7 @@ const PlayerProfilePage: React.FC = () => {
 
         .clean-table td {
           border: none;
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid var(--color-border);
           padding: 1rem 0.75rem;
           font-size: 0.9rem;
         }
@@ -3947,7 +3989,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .notes-section {
-          background: #fafafa;
+          background: var(--color-background);
           border-radius: 12px;
           padding: 2rem;
         }
@@ -3972,7 +4014,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .note-card {
-          background: white;
+          background: var(--color-surface);
           border-radius: 10px;
           padding: 1.5rem;
           box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -3998,11 +4040,11 @@ const PlayerProfilePage: React.FC = () => {
 
         .note-date {
           font-size: 0.8rem;
-          color: #888;
+          color: var(--color-text-muted);
         }
 
         .note-content {
-          color: #555;
+          color: var(--color-text-muted);
           font-size: 0.9rem;
           line-height: 1.6;
           margin: 0;
@@ -4015,7 +4057,7 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-modal .modal-header {
-          border-bottom: 1px solid #f0f0f0;
+          border-bottom: 1px solid var(--color-border);
           padding: 1.5rem 2rem 1rem;
         }
 
@@ -4024,18 +4066,18 @@ const PlayerProfilePage: React.FC = () => {
         }
 
         .clean-modal .modal-footer {
-          border-top: 1px solid #f0f0f0;
+          border-top: 1px solid var(--color-border);
           padding: 1rem 2rem 1.5rem;
         }
 
         .clean-textarea {
-          border: 1px solid #e0e0e0;
+          border: 1px solid var(--color-border);
           border-radius: 8px;
           font-size: 0.9rem;
         }
 
         .clean-textarea:focus {
-          border-color: #666;
+          border-color: var(--color-text-muted);
           box-shadow: 0 0 0 2px rgba(102,102,102,0.1);
         }
 

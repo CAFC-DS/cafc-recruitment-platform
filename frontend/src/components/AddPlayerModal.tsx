@@ -253,8 +253,8 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
                             right: 0,
                             maxHeight: "200px",
                             overflowY: "auto",
-                            backgroundColor: "white",
-                            border: "1px solid #ced4da",
+                            backgroundColor: "var(--color-surface)",
+                            border: "1px solid var(--color-border)",
                             borderRadius: "0.25rem",
                             zIndex: 1000,
                             marginTop: "2px",
@@ -272,20 +272,20 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
                                 style={{
                                   padding: "8px 12px",
                                   cursor: "pointer",
-                                  borderBottom: "1px solid #f0f0f0",
+                                  borderBottom: "1px solid var(--color-border)",
                                 }}
                                 onMouseEnter={(e) =>
-                                  (e.currentTarget.style.backgroundColor = "#f8f9fa")
+                                  (e.currentTarget.style.backgroundColor = "var(--color-border)")
                                 }
                                 onMouseLeave={(e) =>
-                                  (e.currentTarget.style.backgroundColor = "white")
+                                  (e.currentTarget.style.backgroundColor = "var(--color-surface)")
                                 }
                               >
                                 {league}
                               </div>
                             ))
                           ) : (
-                            <div style={{ padding: "8px 12px", color: "#6c757d" }}>
+                            <div style={{ padding: "8px 12px", color: "var(--color-text-muted)" }}>
                               No leagues found
                             </div>
                           )}
@@ -352,8 +352,8 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
                             right: 0,
                             maxHeight: "200px",
                             overflowY: "auto",
-                            backgroundColor: "white",
-                            border: "1px solid #ced4da",
+                            backgroundColor: "var(--color-surface)",
+                            border: "1px solid var(--color-border)",
                             borderRadius: "0.25rem",
                             zIndex: 1000,
                             marginTop: "2px",
@@ -371,20 +371,20 @@ const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ show, onHide }) => {
                                 style={{
                                   padding: "8px 12px",
                                   cursor: "pointer",
-                                  borderBottom: "1px solid #f0f0f0",
+                                  borderBottom: "1px solid var(--color-border)",
                                 }}
                                 onMouseEnter={(e) =>
-                                  (e.currentTarget.style.backgroundColor = "#f8f9fa")
+                                  (e.currentTarget.style.backgroundColor = "var(--color-border)")
                                 }
                                 onMouseLeave={(e) =>
-                                  (e.currentTarget.style.backgroundColor = "white")
+                                  (e.currentTarget.style.backgroundColor = "var(--color-surface)")
                                 }
                               >
                                 {club}
                               </div>
                             ))
                           ) : (
-                            <div style={{ padding: "8px 12px", color: "#6c757d" }}>
+                            <div style={{ padding: "8px 12px", color: "var(--color-text-muted)" }}>
                               No clubs found
                             </div>
                           )}

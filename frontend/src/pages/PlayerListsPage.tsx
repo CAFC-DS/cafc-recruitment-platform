@@ -57,10 +57,25 @@ import {
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
+import GradeChip from "../components/GradeChip";
 import {
-  getPerformanceScoreColor,
-  getContrastTextColor,
-} from "../utils/colorUtils";
+  Goal,
+  Plus,
+  Settings,
+  Kanban,
+  Pencil,
+  Trash2,
+  FileSpreadsheet,
+  FileSearch,
+  StickyNote,
+  History,
+  Star,
+  CircleAlert,
+  Circle,
+  Info,
+} from "lucide-react";
+import { IconBuildingStadium } from "@tabler/icons-react";
+import { useTheme } from "../contexts/ThemeContext";
 import {
   colors,
   borderRadius,
@@ -126,7 +141,7 @@ const ArchiveInfoContent: React.FC<{
 
   if (!archiveData) {
     return (
-      <div style={{ padding: "0.5rem", fontSize: "0.85rem", color: "#666" }}>
+      <div style={{ padding: "0.5rem", fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
         No archive information available
       </div>
     );
@@ -135,9 +150,9 @@ const ArchiveInfoContent: React.FC<{
   return (
     <div style={{ fontSize: "0.85rem" }}>
       <div style={{ marginBottom: "0.5rem" }}>
-        <strong style={{ color: "#333" }}>Archive Information</strong>
+        <strong style={{ color: "var(--color-text)" }}>Archive Information</strong>
       </div>
-      <div style={{ lineHeight: "1.6", color: "#555" }}>
+      <div style={{ lineHeight: "1.6", color: "var(--color-text)" }}>
         <div>
           <strong>Reason:</strong> {archiveData.reason}
         </div>
@@ -188,6 +203,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
+  const { theme } = useTheme();
 
   // Advanced Filters State
   const [showFilters, setShowFilters] = useState(false);
@@ -1228,11 +1244,46 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             <div className="agent-portal-section-copy">{headerCopy}</div>
           </div>
         </div>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
-          <div className="text-center">
-            <Spinner animation="border" variant="primary" style={{ width: "3rem", height: "3rem" }} />
-            <p className="mt-3 text-muted">Loading player lists...</p>
-          </div>
+        <div className="mb-3 d-flex gap-2">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="shimmer-line"
+              style={{ width: "90px", height: "28px", borderRadius: "14px" }}
+            />
+          ))}
+        </div>
+        <div className="table-responsive">
+          <Table responsive hover className="table-compact table-sm">
+            <thead className="table-dark">
+              <tr>
+                <th>Player</th>
+                <th>Age</th>
+                <th>Club</th>
+                <th>Stage</th>
+                <th>Lists</th>
+                <th>Score</th>
+                <th>Reports</th>
+                <th>Last Report</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 10 }).map((_, idx) => (
+                <tr key={idx}>
+                  <td><div className="shimmer-line" style={{ width: "140px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "100px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "70px", height: "20px", borderRadius: "10px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "90px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "36px", height: "20px", borderRadius: "10px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "80px", height: "16px" }} /></td>
+                  <td><div className="shimmer-line" style={{ width: "60px", height: "24px" }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
         </div>
       </Container>
     );
@@ -1264,7 +1315,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           message="Create your first player list to start organizing your recruitment pipeline."
           actionLabel="Create Your First List"
           onAction={openCreateModal}
-          icon="📋"
         />
       ) : (
         <>
@@ -1287,8 +1337,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 variant="link"
                 onClick={() => setPitchViewExpanded(!pitchViewExpanded)}
                 style={{ fontWeight: pitchViewExpanded ? "bold" : "normal" }}
+                className="d-inline-flex align-items-center gap-1"
               >
-                {pitchViewExpanded ? "▼ Hide Pitch" : "⚽ Show Pitch"}
+                <Goal size={14} />
+                {pitchViewExpanded ? "Hide Pitch" : "Show Pitch"}
               </Button>
             </div>
 
@@ -1367,8 +1419,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 size="sm"
                 variant="dark"
                 onClick={openCreateModal}
+                className="d-inline-flex align-items-center gap-1"
               >
-                ➕ New List
+                <Plus size={14} />
+                New List
               </Button>
 
               {/* Add Player Button - Only visible when single list is selected */}
@@ -1389,23 +1443,28 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     variant="dark"
                     size="sm"
                   >
-                    ⚙️ List Actions
+                    <Settings size={14} className="me-1" />
+                    List Actions
                   </Dropdown.Toggle>
 
                     <Dropdown.Menu>
-                      <Dropdown.Item onClick={() => navigate(kanbanPath)}>
-                        🔄 Switch to Kanban View
+                      <Dropdown.Item onClick={() => navigate(kanbanPath)} className="d-flex align-items-center gap-2">
+                        <Kanban size={15} />
+                        Switch to Kanban View
                       </Dropdown.Item>
                       <Dropdown.Divider />
-                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)}>
-                        ✏️ Edit List
+                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)} className="d-flex align-items-center gap-2">
+                        <Pencil size={15} />
+                        Edit List
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)}>
-                        🗑️ Delete List
+                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)} className="d-flex align-items-center gap-2">
+                        <Trash2 size={15} />
+                        Delete List
                       </Dropdown.Item>
                       <Dropdown.Divider />
-                      <Dropdown.Item onClick={handleExport}>
-                        📊 Export CSV
+                      <Dropdown.Item onClick={handleExport} className="d-flex align-items-center gap-2">
+                        <FileSpreadsheet size={15} />
+                        Export CSV
                       </Dropdown.Item>
                     </Dropdown.Menu>
                   </Dropdown>
@@ -1468,7 +1527,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                   message={currentList ? "Add players to start building your recruitment pipeline." : "No players in the selected lists."}
                   actionLabel={currentList ? "Add Player" : undefined}
                   onAction={currentList ? () => setShowAddPlayerModal(true) : undefined}
-                  icon="📋"
                 />
               ) : (
                 // Table View
@@ -1503,10 +1561,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     </thead>
                     <tbody>
                       {sortedPlayers.map((player) => {
-                        const scoreColor = player.avg_performance_score
-                          ? getPerformanceScoreColor(player.avg_performance_score)
-                          : colors.gray[400];
-                        const textColor = getContrastTextColor(scoreColor);
 
                         // Check for pending changes (for visual indicators)
                         const hasPendingStageChange = pendingStageChanges.has(player.item_id);
@@ -1539,21 +1593,18 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   e.preventDefault();
                                   navigate(getPlayerPath(player.universal_id));
                                 }}
-                                style={{ textDecoration: "none", color: colors.primary }}
+                                style={{ textDecoration: "none", color: theme.isDark ? "#60a5fa" : colors.primary }}
                               >
                                 <strong>
                                   {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
                                 </strong>
                                 {getPlayerNotes(player.universal_id) && (
                                   <span
-                                    className="ms-2"
-                                    style={{
-                                      fontSize: "0.85rem",
-                                      opacity: 0.7,
-                                    }}
+                                    className="ms-2 d-inline-flex align-items-center"
+                                    style={{ opacity: 0.7 }}
                                     title="Has notes"
                                   >
-                                    📝
+                                    <StickyNote size={13} />
                                   </span>
                                 )}
                                 {hasPendingStageChange && (
@@ -1623,14 +1674,13 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                           style={{
                                             marginLeft: "4px",
                                             cursor: "pointer",
-                                            fontSize: "0.75rem",
-                                            color: "#999",
+                                            color: "var(--color-text-muted)",
                                             display: "inline-flex",
                                             alignItems: "center",
                                           }}
                                           title="Archive details"
                                         >
-                                          ⓘ
+                                          <Info size={12} />
                                         </span>
                                       </OverlayTrigger>
                                     )}
@@ -1687,18 +1737,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             </td>
                             <td>
                               {player.avg_performance_score !== null ? (
-                                <Badge
-                                  bg=""
-                                  style={{
-                                    backgroundColor: scoreColor,
-                                    color: textColor,
-                                    fontSize: "0.85rem",
-                                    fontWeight: "bold",
-                                    padding: "4px 10px",
-                                  }}
-                                >
-                                  {player.avg_performance_score.toFixed(1)}
-                                </Badge>
+                                <GradeChip score={player.avg_performance_score} decimals={1} size="sm" />
                               ) : (
                                 <span className="text-muted">N/A</span>
                               )}
@@ -1708,33 +1747,35 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                               {player.live_reports > 0 && (
                                 <Badge
                                   bg=""
-                                  className="ms-2"
+                                  className="ms-2 d-inline-flex align-items-center gap-1"
                                   title={`${player.live_reports} live report${player.live_reports === 1 ? "" : "s"}`}
                                   style={{
-                                    backgroundColor: "#ffffff",
-                                    color: "#000000",
-                                    border: "1px solid #dee2e6",
+                                    backgroundColor: "var(--color-surface)",
+                                    color: "var(--color-text)",
+                                    border: "1px solid var(--color-border)",
                                     fontSize: "0.75rem",
                                     padding: "3px 6px",
                                   }}
                                 >
-                                  🏟️ {player.live_reports}
+                                  <IconBuildingStadium size={12} stroke={1.75} />
+                                  {player.live_reports}
                                 </Badge>
                               )}
                               {(player.intel_reports_count || 0) > 0 && (
                                 <Badge
                                   bg=""
-                                  className="ms-2"
+                                  className="ms-2 d-inline-flex align-items-center gap-1"
                                   title={`${player.intel_reports_count} intel report${player.intel_reports_count === 1 ? "" : "s"}`}
                                   style={{
-                                    backgroundColor: "#ffffff",
-                                    color: "#000000",
-                                    border: "1px solid #dee2e6",
+                                    backgroundColor: "var(--color-surface)",
+                                    color: "var(--color-text)",
+                                    border: "1px solid var(--color-border)",
                                     fontSize: "0.75rem",
                                     padding: "3px 6px",
                                   }}
                                 >
-                                  🔍 {player.intel_reports_count}
+                                  <FileSearch size={12} />
+                                  {player.intel_reports_count}
                                 </Badge>
                               )}
                             </td>
@@ -1747,7 +1788,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   onClick={() => handleOpenNotesModal(player)}
                                   className="btn-action-circle btn-action-edit"
                                 >
-                                  📝
+                                  <StickyNote size={13} />
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1756,27 +1797,23 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   className="btn-action-circle"
                                   disabled={!currentList}
                                 >
-                                  📊
+                                  <History size={13} />
                                 </Button>
                                 <Button
                                   size="sm"
                                   title={playerFavorites.has(player.universal_id) ? "Remove from favorites" : "Add to favorites"}
                                   onClick={() => handleToggleFavorite(player.universal_id)}
-                                  className="btn-action-circle"
-                                  style={{ color: playerFavorites.has(player.universal_id) ? "#FFD700" : "#6b7280" }}
+                                  className={`btn-action-circle${playerFavorites.has(player.universal_id) ? " btn-action-favorite-active" : ""}`}
                                 >
-                                  {playerFavorites.has(player.universal_id) ? "⭐" : "☆"}
+                                  <Star size={13} fill={playerFavorites.has(player.universal_id) ? "currentColor" : "none"} />
                                 </Button>
                                 <Button
                                   size="sm"
                                   title={playerDecisions.has(player.universal_id) ? "Remove decision" : "Mark as decision"}
                                   onClick={() => handleToggleDecision(player.universal_id)}
-                                  className="btn-action-circle"
-                                  style={{
-                                    color: playerDecisions.has(player.universal_id) ? "#111827" : "#6b7280",
-                                  }}
+                                  className={`btn-action-circle${playerDecisions.has(player.universal_id) ? " btn-action-decision-active" : ""}`}
                                 >
-                                  {playerDecisions.has(player.universal_id) ? "⁉️" : "○"}
+                                  {playerDecisions.has(player.universal_id) ? <CircleAlert size={13} /> : <Circle size={13} />}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -1785,7 +1822,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   className="btn-action-circle btn-action-delete"
                                   disabled={!currentList || pendingRemoval}
                                 >
-                                  {pendingRemoval ? "..." : "🗑️"}
+                                  {pendingRemoval ? "..." : <Trash2 size={13} />}
                                 </Button>
                               </div>
                             </td>

@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
 import { useAuth } from '../../App';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
-import logo from '../../assets/logo.png';
+import AuthShell from '../../components/auth/AuthShell';
 
 const AgentRegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -70,91 +70,69 @@ const AgentRegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="agent-auth-page">
-      <div className="agent-auth-layout">
-        <div className="agent-auth-brand-panel">
-          <div className="agent-auth-brand-content">
-            <img src={logo} alt="Charlton Athletic FC" style={{ width: 96, height: 96, marginBottom: '1.5rem', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }} />
-            <h1 className="agent-auth-heading">Charlton Athletic FC</h1>
-            <p className="agent-auth-badge">External Recommendation Portal</p>
-            <p className="agent-auth-copy">
-              Create an agent account once, then use it to submit player opportunities and monitor review status through the portal.
-            </p>
-          </div>
-        </div>
-
-        <div className="agent-auth-form-panel">
-          <div className="agent-auth-card agent-auth-card-wide">
-            <div className="agent-mobile-brand">
-              <img src={logo} alt="CAFC" style={{ width: 40, height: 40 }} />
-              <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0F172A' }}>Charlton Athletic FC</span>
-            </div>
-
-            <h2 className="agent-auth-title">Register</h2>
-            <p className="agent-auth-subtitle">Create your external portal account using your agency contact details.</p>
-            <div style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-              * Required fields
-            </div>
-            <div style={{ color: '#64748B', fontSize: '0.85rem', marginBottom: '1rem' }}>
-              Your details are stored for identity verification and recommendation audit trail purposes.
-            </div>
-            {error ? <Alert variant="danger" className="agent-auth-alert">{error}</Alert> : null}
-
-            <Form onSubmit={handleSubmit}>
-              <div className="row g-3">
-                <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Agent name *</Form.Label>
-                  <Form.Control className="agent-auth-input" value={form.agent_name} onChange={(e) => handleChange('agent_name', e.target.value)} required />
-                </div>
-                <div className="col-md-6">
-                  <Form.Label className="agent-auth-label">Agency *</Form.Label>
-                  <Form.Control className="agent-auth-input" value={form.agency} onChange={(e) => handleChange('agency', e.target.value)} required />
-                </div>
-                <div className="col-12">
-                  <Form.Label className="agent-auth-label">Email *</Form.Label>
-                  <Form.Control className="agent-auth-input" type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} required />
-                </div>
-                <div className="col-12">
-                  <Form.Label className="agent-auth-label">Password *</Form.Label>
-                  <Form.Control className="agent-auth-input" type="password" value={form.password} onChange={(e) => handleChange('password', e.target.value)} required />
-                </div>
-                <div className="col-12">
-                  <Form.Label className="agent-auth-label">Phone number</Form.Label>
-                  <PhoneInput
-                    defaultCountry="GB"
-                    international
-                    countryCallingCodeEditable={false}
-                    placeholder="Enter phone number"
-                    value={form.agent_number || undefined}
-                    onChange={handlePhoneChange}
-                    className="agent-auth-phone-input"
-                  />
-                  <div style={{ color: '#64748B', fontSize: '0.82rem', marginTop: '0.45rem' }}>
-                    Stored as international format: {form.agent_number || '+44...'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="agent-auth-actions" style={{ marginTop: '1.5rem', justifyContent: 'space-between' }}>
-                <div style={{ color: '#64748B', fontSize: '0.9rem' }}>
-                  Already registered? <Link to="/agents/login" className="agent-auth-inline-link">Sign in</Link>
-                </div>
-                <Button type="submit" className="agent-auth-button" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Spinner animation="border" size="sm" className="me-2" />
-                      Creating account...
-                    </>
-                  ) : (
-                    'Create account'
-                  )}
-                </Button>
-              </div>
-            </Form>
-          </div>
-        </div>
+    <AuthShell eyebrow="Charlton Athletic FC" heading="External Recommendation Portal" wide>
+      <h2 className="agent-auth-title">Register</h2>
+      <p className="agent-auth-subtitle">Create your external portal account using your agency contact details.</p>
+      <div style={{ color: 'var(--color-text)', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+        * Required fields
       </div>
-    </div>
+      <div style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+        Your details are stored for identity verification and recommendation audit trail purposes.
+      </div>
+      {error ? <Alert variant="danger" className="agent-auth-alert">{error}</Alert> : null}
+
+      <Form onSubmit={handleSubmit}>
+        <div className="row g-3">
+          <div className="col-md-6">
+            <Form.Label className="agent-auth-label">Agent name *</Form.Label>
+            <Form.Control className="agent-auth-input" value={form.agent_name} onChange={(e) => handleChange('agent_name', e.target.value)} required />
+          </div>
+          <div className="col-md-6">
+            <Form.Label className="agent-auth-label">Agency *</Form.Label>
+            <Form.Control className="agent-auth-input" value={form.agency} onChange={(e) => handleChange('agency', e.target.value)} required />
+          </div>
+          <div className="col-12">
+            <Form.Label className="agent-auth-label">Email *</Form.Label>
+            <Form.Control className="agent-auth-input" type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} required />
+          </div>
+          <div className="col-12">
+            <Form.Label className="agent-auth-label">Password *</Form.Label>
+            <Form.Control className="agent-auth-input" type="password" value={form.password} onChange={(e) => handleChange('password', e.target.value)} required />
+          </div>
+          <div className="col-12">
+            <Form.Label className="agent-auth-label">Phone number</Form.Label>
+            <PhoneInput
+              defaultCountry="GB"
+              international
+              countryCallingCodeEditable={false}
+              placeholder="Enter phone number"
+              value={form.agent_number || undefined}
+              onChange={handlePhoneChange}
+              className="agent-auth-phone-input"
+            />
+            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.82rem', marginTop: '0.45rem' }}>
+              Stored as international format: {form.agent_number || '+44...'}
+            </div>
+          </div>
+        </div>
+
+        <div className="agent-auth-actions" style={{ marginTop: '1.5rem', justifyContent: 'space-between' }}>
+          <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+            Already registered? <Link to="/agents/login" className="agent-auth-inline-link">Sign in</Link>
+          </div>
+          <Button type="submit" className="agent-auth-button" disabled={loading}>
+            {loading ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Creating account...
+              </>
+            ) : (
+              'Create account'
+            )}
+          </Button>
+        </div>
+      </Form>
+    </AuthShell>
   );
 };
 

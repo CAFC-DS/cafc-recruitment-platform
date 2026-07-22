@@ -161,14 +161,14 @@ const AgentDashboardPage: React.FC = () => {
                           return (
                             <tr key={item.id}>
                               <td>
-                                <div style={{ fontWeight: 700, color: '#111827' }}>{item.player_name}</div>
+                                <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.player_name}</div>
                                 <div className="agent-portal-meta">{item.agreement_type || 'Agreement type not provided'}</div>
                               </td>
                               <td className="text-center">
                                 <SubmissionStatusBadge status={item.status} />
                               </td>
                               <td>
-                                <div className="agent-portal-meta" style={{ color: '#111827', maxWidth: 260 }}>
+                                <div className="agent-portal-meta" style={{ color: 'var(--color-text)', maxWidth: 260 }}>
                                   {item.shared_notes
                                     ? item.shared_notes.length > 120
                                       ? `${item.shared_notes.slice(0, 120)}...`

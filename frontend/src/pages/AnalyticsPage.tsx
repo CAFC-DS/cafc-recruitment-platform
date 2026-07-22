@@ -55,7 +55,7 @@ const AnalyticsPage: React.FC = () => {
         onSelect={(k) => setActiveTab(k || "players")}
         className="mb-4"
         style={{
-          borderBottom: "2px solid #dee2e6",
+          borderBottom: "2px solid var(--color-border)",
         }}
       >
         <Tab
@@ -119,11 +119,11 @@ const AnalyticsPage: React.FC = () => {
         }
 
         .nav-tabs .custom-tab:hover {
-          background-color: #f8f9fa;
+          background-color: var(--color-background);
         }
 
         .nav-tabs .custom-tab.active {
-          border-bottom: 3px solid #000 !important;
+          border-bottom: 3px solid var(--color-text) !important;
           font-weight: 600;
         }
 
@@ -145,15 +145,15 @@ const AnalyticsPage: React.FC = () => {
         }
 
         .table-modern {
-          background: white;
+          background: var(--color-surface);
           border-radius: 12px;
           overflow: hidden;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .table-modern thead th {
-          background: #6c757d;
-          color: white;
+          background: var(--color-background);
+          color: var(--color-text-muted);
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -167,37 +167,37 @@ const AnalyticsPage: React.FC = () => {
         }
 
         .table-modern tbody tr:hover {
-          background-color: #f8f9ff;
+          background-color: var(--color-border);
           transform: scale(1.002);
         }
 
         .table-modern td {
           padding: 1rem 0.75rem;
           vertical-align: middle;
-          border-top: 1px solid #e9ecef;
+          border-top: 1px solid var(--color-border);
         }
 
         .nav-tabs {
-          border-bottom: 2px solid #dee2e6;
+          border-bottom: 2px solid var(--color-border);
         }
 
         .nav-tabs .nav-link {
           border: none;
-          color: #495057;
+          color: var(--color-text-muted);
           padding: 1rem 1.5rem;
           font-size: 1rem;
           border-bottom: 3px solid transparent;
         }
 
         .nav-tabs .nav-link:hover {
-          border-bottom: 3px solid #dee2e6;
-          background-color: #f8f9fa;
+          border-bottom: 3px solid var(--color-border);
+          background-color: var(--color-background);
         }
 
         .nav-tabs .nav-link.active {
-          color: #000;
+          color: var(--color-text);
           background-color: transparent;
-          border-bottom: 3px solid #000;
+          border-bottom: 3px solid var(--color-text);
         }
       `}</style>
     </Container>

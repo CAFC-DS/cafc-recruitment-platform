@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button, Card, Col, Form, Row, Spinner } from "react-bootstrap";
+import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import PositionMultiSelect from "./PositionMultiSelect";
 import { POSITION_ORDER } from "../../constants/positions";
+import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
 
 interface StageMovementAnalytics {
   window_start: string;
@@ -124,11 +125,7 @@ const StageMovementAnalyticsTab: React.FC = () => {
   }, [selectedPositions]);
 
   if (loading) {
-    return (
-      <div className="text-center py-5">
-        <Spinner animation="border" variant="primary" />
-      </div>
-    );
+    return <AnalyticsDashboardShimmer statCount={3} showChart={false} showTable={false} />;
   }
 
   if (error) {

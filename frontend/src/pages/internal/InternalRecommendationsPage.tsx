@@ -252,11 +252,11 @@ const InternalRecommendationsPage: React.FC = () => {
                       items.map((item) => (
                         <tr key={item.id}>
                           <td>
-                            <div style={{ fontWeight: 700, color: '#111827' }}>{item.player_name}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.player_name}</div>
                             <div className="agent-portal-meta">{item.potential_deal_type || 'No deal type'}</div>
                           </td>
                           <td>
-                            <div style={{ fontWeight: 700, color: '#111827' }}>{item.agent_name || item.submitted_by_username || '-'}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.agent_name || item.submitted_by_username || '-'}</div>
                             <div className="agent-portal-meta">{item.agency || item.agent_email || '-'}</div>
                           </td>
                           <td><SubmissionStatusBadge status={item.status} /></td>
@@ -292,7 +292,7 @@ const InternalRecommendationsPage: React.FC = () => {
               ) : (
                 <div className="agent-portal-review-stack">
                   <div>
-                    <h2 className="h4 mb-1 text-dark">{selected.player_name}</h2>
+                    <h2 className="h4 mb-1" style={{ color: 'var(--color-text)' }}>{selected.player_name}</h2>
                     <div className="agent-portal-meta">{selected.agent_name} {selected.agency ? `- ${selected.agency}` : ''}</div>
                   </div>
 
@@ -325,7 +325,7 @@ const InternalRecommendationsPage: React.FC = () => {
                       ) : (
                         selected.status_history?.map((entry) => (
                           <div key={entry.id} className="agent-portal-surface-muted">
-                            <div style={{ fontWeight: 700, color: '#111827' }}>{entry.new_status}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{entry.new_status}</div>
                             <div className="agent-portal-meta">{new Date(entry.changed_at).toLocaleString()}</div>
                             {entry.changed_by_name ? <div className="agent-portal-meta">Updated by {entry.changed_by_name}</div> : null}
                           </div>

@@ -3,6 +3,8 @@ import { Modal, Form, Button, Row, Col, Alert, Spinner, ListGroup, Card } from "
 import Select from "react-select";
 import axiosInstance from "../axiosInstance";
 import { Player } from "../types/Player";
+import { useTheme } from "../contexts/ThemeContext";
+import { getReactSelectStyles } from "../utils/reactSelectTheme";
 
 type IntelType = "player_information" | "general_note" | "reference_form";
 
@@ -44,6 +46,9 @@ const IntelModal: React.FC<IntelModalProps> = ({
   reportId = null,
   existingReportData = null,
 }) => {
+  const { theme } = useTheme();
+  const selectStyles = getReactSelectStyles(theme.colors, theme.isDark);
+
   const [intelType, setIntelType] = useState<IntelType | null>(null);
   const [formData, setFormData] = useState(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -623,7 +628,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
               </ListGroup>
             )}
             {searchedPlayer && (
-              <div className="mt-2 p-2" style={{ backgroundColor: "#eef3f7", borderRadius: "4px" }}>
+              <div className="mt-2 p-2" style={{ backgroundColor: "var(--color-background)", borderRadius: "4px" }}>
                 <strong>Selected:</strong> {searchedPlayer.player_name || searchedPlayer.name} (
                 {searchedPlayer.squad_name || searchedPlayer.team || "No club"})
               </div>
@@ -701,6 +706,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
             Potential Deal Types <span className="text-danger">*</span>
           </Form.Label>
           <Select
+            styles={selectStyles}
             isMulti
             options={dealTypeOptions}
             value={dealTypeOptions.filter((option) =>
@@ -894,6 +900,7 @@ const IntelModal: React.FC<IntelModalProps> = ({
             Relationship To Player <span className="text-danger">*</span>
           </Form.Label>
           <Select
+            styles={selectStyles}
             isMulti
             options={relationshipToPlayerOptions}
             value={relationshipToPlayerOptions.filter((option) =>
@@ -1127,11 +1134,11 @@ const IntelModal: React.FC<IntelModalProps> = ({
         }
         .intel-type-card {
           cursor: pointer;
-          border: 1px solid #d9dfe5;
+          border: 1px solid var(--color-border);
           transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
         }
         .intel-type-card:hover {
-          border-color: #000000;
+          border-color: var(--color-text);
           transform: translateY(-2px);
           box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
         }

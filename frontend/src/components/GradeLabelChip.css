@@ -1,0 +1,30 @@
+/* Sibling to GradeChip/FlagChip, for legacy categorical archived-report
+   grade labels that can wrap to two lines (e.g. "Outstanding/Above Level").
+   Uses inline-block (not GradeChip's inline-flex) so the label's explicit
+   <br/> line breaks render correctly -- inline-flex children don't reliably
+   respect <br/>. Font is body, not mono, since this is a text label, not a
+   tabular number. */
+.grade-label-chip {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  border-radius: 999px; /* pill reserved for status/grade chips only, per design tokens */
+  white-space: normal;
+}
+
+.grade-label-chip-sm {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.6rem;
+}
+
+.grade-label-chip-md {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.75rem;
+}
+
+.grade-label-chip-lg {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.95rem;
+}

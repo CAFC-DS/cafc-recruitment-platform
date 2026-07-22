@@ -379,9 +379,31 @@ const AdminPage: React.FC = () => {
             </Card.Header>
             <Card.Body>
               {loadingUsers ? (
-                <div className="text-center py-4">
-                  <Spinner animation="border" />
-                  <p className="mt-2 mb-0">Loading users...</p>
+                <div className="table-responsive">
+                  <Table className="align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: 8 }).map((_, idx) => (
+                        <tr key={idx}>
+                          <td><div className="shimmer-line" style={{ width: "30px", height: "14px" }} /></td>
+                          <td><div className="shimmer-line" style={{ width: "90px", height: "14px" }} /></td>
+                          <td><div className="shimmer-line" style={{ width: "120px", height: "14px" }} /></td>
+                          <td><div className="shimmer-line" style={{ width: "160px", height: "14px" }} /></td>
+                          <td><div className="shimmer-line" style={{ width: "80px", height: "20px", borderRadius: "10px" }} /></td>
+                          <td><div className="shimmer-line" style={{ width: "220px", height: "28px" }} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
                 </div>
               ) : (
                 <div className="table-responsive">

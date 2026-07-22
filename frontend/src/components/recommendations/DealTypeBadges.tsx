@@ -11,8 +11,8 @@ const DealTypeBadges: React.FC<DealTypeBadgesProps> = ({ dealTypes }) => {
 
   const badgeStyles: { [key: string]: string } = {
     'Free': 'badge bg-success bg-opacity-10 text-success border border-success',
-    'Permanent Transfer': 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary',
-    'Perm': 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary',
+    'Permanent Transfer': 'badge deal-type-badge-neutral',
+    'Perm': 'badge deal-type-badge-neutral',
     'Loan': 'badge bg-info bg-opacity-10 text-info border border-info',
     'Loan with Option': 'badge bg-warning bg-opacity-10 text-warning border border-warning',
   };
@@ -30,7 +30,7 @@ const DealTypeBadges: React.FC<DealTypeBadgesProps> = ({ dealTypes }) => {
       {types.map((type, index) => (
         <span
           key={index}
-          className={badgeStyles[type] || 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary'}
+          className={badgeStyles[type] || 'badge deal-type-badge-neutral'}
           style={{ fontSize: '0.7rem', fontWeight: 600 }}
         >
           {shortLabels[type] || type}

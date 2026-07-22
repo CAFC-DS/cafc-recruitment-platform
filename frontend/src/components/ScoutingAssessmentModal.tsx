@@ -16,6 +16,8 @@ import {
 import axiosInstance from "../axiosInstance";
 import Select from "react-select";
 import { Player } from "../types/Player";
+import { useTheme } from "../contexts/ThemeContext";
+import { getReactSelectStyles } from "../utils/reactSelectTheme";
 
 interface QueuedReport {
   id: string; // unique ID for queue management
@@ -50,6 +52,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
   reportId,
   existingReportData,
 }) => {
+  const { theme } = useTheme();
+  const selectStyles = getReactSelectStyles(theme.colors, theme.isDark);
+
   const [assessmentType, setAssessmentType] = useState<
     "Player Assessment" | "Flag" | "Clips" | null
   >(null);
@@ -1459,8 +1464,8 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
 
         {/* Queue Panel - Shows when queue has items */}
         {reportQueue.length > 0 && (
-          <Card className="mb-4" style={{ backgroundColor: "#f0f8ff", border: "1px solid #007bff" }}>
-            <Card.Header style={{ backgroundColor: "#007bff", color: "white" }}>
+          <Card className="mb-4" style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)" }}>
+            <Card.Header style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
               <h6 className="mb-0">Queued Reports ({reportQueue.length})</h6>
             </Card.Header>
             <Card.Body style={{ maxHeight: "200px", overflowY: "auto" }}>
@@ -1557,7 +1562,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                 </ListGroup>
               )}
               {selectedPlayer && (
-                <div className="mt-2 p-2" style={{ backgroundColor: "#e7f3ff", borderRadius: "4px" }}>
+                <div className="mt-2 p-2" style={{ backgroundColor: "var(--color-background)", borderRadius: "4px" }}>
                   <strong>Selected:</strong> {selectedPlayer.player_name} ({selectedPlayer.squad_name})
                 </div>
               )}
@@ -1580,12 +1585,13 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                     Match <span className="text-danger">*</span>
                   </Form.Label>
                   {loadingMatches ? (
-                    <div className="d-flex align-items-center p-2" style={{ border: "1px solid #dee2e6", borderRadius: "4px", backgroundColor: "#f8f9fa" }}>
+                    <div className="d-flex align-items-center p-2" style={{ border: "1px solid var(--color-border)", borderRadius: "4px", backgroundColor: "var(--color-background)" }}>
                       <Spinner animation="border" size="sm" className="me-2" />
                       <span className="text-muted">Loading matches...</span>
                     </div>
                   ) : (
                     <Select
+                      styles={selectStyles}
                       isSearchable
                       isDisabled={!fixtureDate || matches.length === 0}
                       options={matches.map((match) => ({
@@ -1747,6 +1753,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
               <Form.Group as={Col} controlId="strengths">
                 <Form.Label>Strengths</Form.Label>
                 <Select
+                  styles={selectStyles}
                   isMulti
                   options={allStrengths}
                   value={strengths}
@@ -1759,6 +1766,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
               <Form.Group as={Col} controlId="weaknesses">
                 <Form.Label>Weaknesses</Form.Label>
                 <Select
+                  styles={selectStyles}
                   isMulti
                   options={allWeaknesses}
                   value={weaknesses}
@@ -2078,6 +2086,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   Strengths <span className="text-danger">*</span>
                 </Form.Label>
                 <Select
+                  styles={selectStyles}
                   isMulti
                   options={allStrengths}
                   value={strengths}
@@ -2092,6 +2101,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   Weaknesses <span className="text-danger">*</span>
                 </Form.Label>
                 <Select
+                  styles={selectStyles}
                   isMulti
                   options={allWeaknesses}
                   value={weaknesses}

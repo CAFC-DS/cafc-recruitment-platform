@@ -30,6 +30,7 @@ import ListsGatewayPage from './pages/ListsGatewayPage';
 import ExternalRecommendationsListPage from './pages/ExternalRecommendationsListPage';
 import EmergingTalentListsPage from './pages/EmergingTalentListsPage';
 import EmergingTalentKanbanPage from './pages/EmergingTalentKanbanPage';
+import StyleTilePage from './pages/StyleTilePage';
 
 interface AuthContextType {
   token: string | null;
@@ -396,8 +397,10 @@ const ConditionalNavbar: React.FC = () => {
   const location = useLocation();
   const isSharedReportPage = location.pathname.startsWith('/shared-report/');
   const isAgentPortalPage = location.pathname.startsWith('/agents');
+  const isStyleTilePage = location.pathname.startsWith('/design/style-tile');
+  const isLoginPage = location.pathname === '/login';
 
-  return isSharedReportPage || isAgentPortalPage ? null : <AppNavbar />;
+  return isSharedReportPage || isAgentPortalPage || isStyleTilePage || isLoginPage ? null : <AppNavbar />;
 };
 
 
@@ -422,6 +425,8 @@ function App() {
             <Route path="/agents/submissions/:id/edit" element={<AgentRoute><AgentEditSubmissionPage /></AgentRoute>} />
             {/* Public route for shared reports - no authentication required */}
             <Route path="/shared-report/:token" element={<SharedReportPage />} />
+            {/* Design system Phase 0 style tile -- provisional, review-only, no auth */}
+            <Route path="/design/style-tile" element={<StyleTilePage />} />
             <Route
               path="/scouting"
               element={

@@ -338,10 +338,18 @@ const AttributeFilterSection: React.FC = () => {
             <strong>👆 Select a position</strong> to view available attributes for filtering
           </Alert>
         ) : loadingAttributes ? (
-          <div className="text-center py-5">
-            <Spinner animation="border" />
-            <div className="mt-3">Loading attributes for {selectedPosition}...</div>
-          </div>
+          <Row className="g-2">
+            {Array.from({ length: 10 }).map((_, idx) => (
+              <Col key={idx} style={{ flex: "0 0 20%", maxWidth: "20%" }}>
+                <Card style={{ borderTop: "3px solid var(--color-border)" }}>
+                  <Card.Body className="p-2">
+                    <div className="shimmer-line mb-2" style={{ width: "80%", height: "12px" }} />
+                    <div className="shimmer-line" style={{ width: "100%", height: "24px" }} />
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
         ) : attributeError ? (
           <Alert variant="warning">
             {attributeError}

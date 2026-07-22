@@ -6,6 +6,7 @@
 
 import React from "react";
 import { Button } from "react-bootstrap";
+import { ClipboardList } from "lucide-react";
 import { colors, spacing } from "../../styles/playerLists.theme";
 
 interface EmptyStateProps {
@@ -13,7 +14,7 @@ interface EmptyStateProps {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
-  icon?: string; // Emoji or icon
+  icon?: React.ReactNode;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({
@@ -21,7 +22,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   message,
   actionLabel,
   onAction,
-  icon = "📋",
+  icon = <ClipboardList size={56} />,
 }) => {
   return (
     <div
@@ -34,7 +35,6 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     >
       <div
         style={{
-          fontSize: "4rem",
           marginBottom: spacing.lg,
           opacity: 0.5,
         }}

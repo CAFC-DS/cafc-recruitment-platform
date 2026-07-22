@@ -90,6 +90,7 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
       <Modal.Header
         closeButton
         style={{ backgroundColor: "#000000", color: "white" }}
+        className="modal-header-dark"
       >
         <Modal.Title>
           {editMode ? "✏️" : targetStage === "Stage 1" ? "➕" : "📦"} {title}
