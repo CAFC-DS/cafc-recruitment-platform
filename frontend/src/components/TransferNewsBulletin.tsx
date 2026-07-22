@@ -58,7 +58,7 @@ const TransferNewsBulletin: React.FC = () => {
   return (
     <Card className="transfer-news-card">
       <div className="transfer-news-header">
-        <Newspaper size="17" stroke="1.75" />
+        <Newspaper size={17} strokeWidth={1.75} />
         Transfer News
       </div>
       <Card.Body className="transfer-news-body">
