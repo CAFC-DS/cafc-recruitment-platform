@@ -38,7 +38,7 @@ pattern used throughout this engagement.
 
 **Interfaces:** none (CSS-only, no new exports).
 
-- [ ] **Step 1: Dropdown/menu/toggle surfaces — additive dark-mode overrides**
+- [x] **Step 1: Dropdown/menu/toggle surfaces — additive dark-mode overrides**
 
 Find each selector below (search by name; line numbers may have drifted since this plan was
 written) and add the corresponding `[data-bs-theme="dark"]` block immediately after it. Do not
@@ -126,7 +126,7 @@ modify the existing light-mode rule.
 }
 ```
 
-- [ ] **Step 2: Hover/active tints on select & search options**
+- [x] **Step 2: Hover/active tints on select & search options**
 
 ```css
 [data-bs-theme="dark"] .agent-select-option:hover,
@@ -143,7 +143,7 @@ modify the existing light-mode rule.
 }
 ```
 
-- [ ] **Step 3: "Player selected" confirmation card tint**
+- [x] **Step 3: "Player selected" confirmation card tint**
 
 ```css
 [data-bs-theme="dark"] .agent-player-selected-card {
@@ -161,7 +161,7 @@ Do not touch `.agent-player-selected-change:hover`'s existing
 `background: rgba(16, 185, 129, 0.12)` — it's already theme-agnostic (same value works in both
 themes), no dark-mode override needed for that specific rule.
 
-- [ ] **Step 4: Neutral score badge**
+- [x] **Step 4: Neutral score badge**
 
 ```css
 [data-bs-theme="dark"] .agent-player-score-badge {
@@ -170,7 +170,7 @@ themes), no dark-mode override needed for that specific rule.
 }
 ```
 
-- [ ] **Step 5: Two near-brand-red accents — in-place edits, NOT theme-conditional**
+- [x] **Step 5: Two near-brand-red accents — in-place edits, NOT theme-conditional**
 
 Find:
 ```css
@@ -197,7 +197,7 @@ Find:
 ```
 Change `accent-color: #b32627;` to `accent-color: var(--color-primary);`.
 
-- [ ] **Step 6: Verify — brace balance, tsc, frozen-file diff**
+- [x] **Step 6: Verify — brace balance, tsc, frozen-file diff**
 
 ```bash
 python3 -c "
@@ -220,7 +220,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 7: Confirm scope discipline on the two in-place edits**
+- [x] **Step 7: Confirm scope discipline on the two in-place edits**
 
 ```bash
 grep -n "cc0000" frontend/src/styles/professional-theme.css | wc -l
@@ -230,7 +230,7 @@ Both counts should be exactly 1 less than before this task (only the two named s
 changed; every other `#cc0000`/`#b32627` occurrence in the file — there are several, all outside
 this plan's scope — must remain untouched).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/styles/professional-theme.css
@@ -243,7 +243,7 @@ git commit -m "Add dark-mode overrides for RecommendationForm's custom dropdowns
 
 **Files:** none modified — verification-only closing task.
 
-- [ ] **Step 1: Start dev servers if not already running**
+- [x] **Step 1: Start dev servers if not already running**
 
 Backend (`:8000`, needs `backend/.env` + `backend/keys/` copied from the main checkout — both
 gitignored):
@@ -255,7 +255,7 @@ Frontend (`:3001`, `PORT=3001` baked into `package.json`):
 cd frontend && npm start
 ```
 
-- [ ] **Step 2: Log in as an agent, navigate to Submit a Player**
+- [x] **Step 2: Log in as an agent, navigate to Submit a Player**
 
 Check in both light and dark mode:
 - Type a partial player name into the search box — check the dropdown surface, hover states on
@@ -267,7 +267,7 @@ Check in both light and dark mode:
 - If a player can actually be selected in the test environment, check the green "player
   selected" confirmation card
 
-- [ ] **Step 3: Confirm no light-patch-on-dark-page issues remain**
+- [x] **Step 3: Confirm no light-patch-on-dark-page issues remain**
 
 In dark mode: no white/light dropdown, menu, or card should be visible sitting on the dark page.
 In light mode: every element checked should look byte-identical to before this plan.
@@ -277,7 +277,7 @@ If test data or environment constraints prevent exercising a particular interact
 1's review (diff-level verification) for that specific state and say so plainly in the design-doc
 entry below — don't claim a live check that didn't happen.
 
-- [ ] **Step 4: Update the design-system doc**
+- [x] **Step 4: Update the design-system doc**
 
 Append a short entry to `docs/DESIGN_SYSTEM_REFRESH.md` under the Phase 4 section, following the
 same style as the Pass 1/2a/2b entries. Since this closes out all of Phase 4 Pass 2, also note

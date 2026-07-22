@@ -36,7 +36,7 @@ this session).
 
 **Interfaces:** none (CSS-only, no new exports).
 
-- [ ] **Step 1: Find the existing light-mode rules**
+- [x] **Step 1: Find the existing light-mode rules**
 
 ```bash
 cd frontend/src/styles
@@ -66,7 +66,7 @@ reading the actual file — line numbers may have drifted from earlier edits in 
 If the content differs from this, stop and report — something changed since this plan was
 written.
 
-- [ ] **Step 2: Add additive dark-mode overrides immediately after the light-mode rules**
+- [x] **Step 2: Add additive dark-mode overrides immediately after the light-mode rules**
 
 Insert this new block right after the `.agent-portal-banner.agent-portal-banner-success` rule
 (do not modify the two rules above it):
@@ -91,7 +91,7 @@ colors invented for this fix. The text colors (`#fca5a5`, `#6ee7b7`) are light t
 hues, chosen for readability against the translucent dark background; `#fca5a5` already appears
 elsewhere in this same file (`.agent-portal-eyebrow`) as an established light-on-dark accent.
 
-- [ ] **Step 3: Verify CSS is syntactically valid**
+- [x] **Step 3: Verify CSS is syntactically valid**
 
 ```bash
 cd /Users/hashim.umarji/Desktop/CAFC/2025-26/Recruitment/Coding/NewRecruitmentPlatform-design-refresh
@@ -108,7 +108,7 @@ cd frontend && npx tsc --noEmit
 ```
 Expected: clean (CSS-only change, but confirms nothing else in the repo is broken).
 
-- [ ] **Step 4: Frozen-file diff**
+- [x] **Step 4: Frozen-file diff**
 
 ```bash
 cd /Users/hashim.umarji/Desktop/CAFC/2025-26/Recruitment/Coding/NewRecruitmentPlatform-design-refresh
@@ -116,7 +116,7 @@ git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/playerList
 ```
 Expected: empty.
 
-- [ ] **Step 5: Live check in both themes**
+- [x] **Step 5: Live check in both themes**
 
 Start the dev servers if not already running (backend on :8000 needs `backend/.env` and
 `backend/keys/` copied from the main checkout — both gitignored; frontend on :3001 via
@@ -137,7 +137,7 @@ Confirm: in dark mode, the banner reads as a translucent red-tinted (or green-ti
 strip with light, legible text — not a light pastel patch. In light mode, confirm the banner
 looks completely unchanged from before this task.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/styles/professional-theme.css

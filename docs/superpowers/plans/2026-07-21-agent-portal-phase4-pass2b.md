@@ -44,7 +44,7 @@ pattern used throughout this engagement.
 
 **Interfaces:** none (CSS-only, no new exports).
 
-- [ ] **Step 1: Card backgrounds + their text — additive dark-mode overrides**
+- [x] **Step 1: Card backgrounds + their text — additive dark-mode overrides**
 
 Find each selector below (search by name; line numbers may have drifted since this plan was
 written) and add the corresponding `[data-bs-theme="dark"]` block immediately after it. Do not
@@ -131,7 +131,7 @@ Note on `.agent-portal-stage-card`: its light-mode rule has
 flattens this to a solid `var(--color-surface)` rather than inventing a dark-mode gradient — the
 gradient is a light-mode-only visual refinement, not something that needs a dark equivalent.
 
-- [ ] **Step 2: Muted caption/label text — additive dark-mode overrides**
+- [x] **Step 2: Muted caption/label text — additive dark-mode overrides**
 
 ```css
 [data-bs-theme="dark"] .agent-portal-mobile-card-meta dt {
@@ -159,7 +159,7 @@ gradient is a light-mode-only visual refinement, not something that needs a dark
 }
 ```
 
-- [ ] **Step 3: Tinted callout boxes — additive dark-mode overrides**
+- [x] **Step 3: Tinted callout boxes — additive dark-mode overrides**
 
 ```css
 [data-bs-theme="dark"] .agent-portal-status-note {
@@ -187,7 +187,7 @@ rule needed here; if it wasn't included in Step 1's list, add
 both themes — it's a saturated brand-adjacent red accent, not body text, and reads fine on both
 the light and the new translucent-dark background.
 
-- [ ] **Step 4: Near-brand-red link color — in-place edit, NOT theme-conditional**
+- [x] **Step 4: Near-brand-red link color — in-place edit, NOT theme-conditional**
 
 Find:
 ```css
@@ -219,7 +219,7 @@ grep -n "b32627" frontend/src/styles/professional-theme.css
 This should show more than 2 matches total; only change the ones under
 `.agent-dashboard-table .btn-link` and `.agent-portal-mobile-card-actions .btn-link`.
 
-- [ ] **Step 5: Verify — brace balance, tsc, frozen-file diff**
+- [x] **Step 5: Verify — brace balance, tsc, frozen-file diff**
 
 ```bash
 python3 -c "
@@ -239,7 +239,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/styles/professional-theme.css
@@ -256,7 +256,7 @@ git commit -m "Add dark-mode overrides for AgentDashboardPage/AgentSubmissionDet
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Confirm current occurrences**
+- [x] **Step 1: Confirm current occurrences**
 
 ```bash
 cd frontend/src
@@ -270,13 +270,13 @@ Expected (as of plan-writing time — confirm line numbers haven't drifted):
   `color: '#111827'` inside inline `style={{...}}` objects, most already paired with
   `className="agent-portal-meta"` or similar.
 
-- [ ] **Step 2: Replace every occurrence**
+- [x] **Step 2: Replace every occurrence**
 
 In both files, replace every `'#111827'` with `'var(--color-text)'` in place — same string, same
 position in the style object, no other changes. Do not alter any other prop in the same
 `style={{...}}` object.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 ```bash
 cd /Users/hashim.umarji/Desktop/CAFC/2025-26/Recruitment/Coding/NewRecruitmentPlatform-design-refresh
@@ -299,7 +299,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/agents/AgentDashboardPage.tsx frontend/src/pages/agents/AgentSubmissionDetailPage.tsx
@@ -312,7 +312,7 @@ git commit -m "Tokenize remaining #111827 text color in AgentDashboardPage/Agent
 
 **Files:** none modified — verification-only closing task.
 
-- [ ] **Step 1: Start dev servers if not already running**
+- [x] **Step 1: Start dev servers if not already running**
 
 Backend (`:8000`, needs `backend/.env` + `backend/keys/` copied from the main checkout — both
 gitignored):
@@ -324,27 +324,27 @@ Frontend (`:3001`, `PORT=3001` baked into `package.json`):
 cd frontend && npm start
 ```
 
-- [ ] **Step 2: Log in as an agent, navigate to the Dashboard**
+- [x] **Step 2: Log in as an agent, navigate to the Dashboard**
 
 Check the table view in both light and dark mode. Resize the browser narrow (or use dev-tools
 device emulation) to trigger the mobile-card responsive layout, and check that in both themes
 too — this is the one view that can't be reached without a narrow viewport.
 
-- [ ] **Step 3: Open a Submission Detail page**
+- [x] **Step 3: Open a Submission Detail page**
 
 Navigate to `/agents/submissions/:id` for a real submission (check the Dashboard's list for a
 valid id, or check `App.tsx` for the exact route). Check in both themes: the status-journey
 stage cards, the current-status hero card, the notes panel (if the submission has shared notes),
 and the history card (if there's status history).
 
-- [ ] **Step 4: Confirm no light-card-on-dark-page patches remain**
+- [x] **Step 4: Confirm no light-card-on-dark-page patches remain**
 
 Across every view checked in Steps 2-3, in dark mode: no white/light card should be visible
 sitting on the dark page background. In light mode: every view should look byte-identical to
 before this plan (use `git stash` + a hard refresh to compare against pre-change if any doubt
 exists, then `git stash pop`).
 
-- [ ] **Step 5: Update the design-system doc**
+- [x] **Step 5: Update the design-system doc**
 
 Append a short entry to `docs/DESIGN_SYSTEM_REFRESH.md` under the Phase 4 section, following the
 same style as the Pass 1 and Pass 2a entries, summarizing what was fixed and confirming live

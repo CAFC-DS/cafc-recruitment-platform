@@ -80,7 +80,7 @@ toggle in the nav) — only the specific component reused to build it.
   ```
   Consumed by Tasks 2-5.
 
-- [ ] **Step 1: Read the current files to confirm nothing has drifted since planning**
+- [x] **Step 1: Read the current files to confirm nothing has drifted since planning**
 
 ```bash
 cat frontend/src/pages/LoginPage.tsx
@@ -90,7 +90,7 @@ cat frontend/src/pages/LoginPage.css
 (Working from repo root
 `/Users/hashim.umarji/Desktop/CAFC/2025-26/Recruitment/Coding/NewRecruitmentPlatform-design-refresh`.)
 
-- [ ] **Step 2: Create `frontend/src/components/auth/AuthShell.tsx`**
+- [x] **Step 2: Create `frontend/src/components/auth/AuthShell.tsx`**
 
 ```tsx
 import React from "react";
@@ -129,7 +129,7 @@ const AuthShell: React.FC<AuthShellProps> = ({ eyebrow, heading, wide, children 
 export default AuthShell;
 ```
 
-- [ ] **Step 3: Create `frontend/src/components/auth/AuthShell.css`**
+- [x] **Step 3: Create `frontend/src/components/auth/AuthShell.css`**
 
 This is `LoginPage.css`'s content moved verbatim, plus one new `.login-card-wide` modifier (the
 value `680px` matches the outgoing `.agent-auth-card-wide`'s width so Register/Landing don't get
@@ -240,13 +240,13 @@ narrower than they are today).
 }
 ```
 
-- [ ] **Step 4: Delete `frontend/src/pages/LoginPage.css`**
+- [x] **Step 4: Delete `frontend/src/pages/LoginPage.css`**
 
 ```bash
 rm frontend/src/pages/LoginPage.css
 ```
 
-- [ ] **Step 5: Rewrite `frontend/src/pages/LoginPage.tsx` to render through `AuthShell`**
+- [x] **Step 5: Rewrite `frontend/src/pages/LoginPage.tsx` to render through `AuthShell`**
 
 ```tsx
 import React, { useState } from "react";
@@ -370,7 +370,7 @@ sibling of `.login-shell` before). This is safe — `Modal` from react-bootstrap
 React portal at `document.body`, so its position in the JSX tree doesn't affect where it visually
 appears.
 
-- [ ] **Step 6: Verify — typecheck, lint, frozen-file diff**
+- [x] **Step 6: Verify — typecheck, lint, frozen-file diff**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -388,7 +388,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: no output (empty diff).
 
-- [ ] **Step 7: Live check — internal login page renders identically**
+- [x] **Step 7: Live check — internal login page renders identically**
 
 Start the dev servers per the Global Constraints section if not already running. Navigate to
 `http://localhost:3001/login` in both light and dark mode (toggle via Settings → Dark Mode in
@@ -398,7 +398,7 @@ navigating). Confirm: crest watermark, centered card, red top border, "Charlton 
 the modal it opens all look exactly as they did before this task (this task is a pure refactor —
 zero visual change expected).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add frontend/src/components/auth/AuthShell.tsx frontend/src/components/auth/AuthShell.css frontend/src/pages/LoginPage.tsx
@@ -416,7 +416,7 @@ git commit -m "Extract AuthShell from LoginPage for reuse across internal and ag
 **Interfaces:**
 - Consumes: `AuthShell` from `../../components/auth/AuthShell` (Task 1)
 
-- [ ] **Step 1: Rewrite `frontend/src/pages/agents/AgentLoginPage.tsx`**
+- [x] **Step 1: Rewrite `frontend/src/pages/agents/AgentLoginPage.tsx`**
 
 ```tsx
 import React, { useState } from 'react';
@@ -523,7 +523,7 @@ panel that needs a mobile fallback" to work around. The two inline `color: '#647
 one-token collapse is intentional, not a mistake — the two-shade distinction doesn't exist
 elsewhere in the app's muted-text usage).
 
-- [ ] **Step 2: Verify — typecheck, lint, frozen-file diff**
+- [x] **Step 2: Verify — typecheck, lint, frozen-file diff**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -540,7 +540,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 3: Live check**
+- [x] **Step 3: Live check**
 
 Navigate to `http://localhost:3001/agents/login` in both themes. Confirm: same centered-card
 shell as the internal login (crest, watermark, red top border), heading reads "External
@@ -548,7 +548,7 @@ Recommendation Portal", email/password fields, "Register here" link, and the two
 lines are all legible in dark mode (this is the exact bug class fixed earlier this session —
 double-check nothing here is invisible-text-on-dark-background).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/agents/AgentLoginPage.tsx
@@ -565,7 +565,7 @@ git commit -m "Migrate AgentLoginPage to shared AuthShell"
 **Interfaces:**
 - Consumes: `AuthShell` from `../../components/auth/AuthShell` (Task 1), rendered with `wide`
 
-- [ ] **Step 1: Rewrite `frontend/src/pages/agents/AgentRegisterPage.tsx`**
+- [x] **Step 1: Rewrite `frontend/src/pages/agents/AgentRegisterPage.tsx`**
 
 ```tsx
 import React, { useState } from 'react';
@@ -709,7 +709,7 @@ const AgentRegisterPage: React.FC = () => {
 export default AgentRegisterPage;
 ```
 
-- [ ] **Step 2: Verify — typecheck, lint, frozen-file diff**
+- [x] **Step 2: Verify — typecheck, lint, frozen-file diff**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -726,7 +726,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 3: Live check**
+- [x] **Step 3: Live check**
 
 Navigate to `http://localhost:3001/agents/register` in both themes. Confirm the card is visibly
 wider than the login card (2-column field grid: Agent name/Agency side by side), the phone input
@@ -734,7 +734,7 @@ renders correctly (it's a third-party component — check it isn't rendering a s
 background box in dark mode), and "* Required fields" / helper text / "Already registered? Sign
 in" are all legible in both themes.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/agents/AgentRegisterPage.tsx
@@ -751,7 +751,7 @@ git commit -m "Migrate AgentRegisterPage to shared AuthShell (wide variant)"
 **Interfaces:**
 - Consumes: `AuthShell` from `../../components/auth/AuthShell` (Task 1)
 
-- [ ] **Step 1: Rewrite `frontend/src/pages/agents/AgentResetPasswordPage.tsx`**
+- [x] **Step 1: Rewrite `frontend/src/pages/agents/AgentResetPasswordPage.tsx`**
 
 ```tsx
 import React, { useState } from 'react';
@@ -874,7 +874,7 @@ const AgentResetPasswordPage: React.FC = () => {
 export default AgentResetPasswordPage;
 ```
 
-- [ ] **Step 2: Verify — typecheck, lint, frozen-file diff**
+- [x] **Step 2: Verify — typecheck, lint, frozen-file diff**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -891,7 +891,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 3: Live check**
+- [x] **Step 3: Live check**
 
 Navigate to `http://localhost:3001/agents/reset-password?token=test` in both themes (the token
 won't be valid, but the page renders regardless — submitting will show the "invalid" error,
@@ -899,7 +899,7 @@ which is fine, that's existing behavior). Confirm both the form state and the (s
 temporarily flipping the `success` state in React DevTools if you want to check it, or trust the
 JSX review) success-state Alert/button are legible in dark mode.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/agents/AgentResetPasswordPage.tsx
@@ -916,7 +916,7 @@ git commit -m "Migrate AgentResetPasswordPage to shared AuthShell"
 **Interfaces:**
 - Consumes: `AuthShell` from `../../components/auth/AuthShell` (Task 1), rendered with `wide`
 
-- [ ] **Step 1: Rewrite `frontend/src/pages/agents/AgentLandingPage.tsx`**
+- [x] **Step 1: Rewrite `frontend/src/pages/agents/AgentLandingPage.tsx`**
 
 ```tsx
 import React from 'react';
@@ -986,7 +986,7 @@ heading once, so the duplicate top-of-card block (`agent-auth-heading`, first
 badge ("CAFC Recruitment") and copy are what's kept, since that's the page-specific content, not
 shell chrome.
 
-- [ ] **Step 2: Verify — typecheck, lint, frozen-file diff**
+- [x] **Step 2: Verify — typecheck, lint, frozen-file diff**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -1003,7 +1003,7 @@ cd .. && git diff main -- frontend/src/utils/colorUtils.ts frontend/src/styles/p
 ```
 Expected: empty.
 
-- [ ] **Step 3: Live check**
+- [x] **Step 3: Live check**
 
 Find this page's route in `frontend/src/App.tsx` (search for `AgentLandingPage`) and navigate to
 it directly in both themes. Confirm: no duplicate crest/heading, the three-step "How the portal
@@ -1011,7 +1011,7 @@ works" cards render correctly (these reuse `.agent-portal-card`/`.agent-portal-s
 already dark-mode-fixed from the earlier Recommendations round — just double-check nothing
 regressed), and both CTA buttons (Register / Log In) are visible and correctly styled.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/pages/agents/AgentLandingPage.tsx
@@ -1027,7 +1027,7 @@ git commit -m "Migrate AgentLandingPage to shared AuthShell (wide variant)"
 
 **Interfaces:** none (CSS-only, no new exports).
 
-- [ ] **Step 1: Confirm the classes are genuinely unused before deleting**
+- [x] **Step 1: Confirm the classes are genuinely unused before deleting**
 
 ```bash
 cd frontend/src
@@ -1047,7 +1047,7 @@ rather than deleting a class still in use. `.agent-auth-badge` is removed from t
 unused" grep above and from the Step 2 deletion list below, and added to the "classes that stay"
 list in the CSS cleanup section.
 
-- [ ] **Step 2: Delete the dead CSS block**
+- [x] **Step 2: Delete the dead CSS block**
 
 In `frontend/src/styles/professional-theme.css`, delete these rules (currently at approximately
 lines 2325-2439, but confirm by searching for the selectors — line numbers may have drifted from
@@ -1097,7 +1097,7 @@ becomes just `.agent-portal-shell-inner` on its own (no longer combined), i.e.:
 }
 ```
 
-- [ ] **Step 3: Fix the remaining near-brand-red in `.agent-auth-inline-link`**
+- [x] **Step 3: Fix the remaining near-brand-red in `.agent-auth-inline-link`**
 
 Find:
 ```css
@@ -1117,7 +1117,7 @@ Replace with:
 }
 ```
 
-- [ ] **Step 4: Verify CSS is syntactically valid (brace balance) and nothing else broke**
+- [x] **Step 4: Verify CSS is syntactically valid (brace balance) and nothing else broke**
 
 ```bash
 python3 -c "
@@ -1133,7 +1133,7 @@ cd frontend && npx tsc --noEmit
 Expected: clean (CSS changes don't affect TypeScript, but this confirms nothing else in the repo
 state is broken before you commit).
 
-- [ ] **Step 5: Live check**
+- [x] **Step 5: Live check**
 
 Reload every page touched in Tasks 1-5 (`/login`, `/agents/login`, `/agents/register`,
 `/agents/reset-password?token=test`, and the agent landing page route) in the browser to confirm
@@ -1141,7 +1141,7 @@ none of them broke from the CSS deletion — since webpack dev server hot-reload
 cached rule could mask a real breakage; a hard refresh (`cmd+shift+r`) on each page is worth
 doing here specifically.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/styles/professional-theme.css
@@ -1161,7 +1161,7 @@ git commit -m "Remove dead split-panel auth CSS, tokenize remaining near-brand-r
   throughout the internal app this whole engagement — `const { theme, toggleDarkMode } = useTheme();`)
 - Consumes: `Sun`, `Moon` from `lucide-react` (already a project dependency, used in `Navbar.tsx`)
 
-- [ ] **Step 1: Rewrite `frontend/src/components/agents/AgentPortalShell.tsx`**
+- [x] **Step 1: Rewrite `frontend/src/components/agents/AgentPortalShell.tsx`**
 
 ```tsx
 import React from 'react';
@@ -1245,7 +1245,7 @@ const AgentPortalShell: React.FC<AgentPortalShellProps> = ({ title, subtitle, ch
 export default AgentPortalShell;
 ```
 
-- [ ] **Step 2: Update the hardcoded values in `frontend/src/styles/professional-theme.css`**
+- [x] **Step 2: Update the hardcoded values in `frontend/src/styles/professional-theme.css`**
 
 Find (around where `.agent-portal-shell` through `.agent-portal-nav-link:hover` are defined):
 
@@ -1344,7 +1344,7 @@ which is always the dark `--color-header-bg` regardless of app theme (same patte
 internal Navbar, which is always-black/graphite too), so they don't need theme-conditional
 values.
 
-- [ ] **Step 3: Verify — typecheck, lint, frozen-file diff, CSS brace balance**
+- [x] **Step 3: Verify — typecheck, lint, frozen-file diff, CSS brace balance**
 
 ```bash
 cd frontend && npx tsc --noEmit
@@ -1369,7 +1369,7 @@ print('open:', content.count('{'), 'close:', content.count('}'))
 ```
 Expected: matching counts.
 
-- [ ] **Step 4: Live check**
+- [x] **Step 4: Live check**
 
 Log in as an agent (or navigate directly to `/agents/dashboard` if already authenticated as one
 from earlier testing) in both themes. Confirm: the header bar stays graphite-dark in both themes
@@ -1379,7 +1379,7 @@ between light and dark correctly, and — the actual point of this task — **cl
 dark-mode toggle in the nav actually switches the theme** and the icon/label swap (Moon/"Dark" ↔
 Sun/"Light") matches the internal Navbar's equivalent control.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/components/agents/AgentPortalShell.tsx frontend/src/styles/professional-theme.css
@@ -1392,14 +1392,14 @@ git commit -m "Add dark-mode toggle to AgentPortalShell, tokenize font/color to 
 
 **Files:** none modified — this is a verification-only closing task.
 
-- [ ] **Step 1: Full-repo typecheck**
+- [x] **Step 1: Full-repo typecheck**
 
 ```bash
 cd frontend && npx tsc --noEmit
 ```
 Expected: clean.
 
-- [ ] **Step 2: Lint every file touched across Tasks 1-7**
+- [x] **Step 2: Lint every file touched across Tasks 1-7**
 
 ```bash
 npx eslint \
@@ -1415,7 +1415,7 @@ Expected: no errors; any warnings present should be pre-existing ones already kn
 session's baseline (e.g. unrelated `react-hooks/exhaustive-deps` warnings elsewhere in the repo),
 not new ones introduced by this plan.
 
-- [ ] **Step 3: Frozen-file diff, one more time, against the full commit range**
+- [x] **Step 3: Frozen-file diff, one more time, against the full commit range**
 
 ```bash
 cd .. && git diff main -- \
@@ -1428,7 +1428,7 @@ cd .. && git diff main -- \
 ```
 Expected: no output.
 
-- [ ] **Step 4: Live walkthrough, both themes, every page touched**
+- [x] **Step 4: Live walkthrough, both themes, every page touched**
 
 With both dev servers running, visit each of these URLs once in light mode and once in dark
 mode, confirming legible text, correct brand colors, and no visual regressions:
@@ -1442,7 +1442,7 @@ mode, confirming legible text, correct brand colors, and no visual regressions:
   the header/nav/toggle, not the dashboard body content, since the dashboard itself is Pass 2
   scope and may still look unmigrated)
 
-- [ ] **Step 5: Update the design-system doc**
+- [x] **Step 5: Update the design-system doc**
 
 Append a short entry to `docs/DESIGN_SYSTEM_REFRESH.md` under the Phase 4 section (mirroring the
 Track 2 round entries used throughout this engagement) summarizing: `AuthShell` created and
