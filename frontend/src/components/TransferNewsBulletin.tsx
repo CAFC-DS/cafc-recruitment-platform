@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Spinner } from "react-bootstrap";
+import { Card, Spinner, Button } from "react-bootstrap";
 import { Newspaper } from "lucide-react";
 import axiosInstance from "../axiosInstance";
 import "./TransferNewsBulletin.css";
@@ -27,6 +27,7 @@ function formatRelativeTime(isoDate: string | null): string {
 const TransferNewsBulletin: React.FC = () => {
   const [changes, setChanges] = useState<SquadChange[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,9 +59,21 @@ const TransferNewsBulletin: React.FC = () => {
   return (
     <Card className="transfer-news-card">
       <div className="transfer-news-header">
-        <Newspaper size={17} strokeWidth={1.75} />
-        Transfer News
+        <div className="transfer-news-header-title">
+          <Newspaper size={17} strokeWidth={1.75} />
+          Transfer News
+        </div>
+        <Button
+          variant="link"
+          size="sm"
+          className="transfer-news-toggle"
+          onClick={() => setExpanded(!expanded)}
+          title={expanded ? "Collapse" : "Expand"}
+        >
+          {expanded ? "▲" : "▼"}
+        </Button>
       </div>
+      {expanded && (
       <Card.Body className="transfer-news-body">
         {loading ? (
           <div className="text-center py-2">
@@ -92,6 +105,7 @@ const TransferNewsBulletin: React.FC = () => {
           ))
         )}
       </Card.Body>
+      )}
     </Card>
   );
 };
