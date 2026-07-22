@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Spinner, Button } from "react-bootstrap";
+import { Card, Spinner, Button, Collapse } from "react-bootstrap";
 import { Newspaper } from "lucide-react";
 import axiosInstance from "../axiosInstance";
 import "./TransferNewsBulletin.css";
@@ -73,39 +73,41 @@ const TransferNewsBulletin: React.FC = () => {
           {expanded ? "▲" : "▼"}
         </Button>
       </div>
-      {expanded && (
-      <Card.Body className="transfer-news-body">
-        {loading ? (
-          <div className="text-center py-2">
-            <Spinner animation="border" size="sm" />
-          </div>
-        ) : changes.length === 0 ? (
-          <p className="transfer-news-empty">
-            No squad changes in the last 7 days.
-          </p>
-        ) : (
-          changes.map((change, index) => (
-            <div className="transfer-news-row" key={`${change.player_name}-${change.detected_at}-${index}`}>
-              <div className="transfer-news-move">
-                <span className="transfer-news-player">{change.player_name}</span>{" "}
-                moved from{" "}
-                <span className="transfer-news-squad-old">{change.old_squad || "Unknown"}</span>
-                {" → "}
-                <span className="transfer-news-squad-new">{change.new_squad || "Unknown"}</span>
+      <Collapse in={expanded}>
+        <div>
+          <Card.Body className="transfer-news-body">
+            {loading ? (
+              <div className="text-center py-2">
+                <Spinner animation="border" size="sm" />
               </div>
-              <div className="transfer-news-meta">
-                <span className="transfer-news-time">{formatRelativeTime(change.detected_at)}</span>
-                {(change.competition || change.season) && (
-                  <span className="transfer-news-tag">
-                    {[change.competition, change.season].filter(Boolean).join(" · ")}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </Card.Body>
-      )}
+            ) : changes.length === 0 ? (
+              <p className="transfer-news-empty">
+                No squad changes in the last 7 days.
+              </p>
+            ) : (
+              changes.map((change, index) => (
+                <div className="transfer-news-row" key={`${change.player_name}-${change.detected_at}-${index}`}>
+                  <div className="transfer-news-move">
+                    <span className="transfer-news-player">{change.player_name}</span>{" "}
+                    moved from{" "}
+                    <span className="transfer-news-squad-old">{change.old_squad || "Unknown"}</span>
+                    {" → "}
+                    <span className="transfer-news-squad-new">{change.new_squad || "Unknown"}</span>
+                  </div>
+                  <div className="transfer-news-meta">
+                    <span className="transfer-news-time">{formatRelativeTime(change.detected_at)}</span>
+                    {(change.competition || change.season) && (
+                      <span className="transfer-news-tag">
+                        {[change.competition, change.season].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </Card.Body>
+        </div>
+      </Collapse>
     </Card>
   );
 };
