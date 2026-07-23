@@ -41,7 +41,7 @@ import {
   createPlayerList,
   updatePlayerList,
   deletePlayerList,
-  addPlayerToList,
+  bulkAddPlayersToList,
   bulkRemovePlayersFromList,
   bulkUpdatePlayerStages,
   searchPlayersPaginated,
@@ -266,7 +266,17 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const currentPlayerSearchQueryRef = useRef<string>("");
   const playerSearchObserverRef = useRef<IntersectionObserver | null>(null);
   const PLAYER_SEARCH_PAGE_SIZE = 20;
-  const [addingPlayer, setAddingPlayer] = useState(false);
+
+  // Batch add-player state: players accumulated in the Add Players modal
+  // before a single bulk submit, each with its own reason.
+  const [batchPlayers, setBatchPlayers] = useState<
+    { player: PlayerSearchResult; reason: string }[]
+  >([]);
+  const [batchRowStatus, setBatchRowStatus] = useState<
+    Record<string, { status: "pending" | "saving" | "success" | "error"; error?: string }>
+  >({});
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
   // Player notes and favorites
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -311,7 +321,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     targetStage: "Stage 1" | "Archived";
     itemId: number;
     oldStage: string;
-    universalId?: string;
   } | null>(null);
   const [stage1Reasons, setStage1Reasons] = useState<string[]>([]);
   const [archivedReasons, setArchivedReasons] = useState<string[]>([]);
@@ -334,9 +343,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       previousStage: string | null;
     } | null;
   }>({});
-
-  // Temporary player selection for add modal
-  const [tempSelectedPlayer, setTempSelectedPlayer] = useState<PlayerSearchResult | null>(null);
 
   // Permission check
   useEffect(() => {
@@ -775,49 +781,124 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     [loadingMorePlayers, hasMorePlayerResults, loadMorePlayerResults]
   );
 
-  const handleAddPlayer = async (player: PlayerSearchResult) => {
-    // Only allow adding when exactly 1 list is selected
-    if (!currentList) return; // Only works with single list selected
+  // Is this player already on the currently selected list?
+  const isPlayerAlreadyOnList = useCallback(
+    (universalId: string) => {
+      if (!currentList) return false;
+      return currentList.players.some((p) => p.universal_id === universalId);
+    },
+    [currentList]
+  );
 
-    // Store selected player and open reason modal
-    setTempSelectedPlayer(player);
-    setStageReasonModalData({
-      playerName: player.player_name,
-      targetStage: "Stage 1",
-      itemId: -1, // Not applicable for new additions
-      oldStage: "",
-      universalId: player.universal_id,
-    });
-    setShowAddPlayerModal(false);
-    setShowStageReasonModal(true);
+  // Is this player already staged in the current batch?
+  const isPlayerAlreadyInBatch = useCallback(
+    (universalId: string) => batchPlayers.some((b) => b.player.universal_id === universalId),
+    [batchPlayers]
+  );
+
+  // Add a player to the in-progress batch (does not submit or close the modal,
+  // so the analyst can keep searching and adding more players).
+  const handleAddPlayerToBatch = (player: PlayerSearchResult) => {
+    if (!currentList) return;
+    if (isPlayerAlreadyOnList(player.universal_id) || isPlayerAlreadyInBatch(player.universal_id)) {
+      return;
+    }
+    setBatchPlayers((prev) => [...prev, { player, reason: "" }]);
+    setPlayerSearchQuery("");
+    setPlayerSearchResults([]);
   };
 
-  // Confirm adding player with reason
-  const confirmAddPlayer = async (reason: string, description?: string) => {
-    if (!currentList || !tempSelectedPlayer) return;
+  const handleRemovePlayerFromBatch = (universalId: string) => {
+    setBatchPlayers((prev) => prev.filter((b) => b.player.universal_id !== universalId));
+    setBatchRowStatus((prev) => {
+      const next = { ...prev };
+      delete next[universalId];
+      return next;
+    });
+  };
+
+  const handleBatchReasonChange = (universalId: string, reason: string) => {
+    setBatchPlayers((prev) =>
+      prev.map((b) => (b.player.universal_id === universalId ? { ...b, reason } : b))
+    );
+  };
+
+  const closeAddPlayerModal = () => {
+    if (batchSubmitting) return;
+    setShowAddPlayerModal(false);
+    setPlayerSearchQuery("");
+    setPlayerSearchResults([]);
+    setBatchPlayers([]);
+    setBatchRowStatus({});
+    setBatchProgress({ current: 0, total: 0 });
+  };
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Submit the whole batch in a single bulk request, then reveal per-row
+  // success/failure as a staggered checklist for a more satisfying feel.
+  const confirmAddPlayerBatch = async () => {
+    if (!currentList || batchPlayers.length === 0) return;
+    if (batchPlayers.some((b) => !b.reason)) return;
 
     try {
-      setAddingPlayer(true);
+      setBatchSubmitting(true);
       setError(null);
-
-      await addPlayerToList(
-        currentList.id,
-        tempSelectedPlayer.universal_id,
-        reason,
-        description
+      setBatchProgress({ current: 0, total: batchPlayers.length });
+      setBatchRowStatus(
+        Object.fromEntries(
+          batchPlayers.map((b) => [b.player.universal_id, { status: "saving" as const }])
+        )
       );
+
+      const response = await bulkAddPlayersToList(
+        currentList.id,
+        batchPlayers.map((b) => ({ universal_id: b.player.universal_id, reason: b.reason }))
+      );
+
+      const errorsByUniversalId = new Map(
+        response.errors.map((e) => [e.universal_id, e.error])
+      );
+
+      // Reveal each row in sequence for the staggered checklist effect.
+      let completed = 0;
+      for (const { player } of batchPlayers) {
+        await sleep(180);
+        const failure = errorsByUniversalId.get(player.universal_id);
+        completed += 1;
+        setBatchProgress({ current: completed, total: batchPlayers.length });
+        setBatchRowStatus((prev) => ({
+          ...prev,
+          [player.universal_id]: failure
+            ? { status: "error", error: failure }
+            : { status: "success" },
+        }));
+      }
+
       await refetch();
 
-      setShowStageReasonModal(false);
-      setStageReasonModalData(null);
-      setTempSelectedPlayer(null);
-      setPlayerSearchQuery("");
-      setPlayerSearchResults([]);
+      if (errorsByUniversalId.size === 0) {
+        closeAddPlayerModal();
+      } else {
+        // Keep only the failed rows so the analyst can fix and retry them
+        // without re-searching for players that already succeeded.
+        setBatchPlayers((prev) =>
+          prev.filter((b) => errorsByUniversalId.has(b.player.universal_id))
+        );
+      }
     } catch (err: any) {
-      console.error("Error adding player:", err);
-      setError(err.response?.data?.detail || "Failed to add player.");
+      console.error("Error bulk adding players:", err);
+      setError(err.response?.data?.detail || "Failed to add players.");
+      setBatchRowStatus(
+        Object.fromEntries(
+          batchPlayers.map((b) => [
+            b.player.universal_id,
+            { status: "error" as const, error: "Failed to save" },
+          ])
+        )
+      );
     } finally {
-      setAddingPlayer(false);
+      setBatchSubmitting(false);
     }
   };
 
@@ -1425,14 +1506,14 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 New List
               </Button>
 
-              {/* Add Player Button - Only visible when single list is selected */}
+              {/* Add Players Button - Only visible when single list is selected */}
               {currentList && (
                 <Button
                   size="sm"
                   variant="dark"
                   onClick={() => setShowAddPlayerModal(true)}
                 >
-                  + Add Player
+                  + Add Players
                 </Button>
               )}
 
@@ -1525,7 +1606,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 <EmptyState
                   title="No Players Found"
                   message={currentList ? "Add players to start building your recruitment pipeline." : "No players in the selected lists."}
-                  actionLabel={currentList ? "Add Player" : undefined}
+                  actionLabel={currentList ? "Add Players" : undefined}
                   onAction={currentList ? () => setShowAddPlayerModal(true) : undefined}
                 />
               ) : (
@@ -1887,28 +1968,24 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         </Modal.Footer>
       </Modal>
 
-      {/* Add Player Modal */}
-      <Modal
-        show={showAddPlayerModal}
-        onHide={() => !addingPlayer && setShowAddPlayerModal(false)}
-        size="lg"
-      >
-        <Modal.Header closeButton>
+      {/* Add Players Modal (batch) */}
+      <Modal show={showAddPlayerModal} onHide={closeAddPlayerModal} size="lg">
+        <Modal.Header closeButton={!batchSubmitting}>
           <Modal.Title>
-            Add Player to {visibleListIds.size === 1
+            Add Players to {visibleListIds.size === 1
               ? lists.find((list) => visibleListIds.has(list.id))?.list_name
               : "Selected Lists"}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group className="mb-3">
-            <Form.Label>Search for a player</Form.Label>
+            <Form.Label>Search for players</Form.Label>
             <Form.Control
               type="text"
               placeholder="Search by name, club, or position..."
               value={playerSearchQuery}
               onChange={(e) => setPlayerSearchQuery(e.target.value)}
-              disabled={addingPlayer}
+              disabled={batchSubmitting}
               autoFocus
             />
           </Form.Group>
@@ -1920,26 +1997,23 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             </div>
           )}
 
-          {addingPlayer && (
-            <div className="text-center py-4">
-              <Spinner animation="border" className="me-2" />
-              <span className="text-muted">Adding player...</span>
-            </div>
-          )}
-
-          {!searchingPlayers && !addingPlayer && playerSearchResults.length > 0 && (
-            <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+          {!searchingPlayers && playerSearchResults.length > 0 && (
+            <div style={{ maxHeight: "260px", overflowY: "auto" }}>
               <ListGroup>
                 {playerSearchResults.map((player, index) => {
                   const isLast = index === playerSearchResults.length - 1;
+                  const alreadyOnList = isPlayerAlreadyOnList(player.universal_id);
+                  const alreadyInBatch = isPlayerAlreadyInBatch(player.universal_id);
+                  const blocked = alreadyOnList || alreadyInBatch;
                   return (
                     <ListGroup.Item
                       key={player.universal_id}
                       ref={isLast ? (lastPlayerResultRef as any) : undefined}
-                      action
-                      onClick={() => handleAddPlayer(player)}
+                      action={!blocked}
+                      disabled={blocked || batchSubmitting}
+                      onClick={() => !blocked && !batchSubmitting && handleAddPlayerToBatch(player)}
                       className="d-flex justify-content-between align-items-center"
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: blocked ? "default" : "pointer" }}
                     >
                       <div>
                         <strong>
@@ -1951,7 +2025,13 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                           {player.age && ` • Age ${player.age}`}
                         </div>
                       </div>
-                      <span style={{ color: colors.primary, fontSize: "0.9rem" }}>Add →</span>
+                      {blocked ? (
+                        <span className="text-muted small">
+                          {alreadyOnList ? "Already on this list" : "Already added"}
+                        </span>
+                      ) : (
+                        <span style={{ color: colors.primary, fontSize: "0.9rem" }}>Add →</span>
+                      )}
                     </ListGroup.Item>
                   );
                 })}
@@ -1966,18 +2046,115 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           )}
 
           {!searchingPlayers &&
-            !addingPlayer &&
             playerSearchQuery.trim() &&
             playerSearchResults.length === 0 && (
               <Alert variant="info">No players found matching "{playerSearchQuery}"</Alert>
             )}
 
-          {!searchingPlayers && !addingPlayer && !playerSearchQuery.trim() && (
+          {!searchingPlayers && !playerSearchQuery.trim() && batchPlayers.length === 0 && (
             <div className="text-center text-muted py-4">
               <p>Start typing to search for players</p>
             </div>
           )}
+
+          {batchPlayers.length > 0 && (
+            <div className="mt-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <Form.Label className="mb-0">
+                  {batchPlayers.length} player{batchPlayers.length === 1 ? "" : "s"} selected
+                </Form.Label>
+                {batchSubmitting && (
+                  <span className="text-muted small">
+                    {batchProgress.current} of {batchProgress.total} added...
+                  </span>
+                )}
+              </div>
+              <div style={{ maxHeight: "300px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
+                {batchPlayers.map(({ player, reason }) => {
+                  const row = batchRowStatus[player.universal_id];
+                  const isDone = row?.status === "success" || row?.status === "error";
+                  return (
+                    <div
+                      key={player.universal_id}
+                      className="d-flex align-items-center"
+                      style={{
+                        gap: "10px",
+                        padding: "8px 10px",
+                        border: `1px solid ${row?.status === "success" ? colors.success ?? "#2f855a" : row?.status === "error" ? colors.danger ?? "#c53030" : colors.gray[300]}`,
+                        borderRadius: borderRadius.md ?? "6px",
+                        background: row?.status === "success" ? "rgba(47,133,90,0.08)" : "transparent",
+                        transition: "background 0.2s ease, border-color 0.2s ease",
+                      }}
+                    >
+                      <div style={{ width: "20px", textAlign: "center", flexShrink: 0 }}>
+                        {row?.status === "saving" && <Spinner animation="border" size="sm" />}
+                        {row?.status === "success" && <span style={{ color: "#2f855a" }}>✔</span>}
+                        {row?.status === "error" && <span style={{ color: "#c53030" }}>✕</span>}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="text-truncate" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+                          {player.player_name}
+                        </div>
+                        <div className="text-muted small text-truncate">
+                          {player.position && `${player.position} • `}
+                          {player.squad_name || "Unknown Club"}
+                        </div>
+                        {row?.status === "error" && row.error && (
+                          <div className="small" style={{ color: "#c53030" }}>{row.error}</div>
+                        )}
+                      </div>
+                      <Form.Select
+                        size="sm"
+                        style={{ width: "220px", flexShrink: 0 }}
+                        value={reason}
+                        disabled={batchSubmitting}
+                        onChange={(e) => handleBatchReasonChange(player.universal_id, e.target.value)}
+                      >
+                        <option value="">Select a reason...</option>
+                        {stage1Reasons.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </Form.Select>
+                      {!isDone && (
+                        <span
+                          role="button"
+                          className="text-muted"
+                          style={{ cursor: batchSubmitting ? "default" : "pointer", flexShrink: 0 }}
+                          onClick={() => !batchSubmitting && handleRemovePlayerFromBatch(player.universal_id)}
+                        >
+                          ✕
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" onClick={closeAddPlayerModal} disabled={batchSubmitting}>
+            Cancel
+          </Button>
+          <Button
+            style={buttonStyles.primary}
+            disabled={
+              batchPlayers.length === 0 ||
+              batchPlayers.some((b) => !b.reason) ||
+              batchSubmitting
+            }
+            onClick={confirmAddPlayerBatch}
+          >
+            {batchSubmitting ? (
+              <>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Adding...
+              </>
+            ) : (
+              `Add ${batchPlayers.length || ""} Player${batchPlayers.length === 1 ? "" : "s"}`
+            )}
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       {/* Player Notes Modal */}
@@ -1996,7 +2173,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         onHide={() => {
           setShowStageReasonModal(false);
           setStageReasonModalData(null);
-          setTempSelectedPlayer(null);
         }}
         playerName={stageReasonModalData?.playerName || ""}
         targetStage={stageReasonModalData?.targetStage || "Stage 1"}
@@ -2005,12 +2181,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             ? stage1Reasons
             : archivedReasons
         }
-        onConfirm={
-          stageReasonModalData?.universalId
-            ? confirmAddPlayer
-            : confirmStageChange
-        }
-        loading={addingPlayer || savingChanges}
+        onConfirm={confirmStageChange}
+        loading={savingChanges}
       />
 
       {/* Stage History Modal */}

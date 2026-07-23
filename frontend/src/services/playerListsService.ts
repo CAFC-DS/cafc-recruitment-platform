@@ -380,12 +380,17 @@ export const getBatchPlayerListMemberships = async (
 };
 
 /**
- * Bulk add players to a list
+ * Bulk add players to a list, each with their own reason
  */
+export interface BulkAddPlayerError {
+  universal_id: string | null;
+  error: string;
+}
+
 export const bulkAddPlayersToList = async (
   listId: number,
-  players: { universal_id: string; stage?: string }[]
-): Promise<{ message: string; added: number; skipped: number; errors: string[] }> => {
+  players: { universal_id: string; reason: string; description?: string; stage?: string }[]
+): Promise<{ message: string; added: number; skipped: number; errors: BulkAddPlayerError[] }> => {
   const response = await axiosInstance.post(`/player-lists/${listId}/players/bulk`, {
     players,
   });
