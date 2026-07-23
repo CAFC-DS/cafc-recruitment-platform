@@ -999,7 +999,7 @@ def ensure_recommendation_notes_history_table(cursor):
             CREATE TABLE IF NOT EXISTS recommendation_notes_history (
                 ID INTEGER AUTOINCREMENT,
                 RECOMMENDATION_ID INTEGER NOT NULL,
-                NOTE_CONTENT VARCHAR(4000) NOT NULL,
+                NOTE_CONTENT VARCHAR(5000) NOT NULL,
                 CREATED_BY INTEGER,
                 CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (ID),
@@ -4264,7 +4264,8 @@ async def update_internal_recommendation_status(
             cursor.execute(
                 """
                 UPDATE player_recommendations
-                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, INTERNAL_NOTES = %s, UPDATED_AT = %s
+                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s,
+                    INTERNAL_NOTES = COALESCE(%s, INTERNAL_NOTES), UPDATED_AT = %s
                 WHERE ID = %s
             """,
                 (payload.new_status, changed_at, current_user.id, payload.shared_notes, changed_at, recommendation_id),
