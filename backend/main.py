@@ -852,6 +852,11 @@ def list_names_for_positions(position_list):
             names.append(name)
     return names
 
+# Distinct internal list names players sit on, derived from POSITION_TO_LIST_NAME
+# so there's a single source of truth. Used to validate the Stage Analytics
+# list-name filter (GET /analytics/stage-movements).
+STAGE_LIST_NAMES = list(dict.fromkeys(POSITION_TO_LIST_NAME.values()))
+
 ALLOWED_CURRENCY_CODES = [
     "GBP",
     "EUR",
@@ -14230,7 +14235,7 @@ async def get_stage_movement_analytics(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     as_of_date: Optional[str] = None,
-    positions: Optional[str] = None,
+    lists: Optional[str] = None,
 ):
     """Get shortlist stage movement analytics for a selected date window.
 
@@ -14240,8 +14245,8 @@ async def get_stage_movement_analytics(
     - Cumulative presence (stage_ever_counts) counts how many players spent any
       time in each stage over the start_date..end_date window, including players
       who have since moved on or been archived.
-    - `positions` is an optional comma-separated list (e.g. "CM,DM,GK") that
-      filters all views by the player's resolved position.
+    - `lists` is an optional comma-separated list of internal list names (e.g.
+      "RB/RWB,CB") that filters all views to players currently on those lists.
     """
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
         raise HTTPException(
@@ -14259,35 +14264,37 @@ async def get_stage_movement_analytics(
     if window_end < window_start:
         raise HTTPException(status_code=400, detail="End date must be on or after start date.")
 
-    # Parse the optional multi-position filter
-    position_list = [p.strip() for p in positions.split(",")] if positions else []
-    position_list = [p for p in position_list if p]
+    # Parse and validate the optional multi-list filter
+    list_names = [x.strip() for x in lists.split(",")] if lists else []
+    list_names = [x for x in list_names if x]
 
-    positions_key = ",".join(position_list) if position_list else "all"
+    invalid_lists = [x for x in list_names if x not in STAGE_LIST_NAMES]
+    if invalid_lists:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid list name(s): {', '.join(invalid_lists)}. Must be one of: {', '.join(STAGE_LIST_NAMES)}",
+        )
+
+    lists_key = ",".join(list_names) if list_names else "all"
     cache_key = (
         f"analytics_stage_movements_{window_start.isoformat()}_{window_end.isoformat()}"
-        f"_{as_of.isoformat()}_{positions_key}"
+        f"_{as_of.isoformat()}_{lists_key}"
     )
     cached_data = get_cache(cache_key)
     if cached_data is not None:
         return cached_data
 
-    # Build the optional position predicate. Position is resolved from the LIST a
-    # player sits in (player_lists.LIST_NAME), mapped from the selected dropdown
-    # positions via POSITION_TO_LIST_NAME. All three queries below join
-    # player_list_items + player_lists unconditionally so they can (a) resolve a
-    # stable per-player identity and (b) fall back to the list item's CREATED_AT
-    # for the stage date when a history row's CHANGED_AT was never recorded.
+    # Build the optional list-name predicate against the LIST a player sits in
+    # (player_lists.LIST_NAME). All three queries below join player_list_items +
+    # player_lists unconditionally so they can (a) resolve a stable per-player
+    # identity and (b) fall back to the list item's CREATED_AT for the stage
+    # date when a history row's CHANGED_AT was never recorded.
     position_clause = ""
     position_params: list = []
-    if position_list:
-        target_lists = list_names_for_positions(position_list)
-        if target_lists:
-            placeholders = ", ".join(["%s"] * len(target_lists))
-            position_clause = f" AND TRIM(pl.LIST_NAME) IN ({placeholders})"
-            position_params = target_lists
-        else:
-            position_clause = " AND 1 = 0"
+    if list_names:
+        placeholders = ", ".join(["%s"] * len(list_names))
+        position_clause = f" AND TRIM(pl.LIST_NAME) IN ({placeholders})"
+        position_params = list_names
 
     # Shared SQL fragments used by all three queries below.
     #   list_join       - always attach the list item + list so we can read
@@ -14457,7 +14464,7 @@ async def get_stage_movement_analytics(
             "window_start": window_start.isoformat(),
             "window_end": window_end.isoformat(),
             "as_of_date": as_of.isoformat(),
-            "positions": position_list,
+            "lists": list_names,
             "metrics": {
                 "moved_into_stage_1": int(row.get("MOVED_INTO_STAGE_1") or 0),
                 "moved_stage_1_to_2": int(row.get("MOVED_STAGE_1_TO_2") or 0),
