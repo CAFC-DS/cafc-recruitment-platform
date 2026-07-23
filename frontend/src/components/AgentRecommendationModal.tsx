@@ -216,23 +216,21 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
           </Card>
         ) : null}
 
-        {recommendation.shared_notes ? (
-          <Card>
-            <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
-              <h6 className="mb-0">Internal Notes Shared With Agent</h6>
-              <Button variant="outline-secondary" size="sm" onClick={() => setShowNotesHistory(true)}>
-                View Note History
-              </Button>
-            </Card.Header>
-            <Card.Body>
-              <div className="border-start border-secondary border-4 ps-3">
-                <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                  {recommendation.shared_notes}
-                </p>
-              </div>
-            </Card.Body>
-          </Card>
-        ) : null}
+        <Card>
+          <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
+            <h6 className="mb-0">Internal Notes Shared With Agent</h6>
+            <Button variant="outline-secondary" size="sm" onClick={() => setShowNotesHistory(true)}>
+              View Note History
+            </Button>
+          </Card.Header>
+          <Card.Body>
+            <div className="border-start border-secondary border-4 ps-3">
+              <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                {recommendation.shared_notes || "No notes shared yet."}
+              </p>
+            </div>
+          </Card.Body>
+        </Card>
       </Modal.Body>
 
       <NotesHistoryModal

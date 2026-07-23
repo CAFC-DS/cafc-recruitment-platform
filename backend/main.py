@@ -980,20 +980,29 @@ def ensure_player_stage_history_table(cursor):
 
 
 def ensure_recommendation_notes_history_table(cursor):
-    """Create recommendation_notes_history table and indexes if needed.
+    """Create recommendation_notes_history table if needed.
 
     On first creation, backfills one history row per existing recommendation
     that already has a non-null INTERNAL_NOTES value, so pre-existing notes
     aren't invisible in the new history view. Uses STATUS_UPDATED_BY (falling
     back to SUBMITTED_BY_USER_ID) as the best-effort author and UPDATED_AT as
     the timestamp, since there's no real record of when that note was written.
-    """
-    try:
-        cursor.execute(
-            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'RECOMMENDATION_NOTES_HISTORY'"
-        )
-        table_already_existed = cursor.fetchone()[0] > 0
 
+    No secondary index: this Snowflake account doesn't support CREATE INDEX
+    on standard (non-hybrid) tables, and it isn't needed for this table's
+    access pattern (always filtered by RECOMMENDATION_ID via the FK column,
+    small per-recommendation row counts). Table creation and the backfill are
+    in separate try/except blocks so a failure in one can't silently swallow
+    the other (a bug caught during manual testing: an unrelated failure
+    aborted the whole function before the backfill ran, and the broad except
+    hid it at debug level).
+    """
+    cursor.execute(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'RECOMMENDATION_NOTES_HISTORY'"
+    )
+    table_already_existed = cursor.fetchone()[0] > 0
+
+    try:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS recommendation_notes_history (
@@ -1008,11 +1017,12 @@ def ensure_recommendation_notes_history_table(cursor):
             )
         """
         )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_rnh_recommendation_id ON recommendation_notes_history(RECOMMENDATION_ID)"
-        )
+    except Exception as e:
+        logging.warning(f"Failed to create recommendation_notes_history table: {e}")
+        return
 
-        if not table_already_existed:
+    if not table_already_existed:
+        try:
             cursor.execute(
                 """
                 INSERT INTO recommendation_notes_history
@@ -1026,8 +1036,8 @@ def ensure_recommendation_notes_history_table(cursor):
                 WHERE INTERNAL_NOTES IS NOT NULL AND TRIM(INTERNAL_NOTES) != ''
             """
             )
-    except Exception as e:
-        logging.debug(f"recommendation_notes_history table/indexes may already exist: {e}")
+        except Exception as e:
+            logging.warning(f"Failed to backfill recommendation_notes_history: {e}")
 
 
 def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_actor_names: bool = False):
@@ -1067,10 +1077,12 @@ def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_a
 
 def insert_recommendation_note_history_if_changed(cursor, recommendation_id: int, new_notes, current_notes, changed_by: int):
     """Insert a recommendation_notes_history row only if the note text actually
-    changed (trimmed comparison), so no-op resaves don't pollute the history."""
+    changed (trimmed comparison) and isn't just being cleared, so no-op resaves
+    and blank clears don't pollute the history. The history is append-only, so
+    clearing a note loses nothing - every prior note written is still there."""
     new_text = (new_notes or "").strip()
     current_text = (current_notes or "").strip()
-    if new_text == current_text:
+    if new_text == current_text or not new_text:
         return
     ensure_recommendation_notes_history_table(cursor)
     cursor.execute(
