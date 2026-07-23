@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import PositionMultiSelect from "./PositionMultiSelect";
-import { POSITION_ORDER } from "../../constants/positions";
+import { STAGE_ANALYTICS_LIST_NAMES } from "../../constants/positions";
 import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
 
 interface StageMovementAnalytics {
@@ -78,7 +78,7 @@ const StageMovementAnalyticsTab: React.FC = () => {
   const [startDate, setStartDate] = useState(getDefaultStartDate);
   const [endDate, setEndDate] = useState(getTodayIso);
   const [asOfDate, setAsOfDate] = useState(getTodayIso);
-  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
+  const [selectedLists, setSelectedLists] = useState<string[]>([]);
 
   const fetchData = async (overrides?: {
     startDate?: string;
@@ -93,7 +93,7 @@ const StageMovementAnalyticsTab: React.FC = () => {
           start_date: overrides?.startDate ?? startDate,
           end_date: overrides?.endDate ?? endDate,
           as_of_date: overrides?.asOfDate ?? asOfDate,
-          positions: selectedPositions.length ? selectedPositions.join(",") : undefined,
+          lists: selectedLists.length ? selectedLists.join(",") : undefined,
         },
       });
       setData(response.data);
@@ -116,13 +116,12 @@ const StageMovementAnalyticsTab: React.FC = () => {
     fetchData({ startDate: defaultStart, endDate: today, asOfDate: today });
   };
 
-  // Refetch on mount and whenever the position filter changes; date changes
-  // (both the move window and the "as of" date) are applied via the "Update"
-  // button.
+  // Fetch once on mount. All filter changes (dates and the list filter) are
+  // applied only when the "Update" button is pressed.
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPositions]);
+  }, []);
 
   if (loading) {
     return <AnalyticsDashboardShimmer statCount={3} showChart={false} showTable={false} />;
@@ -184,11 +183,11 @@ const StageMovementAnalyticsTab: React.FC = () => {
             </Col>
             <Col md={6} lg={3}>
               <Form.Group>
-                <Form.Label className="small fw-bold d-block">Position</Form.Label>
+                <Form.Label className="small fw-bold d-block">List</Form.Label>
                 <PositionMultiSelect
-                  selected={selectedPositions}
-                  options={POSITION_ORDER}
-                  onChange={setSelectedPositions}
+                  selected={selectedLists}
+                  options={STAGE_ANALYTICS_LIST_NAMES}
+                  onChange={setSelectedLists}
                   width="100%"
                 />
               </Form.Group>
@@ -209,10 +208,11 @@ const StageMovementAnalyticsTab: React.FC = () => {
             movement window for the <strong>Stage movements</strong> and{" "}
             <strong>Unique players who appeared in stages</strong> numbers. Change the{" "}
             <strong>Players in stage as of</strong> date to change the{" "}
-            <strong>Players in each stage</strong> numbers. Then press <strong>Update</strong>{" "}
-            to refresh all the numbers below. Use <strong>Reset dates</strong> to return to the
-            default window and dates. Changing a date does not update the figures until Update
-            is pressed.
+            <strong>Players in each stage</strong> numbers, and use <strong>List</strong> to
+            scope all of the numbers to one or more internal lists. Then press{" "}
+            <strong>Update</strong> to refresh all the numbers below. Use{" "}
+            <strong>Reset dates</strong> to return to the default window and dates. Changing a
+            date or the list filter does not update the figures until Update is pressed.
           </div>
         </Card.Body>
       </Card>

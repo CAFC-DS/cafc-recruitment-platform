@@ -32,3 +32,9 @@ export const sortByPositionOrder = (a: string, b: string): number => {
   if (indexB === -1) return -1;
   return indexA - indexB;
 };
+
+// The internal recruitment lists players sit on, named by position group.
+// Matches the distinct values of backend POSITION_TO_LIST_NAME.
+export const STAGE_ANALYTICS_LIST_NAMES: string[] = [
+  "GK", "RB/RWB", "LB/LWB", "RCB", "LCB", "CCB", "DM/CM", "AM", "RW", "LW", "CF",
+];
