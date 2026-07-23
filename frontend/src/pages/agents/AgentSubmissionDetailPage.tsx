@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
+import NotesHistoryModal from '../../components/recommendations/NotesHistoryModal';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { Recommendation } from '../../types/recommendations';
 import { getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
@@ -43,6 +44,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
   const [item, setItem] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -155,7 +157,12 @@ const AgentSubmissionDetailPage: React.FC = () => {
               className="agent-portal-surface-muted agent-portal-notes-panel"
               style={{ marginTop: '1.5rem' }}
             >
-              <div className="agent-portal-label">Shared notes from the club</div>
+              <div className="d-flex justify-content-between align-items-center">
+                <div className="agent-portal-label">Shared notes from the club</div>
+                <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowNotesHistory(true)}>
+                  View Note History
+                </button>
+              </div>
               <div className="agent-portal-meta" style={{ whiteSpace: 'pre-wrap', color: 'var(--color-text)' }}>
                 {item.shared_notes || 'No shared notes yet.'}
               </div>
@@ -163,6 +170,16 @@ const AgentSubmissionDetailPage: React.FC = () => {
           </div>
         </section>
       ) : null}
+
+      {item && (
+        <NotesHistoryModal
+          show={showNotesHistory}
+          onHide={() => setShowNotesHistory(false)}
+          playerName={item.player_name}
+          fetchHistory={() => agentRecommendationsService.getNotesHistory(item.id)}
+          showAuthor={false}
+        />
+      )}
     </AgentPortalShell>
   );
 };

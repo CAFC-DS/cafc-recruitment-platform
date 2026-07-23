@@ -8,6 +8,7 @@ import {
   InternalStatusUpdateResponse,
   RecommendationStatus,
   RecommendationStatusHistory,
+  RecommendationNoteHistory,
 } from '../types/recommendations';
 
 export const internalRecommendationsService = {
@@ -76,6 +77,10 @@ export const internalRecommendationsService = {
 
   async getStatusHistory(id: number) {
     const response = await axiosInstance.get<RecommendationStatusHistory[]>(`/internal/recommendations/${id}/status-history`);
+    return response.data;
+  },
+  async getNotesHistory(id: number) {
+    const response = await axiosInstance.get<RecommendationNoteHistory[]>(`/internal/recommendations/${id}/notes-history`);
     return response.data;
   },
   async exportCsv() {

@@ -7,6 +7,7 @@ import {
   Recommendation,
   RecommendationFormValues,
   RecommendationStatusHistory,
+  RecommendationNoteHistory,
 } from '../types/recommendations';
 
 const toFormData = (values: RecommendationFormValues) => {
@@ -70,6 +71,11 @@ export const agentRecommendationsService = {
 
   async getStatusHistory(id: number) {
     const response = await axiosInstance.get<RecommendationStatusHistory[]>(`/agents/recommendations/${id}/status-history`);
+    return response.data;
+  },
+
+  async getNotesHistory(id: number) {
+    const response = await axiosInstance.get<RecommendationNoteHistory[]>(`/agents/recommendations/${id}/notes-history`);
     return response.data;
   },
 

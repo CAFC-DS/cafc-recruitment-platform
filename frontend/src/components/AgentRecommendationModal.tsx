@@ -1,6 +1,8 @@
-import React from "react";
-import { Modal, Card, Row, Col } from "react-bootstrap";
+import React, { useState } from "react";
+import { Modal, Card, Row, Col, Button } from "react-bootstrap";
 import SubmissionStatusBadge from "./agents/SubmissionStatusBadge";
+import NotesHistoryModal from "./recommendations/NotesHistoryModal";
+import { agentRecommendationsService } from "../services/agentRecommendationsService";
 
 interface AgentRecommendationModalProps {
   show: boolean;
@@ -46,6 +48,8 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
   recommendation,
   playerName,
 }) => {
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
+
   if (!recommendation) {
     return null;
   }
@@ -214,8 +218,11 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
 
         {recommendation.shared_notes ? (
           <Card>
-            <Card.Header className="bg-light text-dark">
+            <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
               <h6 className="mb-0">Internal Notes Shared With Agent</h6>
+              <Button variant="outline-secondary" size="sm" onClick={() => setShowNotesHistory(true)}>
+                View Note History
+              </Button>
             </Card.Header>
             <Card.Body>
               <div className="border-start border-secondary border-4 ps-3">
@@ -227,6 +234,14 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
           </Card>
         ) : null}
       </Modal.Body>
+
+      <NotesHistoryModal
+        show={showNotesHistory}
+        onHide={() => setShowNotesHistory(false)}
+        playerName={playerName || recommendation.player_name}
+        fetchHistory={() => agentRecommendationsService.getNotesHistory(recommendation.id)}
+        showAuthor={false}
+      />
     </Modal>
   );
 };

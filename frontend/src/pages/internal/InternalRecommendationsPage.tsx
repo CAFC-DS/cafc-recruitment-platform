@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SubmissionStatusBadge from '../../components/agents/SubmissionStatusBadge';
+import NotesHistoryModal from '../../components/recommendations/NotesHistoryModal';
 import { internalRecommendationsService } from '../../services/internalRecommendationsService';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import {
@@ -39,6 +40,7 @@ const InternalRecommendationsPage: React.FC = () => {
   const [savingNotes, setSavingNotes] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / filters.page_size)), [total, filters.page_size]);
 
@@ -312,9 +314,12 @@ const InternalRecommendationsPage: React.FC = () => {
                   <div className="agent-portal-info-card">
                     <label className="agent-portal-label">Shared Notes</label>
                     <textarea className="agent-portal-textarea" rows={6} value={notesDraft} onChange={(e) => setNotesDraft(e.target.value)} readOnly={isIntelReviewer} />
-                    {!isIntelReviewer && (
-                      <button className="btn btn-dark btn-sm mt-3" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? 'Saving...' : 'Save Shared Notes'}</button>
-                    )}
+                    <div className="d-flex align-items-center mt-3" style={{ gap: '0.5rem' }}>
+                      {!isIntelReviewer && (
+                        <button className="btn btn-dark btn-sm" onClick={handleSaveNotes} disabled={savingNotes}>{savingNotes ? 'Saving...' : 'Save Shared Notes'}</button>
+                      )}
+                      <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowNotesHistory(true)}>View Note History</button>
+                    </div>
                   </div>
 
                   <div>
@@ -339,6 +344,16 @@ const InternalRecommendationsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {selected && (
+        <NotesHistoryModal
+          show={showNotesHistory}
+          onHide={() => setShowNotesHistory(false)}
+          playerName={selected.player_name}
+          fetchHistory={() => internalRecommendationsService.getNotesHistory(selected.id)}
+          showAuthor
+        />
+      )}
     </div>
   );
 };
