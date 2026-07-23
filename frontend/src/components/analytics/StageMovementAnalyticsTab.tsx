@@ -116,13 +116,12 @@ const StageMovementAnalyticsTab: React.FC = () => {
     fetchData({ startDate: defaultStart, endDate: today, asOfDate: today });
   };
 
-  // Refetch on mount and whenever the list filter changes; date changes
-  // (both the move window and the "as of" date) are applied via the "Update"
-  // button.
+  // Fetch once on mount. All filter changes (dates and the list filter) are
+  // applied only when the "Update" button is pressed.
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLists]);
+  }, []);
 
   if (loading) {
     return <AnalyticsDashboardShimmer statCount={3} showChart={false} showTable={false} />;
@@ -209,10 +208,11 @@ const StageMovementAnalyticsTab: React.FC = () => {
             movement window for the <strong>Stage movements</strong> and{" "}
             <strong>Unique players who appeared in stages</strong> numbers. Change the{" "}
             <strong>Players in stage as of</strong> date to change the{" "}
-            <strong>Players in each stage</strong> numbers. Then press <strong>Update</strong>{" "}
-            to refresh all the numbers below. Use <strong>Reset dates</strong> to return to the
-            default window and dates. Changing a date does not update the figures until Update
-            is pressed.
+            <strong>Players in each stage</strong> numbers, and use <strong>List</strong> to
+            scope all of the numbers to one or more internal lists. Then press{" "}
+            <strong>Update</strong> to refresh all the numbers below. Use{" "}
+            <strong>Reset dates</strong> to return to the default window and dates. Changing a
+            date or the list filter does not update the figures until Update is pressed.
           </div>
         </Card.Body>
       </Card>
