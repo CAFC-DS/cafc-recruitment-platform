@@ -17273,7 +17273,7 @@ async def get_batch_player_list_memberships(
 
 class BulkAddPlayersRequest(BaseModel):
     """Request model for bulk adding players to a list"""
-    players: list[dict]  # List of {universal_id, stage} dicts
+    players: list[dict]  # List of {universal_id, reason, description?, stage?} dicts
 
 
 @app.post("/player-lists/{list_id}/players/bulk")
@@ -17282,7 +17282,7 @@ async def bulk_add_players_to_list(
     bulk_request: BulkAddPlayersRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Bulk add multiple players to a list (admin/manager only)"""
+    """Bulk add multiple players to a list, each with their own reason (admin/manager only)"""
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
         raise HTTPException(
             status_code=403, detail="Only admins and senior managers can add players to lists"
@@ -17296,6 +17296,8 @@ async def bulk_add_players_to_list(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
+        ensure_player_stage_history_table(cursor)
+
         # Verify list exists
         cursor.execute("SELECT ID FROM player_lists WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
@@ -17307,11 +17309,24 @@ async def bulk_add_players_to_list(
 
         for player_data in bulk_request.players:
             universal_id = player_data.get("universal_id")
+            reason = player_data.get("reason")
+            description = player_data.get("description")
             stage = player_data.get("stage", "Stage 1")
 
             if not universal_id:
-                errors.append("Missing universal_id for a player")
+                errors.append({"universal_id": universal_id, "error": "Missing universal_id for a player"})
                 continue
+
+            if reason not in STAGE_1_REASONS:
+                errors.append({
+                    "universal_id": universal_id,
+                    "error": f"Invalid reason. Must be one of: {', '.join(STAGE_1_REASONS)}",
+                })
+                continue
+
+            # Auto-advance to Stage 2 for Live/Video Scouting reasons
+            if reason in STAGE_2_AUTO_ADVANCE_REASONS:
+                stage = "Stage 2"
 
             # Parse universal_id
             player_id = None
@@ -17322,7 +17337,7 @@ async def bulk_add_players_to_list(
             elif universal_id.startswith("external_"):
                 player_id = int(universal_id.replace("external_", ""))
             else:
-                errors.append(f"Invalid universal_id format: {universal_id}")
+                errors.append({"universal_id": universal_id, "error": f"Invalid universal_id format: {universal_id}"})
                 continue
 
             # Check if player already in list
@@ -17338,15 +17353,45 @@ async def bulk_add_players_to_list(
                 skipped_count += 1
                 continue
 
+            # Get max display order
+            cursor.execute(
+                "SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM player_list_items WHERE LIST_ID = %s",
+                (list_id,),
+            )
+            max_order = cursor.fetchone()[0]
+
             # Add player to list
             cursor.execute(
                 """
                 INSERT INTO player_list_items
-                (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, ADDED_BY, STAGE, CREATED_AT)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, ADDED_BY, STAGE, CREATED_AT)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
-                (list_id, player_id, cafc_player_id, current_user.id, stage, datetime.utcnow()),
+                (list_id, player_id, cafc_player_id, max_order + 1, current_user.id, stage, datetime.utcnow()),
             )
+
+            cursor.execute(
+                """
+                SELECT ID FROM player_list_items
+                WHERE LIST_ID = %s
+                ORDER BY CREATED_AT DESC LIMIT 1
+                """,
+                (list_id,),
+            )
+            list_item_id = cursor.fetchone()[0]
+
+            insert_player_stage_history_record(
+                cursor=cursor,
+                list_item_id=list_item_id,
+                list_id=list_id,
+                player_id=player_id or cafc_player_id,
+                old_stage=None,
+                new_stage=stage,
+                reason=reason,
+                description=description,
+                changed_by=current_user.id,
+            )
+
             added_count += 1
 
         # Update list timestamp
