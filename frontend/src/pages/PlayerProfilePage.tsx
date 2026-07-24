@@ -242,6 +242,7 @@ const getFlowHistoryEventLabel = (eventType: FlowHistoryEvent["event_type"]) => 
     recommendation_submitted: "Recommendation",
     recommendation_status_changed: "Review Update",
     recommendation_agent_status_changed: "Agent Update",
+    recommendation_note_added: "Note Added",
   };
 
   return labels[eventType] || "Flow Event";
@@ -274,6 +275,11 @@ const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"], isD
       color: "#6b21a8",
       border: "1px solid #ddd6fe",
     },
+    recommendation_note_added: {
+      backgroundColor: "#f1f5f9",
+      color: "#334155",
+      border: "1px solid #e2e8f0",
+    },
   };
 
   // Light pastel backgrounds read poorly against a dark page - translucent
@@ -304,6 +310,11 @@ const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"], isD
       color: "#c4b5fd",
       border: "1px solid rgba(167, 139, 250, 0.4)",
     },
+    recommendation_note_added: {
+      backgroundColor: "rgba(148, 163, 184, 0.18)",
+      color: "#cbd5e1",
+      border: "1px solid rgba(148, 163, 184, 0.4)",
+    },
   };
 
   const styles = isDark ? darkStyles : lightStyles;
@@ -317,6 +328,7 @@ const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"], is
     recommendation_submitted: "#d97706",
     recommendation_status_changed: "#0f766e",
     recommendation_agent_status_changed: "#6d28d9",
+    recommendation_note_added: "#475569",
   };
   const darkColors: Record<FlowHistoryEvent["event_type"], string> = {
     list_added: "#ef4444",
@@ -324,6 +336,7 @@ const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"], is
     recommendation_submitted: "#f59e0b",
     recommendation_status_changed: "#2dd4bf",
     recommendation_agent_status_changed: "#a78bfa",
+    recommendation_note_added: "#94a3b8",
   };
 
   const colors = isDark ? darkColors : lightColors;
@@ -365,6 +378,10 @@ const getFlowHistoryContext = (event: FlowHistoryEvent) => {
     return [event.agent_name, event.agency].filter(Boolean).join(" · ");
   }
 
+  if (event.event_type === "recommendation_note_added") {
+    return event.actor_name ? `Written by ${event.actor_name}` : "";
+  }
+
   return [event.list_name, event.actor_name].filter(Boolean).join(" · ");
 };
 
@@ -387,6 +404,10 @@ const getFlowHistorySnapshot = (event: FlowHistoryEvent) => {
 
   if (event.event_type === "recommendation_agent_status_changed") {
     return event.agent_status ? `Availability: ${event.agent_status}` : "";
+  }
+
+  if (event.event_type === "recommendation_note_added") {
+    return event.subtitle || "";
   }
 
   return event.subtitle || "";
@@ -495,18 +516,21 @@ const FlowHistoryCompactVisual: React.FC<{ event: FlowHistoryEvent; isDark: bool
 
   if (event.event_type === "recommendation_status_changed") {
     return (
-      <div className="flow-history-compact-transition">
-        {event.subtitle ? (
-          event.subtitle.split(" → ").map((part, index, arr) => (
-            <React.Fragment key={`${part}-${index}`}>
-              <FlowHistoryStatusChip status={part} isDark={isDark} />
-              {index < arr.length - 1 ? <span className="flow-history-compact-arrow">→</span> : null}
-            </React.Fragment>
-          ))
-        ) : (
-          <FlowHistoryStatusChip status={event.recommendation_status} isDark={isDark} />
-        )}
-      </div>
+      <>
+        <div className="flow-history-compact-transition">
+          {event.subtitle ? (
+            event.subtitle.split(" → ").map((part, index, arr) => (
+              <React.Fragment key={`${part}-${index}`}>
+                <FlowHistoryStatusChip status={part} isDark={isDark} />
+                {index < arr.length - 1 ? <span className="flow-history-compact-arrow">→</span> : null}
+              </React.Fragment>
+            ))
+          ) : (
+            <FlowHistoryStatusChip status={event.recommendation_status} isDark={isDark} />
+          )}
+        </div>
+        {event.description ? <div className="flow-history-compact-note">{event.description}</div> : null}
+      </>
     );
   }
 
@@ -515,6 +539,14 @@ const FlowHistoryCompactVisual: React.FC<{ event: FlowHistoryEvent; isDark: bool
       <div className="flow-history-compact-chips">
         {event.agent_status ? <FlowHistoryChip tone="accent">{event.agent_status}</FlowHistoryChip> : null}
         {event.agent_name ? <FlowHistoryChip>{event.agent_name}</FlowHistoryChip> : null}
+      </div>
+    );
+  }
+
+  if (event.event_type === "recommendation_note_added") {
+    return (
+      <div className="flow-history-compact-note">
+        {event.description}
       </div>
     );
   }
@@ -2062,6 +2094,19 @@ const PlayerProfilePage: React.FC = () => {
                                     ]
                                       .filter(Boolean)
                                       .join(" · ")}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {(selectedFlowHistoryEvent.event_type === "recommendation_note_added" ||
+                                selectedFlowHistoryEvent.event_type === "recommendation_status_changed") &&
+                              selectedFlowHistoryEvent.description ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Note</div>
+                                  <div
+                                    className="flow-history-detail-value"
+                                    style={{ whiteSpace: "pre-wrap" }}
+                                  >
+                                    {selectedFlowHistoryEvent.description}
                                   </div>
                                 </div>
                               ) : null}
