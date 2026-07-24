@@ -8,6 +8,7 @@ interface NotesHistoryModalProps {
   playerName: string;
   fetchHistory: () => Promise<RecommendationNoteHistory[]>;
   showAuthor?: boolean;
+  showTime?: boolean;
 }
 
 /**
@@ -23,6 +24,7 @@ const NotesHistoryModal: React.FC<NotesHistoryModalProps> = ({
   playerName,
   fetchHistory,
   showAuthor = true,
+  showTime = true,
 }) => {
   const [history, setHistory] = useState<RecommendationNoteHistory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,7 @@ const NotesHistoryModal: React.FC<NotesHistoryModalProps> = ({
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return dateString;
-    return date.toLocaleString("en-GB");
+    return showTime ? date.toLocaleString("en-GB") : date.toLocaleDateString("en-GB");
   };
 
   return (

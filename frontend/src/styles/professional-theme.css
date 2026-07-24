@@ -678,6 +678,68 @@ body {
   line-height: 1.4;
 }
 
+/* Compact, event-type-specific visual shown by default in the detail card */
+.flow-history-compact-transition,
+.flow-history-compact-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.9rem 0;
+}
+
+.flow-history-compact-arrow {
+  color: var(--color-text-muted, #9ca3af);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.flow-history-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--bs-gray-900, #111827);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.flow-history-chip-accent {
+  background: color-mix(in srgb, var(--flow-accent, #111827) 14%, transparent);
+  color: var(--flow-accent, #111827);
+  border-color: color-mix(in srgb, var(--flow-accent, #111827) 35%, transparent);
+}
+
+.flow-history-expand-toggle {
+  display: block;
+  width: 100%;
+  text-align: center;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(229, 231, 235, 0.9);
+  color: var(--color-primary, #3b82f6);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.6rem 0 0.2rem;
+  cursor: pointer;
+}
+
+.flow-history-expand-toggle:hover {
+  text-decoration: underline;
+}
+
+[data-bs-theme="dark"] .flow-history-chip {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--color-text, #e5e7eb);
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+[data-bs-theme="dark"] .flow-history-expand-toggle {
+  border-top-color: rgba(75, 85, 99, 0.6);
+}
+
 /* Responsive horizontal timeline */
 @media (max-width: 768px) {
   .timeline-summary-compact {
@@ -1755,6 +1817,15 @@ span.badge.badge-neutral-grey {
 .agent-status-emerging-talent { background: #ede9fe; color: #6d28d9; }
 .agent-status-archived { background: #e5e7eb; color: #374151; }
 
+/* Light pastel backgrounds read poorly against a dark page - use translucent
+   tinted backgrounds with lighter text instead of the light-mode pairs. */
+[data-bs-theme="dark"] .agent-status-submitted { background: rgba(156, 163, 175, 0.2); color: #f3f4f6; border: 1px solid rgba(156, 163, 175, 0.4); }
+[data-bs-theme="dark"] .agent-status-under-review { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+[data-bs-theme="dark"] .agent-status-scouting { background: rgba(34, 197, 94, 0.18); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+[data-bs-theme="dark"] .agent-status-not-under-consideration { background: rgba(248, 113, 113, 0.18); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.4); }
+[data-bs-theme="dark"] .agent-status-emerging-talent { background: rgba(139, 92, 246, 0.18); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); }
+[data-bs-theme="dark"] .agent-status-archived { background: rgba(156, 163, 175, 0.18); color: #d1d5db; border: 1px solid rgba(156, 163, 175, 0.4); }
+
 .agent-availability-badge {
   border: 1px solid transparent;
 }
@@ -1783,6 +1854,11 @@ span.badge.badge-neutral-grey {
   border-color: #cbd5e1;
   color: #475569;
 }
+
+[data-bs-theme="dark"] .agent-availability-active { color: #4ade80; }
+[data-bs-theme="dark"] .agent-availability-unavailable { background: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.4); color: #fca5a5; }
+[data-bs-theme="dark"] .agent-availability-not-interested { background: rgba(249, 115, 22, 0.15); border-color: rgba(249, 115, 22, 0.4); color: #fdba74; }
+[data-bs-theme="dark"] .agent-availability-withdrawn { background: rgba(148, 163, 184, 0.15); border-color: rgba(148, 163, 184, 0.4); color: #cbd5e1; }
 
 .agent-portal-kpi {
   display: grid;
@@ -3220,23 +3296,24 @@ span.badge.badge-neutral-grey {
 
 /* ----------------------------------------------------------------------
    Intel History — agent vs internal source markers
-   Agent rows are sourced from PLAYER_RECOMMENDATIONS and need to be
-   visually unmistakable in the otherwise-internal Intel feed. We use a
-   pill in the new Source column, a left-border accent on the table row
-   and card, and a soft red row tint.
+   Agent rows are sourced from PLAYER_RECOMMENDATIONS. They should look
+   like the rest of the Intel feed (same neutral card/row styling) with
+   only a clear, understated marker distinguishing the source - a bordered
+   "AGENT" badge and a thin neutral-gray accent, not a block of color.
    ---------------------------------------------------------------------- */
 
 .intel-source-agent-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #b91c1c;
-  color: #ffffff;
+  background-color: transparent;
+  color: var(--color-text-muted, #64748b);
+  border: 1px solid var(--color-border, #cbd5e1);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.18rem 0.55rem;
+  padding: 0.16rem 0.55rem;
   border-radius: 999px;
   line-height: 1.2;
 }
@@ -3250,15 +3327,11 @@ span.badge.badge-neutral-grey {
 }
 
 .intel-row--agent > td:first-child {
-  border-left: 4px solid #b91c1c;
-}
-
-.intel-row--agent {
-  background-color: rgba(185, 28, 28, 0.03);
+  border-left: 3px solid #94a3b8;
 }
 
 .intel-card--agent {
-  border-left: 4px solid #b91c1c !important;
+  border-left: 3px solid #94a3b8 !important;
 }
 
 /* ----------------------------------------------------------------------
@@ -3294,8 +3367,8 @@ span.badge.badge-neutral-grey {
   justify-content: space-between;
   gap: 0.6rem;
   padding: 0.55rem 0.95rem;
-  background: linear-gradient(180deg, #fff5f5 0%, #ffffff 100%);
-  border-bottom: 1px solid rgba(185, 28, 28, 0.12);
+  background: var(--color-surface, #ffffff);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
 }
 
 .agent-rec-card-eyebrow {
@@ -3303,12 +3376,12 @@ span.badge.badge-neutral-grey {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #b91c1c;
+  color: var(--color-text-muted, #64748b);
   line-height: 1.2;
 }
 
 .agent-rec-card-eyebrow-divider {
-  color: rgba(185, 28, 28, 0.4);
+  color: var(--color-text-muted, #94a3b8);
   font-weight: 400;
   margin: 0 0.15rem;
   letter-spacing: 0;
@@ -3372,9 +3445,9 @@ span.badge.badge-neutral-grey {
 }
 
 .agent-rec-card-chip--position {
-  background: #fef2f2;
-  border: 1px solid rgba(185, 28, 28, 0.18);
-  color: #991b1b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
 }
 
 .agent-rec-card-meta {
@@ -3424,7 +3497,7 @@ span.badge.badge-neutral-grey {
 .agent-rec-card-view-btn {
   border: 0;
   background: transparent;
-  color: #b91c1c;
+  color: var(--color-text, #374151);
   font-size: 0.85rem;
   font-weight: 600;
   padding: 0.35rem 0.55rem;
@@ -3434,8 +3507,16 @@ span.badge.badge-neutral-grey {
 }
 
 .agent-rec-card-view-btn:hover {
-  background: rgba(185, 28, 28, 0.08);
-  color: #8f1b1c;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--color-text, #111827);
+}
+
+[data-bs-theme="dark"] .intel-row--agent > td:first-child {
+  border-left-color: #64748b;
+}
+
+[data-bs-theme="dark"] .intel-card--agent {
+  border-left-color: #64748b !important;
 }
 
 /* Dark-mode overrides for the shared agent-portal / agent-auth CSS surface.

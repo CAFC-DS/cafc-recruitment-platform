@@ -5,6 +5,7 @@ import NotesHistoryModal from '../../components/recommendations/NotesHistoryModa
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { Recommendation } from '../../types/recommendations';
 import { getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const formatDateTime = (value?: string | null) =>
   value ? new Date(value).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
@@ -41,6 +42,7 @@ const formatTransferFee = (item: Recommendation) => {
 const AgentSubmissionDetailPage: React.FC = () => {
   const { id } = useParams();
   const location = useLocation();
+  const { theme } = useTheme();
   const [item, setItem] = useState<Recommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,9 +116,23 @@ const AgentSubmissionDetailPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="agent-portal-current-status-card">
+            <div
+              className="agent-portal-current-status-card"
+              style={{
+                borderColor: (theme.isDark ? currentStatusConfig.darkColor : currentStatusConfig.color).border,
+                background: theme.isDark
+                  ? currentStatusConfig.darkColor.bg
+                  : `linear-gradient(180deg, ${currentStatusConfig.color.bg} 0%, var(--color-surface, #ffffff) 100%)`,
+              }}
+            >
               <div className="agent-portal-label">Current status</div>
-              <h2 className="agent-portal-current-status-title" style={{ marginBottom: '0.35rem' }}>
+              <h2
+                className="agent-portal-current-status-title"
+                style={{
+                  marginBottom: '0.35rem',
+                  color: (theme.isDark ? currentStatusConfig.darkColor : currentStatusConfig.color).text,
+                }}
+              >
                 {currentStatusConfig.displayLabel}
               </h2>
               <p className="agent-portal-meta" style={{ color: 'var(--color-text)' }}>
@@ -178,6 +194,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
           playerName={item.player_name}
           fetchHistory={() => agentRecommendationsService.getNotesHistory(item.id)}
           showAuthor={false}
+          showTime={false}
         />
       )}
     </AgentPortalShell>

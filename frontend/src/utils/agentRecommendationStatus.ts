@@ -24,6 +24,11 @@ type ReviewStatusConfig = {
     text: string;
     border: string;
   };
+  darkColor: {
+    bg: string;
+    text: string;
+    border: string;
+  };
 };
 
 const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
@@ -38,6 +43,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     agentAction: 'No action is needed from you right now unless the club asks for more detail.',
     dashboardHint: 'Added to the hold list and queued for review.',
     color: { bg: '#111827', text: '#ffffff', border: '#111827' },
+    darkColor: { bg: 'rgba(156, 163, 175, 0.15)', text: '#f3f4f6', border: 'rgba(156, 163, 175, 0.4)' },
   },
   'Under Review': {
     badgeClassName: 'agent-status-under-review',
@@ -50,6 +56,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     agentAction: 'Keep availability information current so the club is working from the latest picture.',
     dashboardHint: 'Being assessed against the club’s internal criteria.',
     color: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+    darkColor: { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.4)' },
   },
   'Added / Already in Emerging Talent Process': {
     badgeClassName: 'agent-status-emerging-talent',
@@ -62,6 +69,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     agentAction: "Keep the player's situation updated in case availability or contract context changes.",
     dashboardHint: 'On the Emerging Talent longlist for further assessment.',
     color: { bg: '#ede9fe', text: '#6d28d9', border: '#8b5cf6' },
+    darkColor: { bg: 'rgba(139, 92, 246, 0.15)', text: '#c4b5fd', border: 'rgba(139, 92, 246, 0.4)' },
   },
   'Added / Already in First Team Scouting Process': {
     badgeClassName: 'agent-status-scouting',
@@ -74,6 +82,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     agentAction: 'Make sure your availability status remains accurate and be ready to respond if the senior team gets in touch.',
     dashboardHint: 'On the First Team longlist for further assessment.',
     color: { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
+    darkColor: { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.4)' },
   },
   'Not Currently under Consideration': {
     badgeClassName: 'agent-status-not-under-consideration',
@@ -87,6 +96,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     dashboardHint: 'Archived and not under active consideration.',
     isTerminal: true,
     color: { bg: '#fee2e2', text: '#b91c1c', border: '#f87171' },
+    darkColor: { bg: 'rgba(248, 113, 113, 0.15)', text: '#fca5a5', border: 'rgba(248, 113, 113, 0.4)' },
   },
 };
 

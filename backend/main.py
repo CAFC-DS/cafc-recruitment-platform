@@ -9830,6 +9830,12 @@ async def get_player_flow_history(
                     agent_status = row[44] or "Active"
                     agent_status_updated_at = row[45]
 
+                    # Reuse the same serializer/formatting used everywhere else recommendation
+                    # deal details are shown (e.g. the Intel History agent card), so the flow
+                    # history figures always match - asking fee, wages, contract, positions,
+                    # deal types.
+                    recommendation_detail = serialize_recommendation_row(row)
+
                     submit_parts = [part for part in [agent_name, agency, deal_type] if part]
                     append_event(
                         submission_at,
@@ -9844,6 +9850,15 @@ async def get_player_flow_history(
                         agent_name=agent_name,
                         agency=agency,
                         description=row[23],
+                        recommended_position=recommendation_detail.recommended_position,
+                        potential_deal_type=recommendation_detail.potential_deal_type,
+                        transfer_fee=recommendation_detail.transfer_fee,
+                        expected_wages_per_week=recommendation_detail.expected_wages_per_week,
+                        expected_wages_currency=recommendation_detail.expected_wages_currency,
+                        wage_basis=recommendation_detail.wage_basis,
+                        confirmed_contract_expiry=recommendation_detail.confirmed_contract_expiry,
+                        contract_options=recommendation_detail.contract_options,
+                        agreement_type=recommendation_detail.agreement_type,
                     )
 
                     if get_table_columns("status_history"):

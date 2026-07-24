@@ -2,8 +2,13 @@ import React, { useState } from "react";
 import { Modal, Card, Row, Col, Button } from "react-bootstrap";
 import SubmissionStatusBadge from "./agents/SubmissionStatusBadge";
 import NotesHistoryModal from "./recommendations/NotesHistoryModal";
-import { agentRecommendationsService } from "../services/agentRecommendationsService";
+import { internalRecommendationsService } from "../services/internalRecommendationsService";
 
+// Despite the name, this modal is only used internally (from PlayerProfilePage's
+// Intel History section) to show internal staff the detail of an agent-submitted
+// recommendation - it is never rendered on the agent portal itself. Any data
+// fetches here (e.g. notes history) must use internalRecommendationsService, not
+// agentRecommendationsService, or internal users get a 403 "Agent access required".
 interface AgentRecommendationModalProps {
   show: boolean;
   onHide: () => void;
@@ -237,8 +242,8 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         show={showNotesHistory}
         onHide={() => setShowNotesHistory(false)}
         playerName={playerName || recommendation.player_name}
-        fetchHistory={() => agentRecommendationsService.getNotesHistory(recommendation.id)}
-        showAuthor={false}
+        fetchHistory={() => internalRecommendationsService.getNotesHistory(recommendation.id)}
+        showAuthor
       />
     </Modal>
   );
