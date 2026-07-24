@@ -54,6 +54,20 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const selectStyles = getReactSelectStyles(theme.colors, theme.isDark);
+  // Strengths are positive, so selected chips should read as light green
+  // rather than the shared red used for every other multi-select in the app
+  // (which stays as-is for Weaknesses).
+  const strengthsSelectStyles: typeof selectStyles = {
+    ...selectStyles,
+    multiValue: (base) => ({
+      ...base,
+      backgroundColor: theme.isDark ? "rgba(34, 197, 94, 0.15)" : "#f0fdf4",
+    }),
+    multiValueLabel: (base) => ({
+      ...base,
+      color: theme.isDark ? "#86efac" : "#166534",
+    }),
+  };
 
   const [assessmentType, setAssessmentType] = useState<
     "Player Assessment" | "Flag" | "Clips" | null
@@ -113,7 +127,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     formation: "",
     playerBuild: "",
     playerHeight: "",
-    scoutingType: "Live",
+    scoutingType: "",
     purposeOfAssessment: "Player Report",
     performanceScore: 5,
     isPotential: false,
@@ -1729,7 +1743,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   value={formData.scoutingType}
                   onChange={handleChange}
                   disabled={!selectedPlayer || !fixtureDate || !selectedMatch}
+                  required
                 >
+                  <option value="">Select Scouting Type</option>
                   <option value="Live">Live</option>
                   <option value="Video">Video</option>
                 </Form.Select>
@@ -1753,7 +1769,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
               <Form.Group as={Col} controlId="strengths">
                 <Form.Label>Strengths</Form.Label>
                 <Select
-                  styles={selectStyles}
+                  styles={strengthsSelectStyles}
                   isMulti
                   options={allStrengths}
                   value={strengths}
@@ -1982,8 +1998,9 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   value={formData.scoutingType}
                   onChange={handleChange}
                   disabled={!selectedPlayer || !fixtureDate || !selectedMatch}
+                  required
                 >
-                  <option value="">Select Type</option>
+                  <option value="">Select Scouting Type</option>
                   <option value="Live">Live</option>
                   <option value="Video">Video</option>
                 </Form.Select>
@@ -2086,7 +2103,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                   Strengths <span className="text-danger">*</span>
                 </Form.Label>
                 <Select
-                  styles={selectStyles}
+                  styles={strengthsSelectStyles}
                   isMulti
                   options={allStrengths}
                   value={strengths}
