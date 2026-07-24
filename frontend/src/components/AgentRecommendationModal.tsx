@@ -1,7 +1,14 @@
-import React from "react";
-import { Modal, Card, Row, Col } from "react-bootstrap";
+import React, { useState } from "react";
+import { Modal, Card, Row, Col, Button } from "react-bootstrap";
 import SubmissionStatusBadge from "./agents/SubmissionStatusBadge";
+import NotesHistoryModal from "./recommendations/NotesHistoryModal";
+import { internalRecommendationsService } from "../services/internalRecommendationsService";
 
+// Despite the name, this modal is only used internally (from PlayerProfilePage's
+// Intel History section) to show internal staff the detail of an agent-submitted
+// recommendation - it is never rendered on the agent portal itself. Any data
+// fetches here (e.g. notes history) must use internalRecommendationsService, not
+// agentRecommendationsService, or internal users get a 403 "Agent access required".
 interface AgentRecommendationModalProps {
   show: boolean;
   onHide: () => void;
@@ -46,6 +53,8 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
   recommendation,
   playerName,
 }) => {
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
+
   if (!recommendation) {
     return null;
   }
@@ -212,21 +221,30 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
           </Card>
         ) : null}
 
-        {recommendation.shared_notes ? (
-          <Card>
-            <Card.Header className="bg-light text-dark">
-              <h6 className="mb-0">Internal Notes Shared With Agent</h6>
-            </Card.Header>
-            <Card.Body>
-              <div className="border-start border-secondary border-4 ps-3">
-                <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                  {recommendation.shared_notes}
-                </p>
-              </div>
-            </Card.Body>
-          </Card>
-        ) : null}
+        <Card>
+          <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
+            <h6 className="mb-0">Internal Notes Shared With Agent</h6>
+            <Button variant="outline-secondary" size="sm" onClick={() => setShowNotesHistory(true)}>
+              View Note History
+            </Button>
+          </Card.Header>
+          <Card.Body>
+            <div className="border-start border-secondary border-4 ps-3">
+              <p className="mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                {recommendation.shared_notes || "No notes shared yet."}
+              </p>
+            </div>
+          </Card.Body>
+        </Card>
       </Modal.Body>
+
+      <NotesHistoryModal
+        show={showNotesHistory}
+        onHide={() => setShowNotesHistory(false)}
+        playerName={playerName || recommendation.player_name}
+        fetchHistory={() => internalRecommendationsService.getNotesHistory(recommendation.id)}
+        showAuthor
+      />
     </Modal>
   );
 };

@@ -79,6 +79,15 @@ export interface FlowHistoryEvent {
   agent_status?: string | null;
   agent_name?: string | null;
   agency?: string | null;
+  recommended_position?: string | null;
+  potential_deal_type?: string | null;
+  transfer_fee?: string | null;
+  expected_wages_per_week?: string | number | null;
+  expected_wages_currency?: string | null;
+  wage_basis?: string | null;
+  confirmed_contract_expiry?: string | null;
+  contract_options?: string | null;
+  agreement_type?: string | null;
 }
 
 export interface PlayerFlowHistoryResponse {

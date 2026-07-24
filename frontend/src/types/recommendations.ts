@@ -101,6 +101,14 @@ export interface RecommendationStatusHistory {
   changed_by_name?: string;
 }
 
+export interface RecommendationNoteHistory {
+  id: number;
+  note_content: string;
+  created_at: string;
+  created_by?: number;
+  created_by_name?: string;
+}
+
 export interface InternalRecommendation extends Recommendation {
   submitted_by_user_id?: number;
   submitted_by_username?: string;

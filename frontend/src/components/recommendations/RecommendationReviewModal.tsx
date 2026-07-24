@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap';
 import SubmissionStatusBadge, { AgentStatusBadge } from '../agents/SubmissionStatusBadge';
+import NotesHistoryModal from './NotesHistoryModal';
+import { internalRecommendationsService } from '../../services/internalRecommendationsService';
 import {
   InternalRecommendation,
   RecommendationStatus,
@@ -89,6 +91,7 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
 }) => {
   const [statusDraft, setStatusDraft] = useState<RecommendationStatus>('Submitted');
   const [notesDraft, setNotesDraft] = useState('');
+  const [showNotesHistory, setShowNotesHistory] = useState(false);
 
   useEffect(() => {
     setStatusDraft(recommendation?.status || 'Submitted');
@@ -209,7 +212,7 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
               <div className="external-review-section-heading">
                 <h6>Shared Notes</h6>
               </div>
-              <Form.Group className="mb-0">
+              <Form.Group className="mb-2">
                 <Form.Label className="small fw-bold">Notes visible to the agent</Form.Label>
                 <Form.Control
                   as="textarea"
@@ -220,6 +223,9 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
                   readOnly={readOnly}
                 />
               </Form.Group>
+              <Button variant="outline-secondary" size="sm" onClick={() => setShowNotesHistory(true)}>
+                View Note History
+              </Button>
             </div>
           </Col>
         </Row>
@@ -256,6 +262,14 @@ const RecommendationReviewModal: React.FC<RecommendationReviewModalProps> = ({
           </Button>
         )}
       </Modal.Footer>
+
+      <NotesHistoryModal
+        show={showNotesHistory}
+        onHide={() => setShowNotesHistory(false)}
+        playerName={recommendation.player_name}
+        fetchHistory={() => internalRecommendationsService.getNotesHistory(recommendation.id)}
+        showAuthor
+      />
     </Modal>
   );
 };

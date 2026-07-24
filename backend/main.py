@@ -979,6 +979,121 @@ def ensure_player_stage_history_table(cursor):
         logging.debug(f"player_stage_history table/indexes may already exist: {e}")
 
 
+def ensure_recommendation_notes_history_table(cursor):
+    """Create recommendation_notes_history table if needed.
+
+    On first creation, backfills one history row per existing recommendation
+    that already has a non-null INTERNAL_NOTES value, so pre-existing notes
+    aren't invisible in the new history view. Uses STATUS_UPDATED_BY (falling
+    back to SUBMITTED_BY_USER_ID) as the best-effort author and UPDATED_AT as
+    the timestamp, since there's no real record of when that note was written.
+
+    No secondary index: this Snowflake account doesn't support CREATE INDEX
+    on standard (non-hybrid) tables, and it isn't needed for this table's
+    access pattern (always filtered by RECOMMENDATION_ID via the FK column,
+    small per-recommendation row counts). Table creation and the backfill are
+    in separate try/except blocks so a failure in one can't silently swallow
+    the other (a bug caught during manual testing: an unrelated failure
+    aborted the whole function before the backfill ran, and the broad except
+    hid it at debug level).
+    """
+    cursor.execute(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'RECOMMENDATION_NOTES_HISTORY'"
+    )
+    table_already_existed = cursor.fetchone()[0] > 0
+
+    try:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS recommendation_notes_history (
+                ID INTEGER AUTOINCREMENT,
+                RECOMMENDATION_ID INTEGER NOT NULL,
+                NOTE_CONTENT VARCHAR(5000) NOT NULL,
+                CREATED_BY INTEGER,
+                CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (ID),
+                FOREIGN KEY (RECOMMENDATION_ID) REFERENCES player_recommendations(ID),
+                FOREIGN KEY (CREATED_BY) REFERENCES users(ID)
+            )
+        """
+        )
+    except Exception as e:
+        logging.warning(f"Failed to create recommendation_notes_history table: {e}")
+        return
+
+    if not table_already_existed:
+        try:
+            cursor.execute(
+                """
+                INSERT INTO recommendation_notes_history
+                    (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+                SELECT
+                    ID,
+                    INTERNAL_NOTES,
+                    COALESCE(STATUS_UPDATED_BY, SUBMITTED_BY_USER_ID),
+                    UPDATED_AT
+                FROM player_recommendations
+                WHERE INTERNAL_NOTES IS NOT NULL AND TRIM(INTERNAL_NOTES) != ''
+            """
+            )
+        except Exception as e:
+            logging.warning(f"Failed to backfill recommendation_notes_history: {e}")
+
+
+def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_actor_names: bool = False):
+    cursor.execute(
+        """
+        SELECT
+            rnh.ID,
+            rnh.NOTE_CONTENT,
+            rnh.CREATED_BY,
+            rnh.CREATED_AT,
+            u.FIRSTNAME,
+            u.LASTNAME,
+            u.USERNAME
+        FROM recommendation_notes_history rnh
+        LEFT JOIN users u ON rnh.CREATED_BY = u.ID
+        WHERE rnh.RECOMMENDATION_ID = %s
+        ORDER BY rnh.CREATED_AT DESC
+    """,
+        (recommendation_id,),
+    )
+    history = []
+    for row in cursor.fetchall():
+        actor_name = None
+        if include_actor_names and row[2]:
+            actor_name = " ".join(part for part in [row[4], row[5]] if part) or row[6]
+        history.append(
+            RecommendationNoteHistoryResponse(
+                id=row[0],
+                note_content=row[1],
+                created_by=row[2],
+                created_by_name=actor_name,
+                created_at=serialize_datetime(row[3]) or "",
+            )
+        )
+    return history
+
+
+def insert_recommendation_note_history_if_changed(cursor, recommendation_id: int, new_notes, current_notes, changed_by: int):
+    """Insert a recommendation_notes_history row only if the note text actually
+    changed (trimmed comparison) and isn't just being cleared, so no-op resaves
+    and blank clears don't pollute the history. The history is append-only, so
+    clearing a note loses nothing - every prior note written is still there."""
+    new_text = (new_notes or "").strip()
+    current_text = (current_notes or "").strip()
+    if new_text == current_text or not new_text:
+        return
+    ensure_recommendation_notes_history_table(cursor)
+    cursor.execute(
+        """
+        INSERT INTO recommendation_notes_history (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+        VALUES (%s, %s, %s, %s)
+    """,
+        (recommendation_id, new_notes, changed_by, datetime.utcnow()),
+    )
+
+
 def insert_player_stage_history_record(
     cursor,
     list_item_id: int,
@@ -1181,6 +1296,14 @@ class RecommendationStatusHistoryResponse(BaseModel):
     changed_at: str
     changed_by: Optional[int] = None
     changed_by_name: Optional[str] = None
+
+
+class RecommendationNoteHistoryResponse(BaseModel):
+    id: int
+    note_content: str
+    created_at: str
+    created_by: Optional[int] = None
+    created_by_name: Optional[str] = None
 
 
 class InternalRecommendationResponse(RecommendationResponse):
@@ -3849,6 +3972,26 @@ async def get_agent_recommendation_history(
             conn.close()
 
 
+@app.get("/agents/recommendations/{recommendation_id}/notes-history", response_model=List[RecommendationNoteHistoryResponse])
+async def get_agent_recommendation_notes_history(
+    recommendation_id: int, current_user: User = Depends(require_agent_user)
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row or row[24] != current_user.id:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        ensure_recommendation_notes_history_table(cursor)
+        history = fetch_recommendation_notes_history(cursor, recommendation_id, include_actor_names=False)
+        return history
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.patch("/agents/recommendations/{recommendation_id}/agent-status", response_model=RecommendationResponse)
 async def update_agent_recommendation_status(
     recommendation_id: int,
@@ -4114,6 +4257,7 @@ async def update_internal_recommendation_status(
             raise HTTPException(status_code=404, detail="Recommendation not found")
 
         previous_status = row[25]
+        previous_notes = row[28]
         changed_at = datetime.utcnow()
         if previous_status != payload.new_status:
             cursor.execute(
@@ -4124,15 +4268,24 @@ async def update_internal_recommendation_status(
                 (recommendation_id, previous_status, payload.new_status, current_user.id, changed_at),
             )
 
+            if payload.shared_notes is not None:
+                insert_recommendation_note_history_if_changed(
+                    cursor, recommendation_id, payload.shared_notes, previous_notes, current_user.id
+                )
+
             cursor.execute(
                 """
                 UPDATE player_recommendations
-                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, INTERNAL_NOTES = %s, UPDATED_AT = %s
+                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s,
+                    INTERNAL_NOTES = COALESCE(%s, INTERNAL_NOTES), UPDATED_AT = %s
                 WHERE ID = %s
             """,
                 (payload.new_status, changed_at, current_user.id, payload.shared_notes, changed_at, recommendation_id),
             )
         elif payload.shared_notes is not None:
+            insert_recommendation_note_history_if_changed(
+                cursor, recommendation_id, payload.shared_notes, previous_notes, current_user.id
+            )
             cursor.execute(
                 """
                 UPDATE player_recommendations
@@ -4247,6 +4400,13 @@ async def update_internal_recommendation_notes(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        existing_row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not existing_row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+
+        insert_recommendation_note_history_if_changed(
+            cursor, recommendation_id, payload.shared_notes, existing_row[28], current_user.id
+        )
         cursor.execute(
             """
             UPDATE player_recommendations
@@ -4299,6 +4459,25 @@ async def get_internal_recommendation_history(
         if not row:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         return fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/recommendations/{recommendation_id}/notes-history", response_model=List[RecommendationNoteHistoryResponse])
+async def get_internal_recommendation_notes_history(
+    recommendation_id: int, current_user: User = Depends(require_recs_viewer)
+):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+        ensure_recommendation_notes_history_table(cursor)
+        return fetch_recommendation_notes_history(cursor, recommendation_id, include_actor_names=True)
     finally:
         if conn:
             conn.close()
@@ -9651,6 +9830,12 @@ async def get_player_flow_history(
                     agent_status = row[44] or "Active"
                     agent_status_updated_at = row[45]
 
+                    # Reuse the same serializer/formatting used everywhere else recommendation
+                    # deal details are shown (e.g. the Intel History agent card), so the flow
+                    # history figures always match - asking fee, wages, contract, positions,
+                    # deal types.
+                    recommendation_detail = serialize_recommendation_row(row)
+
                     submit_parts = [part for part in [agent_name, agency, deal_type] if part]
                     append_event(
                         submission_at,
@@ -9665,6 +9850,15 @@ async def get_player_flow_history(
                         agent_name=agent_name,
                         agency=agency,
                         description=row[23],
+                        recommended_position=recommendation_detail.recommended_position,
+                        potential_deal_type=recommendation_detail.potential_deal_type,
+                        transfer_fee=recommendation_detail.transfer_fee,
+                        expected_wages_per_week=recommendation_detail.expected_wages_per_week,
+                        expected_wages_currency=recommendation_detail.expected_wages_currency,
+                        wage_basis=recommendation_detail.wage_basis,
+                        confirmed_contract_expiry=recommendation_detail.confirmed_contract_expiry,
+                        contract_options=recommendation_detail.contract_options,
+                        agreement_type=recommendation_detail.agreement_type,
                     )
 
                     if get_table_columns("status_history"):

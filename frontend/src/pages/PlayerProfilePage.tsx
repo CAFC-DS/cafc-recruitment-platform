@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import { IconBuildingStadium } from "@tabler/icons-react";
 import { getStageBgColor, getStageTextColor } from "../styles/playerLists.theme";
+import { getRecommendationStatusConfig } from "../utils/agentRecommendationStatus";
 import {
   PlayerProfile,
   PlayerAttributes,
@@ -246,8 +247,8 @@ const getFlowHistoryEventLabel = (eventType: FlowHistoryEvent["event_type"]) => 
   return labels[eventType] || "Flow Event";
 };
 
-const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"]) => {
-  const styles: Record<FlowHistoryEvent["event_type"], React.CSSProperties> = {
+const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"], isDark: boolean): React.CSSProperties => {
+  const lightStyles: Record<FlowHistoryEvent["event_type"], React.CSSProperties> = {
     list_added: {
       backgroundColor: "#e8f7ee",
       color: "#166534",
@@ -275,6 +276,37 @@ const getFlowHistoryBadgeStyle = (eventType: FlowHistoryEvent["event_type"]) => 
     },
   };
 
+  // Light pastel backgrounds read poorly against a dark page - translucent
+  // tinted backgrounds with lighter text instead.
+  const darkStyles: Record<FlowHistoryEvent["event_type"], React.CSSProperties> = {
+    list_added: {
+      backgroundColor: "rgba(34, 197, 94, 0.15)",
+      color: "#4ade80",
+      border: "1px solid rgba(34, 197, 94, 0.4)",
+    },
+    stage_changed: {
+      backgroundColor: "rgba(129, 140, 248, 0.18)",
+      color: "#a5b4fc",
+      border: "1px solid rgba(129, 140, 248, 0.4)",
+    },
+    recommendation_submitted: {
+      backgroundColor: "rgba(245, 158, 11, 0.18)",
+      color: "#fbbf24",
+      border: "1px solid rgba(245, 158, 11, 0.4)",
+    },
+    recommendation_status_changed: {
+      backgroundColor: "rgba(45, 212, 191, 0.18)",
+      color: "#5eead4",
+      border: "1px solid rgba(45, 212, 191, 0.4)",
+    },
+    recommendation_agent_status_changed: {
+      backgroundColor: "rgba(167, 139, 250, 0.18)",
+      color: "#c4b5fd",
+      border: "1px solid rgba(167, 139, 250, 0.4)",
+    },
+  };
+
+  const styles = isDark ? darkStyles : lightStyles;
   return styles[eventType] || styles.list_added;
 };
 
@@ -301,6 +333,13 @@ const getFlowHistoryAccentColor = (eventType: FlowHistoryEvent["event_type"], is
 const formatFlowHistoryTimestamp = (value?: string | null) =>
   value ? new Date(value).toLocaleString("en-GB") : "Unknown date";
 
+const formatFlowHistoryWage = (event: FlowHistoryEvent) => {
+  if (!event.expected_wages_per_week) return null;
+  return `${event.expected_wages_currency || "GBP"} ${event.expected_wages_per_week} p/w${
+    event.wage_basis ? ` (${event.wage_basis})` : ""
+  }`;
+};
+
 const getFlowHistoryContext = (event: FlowHistoryEvent) => {
   if (event.event_type === "list_added") {
     return [event.list_name, event.actor_name].filter(Boolean).join(" · ");
@@ -311,7 +350,11 @@ const getFlowHistoryContext = (event: FlowHistoryEvent) => {
   }
 
   if (event.event_type === "recommendation_submitted") {
-    return [event.agent_name, event.agency].filter(Boolean).join(" · ");
+    // Deal details as submitted - not the recommendation's current status,
+    // which reflects a later decision, not what was true on submission day.
+    return [event.transfer_fee, formatFlowHistoryWage(event), event.agreement_type]
+      .filter(Boolean)
+      .join(" · ");
   }
 
   if (event.event_type === "recommendation_status_changed") {
@@ -349,6 +392,136 @@ const getFlowHistorySnapshot = (event: FlowHistoryEvent) => {
   return event.subtitle || "";
 };
 
+// Small pill used inside the compact per-event-type visual (not the badge/kicker).
+const FlowHistoryChip: React.FC<{ children: React.ReactNode; tone?: "neutral" | "accent" }> = ({
+  children,
+  tone = "neutral",
+}) => (
+  <span
+    className={`flow-history-chip ${tone === "accent" ? "flow-history-chip-accent" : ""}`}
+  >
+    {children}
+  </span>
+);
+
+// Compact, event-type-specific visual shown by default in the detail card
+// (replaces a generic label/value grid with something tailored to what
+// actually happened - a stage arrow for stage changes, deal chips for
+// recommendations, etc). The fuller grid is still available on expand.
+// A chip colored to match a recommendation review status's real brand color
+// (the same green/amber/purple/red used everywhere else that status appears -
+// SubmissionStatusBadge, the agent portal, etc) rather than a generic tone.
+const FlowHistoryStatusChip: React.FC<{ status?: string | null; isDark: boolean }> = ({ status, isDark }) => {
+  if (!status) return null;
+  const config = getRecommendationStatusConfig(status);
+  const palette = isDark ? config.darkColor : config.color;
+  return (
+    <span
+      className="flow-history-chip"
+      style={{ backgroundColor: palette.bg, color: palette.text, borderColor: palette.border }}
+    >
+      {status}
+    </span>
+  );
+};
+
+const FlowHistoryCompactVisual: React.FC<{ event: FlowHistoryEvent; isDark: boolean }> = ({ event, isDark }) => {
+  if (event.event_type === "stage_changed") {
+    return (
+      <div className="flow-history-compact-transition">
+        {event.old_stage ? (
+          <>
+            <span
+              className="badge"
+              style={{
+                backgroundColor: getStageBgColor(event.old_stage),
+                color: getStageTextColor(event.old_stage),
+                fontSize: "0.78rem",
+                fontWeight: 600,
+              }}
+            >
+              {event.old_stage}
+            </span>
+            <span className="flow-history-compact-arrow">→</span>
+          </>
+        ) : null}
+        {event.new_stage ? (
+          <span
+            className="badge"
+            style={{
+              backgroundColor: getStageBgColor(event.new_stage),
+              color: getStageTextColor(event.new_stage),
+              fontSize: "0.78rem",
+              fontWeight: 600,
+            }}
+          >
+            {event.new_stage}
+          </span>
+        ) : null}
+        {event.reason ? <FlowHistoryChip>{event.reason}</FlowHistoryChip> : null}
+      </div>
+    );
+  }
+
+  if (event.event_type === "list_added") {
+    return (
+      <div className="flow-history-compact-chips">
+        {event.list_name ? <FlowHistoryChip tone="accent">{event.list_name}</FlowHistoryChip> : null}
+        {event.new_stage ? (
+          <span
+            className="badge"
+            style={{
+              backgroundColor: getStageBgColor(event.new_stage),
+              color: getStageTextColor(event.new_stage),
+              fontSize: "0.78rem",
+              fontWeight: 600,
+            }}
+          >
+            {event.new_stage}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (event.event_type === "recommendation_submitted") {
+    return (
+      <div className="flow-history-compact-chips">
+        {event.agent_name ? <FlowHistoryChip tone="accent">{event.agent_name}</FlowHistoryChip> : null}
+        {event.agency ? <FlowHistoryChip>{event.agency}</FlowHistoryChip> : null}
+      </div>
+    );
+  }
+
+  if (event.event_type === "recommendation_status_changed") {
+    return (
+      <div className="flow-history-compact-transition">
+        {event.subtitle ? (
+          event.subtitle.split(" → ").map((part, index, arr) => (
+            <React.Fragment key={`${part}-${index}`}>
+              <FlowHistoryStatusChip status={part} isDark={isDark} />
+              {index < arr.length - 1 ? <span className="flow-history-compact-arrow">→</span> : null}
+            </React.Fragment>
+          ))
+        ) : (
+          <FlowHistoryStatusChip status={event.recommendation_status} isDark={isDark} />
+        )}
+      </div>
+    );
+  }
+
+  if (event.event_type === "recommendation_agent_status_changed") {
+    return (
+      <div className="flow-history-compact-chips">
+        {event.agent_status ? <FlowHistoryChip tone="accent">{event.agent_status}</FlowHistoryChip> : null}
+        {event.agent_name ? <FlowHistoryChip>{event.agent_name}</FlowHistoryChip> : null}
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const PlayerProfilePage: React.FC = () => {
   const { playerId, cafcPlayerId } = useParams<{
     playerId?: string;
@@ -368,6 +541,7 @@ const PlayerProfilePage: React.FC = () => {
   const [flowHistoryData, setFlowHistoryData] =
     useState<PlayerFlowHistoryResponse | null>(null);
   const [selectedFlowHistoryEventId, setSelectedFlowHistoryEventId] = useState<string | null>(null);
+  const [flowDetailExpanded, setFlowDetailExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [attributesLoading, setAttributesLoading] = useState(true);
   const [scoutReportsLoading, setScoutReportsLoading] = useState(true);
@@ -1723,11 +1897,12 @@ const PlayerProfilePage: React.FC = () => {
                                   key={event.id}
                                   type="button"
                                   className={`flow-history-node ${isSelected ? 'is-selected' : ''}`}
-                                  onClick={() =>
+                                  onClick={() => {
                                     setSelectedFlowHistoryEventId((current) =>
                                       current === event.id ? null : event.id,
-                                    )
-                                  }
+                                    );
+                                    setFlowDetailExpanded(false);
+                                  }}
                                   style={{
                                     ["--flow-accent" as any]: getFlowHistoryAccentColor(event.event_type, theme.isDark),
                                   }}
@@ -1767,7 +1942,7 @@ const PlayerProfilePage: React.FC = () => {
                                   style={{
                                     fontSize: "0.72rem",
                                     fontWeight: 600,
-                                    ...getFlowHistoryBadgeStyle(selectedFlowHistoryEvent.event_type),
+                                    ...getFlowHistoryBadgeStyle(selectedFlowHistoryEvent.event_type, theme.isDark),
                                   }}
                                 >
                                   {getFlowHistoryEventLabel(selectedFlowHistoryEvent.event_type)}
@@ -1782,43 +1957,116 @@ const PlayerProfilePage: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="flow-history-detail-grid">
-                            {getFlowHistorySnapshot(selectedFlowHistoryEvent) ? (
-                              <div className="flow-history-detail-panel">
-                                <div className="flow-history-detail-label">Snapshot</div>
-                                <div className="flow-history-detail-value">
-                                  {getFlowHistorySnapshot(selectedFlowHistoryEvent)}
+                          <FlowHistoryCompactVisual event={selectedFlowHistoryEvent} isDark={theme.isDark} />
+
+                          <button
+                            type="button"
+                            className="flow-history-expand-toggle"
+                            onClick={() => setFlowDetailExpanded((current) => !current)}
+                          >
+                            {flowDetailExpanded ? "Hide full detail ▴" : "Show full detail ▾"}
+                          </button>
+
+                          {flowDetailExpanded && (
+                            <div className="flow-history-detail-grid">
+                              {getFlowHistorySnapshot(selectedFlowHistoryEvent) ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Snapshot</div>
+                                  <div className="flow-history-detail-value">
+                                    {getFlowHistorySnapshot(selectedFlowHistoryEvent)}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : null}
-                            {getFlowHistoryContext(selectedFlowHistoryEvent) ? (
-                              <div className="flow-history-detail-panel">
-                                <div className="flow-history-detail-label">Context</div>
-                                <div className="flow-history-detail-value">
-                                  {getFlowHistoryContext(selectedFlowHistoryEvent)}
+                              ) : null}
+                              {getFlowHistoryContext(selectedFlowHistoryEvent) ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Context</div>
+                                  <div className="flow-history-detail-value">
+                                    {getFlowHistoryContext(selectedFlowHistoryEvent)}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : null}
-                            {selectedFlowHistoryEvent.new_stage ? (
-                              <div className="flow-history-detail-panel">
-                                <div className="flow-history-detail-label">Stage</div>
-                                <div className="flow-history-detail-value">
-                                  <span
-                                    className="badge"
-                                    style={{
-                                      backgroundColor: getStageBgColor(selectedFlowHistoryEvent.new_stage),
-                                      color: getStageTextColor(selectedFlowHistoryEvent.new_stage),
-                                      border: "1px solid rgba(0,0,0,0.08)",
-                                      fontSize: "0.72rem",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {selectedFlowHistoryEvent.new_stage}
-                                  </span>
+                              ) : null}
+                              {selectedFlowHistoryEvent.new_stage ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Stage</div>
+                                  <div className="flow-history-detail-value">
+                                    <span
+                                      className="badge"
+                                      style={{
+                                        backgroundColor: getStageBgColor(selectedFlowHistoryEvent.new_stage),
+                                        color: getStageTextColor(selectedFlowHistoryEvent.new_stage),
+                                        border: "1px solid rgba(0,0,0,0.08)",
+                                        fontSize: "0.72rem",
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {selectedFlowHistoryEvent.new_stage}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            ) : null}
-                          </div>
+                              ) : null}
+                              {selectedFlowHistoryEvent.event_type === "recommendation_submitted" &&
+                              selectedFlowHistoryEvent.recommended_position ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Positions</div>
+                                  <div className="flow-history-detail-value">
+                                    {formatAgentDealTypes(selectedFlowHistoryEvent.recommended_position)}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {selectedFlowHistoryEvent.event_type === "recommendation_submitted" &&
+                              selectedFlowHistoryEvent.potential_deal_type ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Deal Types</div>
+                                  <div className="flow-history-detail-value">
+                                    {formatAgentDealTypes(selectedFlowHistoryEvent.potential_deal_type)}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {selectedFlowHistoryEvent.event_type === "recommendation_submitted" &&
+                              selectedFlowHistoryEvent.transfer_fee ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Asking Fee</div>
+                                  <div className="flow-history-detail-value">
+                                    {selectedFlowHistoryEvent.transfer_fee}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {selectedFlowHistoryEvent.event_type === "recommendation_submitted" &&
+                              selectedFlowHistoryEvent.expected_wages_per_week ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Expected Wages</div>
+                                  <div className="flow-history-detail-value">
+                                    {formatFlowHistoryWage(selectedFlowHistoryEvent)}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {selectedFlowHistoryEvent.event_type === "recommendation_submitted" &&
+                              selectedFlowHistoryEvent.agreement_type ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Agreement Type</div>
+                                  <div className="flow-history-detail-value">
+                                    {selectedFlowHistoryEvent.agreement_type}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {selectedFlowHistoryEvent.event_type === "recommendation_submitted" &&
+                              (selectedFlowHistoryEvent.confirmed_contract_expiry || selectedFlowHistoryEvent.contract_options) ? (
+                                <div className="flow-history-detail-panel">
+                                  <div className="flow-history-detail-label">Contract</div>
+                                  <div className="flow-history-detail-value">
+                                    {[
+                                      selectedFlowHistoryEvent.confirmed_contract_expiry
+                                        ? `Expires ${new Date(selectedFlowHistoryEvent.confirmed_contract_expiry).toLocaleDateString("en-GB")}`
+                                        : null,
+                                      selectedFlowHistoryEvent.contract_options,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
                         </div>
                       ) : null}
                     </div>
