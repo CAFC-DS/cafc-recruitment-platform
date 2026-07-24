@@ -64,7 +64,8 @@ export interface FlowHistoryEvent {
     | "stage_changed"
     | "recommendation_submitted"
     | "recommendation_status_changed"
-    | "recommendation_agent_status_changed";
+    | "recommendation_agent_status_changed"
+    | "recommendation_note_added";
   event_at: string | null;
   title: string;
   subtitle?: string | null;

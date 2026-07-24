@@ -688,6 +688,22 @@ body {
   margin: 0.9rem 0;
 }
 
+.flow-history-compact-note {
+  margin: 0.9rem 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--bs-gray-900, #111827);
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+[data-bs-theme="dark"] .flow-history-compact-note {
+  color: var(--color-text, #e5e7eb);
+}
+
 .flow-history-compact-arrow {
   color: var(--color-text-muted, #9ca3af);
   font-size: 1.05rem;

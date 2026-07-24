@@ -1075,11 +1075,19 @@ def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_a
     return history
 
 
-def insert_recommendation_note_history_if_changed(cursor, recommendation_id: int, new_notes, current_notes, changed_by: int):
+def insert_recommendation_note_history_if_changed(
+    cursor, recommendation_id: int, new_notes, current_notes, changed_by: int, changed_at: Optional[datetime] = None
+):
     """Insert a recommendation_notes_history row only if the note text actually
     changed (trimmed comparison) and isn't just being cleared, so no-op resaves
     and blank clears don't pollute the history. The history is append-only, so
-    clearing a note loses nothing - every prior note written is still there."""
+    clearing a note loses nothing - every prior note written is still there.
+
+    When a note is written alongside a status change, callers pass the same
+    `changed_at` used for the status_history row so the two can be correlated
+    later (Flow History shows a note alongside its status change when they
+    happened together, and as a standalone event only when nothing else did).
+    """
     new_text = (new_notes or "").strip()
     current_text = (current_notes or "").strip()
     if new_text == current_text or not new_text:
@@ -1090,7 +1098,7 @@ def insert_recommendation_note_history_if_changed(cursor, recommendation_id: int
         INSERT INTO recommendation_notes_history (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
         VALUES (%s, %s, %s, %s)
     """,
-        (recommendation_id, new_notes, changed_by, datetime.utcnow()),
+        (recommendation_id, new_notes, changed_by, changed_at or datetime.utcnow()),
     )
 
 
@@ -4270,7 +4278,7 @@ async def update_internal_recommendation_status(
 
             if payload.shared_notes is not None:
                 insert_recommendation_note_history_if_changed(
-                    cursor, recommendation_id, payload.shared_notes, previous_notes, current_user.id
+                    cursor, recommendation_id, payload.shared_notes, previous_notes, current_user.id, changed_at=changed_at
                 )
 
             cursor.execute(
@@ -9861,6 +9869,28 @@ async def get_player_flow_history(
                         agreement_type=recommendation_detail.agreement_type,
                     )
 
+                    # Fetch notes history first so status-change events can absorb any
+                    # note written at the exact same moment (same request writes both
+                    # rows with an identical timestamp - see insert_recommendation_note_
+                    # history_if_changed's changed_at param). A note only becomes its
+                    # own standalone timeline event when nothing else happened with it.
+                    notes_by_timestamp = {}
+                    try:
+                        ensure_recommendation_notes_history_table(cursor)
+                        notes_history = fetch_recommendation_notes_history(
+                            cursor,
+                            recommendation_id,
+                            include_actor_names=True,
+                        )
+                        for note_item in notes_history:
+                            notes_by_timestamp.setdefault(note_item.created_at, []).append(note_item)
+                    except Exception as e:
+                        logging.warning(
+                            f"Could not fetch recommendation notes history for player {player_id}, recommendation {recommendation_id}: {e}"
+                        )
+
+                    consumed_note_ids = set()
+
                     if get_table_columns("status_history"):
                         try:
                             status_history = fetch_recommendation_status_history(
@@ -9870,6 +9900,9 @@ async def get_player_flow_history(
                             )
                             for history_item in status_history:
                                 changed_at = history_item.changed_at
+                                matched_notes = notes_by_timestamp.get(changed_at, [])
+                                for matched_note in matched_notes:
+                                    consumed_note_ids.add(matched_note.id)
                                 append_event(
                                     datetime.fromisoformat(changed_at) if changed_at else None,
                                     id=f"recommendation_status_changed_{history_item.id}",
@@ -9886,10 +9919,29 @@ async def get_player_flow_history(
                                     agent_status=agent_status,
                                     agent_name=agent_name,
                                     agency=agency,
+                                    description=matched_notes[0].note_content if matched_notes else None,
                                 )
                         except Exception as e:
                             logging.warning(
                                 f"Could not build recommendation status history for player {player_id}, recommendation {recommendation_id}: {e}"
+                            )
+
+                    for notes_at_timestamp in notes_by_timestamp.values():
+                        for note_item in notes_at_timestamp:
+                            if note_item.id in consumed_note_ids:
+                                continue
+                            created_at = note_item.created_at
+                            append_event(
+                                datetime.fromisoformat(created_at) if created_at else None,
+                                id=f"recommendation_note_added_{note_item.id}",
+                                event_type="recommendation_note_added",
+                                title="Shared note added",
+                                subtitle=note_item.note_content[:80],
+                                actor_name=note_item.created_by_name,
+                                source_table="RECOMMENDATION_NOTES_HISTORY",
+                                agent_name=agent_name,
+                                agency=agency,
+                                description=note_item.note_content,
                             )
 
                     if agent_status_updated_at:
