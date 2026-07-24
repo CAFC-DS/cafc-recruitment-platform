@@ -130,6 +130,24 @@ body {
   color: var(--color-text, #374151);
 }
 
+/* For buttons inside a header intentionally locked to bg-light/text-dark
+   (e.g. AgentRecommendationModal's card headers), regardless of theme.
+   ThemeContext repoints --bs-secondary to the dark surface color in dark
+   mode, so .btn-outline-secondary's default color/border resolve to
+   near-invisible against a light header - !important is required here
+   since that reassignment otherwise wins over a plain inline style. */
+.agent-rec-fixed-light-btn.btn-outline-secondary {
+  color: #374151 !important;
+  border-color: #adb5bd !important;
+  background-color: transparent !important;
+}
+
+.agent-rec-fixed-light-btn.btn-outline-secondary:hover {
+  color: #111827 !important;
+  border-color: #6c757d !important;
+  background-color: #e9ecef !important;
+}
+
 /* Badge styling - only keep vivid colors for performance indicators */
 .badge {
   border-radius: 4px;
