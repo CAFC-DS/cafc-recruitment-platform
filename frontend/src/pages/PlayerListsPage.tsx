@@ -1818,7 +1818,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             </td>
                             <td>
                               {player.avg_performance_score !== null ? (
-                                <GradeChip score={player.avg_performance_score} decimals={1} size="sm" />
+                                <GradeChip score={player.avg_performance_score} decimals={1} size="md" />
                               ) : (
                                 <span className="text-muted">N/A</span>
                               )}

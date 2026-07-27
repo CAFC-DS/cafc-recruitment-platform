@@ -165,9 +165,9 @@ const getScoutingTypeBadge = (scoutingType: string) => {
       title={`Scouting Type: ${scoutingType}`}
     >
       {isLive ? (
-        <IconBuildingStadium size={16} stroke={1.75} aria-label="Live" />
+        <IconBuildingStadium size={24} stroke={1.75} aria-label="Live" />
       ) : (
-        <Laptop size={14} aria-label="Video" />
+        <Laptop size={24} aria-label="Video" />
       )}
     </span>
   );
@@ -2241,7 +2241,7 @@ const PlayerProfilePage: React.FC = () => {
                         Latest Score:
                         <GradeChip
                           score={scoutReportsData.reports[0].overall_rating}
-                          size="sm"
+                          size="md"
                           className="ms-1"
                         />
                       </span>
@@ -2331,7 +2331,7 @@ const PlayerProfilePage: React.FC = () => {
                                 <GradeChip
                                   score={report.overall_rating}
                                   isPotential={!!report.is_potential}
-                                  size="sm"
+                                  size="md"
                                 />
                               )}
                             </div>
@@ -2545,7 +2545,7 @@ const PlayerProfilePage: React.FC = () => {
                                     <GradeChip
                                       score={report.overall_rating}
                                       isPotential={!!report.is_potential}
-                                      size="sm"
+                                      size="md"
                                     />
                                   </>
                                 )

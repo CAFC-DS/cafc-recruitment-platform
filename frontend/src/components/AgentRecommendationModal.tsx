@@ -82,7 +82,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
       </Modal.Header>
       <Modal.Body>
         <Card className="mb-4">
-          <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
+          <Card.Header className="bg-light text-dark">
             <h6 className="mb-0">Submission Overview</h6>
           </Card.Header>
           <Card.Body>
@@ -225,10 +225,9 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
           <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
             <h6 className="mb-0">Internal Notes Shared With Agent</h6>
             <Button
-              variant="outline-secondary"
+              variant="outline-light"
               size="sm"
               onClick={() => setShowNotesHistory(true)}
-              className="agent-rec-fixed-light-btn"
             >
               View Note History
             </Button>
