@@ -1727,7 +1727,7 @@ const PlayerProfilePage: React.FC = () => {
                           <div className="info-row">
                             <span className="info-label">Average Performance Score</span>
                             <div>
-                              <GradeChip score={avgScore} decimals={1} size="md" />
+                              <GradeChip score={avgScore} decimals={1} size="lg" />
                             </div>
                           </div>
                         )}
@@ -2241,7 +2241,7 @@ const PlayerProfilePage: React.FC = () => {
                         Latest Score:
                         <GradeChip
                           score={scoutReportsData.reports[0].overall_rating}
-                          size="sm"
+                          size="lg"
                           className="ms-1"
                         />
                       </span>
@@ -2331,7 +2331,7 @@ const PlayerProfilePage: React.FC = () => {
                                 <GradeChip
                                   score={report.overall_rating}
                                   isPotential={!!report.is_potential}
-                                  size="sm"
+                                  size="lg"
                                 />
                               )}
                             </div>
@@ -2545,7 +2545,7 @@ const PlayerProfilePage: React.FC = () => {
                                     <GradeChip
                                       score={report.overall_rating}
                                       isPotential={!!report.is_potential}
-                                      size="sm"
+                                      size="lg"
                                     />
                                   </>
                                 )

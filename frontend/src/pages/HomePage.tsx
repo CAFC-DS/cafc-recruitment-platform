@@ -461,7 +461,7 @@ const HomePage: React.FC = () => {
                             <GradeChip
                               score={report.performance_score}
                               isPotential={!!report.is_potential}
-                              size="sm"
+                              size="lg"
                             />
                             <span
                               className="badge"
