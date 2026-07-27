@@ -23,26 +23,28 @@ On the player profile page, the "Intel History" agent recommendation card
   breaks in dark mode for the same reason, so the button becomes low-contrast
   too.
 
-Separately, on the same page's "Scouting History" report cards:
+Separately, the 1–10 score (`GradeChip`) renders at `size="sm"` everywhere it
+appears in scouting contexts — both the Scouting page's own table and card
+views, and the player profile's Scouting History table and card views — which
+reads as small relative to the rest of each card/row.
 
-- The 1–10 score (`GradeChip`) renders at `size="sm"`, which reads as small
-  relative to the rest of the card.
-- The video/live scouting-type badge (`getScoutingTypeBadge` in
-  `PlayerProfilePage.tsx`) uses a `Laptop` icon (lucide-react, 14px) for
-  "video" and `IconBuildingStadium` (@tabler/icons-react, 16px) for "live".
-  Both are already theme-reactive (`currentColor`, transparent background) so
-  they aren't visually broken in dark mode, but they're small and similar
-  enough in weight that they don't read as distinct at a glance.
+On the player profile's "Scouting History" report cards specifically, the
+video/live scouting-type badge (`getScoutingTypeBadge` in
+`PlayerProfilePage.tsx`) uses a `Laptop` icon (lucide-react, 14px) for "video"
+and `IconBuildingStadium` (@tabler/icons-react, 16px) for "live". Both are
+already theme-reactive (`currentColor`, transparent background) so they
+aren't visually broken in dark mode, but they're small and low-visual-weight.
 
 ## Scope
 
 1. `PlayerProfilePage.tsx` — `.agent-rec-card` markup/usage (Intel History
    cards view), `getScoutingTypeBadge`, and the `GradeChip` size on Scouting
-   History report cards.
+   History report cards (table + cards view).
 2. `AgentRecommendationModal.tsx` — card headers and the note-history button.
 3. `professional-theme.css` — `.agent-rec-card*` rules, dark-mode overrides,
    `.agent-rec-fixed-light-btn`, `.badge-neutral-grey` usage for the scouting
    type badge.
+4. `ScoutingPage.tsx` — `GradeChip` size in its table view and card view.
 
 Out of scope: the Intel report cards (non-agent, `IntelModal`/plain intel
 cards render further down the same section) — those already use `--color-*`
@@ -78,21 +80,29 @@ its dark-mode-blind styling — restore `View Note History` to the ordinary
 `outline-secondary` treatment other buttons in the app use, which will now
 correctly track the header's real background in both themes.
 
-### 3. Score size (Scouting History cards)
+### 3. Score size (platform-wide, not just the Intel card)
 
-Change `GradeChip` usage in the report-card score cell (`PlayerProfilePage.tsx`,
-the "Right: Score" column of the Scouting History cards view) from
-`size="sm"` to `size="lg"`. No changes to `GradeChip`/`GradeChip.css` — the
-`lg` variant and the `--font-mono` tabular-numeral styling already exist and
-are already theme-safe.
+Change every scouting-context `GradeChip` usage from `size="sm"` to
+`size="lg"`, in both table and card views:
+
+- `ScoutingPage.tsx` — table view score cell (~line 1217) and card view score
+  (~line 1444).
+- `PlayerProfilePage.tsx` — Scouting History table view score cell
+  (~line 2331) and card view score (~line 2545, the one originally scoped).
+
+Left as-is (not named by the user, different context from the scouting
+report list/cards): the inline "Latest Score" summary-stat chip
+(`PlayerProfilePage.tsx` ~line 2242) and the player-average score chips on
+`HomePage.tsx`, `PlayerListsPage.tsx`, and the profile header
+(`PlayerProfilePage.tsx` ~line 1730, already `size="md"`) — those are compact
+summary contexts, not the report table/card score column. No changes to
+`GradeChip`/`GradeChip.css` — the `lg` variant and `--font-mono`
+tabular-numeral styling already exist and are already theme-safe.
 
 ### 4. Scouting-type icons
 
-In `getScoutingTypeBadge`:
-- Swap the `Laptop` icon for lucide-react's `Video` icon (more literal match
-  for "video scouting" than a laptop) at the Live icon's size class, keep
-  `IconBuildingStadium` for "live" (already a strong semantic match — it's
-  literally a stadium).
+Keep both icons as they are (`Laptop` for video, `IconBuildingStadium` for
+live) — no icon swap. In `getScoutingTypeBadge`:
 - Increase both icon sizes from 14/16px to ~18-20px.
 - Give each badge a subtle tinted circular background (reusing the visual
   weight of `.btn-action-circle`'s treatment, not its exact styling) so Video
@@ -113,8 +123,9 @@ introduces a new font choice.
 - Manually verify the Intel History agent card and its modal in both light
   and dark mode (toggle via the app's dark mode control) — confirm all text,
   borders, and the "View Note History" button are legible in both.
-- Manually verify the Scouting History cards' score size and the two
-  scouting-type icons in both themes.
+- Manually verify score size and scouting-type icons in both themes across
+  all four locations: Scouting page (table + cards) and Scouting History on
+  the player profile (table + cards).
 - No automated test suite currently covers this UI; rely on manual
   verification via the running dev app (`run` skill) before calling this
   done.
