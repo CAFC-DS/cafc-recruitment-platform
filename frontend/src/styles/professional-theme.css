@@ -3545,6 +3545,41 @@ span.badge.badge-neutral-grey {
   color: var(--color-text, #111827);
 }
 
+/* Dark-mode overrides for .agent-rec-card (Intel History agent recommendation
+   card) -- additive only, light-mode rules above are untouched. */
+[data-bs-theme="dark"] .agent-rec-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .agent-rec-card-name {
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-rec-card-agency {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .agent-rec-card-chip--deal,
+[data-bs-theme="dark"] .agent-rec-card-chip--position {
+  background: var(--color-background);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-bs-theme="dark"] .agent-rec-card-meta {
+  border-top-color: var(--color-border);
+  border-bottom-color: var(--color-border);
+}
+
+[data-bs-theme="dark"] .agent-rec-card-meta dt {
+  color: var(--color-text-muted);
+}
+
+[data-bs-theme="dark"] .agent-rec-card-meta dd {
+  color: var(--color-text);
+}
+
 [data-bs-theme="dark"] .intel-row--agent > td:first-child {
   border-left-color: #64748b;
 }
