@@ -123,7 +123,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         </Card>
 
         <Card className="mb-4">
-          <Card.Header className="bg-light text-dark">
+          <Card.Header style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
             <h6 className="mb-0">Deal Information</h6>
           </Card.Header>
           <Card.Body>
@@ -153,7 +153,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         </Card>
 
         <Card className="mb-4">
-          <Card.Header className="bg-light text-dark">
+          <Card.Header style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
             <h6 className="mb-0">Wages</h6>
           </Card.Header>
           <Card.Body>
@@ -183,7 +183,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         </Card>
 
         <Card className="mb-4">
-          <Card.Header className="bg-light text-dark">
+          <Card.Header style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
             <h6 className="mb-0">Contract</h6>
           </Card.Header>
           <Card.Body>
@@ -208,7 +208,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
 
         {recommendation.additional_information ? (
           <Card className="mb-4">
-            <Card.Header className="bg-light text-dark">
+            <Card.Header style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}>
               <h6 className="mb-0">Additional Information</h6>
             </Card.Header>
             <Card.Body>
@@ -222,13 +222,15 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         ) : null}
 
         <Card>
-          <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
+          <Card.Header
+            className="d-flex justify-content-between align-items-center"
+            style={{ backgroundColor: "var(--color-surface)", color: "var(--color-text)" }}
+          >
             <h6 className="mb-0">Internal Notes Shared With Agent</h6>
             <Button
               variant="outline-secondary"
               size="sm"
               onClick={() => setShowNotesHistory(true)}
-              className="agent-rec-fixed-light-btn"
             >
               View Note History
             </Button>
