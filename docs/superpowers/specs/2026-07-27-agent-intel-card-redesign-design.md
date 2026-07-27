@@ -23,10 +23,11 @@ On the player profile page, the "Intel History" agent recommendation card
   breaks in dark mode for the same reason, so the button becomes low-contrast
   too.
 
-Separately, the 1–10 score (`GradeChip`) renders at `size="sm"` everywhere it
-appears in scouting contexts — both the Scouting page's own table and card
-views, and the player profile's Scouting History table and card views — which
-reads as small relative to the rest of each card/row.
+Separately, the 1–10 score (`GradeChip`) renders small (`size="sm"`, or
+`size="md"` in one spot) everywhere it appears across the site — Scouting
+page (table + cards), the player profile's Scouting History (table + cards)
+and profile header, the homepage's recent-reports feed, and the Player Lists
+table — which reads as small relative to the rest of each card/row.
 
 On the player profile's "Scouting History" report cards specifically, the
 video/live scouting-type badge (`getScoutingTypeBadge` in
@@ -38,17 +39,23 @@ aren't visually broken in dark mode, but they're small and low-visual-weight.
 ## Scope
 
 1. `PlayerProfilePage.tsx` — `.agent-rec-card` markup/usage (Intel History
-   cards view), `getScoutingTypeBadge`, and the `GradeChip` size on Scouting
-   History report cards (table + cards view).
+   cards view), `getScoutingTypeBadge`, and every `GradeChip` usage on the
+   page (Scouting History table + cards, profile header, inline summary
+   stat).
 2. `AgentRecommendationModal.tsx` — card headers and the note-history button.
 3. `professional-theme.css` — `.agent-rec-card*` rules, dark-mode overrides,
    `.agent-rec-fixed-light-btn`, `.badge-neutral-grey` usage for the scouting
    type badge.
 4. `ScoutingPage.tsx` — `GradeChip` size in its table view and card view.
+5. `HomePage.tsx` — `GradeChip` size in the recent-reports feed.
+6. `PlayerListsPage.tsx` — `GradeChip` size in the players table.
 
-Out of scope: the Intel report cards (non-agent, `IntelModal`/plain intel
-cards render further down the same section) — those already use `--color-*`
-vars and aren't part of this complaint. No backend changes.
+Out of scope: `StyleTilePage.tsx` — an internal, non-production design-token
+demo page that deliberately shows all three `GradeChip` sizes side by side;
+changing its usages would defeat its purpose. Also out of scope: the Intel
+report cards (non-agent, `IntelModal`/plain intel cards render further down
+the same section) — those already use `--color-*` vars and aren't part of
+this complaint. No backend changes.
 
 ## Design
 
@@ -80,24 +87,24 @@ its dark-mode-blind styling — restore `View Note History` to the ordinary
 `outline-secondary` treatment other buttons in the app use, which will now
 correctly track the header's real background in both themes.
 
-### 3. Score size (platform-wide, not just the Intel card)
+### 3. Score size (every production `GradeChip` on the site)
 
-Change every scouting-context `GradeChip` usage from `size="sm"` to
-`size="lg"`, in both table and card views:
+Bump every `GradeChip` usage outside `StyleTilePage.tsx` to `size="lg"`:
 
 - `ScoutingPage.tsx` — table view score cell (~line 1217) and card view score
   (~line 1444).
 - `PlayerProfilePage.tsx` — Scouting History table view score cell
-  (~line 2331) and card view score (~line 2545, the one originally scoped).
+  (~line 2331), card view score (~line 2545), the inline "Latest Score"
+  summary-stat chip (~line 2242), and the profile-header average score
+  (~line 1730, currently `size="md"`).
+- `HomePage.tsx` — recent-reports feed score (~line 461).
+- `PlayerListsPage.tsx` — players table average-score cell (~line 1821).
 
-Left as-is (not named by the user, different context from the scouting
-report list/cards): the inline "Latest Score" summary-stat chip
-(`PlayerProfilePage.tsx` ~line 2242) and the player-average score chips on
-`HomePage.tsx`, `PlayerListsPage.tsx`, and the profile header
-(`PlayerProfilePage.tsx` ~line 1730, already `size="md"`) — those are compact
-summary contexts, not the report table/card score column. No changes to
-`GradeChip`/`GradeChip.css` — the `lg` variant and `--font-mono`
-tabular-numeral styling already exist and are already theme-safe.
+No changes to `GradeChip`/`GradeChip.css` — the `lg` variant and
+`--font-mono` tabular-numeral styling already exist and are already
+theme-safe. If `lg` reads as too large in the dense Player Lists table once
+built, flag it for a follow-up rather than silently downgrading just that one
+spot.
 
 ### 4. Scouting-type icons
 
@@ -123,9 +130,10 @@ introduces a new font choice.
 - Manually verify the Intel History agent card and its modal in both light
   and dark mode (toggle via the app's dark mode control) — confirm all text,
   borders, and the "View Note History" button are legible in both.
-- Manually verify score size and scouting-type icons in both themes across
-  all four locations: Scouting page (table + cards) and Scouting History on
-  the player profile (table + cards).
+- Manually verify score size in both themes across every location listed in
+  "Score size" above, and scouting-type icons on the Scouting History cards.
+  Pay particular attention to the Player Lists table and homepage feed,
+  where `lg` chips sit in denser layouts than the report cards.
 - No automated test suite currently covers this UI; rely on manual
   verification via the running dev app (`run` skill) before calling this
   done.
