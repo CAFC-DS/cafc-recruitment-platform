@@ -82,7 +82,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
       </Modal.Header>
       <Modal.Body>
         <Card className="mb-4">
-          <Card.Header style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
+          <Card.Header className="bg-light text-dark">
             <h6 className="mb-0">Submission Overview</h6>
           </Card.Header>
           <Card.Body>
@@ -123,7 +123,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         </Card>
 
         <Card className="mb-4">
-          <Card.Header style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
+          <Card.Header className="bg-light text-dark">
             <h6 className="mb-0">Deal Information</h6>
           </Card.Header>
           <Card.Body>
@@ -153,7 +153,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         </Card>
 
         <Card className="mb-4">
-          <Card.Header style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
+          <Card.Header className="bg-light text-dark">
             <h6 className="mb-0">Wages</h6>
           </Card.Header>
           <Card.Body>
@@ -183,7 +183,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         </Card>
 
         <Card className="mb-4">
-          <Card.Header style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
+          <Card.Header className="bg-light text-dark">
             <h6 className="mb-0">Contract</h6>
           </Card.Header>
           <Card.Body>
@@ -208,7 +208,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
 
         {recommendation.additional_information ? (
           <Card className="mb-4">
-            <Card.Header style={{ backgroundColor: "var(--color-primary)", color: "white" }}>
+            <Card.Header className="bg-light text-dark">
               <h6 className="mb-0">Additional Information</h6>
             </Card.Header>
             <Card.Body>
@@ -222,10 +222,7 @@ const AgentRecommendationModal: React.FC<AgentRecommendationModalProps> = ({
         ) : null}
 
         <Card>
-          <Card.Header
-            className="d-flex justify-content-between align-items-center"
-            style={{ backgroundColor: "var(--color-primary)", color: "white" }}
-          >
+          <Card.Header className="bg-light text-dark d-flex justify-content-between align-items-center">
             <h6 className="mb-0">Internal Notes Shared With Agent</h6>
             <Button
               variant="outline-light"
