@@ -160,14 +160,13 @@ const getScoutingTypeBadge = (scoutingType: string) => {
   const isLive = scoutingType.toLowerCase() === "live";
   return (
     <span
-      className="badge badge-neutral-grey"
-      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+      className={`scouting-type-badge ${isLive ? "scouting-type-badge--live" : "scouting-type-badge--video"}`}
       title={`Scouting Type: ${scoutingType}`}
     >
       {isLive ? (
-        <IconBuildingStadium size={16} stroke={1.75} aria-label="Live" />
+        <IconBuildingStadium size={20} stroke={1.75} aria-label="Live" />
       ) : (
-        <Laptop size={14} aria-label="Video" />
+        <Laptop size={20} aria-label="Video" />
       )}
     </span>
   );

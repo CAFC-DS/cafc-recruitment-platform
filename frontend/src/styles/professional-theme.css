@@ -974,6 +974,41 @@ body {
   font-weight: 500;
 }
 
+/* Scouting-type badge (Video/Live) on Scouting History report cards --
+   circular, tinted so the two types read as visually distinct at a glance.
+   Icon choice is unchanged (Laptop / IconBuildingStadium); this only
+   changes size and background. */
+.scouting-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.scouting-type-badge--video {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+
+.scouting-type-badge--live {
+  background: rgba(185, 28, 28, 0.10);
+  color: #b91c1c;
+}
+
+[data-bs-theme="dark"] .scouting-type-badge--video {
+  background: rgba(154, 161, 171, 0.18);
+  color: #d1d5db;
+}
+
+[data-bs-theme="dark"] .scouting-type-badge--live {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+
 /* Position text styling (replaces position badges) */
 .position-text {
   font-weight: 600;
