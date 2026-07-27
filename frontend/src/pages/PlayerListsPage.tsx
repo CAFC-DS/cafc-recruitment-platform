@@ -1969,7 +1969,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       </Modal>
 
       {/* Add Players Modal (batch) */}
-      <Modal show={showAddPlayerModal} onHide={closeAddPlayerModal} size="md">
+      <Modal show={showAddPlayerModal} onHide={closeAddPlayerModal} size="lg">
         <Modal.Header closeButton={!batchSubmitting}>
           <Modal.Title>
             Add Players to {visibleListIds.size === 1
