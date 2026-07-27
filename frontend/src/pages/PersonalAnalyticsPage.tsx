@@ -893,7 +893,7 @@ const PersonalAnalyticsPage: React.FC = () => {
                                       }
                                     >
                                       {report.performance_score}
-                                      {report.is_potential && "*"}
+                                      {report.is_potential && <sup className="score-potential-mark">*</sup>}
                                     </span>
                                   ) : (
                                     "—"
