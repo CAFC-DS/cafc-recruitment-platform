@@ -1217,7 +1217,7 @@ const ScoutingPage: React.FC = () => {
                             <GradeChip
                               score={report.performance_score}
                               isPotential={!!report.is_potential}
-                              size="lg"
+                              size="md"
                             />
                           )}
                         </div>
@@ -1444,7 +1444,7 @@ const ScoutingPage: React.FC = () => {
                                   <GradeChip
                                     score={report.performance_score}
                                     isPotential={!!report.is_potential}
-                                    size="lg"
+                                    size="md"
                                   />
                                 </>
                               )

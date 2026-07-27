@@ -1818,7 +1818,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             </td>
                             <td>
                               {player.avg_performance_score !== null ? (
-                                <GradeChip score={player.avg_performance_score} decimals={1} size="lg" />
+                                <GradeChip score={player.avg_performance_score} decimals={1} size="md" />
                               ) : (
                                 <span className="text-muted">N/A</span>
                               )}
@@ -1969,7 +1969,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       </Modal>
 
       {/* Add Players Modal (batch) */}
-      <Modal show={showAddPlayerModal} onHide={closeAddPlayerModal} size="lg">
+      <Modal show={showAddPlayerModal} onHide={closeAddPlayerModal} size="md">
         <Modal.Header closeButton={!batchSubmitting}>
           <Modal.Title>
             Add Players to {visibleListIds.size === 1
