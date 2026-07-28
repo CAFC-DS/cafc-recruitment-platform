@@ -476,10 +476,12 @@ else:
             "http://localhost:3001",
             "http://localhost:3002",
             "http://localhost:3003",
+            "http://localhost:3055",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "http://127.0.0.1:3002",
             "http://127.0.0.1:3003",
+            "http://127.0.0.1:3055",
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -2937,10 +2939,12 @@ def build_recommendation_select():
             {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
             {wage_basis_expr} AS WAGE_BASIS,
             {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID
-        FROM {read_table('player_recommendations')} pr
-        LEFT JOIN {read_table('users')} u ON pr.SUBMITTED_BY_USER_ID = u.ID
-        LEFT JOIN {read_table('users')} su ON pr.STATUS_UPDATED_BY = su.ID
+        FROM {player_recommendations_table} pr
+        LEFT JOIN {users_table} u ON pr.SUBMITTED_BY_USER_ID = u.ID
+        LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
+        player_recommendations_table=read_table('player_recommendations'),
+        users_table=read_table('users'),
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
         transfer_fee_min_expr=transfer_fee_min_expr,
