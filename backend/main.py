@@ -3432,8 +3432,8 @@ async def search_agent_players(
                     {select_data_source_expr} AS DATA_SOURCE,
                     {select_squadname_expr} AS SQUADNAME,
                     {select_position_expr} AS POSITION
-                FROM players p
-                LEFT JOIN scout_reports sr
+                FROM {read_table('players')} p
+                LEFT JOIN {read_table('scout_reports')} sr
                     ON ({join_condition})
                 WHERE {search_name_expr} ILIKE %s
                 GROUP BY p.{player_name_column}, {select_birthdate_expr}
@@ -3554,7 +3554,7 @@ async def search_agent_players(
                         {select_squadname_expr} AS SQUADNAME,
                         {select_position_expr} AS POSITION,
                         {similarity_expr} AS SIMILARITY
-                    FROM players p
+                    FROM {read_table('players')} p
                     WHERE (
                             JAROWINKLER_SIMILARITY({search_name_expr}, %s) >= 80
                          OR JAROWINKLER_SIMILARITY({first_token_expr}, %s) >= 80
@@ -11830,7 +11830,7 @@ async def get_all_intel_reports(
 
         # Get total count - need to modify base_sql for counting
         count_base_sql = f"""
-            FROM player_information pi
+            FROM {read_table('player_information')} pi
             {join_clause}
         """
         if where_clauses:
