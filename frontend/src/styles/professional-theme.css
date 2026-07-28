@@ -1271,9 +1271,9 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 /* Default performance score styling */
 .performance-score-large {
   font-size: 24px !important;
-  padding: 10px 20px !important;
+  padding: 12px 14px !important;
   font-weight: 700 !important;
-  min-width: 1.6em !important;
+  min-width: 1.4em !important;
   box-sizing: content-box !important;
   display: inline-block !important;
   text-align: center !important;

@@ -18,20 +18,20 @@
    character instead of the badge growing past its neighbors. */
 .grade-chip-sm {
   font-size: 0.72rem;
-  padding: 0.3rem 0.68rem;
-  min-width: 1.6em;
+  padding: 0.3rem 0.48rem;
+  min-width: 1.4em;
 }
 
 .grade-chip-md {
   font-size: 0.85rem;
-  padding: 0.4rem 0.85rem;
-  min-width: 1.6em;
+  padding: 0.4rem 0.58rem;
+  min-width: 1.4em;
 }
 
 .grade-chip-lg {
   font-size: 1rem;
-  padding: 0.5rem 1.05rem;
-  min-width: 1.6em;
+  padding: 0.5rem 0.75rem;
+  min-width: 1.4em;
 }
 
 .grade-chip-potential-mark {
