@@ -471,8 +471,8 @@ const PlayerAnalyticsTab: React.FC = () => {
                 </h6>
               </div>
               <Button
-                variant="outline-light"
-                size="sm"
+                variant="link"
+                className="analytics-view-more-link"
                 onClick={handleViewMoreByPerformance}
                 disabled={!data.top_players_by_performance?.length}
               >
@@ -551,8 +551,8 @@ const PlayerAnalyticsTab: React.FC = () => {
                 </h6>
               </div>
               <Button
-                variant="outline-light"
-                size="sm"
+                variant="link"
+                className="analytics-view-more-link"
                 onClick={handleViewMoreByAttributes}
                 disabled={!data.top_players_by_attributes?.length}
               >
@@ -858,6 +858,26 @@ const PlayerAnalyticsTab: React.FC = () => {
             .table-compact td, .table-compact th {
               padding: 0.5rem;
               font-size: 0.9rem;
+            }
+            .analytics-view-more-link {
+              background: transparent;
+              border: none;
+              color: rgba(255, 255, 255, 0.75) !important;
+              font-size: 0.8rem;
+              font-weight: 600;
+              padding: 0.2rem 0.5rem;
+              border-radius: 999px;
+              text-decoration: none !important;
+              transition: background 0.15s ease, color 0.15s ease;
+              white-space: nowrap;
+            }
+            .analytics-view-more-link:hover:not(:disabled) {
+              background: rgba(255, 255, 255, 0.12);
+              color: #ffffff;
+            }
+            .analytics-view-more-link:disabled {
+              color: rgba(255, 255, 255, 0.3);
+              cursor: default;
             }
           `}</style>
 
