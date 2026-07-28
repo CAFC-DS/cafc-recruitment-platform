@@ -141,8 +141,8 @@ body {
    legacy score badges in PlayerReportModal, SharedReportPage, and
    PersonalAnalyticsPage that render their own markup instead of GradeChip. */
 .score-potential-mark {
-  font-size: 0.78em;
-  margin-left: 0;
+  font-size: 0.72em;
+  margin-left: -0.02em;
 }
 
 /* Badge colors are now handled by inline styles and color utility functions
