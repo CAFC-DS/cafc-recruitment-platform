@@ -17,21 +17,21 @@
    instead of being pinned to a corner. min-width absorbs the extra
    character instead of the badge growing past its neighbors. */
 .grade-chip-sm {
-  font-size: 0.72rem;
-  padding: 0.3rem 0.48rem;
-  min-width: 1.4em;
+  font-size: 0.7rem;
+  padding: 0.22rem 0.38rem;
+  min-width: 1.3em;
 }
 
 .grade-chip-md {
-  font-size: 0.85rem;
-  padding: 0.4rem 0.58rem;
-  min-width: 1.4em;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.46rem;
+  min-width: 1.3em;
 }
 
 .grade-chip-lg {
-  font-size: 1rem;
-  padding: 0.5rem 0.75rem;
-  min-width: 1.4em;
+  font-size: 0.92rem;
+  padding: 0.38rem 0.58rem;
+  min-width: 1.3em;
 }
 
 .grade-chip-potential-mark {
