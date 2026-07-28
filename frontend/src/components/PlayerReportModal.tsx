@@ -1004,8 +1004,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                       <div className="mb-2">
                         <span
                           className={`badge performance-badge performance-score-large ${
-                            report.performance_score === 9 ? 'performance-score-9' :
-                            report.performance_score === 10 ? 'performance-score-10' : ''
+                            report.performance_score >= 9 && report.performance_score < 10 ? 'performance-score-9' :
+                            report.performance_score >= 10 ? 'performance-score-10' : ''
                           }`}
                           style={{
                             backgroundColor: getPerformanceScoreColor(

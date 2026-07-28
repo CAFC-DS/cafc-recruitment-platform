@@ -71,6 +71,12 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
     }))
   };
 
+  // Many-series charts (e.g. one line per scout) can't fit a fixed-width
+  // side legend or per-point value labels without everything overlapping --
+  // switch to a wrapping bottom legend and drop the labels once there are
+  // more series than a side legend can reasonably hold.
+  const isManySeries = datasets.length > 5;
+
   const options: any = {
     responsive: true,
     maintainAspectRatio: false,
@@ -85,13 +91,13 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
     plugins: {
       legend: {
         display: datasets.length > 1,
-        position: 'right' as const,
-        align: 'center' as const,
+        position: isManySeries ? ('bottom' as const) : ('right' as const),
+        align: 'start' as const,
         labels: {
-          boxWidth: 15,
-          padding: 20,
+          boxWidth: 12,
+          padding: isManySeries ? 12 : 20,
           font: {
-            size: 13,
+            size: isManySeries ? 11 : 13,
             weight: 600
           },
           usePointStyle: true,
@@ -112,6 +118,7 @@ const SimpleLineChart: React.FC<SimpleLineChartProps> = ({
         }
       },
       datalabels: {
+        display: !isManySeries,
         align: 'top' as const,
         anchor: 'end' as const,
         offset: 6,

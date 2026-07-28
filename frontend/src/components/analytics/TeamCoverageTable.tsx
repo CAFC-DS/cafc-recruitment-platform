@@ -179,7 +179,7 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "center" }}>
                               <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
                                 <span
-                                  className="badge bg-success"
+                                  className="badge badge-accent-live"
                                   style={{ fontSize: "0.7rem", minWidth: "20px" }}
                                   title={`Seen live ${scoutData.live_matches} time(s)`}
                                 >
@@ -189,7 +189,7 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
                               </div>
                               <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
                                 <span
-                                  className="badge bg-info"
+                                  className="badge badge-accent-video"
                                   style={{ fontSize: "0.7rem", minWidth: "20px" }}
                                   title={`Seen video ${scoutData.video_matches} time(s)`}
                                 >

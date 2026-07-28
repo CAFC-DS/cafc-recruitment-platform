@@ -29,7 +29,7 @@ export const GradeChip: React.FC<GradeChipProps> = ({
 }) => {
   const backgroundColor = getPerformanceScoreColor(score);
   const color = getContrastTextColor(backgroundColor);
-  const isStandout = score === 9 || score === 10; // silver / gold
+  const isStandout = score >= 9; // silver (9.0-9.99) / gold (10)
 
   return (
     <span

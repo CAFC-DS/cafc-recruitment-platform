@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Row, Col, Spinner, Form, Card, Table,
   Button, ButtonGroup, OverlayTrigger, Tooltip
@@ -8,10 +8,9 @@ import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
 import SimpleBarChart from "./SimpleBarChart";
-import ExportButton from "./ExportButton";
 import AttributeFilterSection from "./AttributeFilterSection";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
-import { getAttributeScoreColor } from "../../utils/colorUtils";
+import { getAttributeScoreColor, getContrastTextColor } from "../../utils/colorUtils";
 import GradeChip from "../GradeChip";
 import PositionMultiSelect from "./PositionMultiSelect";
 import { POSITION_ORDER } from "../../constants/positions";
@@ -161,6 +160,36 @@ const PlayerAnalyticsTab: React.FC = () => {
     navigate(path);
   };
 
+  // Cross-link the fixed-size leaderboards to the score-threshold filter
+  // below them: pre-fill its min threshold from the leaderboard's lowest
+  // visible score and jump down to it, turning a dead-end top-N snapshot
+  // into an entry point for exploring further down the ranking.
+  const scoreThresholdRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToScoreThresholds = () => {
+    scoreThresholdRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleViewMoreByPerformance = () => {
+    const players = data?.top_players_by_performance || [];
+    if (players.length === 0) return;
+    const lowestVisible = players[players.length - 1].avg_performance_score;
+    setMinPerformance(lowestVisible.toFixed(2));
+    setMaxAttribute("");
+    setMinAttribute("");
+    scrollToScoreThresholds();
+  };
+
+  const handleViewMoreByAttributes = () => {
+    const players = data?.top_players_by_attributes || [];
+    if (players.length === 0) return;
+    const lowestVisible = players[players.length - 1].avg_attribute_score;
+    setMinAttribute(lowestVisible.toFixed(1));
+    setMaxPerformance("");
+    setMinPerformance("");
+    scrollToScoreThresholds();
+  };
+
   // ✅ Safe: hooks always run
   const displayPlayers = React.useMemo(() => {
     if (showPosition) return scoreFilteredPlayers;
@@ -232,6 +261,15 @@ const PlayerAnalyticsTab: React.FC = () => {
 
   const positionLabels = sortedPositionReports.map(r => r.position || "Unknown");
   const positionData = sortedPositionReports.map(r => r.total || 0);
+
+  // Players appearing on both the Performance and Attribute leaderboards --
+  // a well-rounded prospect signal that's otherwise invisible when the two
+  // lists are only viewed side by side.
+  const playerKey = (p: { player_id: number; data_source: string }) => `${p.data_source}:${p.player_id}`;
+  const topPerformanceKeys = new Set((data?.top_players_by_performance || []).map(playerKey));
+  const topAttributeKeys = new Set((data?.top_players_by_attributes || []).map(playerKey));
+  const onBothLeaderboards = (p: { player_id: number; data_source: string }) =>
+    topPerformanceKeys.has(playerKey(p)) && topAttributeKeys.has(playerKey(p));
 
   return (
     <div>
@@ -432,11 +470,14 @@ const PlayerAnalyticsTab: React.FC = () => {
                   </OverlayTrigger>
                 </h6>
               </div>
-              <ExportButton
-                data={data.top_players_by_performance || []}
-                filename="top_players_by_performance"
-                type="data"
-              />
+              <Button
+                variant="link"
+                className="analytics-view-more-link"
+                onClick={handleViewMoreByPerformance}
+                disabled={!data.top_players_by_performance?.length}
+              >
+                View more →
+              </Button>
             </Card.Header>
             <Card.Body className="p-0" style={{ flex: 1, overflow: "auto" }}>
               <div className="table-responsive">
@@ -463,7 +504,18 @@ const PlayerAnalyticsTab: React.FC = () => {
                           onClick={() => handlePlayerClick(player.player_id, player.data_source)}
                           style={{ cursor: "pointer" }}
                         >
-                          <td>{player.player_name}</td>
+                          <td>
+                            {player.player_name}
+                            {onBothLeaderboards(player) && (
+                              <span
+                                className="ms-1"
+                                title="Also in Top Players by Attributes"
+                                style={{ color: "#EFBF04" }}
+                              >
+                                ⭐
+                              </span>
+                            )}
+                          </td>
                           <td>{player.position}</td>
                           <td>
                             <GradeChip score={player.avg_performance_score} decimals={2} size="md" />
@@ -498,11 +550,14 @@ const PlayerAnalyticsTab: React.FC = () => {
                   </OverlayTrigger>
                 </h6>
               </div>
-              <ExportButton
-                data={data.top_players_by_attributes || []}
-                filename="top_players_by_attributes"
-                type="data"
-              />
+              <Button
+                variant="link"
+                className="analytics-view-more-link"
+                onClick={handleViewMoreByAttributes}
+                disabled={!data.top_players_by_attributes?.length}
+              >
+                View more →
+              </Button>
             </Card.Header>
             <Card.Body className="p-0" style={{ flex: 1, overflow: "auto" }}>
               <div className="table-responsive">
@@ -529,15 +584,25 @@ const PlayerAnalyticsTab: React.FC = () => {
                           onClick={() => handlePlayerClick(player.player_id, player.data_source)}
                           style={{ cursor: "pointer" }}
                         >
-                          <td>{player.player_name}</td>
+                          <td>
+                            {player.player_name}
+                            {onBothLeaderboards(player) && (
+                              <span
+                                className="ms-1"
+                                title="Also in Top Players by Performance"
+                                style={{ color: "#EFBF04" }}
+                              >
+                                ⭐
+                              </span>
+                            )}
+                          </td>
                           <td>{player.position}</td>
                           <td>
                             <span
-                              className="badge"
+                              className="grade-chip grade-chip-md"
                               style={{
                                 backgroundColor: getAttributeScoreColor(player.avg_attribute_score),
-                                color: "white",
-                                fontWeight: "bold"
+                                color: getContrastTextColor(getAttributeScoreColor(player.avg_attribute_score)),
                               }}
                             >
                               {player.avg_attribute_score.toFixed(2)}
@@ -573,11 +638,6 @@ const PlayerAnalyticsTab: React.FC = () => {
                   </OverlayTrigger>
                 </h6>
               </div>
-              <ExportButton
-                data={data.positive_flagged_players || []}
-                filename="positive_flagged_players"
-                type="data"
-              />
             </Card.Header>
             <Card.Body className="p-0" style={{ flex: 1, overflow: "auto" }}>
               <div className="table-responsive">
@@ -587,12 +647,13 @@ const PlayerAnalyticsTab: React.FC = () => {
                       <th>Player</th>
                       <th>Position</th>
                       <th>Flags</th>
+                      <th>Most Recent</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(data.positive_flagged_players || []).length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="text-muted">No positive flagged players</td>
+                        <td colSpan={4} className="text-muted">No positive flagged players</td>
                       </tr>
                     ) : (
                       (data.positive_flagged_players || []).map((player, idx) => (
@@ -604,6 +665,11 @@ const PlayerAnalyticsTab: React.FC = () => {
                           <td>{player.player_name}</td>
                           <td>{player.position}</td>
                           <td><span className="badge bg-success">{player.flag_count}</span></td>
+                          <td>
+                            {player.most_recent_flag
+                              ? new Date(player.most_recent_flag).toLocaleDateString("en-GB")
+                              : "—"}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -613,7 +679,7 @@ const PlayerAnalyticsTab: React.FC = () => {
               {data.total_positive_flagged_count > (data.positive_flagged_players?.length || 0) && (
                 <div className="text-center py-2 bg-light border-top">
                   <small className="text-muted">
-                    Showing top 25 of {data.total_positive_flagged_count} total players. Use position filter to narrow results. Note: Export only includes the 25 players shown here.
+                    Showing top 25 of {data.total_positive_flagged_count} total players. Use position filter to narrow results.
                   </small>
                 </div>
               )}
@@ -623,7 +689,7 @@ const PlayerAnalyticsTab: React.FC = () => {
       </Row>
 
       {/* Score Threshold Filter Section */}
-      <Row className="mb-4">
+      <Row className="mb-4" ref={scoreThresholdRef}>
         <Col>
           <Card>
             <Card.Header style={{ backgroundColor: "#000000" }} className="text-white">
@@ -753,11 +819,10 @@ const PlayerAnalyticsTab: React.FC = () => {
                           </td>
                           <td>
                             <span
-                              className="badge"
+                              className="grade-chip grade-chip-md"
                               style={{
                                 backgroundColor: getAttributeScoreColor(player.avg_attribute_score),
-                                color: "white",
-                                fontWeight: "bold"
+                                color: getContrastTextColor(getAttributeScoreColor(player.avg_attribute_score)),
                               }}
                             >
                               {player.avg_attribute_score.toFixed(1)}
@@ -789,27 +854,30 @@ const PlayerAnalyticsTab: React.FC = () => {
         </Col>
       </Row>
 
-          {/* ✅ Your styling remains untouched */}
           <style>{`
             .table-compact td, .table-compact th {
               padding: 0.5rem;
               font-size: 0.9rem;
             }
-            .btn-action-circle {
-              width: 32px;
-              height: 32px;
-              padding: 0;
-              border-radius: 50%;
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
+            .analytics-view-more-link {
+              background: transparent;
               border: none;
-              background-color: #f8f9fa;
-              transition: all 0.2s;
+              color: rgba(255, 255, 255, 0.75) !important;
+              font-size: 0.8rem;
+              font-weight: 600;
+              padding: 0.2rem 0.5rem;
+              border-radius: 999px;
+              text-decoration: none !important;
+              transition: background 0.15s ease, color 0.15s ease;
+              white-space: nowrap;
             }
-            .btn-action-view:hover {
-              background-color: #007bff;
-              transform: scale(1.1);
+            .analytics-view-more-link:hover:not(:disabled) {
+              background: rgba(255, 255, 255, 0.12);
+              color: #ffffff;
+            }
+            .analytics-view-more-link:disabled {
+              color: rgba(255, 255, 255, 0.3);
+              cursor: default;
             }
           `}</style>
 

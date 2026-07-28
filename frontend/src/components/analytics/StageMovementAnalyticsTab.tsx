@@ -141,10 +141,10 @@ const StageMovementAnalyticsTab: React.FC = () => {
         <Card.Body className="py-3">
           <div className="d-flex justify-content-between align-items-center flex-wrap" style={{ gap: "0.75rem" }}>
             <div>
-              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--color-text)" }}>
                 Stage movement window
               </div>
-              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+              <div style={{ fontSize: "0.82rem", color: "var(--color-text-muted)" }}>
                 {formatDate(data.window_start)} to {formatDate(data.window_end)}
               </div>
             </div>
@@ -203,7 +203,7 @@ const StageMovementAnalyticsTab: React.FC = () => {
               </div>
             </Col>
           </Row>
-          <div className="mt-3" style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.6 }}>
+          <div className="mt-3" style={{ fontSize: "0.82rem", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
             Adjust the <strong>start</strong> and <strong>end</strong> dates to change the
             movement window for the <strong>Stage movements</strong> and{" "}
             <strong>Unique players who appeared in stages</strong> numbers. Change the{" "}
@@ -217,9 +217,9 @@ const StageMovementAnalyticsTab: React.FC = () => {
         </Card.Body>
       </Card>
 
-      <div className="mb-2" style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+      <div className="mb-2" style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--color-text)" }}>
         Stage movements
-        <span style={{ fontWeight: 400, color: "#64748b" }}>
+        <span style={{ fontWeight: 400, color: "var(--color-text-muted)" }}>
           {" "}({formatDate(data.window_start)} to {formatDate(data.window_end)})
         </span>
       </div>
@@ -228,13 +228,13 @@ const StageMovementAnalyticsTab: React.FC = () => {
           <Col key={metric.key} xl={4} md={6}>
             <Card className="shadow-sm h-100 hover-card">
               <Card.Body>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {metric.title}
                 </div>
-                <div style={{ fontSize: "2rem", fontWeight: 800, color: "#111827", lineHeight: 1.1, marginTop: "0.45rem" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1, marginTop: "0.45rem" }}>
                   {data.metrics[metric.key].toLocaleString("en-GB")}
                 </div>
-                <div style={{ fontSize: "0.82rem", color: "#64748b", marginTop: "0.5rem" }}>
+                <div style={{ fontSize: "0.82rem", color: "var(--color-text-muted)", marginTop: "0.5rem" }}>
                   {metric.subtitle}
                 </div>
               </Card.Body>
@@ -243,13 +243,13 @@ const StageMovementAnalyticsTab: React.FC = () => {
         ))}
       </Row>
 
-      <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+      <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--color-text)" }}>
         Unique players who appeared in stages
-        <span style={{ fontWeight: 400, color: "#64748b" }}>
+        <span style={{ fontWeight: 400, color: "var(--color-text-muted)" }}>
           {" "}({formatDate(data.window_start)} to {formatDate(data.window_end)})
         </span>
       </div>
-      <div className="mb-2" style={{ fontSize: "0.82rem", color: "#64748b" }}>
+      <div className="mb-2" style={{ fontSize: "0.82rem", color: "var(--color-text-muted)" }}>
         Every player who spent any time in a stage during the selected window — including
         players who have since moved on to another stage or been archived.
       </div>
@@ -258,10 +258,10 @@ const StageMovementAnalyticsTab: React.FC = () => {
           <Col key={stage.key} xl md={6}>
             <Card className="shadow-sm h-100 hover-card">
               <Card.Body>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {stage.title}
                 </div>
-                <div style={{ fontSize: "2rem", fontWeight: 800, color: "#111827", lineHeight: 1.1, marginTop: "0.45rem" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1, marginTop: "0.45rem" }}>
                   {(data.stage_ever_counts?.[stage.key] ?? 0).toLocaleString("en-GB")}
                 </div>
               </Card.Body>
@@ -270,13 +270,13 @@ const StageMovementAnalyticsTab: React.FC = () => {
         ))}
       </Row>
 
-      <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827" }}>
+      <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--color-text)" }}>
         Players in each stage
-        <span style={{ fontWeight: 400, color: "#64748b" }}>
+        <span style={{ fontWeight: 400, color: "var(--color-text-muted)" }}>
           {" "}(as of {formatDate(data.as_of_date)})
         </span>
       </div>
-      <div className="mb-2" style={{ fontSize: "0.82rem", color: "#64748b" }}>
+      <div className="mb-2" style={{ fontSize: "0.82rem", color: "var(--color-text-muted)" }}>
         A snapshot of how many players sit in each stage on the selected &ldquo;as of&rdquo; date.
       </div>
       <Row className="g-3">
@@ -284,10 +284,10 @@ const StageMovementAnalyticsTab: React.FC = () => {
           <Col key={stage.key} xl md={6}>
             <Card className="shadow-sm h-100 hover-card">
               <Card.Body>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {stage.title}
                 </div>
-                <div style={{ fontSize: "2rem", fontWeight: 800, color: "#111827", lineHeight: 1.1, marginTop: "0.45rem" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1, marginTop: "0.45rem" }}>
                   {(data.stage_counts?.[stage.key] ?? 0).toLocaleString("en-GB")}
                 </div>
               </Card.Body>

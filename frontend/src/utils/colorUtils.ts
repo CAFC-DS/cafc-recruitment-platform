@@ -21,9 +21,8 @@ export const getPerformanceScoreColor = (score: number): string => {
   if (score <= 6) return "#84cc16"; // Light green
   if (score <= 7) return "#1ebc58ff"; // Green
   if (score <= 8) return "#16a34a"; // Darker green
-  if (score === 9) return "#c4c4c4"; // Proper silver
-  if (score === 10) return "#EFBF04"; // Proper gold
-  return "#166534"; // Fallback green
+  if (score < 10) return "#c4c4c4"; // Silver (9.0 up to but not including 10)
+  return "#EFBF04"; // Gold (10)
 };
 
 /**
@@ -34,7 +33,8 @@ export const getPerformanceScoreColor = (score: number): string => {
  * 80-100: Dark green
  */
 export const getAttributeScoreColor = (score: number): string => {
-  if (score <= 0) return "#ef4444"; // Red for invalid scores
+  if (score === 0) return "#6b7280"; // Grey for 0 (no data / no action)
+  if (score < 0) return "#ef4444"; // Red for invalid scores
 
   if (score <= 10) return "#991b1b"; // Darkest red
   if (score <= 20) return "#dc2626"; // Red
