@@ -1,5 +1,4 @@
 .grade-chip {
-  position: relative;
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
@@ -9,32 +8,36 @@
   border-radius: 6px;
   line-height: 1;
   white-space: nowrap;
+  box-sizing: content-box;
 }
 
+/* min-width (not width) so a potential badge (9*) still ends up the
+   same rendered size as a plain one (9) -- the asterisk is back in
+   normal inline flow, right next to the digit like a real superscript,
+   instead of being pinned to a corner. min-width absorbs the extra
+   character instead of the badge growing past its neighbors. */
 .grade-chip-sm {
   font-size: 0.72rem;
   padding: 0.3rem 0.68rem;
+  min-width: 1.6em;
 }
 
 .grade-chip-md {
   font-size: 0.85rem;
   padding: 0.4rem 0.85rem;
+  min-width: 1.6em;
 }
 
 .grade-chip-lg {
   font-size: 1rem;
   padding: 0.5rem 1.05rem;
+  min-width: 1.6em;
 }
 
-/* Positioned absolutely (out of flow) so a potential badge stays exactly
-   the same size as a plain one -- the asterisk floats over the corner
-   instead of adding width. */
 .grade-chip-potential-mark {
-  position: absolute;
-  top: -0.1em;
-  right: 0.65em;
-  font-size: 0.6em;
-  line-height: 1;
+  font-size: 0.65em;
+  line-height: 0;
+  margin-left: 0.05em;
 }
 
 /* Silver (9) / gold (10) keep their existing shine treatment -- structural

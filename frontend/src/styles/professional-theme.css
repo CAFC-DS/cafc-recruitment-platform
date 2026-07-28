@@ -139,20 +139,14 @@ body {
 /* Potential-score asterisk, sized down to match GradeChip's superscript
    treatment (see .grade-chip-potential-mark in GradeChip.css) -- for the
    legacy score badges in PlayerReportModal, SharedReportPage, and
-   PersonalAnalyticsPage that render their own markup instead of GradeChip. */
-/* Positioned absolutely (out of flow), matching GradeChip's
-   .grade-chip-potential-mark, so a potential badge stays exactly the
-   same size as a plain one instead of growing to fit the asterisk. */
-.badge:has(.score-potential-mark) {
-  position: relative;
-}
-
+   PersonalAnalyticsPage that render their own markup instead of GradeChip.
+   Normal inline flow, like a real superscript; .performance-score-large's
+   min-width (below) absorbs the extra character so potential and plain
+   badges still render the same size. */
 .score-potential-mark {
-  position: absolute;
-  top: -0.1em;
-  right: 0.65em;
-  font-size: 0.6em;
-  line-height: 1;
+  font-size: 0.65em;
+  line-height: 0;
+  margin-left: 0.05em;
 }
 
 /* Badge colors are now handled by inline styles and color utility functions
@@ -1279,6 +1273,10 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
   font-size: 24px !important;
   padding: 10px 20px !important;
   font-weight: 700 !important;
+  min-width: 1.6em !important;
+  box-sizing: content-box !important;
+  display: inline-block !important;
+  text-align: center !important;
 }
 
 /* Specific classes for scores 9 and 10 (to be applied via JavaScript) */
