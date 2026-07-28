@@ -141,8 +141,8 @@ body {
    legacy score badges in PlayerReportModal, SharedReportPage, and
    PersonalAnalyticsPage that render their own markup instead of GradeChip. */
 .score-potential-mark {
-  font-size: 0.55em;
-  margin-left: -0.05em;
+  font-size: 0.65em;
+  margin-left: -0.02em;
 }
 
 /* Badge colors are now handled by inline styles and color utility functions
@@ -261,16 +261,6 @@ body {
 .container-fluid {
   padding-top: 1rem;
   padding-bottom: 1rem;
-}
-
-/* Dark mode specific styles */
-[data-bs-theme="dark"] {
-  --color-background: #111827;
-  --color-surface: #1f2937;
-  --color-border: #374151;
-  --color-text: #f9fafb;
-  --color-text-muted: #d1d5db;
-  --color-header-bg: #111827;
 }
 
 [data-bs-theme="dark"] .table th {
@@ -1291,20 +1281,6 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
   font-size: 24px !important;
   padding: 8px 16px !important;
   font-weight: 700 !important;
-}
-
-/* Special styling for performance scores 9 and 10 - make them "special" */
-.performance-badge:has-text("9"), .performance-badge:has-text("10"),
-.performance-badge[data-score="9"], .performance-badge[data-score="10"] {
-  border: 2px solid #000 !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* Alternative approach using content selectors for scores 9 and 10 */
-.performance-badge.performance-score-large:contains("9"),
-.performance-badge.performance-score-large:contains("10") {
-  border: 2px solid #000 !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Specific classes for scores 9 and 10 (to be applied via JavaScript) */

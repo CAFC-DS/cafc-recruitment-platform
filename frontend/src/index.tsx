@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import '@fontsource/ibm-plex-sans-condensed/600.css';
 import '@fontsource/ibm-plex-sans-condensed/700.css';

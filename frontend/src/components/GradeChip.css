@@ -26,9 +26,9 @@
 }
 
 .grade-chip-potential-mark {
-  font-size: 0.55em;
+  font-size: 0.65em;
   line-height: 0;
-  margin-left: -0.05em;
+  margin-left: -0.02em;
 }
 
 /* Silver (9) / gold (10) keep their existing shine treatment -- structural
