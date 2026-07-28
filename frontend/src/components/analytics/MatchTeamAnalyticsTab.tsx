@@ -88,11 +88,12 @@ const MatchTeamAnalyticsTab: React.FC = () => {
 
   // Prepare timeline data
   const timelineLabels = data.match_timeline?.labels || [];
+  // No per-series color override here -- SimpleLineChart's own neutral
+  // default/secondary line colors (the same ones Monthly Reports Timeline
+  // uses) apply automatically, instead of tinting Live/Video green/cyan.
   const timelineDatasets = (data.match_timeline?.datasets || []).map((ds) => ({
     label: ds.label || "",
     data: ds.data || [],
-    borderColor: ds.label === "Live" ? "#28a745" : "#17a2b8",
-    backgroundColor: ds.label === "Live" ? "rgba(40, 167, 69, 0.1)" : "rgba(23, 162, 184, 0.1)"
   }));
 
   // Prepare formation data
@@ -239,10 +240,10 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                             <span className="badge bg-dark">{comp.report_count}</span>
                           </td>
                           <td>
-                            <span className="badge bg-success">{comp.live_reports}</span>
+                            <span className="badge badge-neutral-grey">{comp.live_reports}</span>
                           </td>
                           <td>
-                            <span className="badge bg-info">{comp.video_reports}</span>
+                            <span className="badge badge-neutral-grey">{comp.video_reports}</span>
                           </td>
                         </tr>
                       ))
@@ -285,10 +286,10 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                             <span className="badge bg-dark">{team.total_reports}</span>
                           </td>
                           <td>
-                            <span className="badge bg-success">{team.live_reports}</span>
+                            <span className="badge badge-neutral-grey">{team.live_reports}</span>
                           </td>
                           <td>
-                            <span className="badge bg-info">{team.video_reports}</span>
+                            <span className="badge badge-neutral-grey">{team.video_reports}</span>
                           </td>
                         </tr>
                       ))

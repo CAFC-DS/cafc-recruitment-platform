@@ -8,10 +8,9 @@ import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
 import SimpleBarChart from "./SimpleBarChart";
-import ExportButton from "./ExportButton";
 import AttributeFilterSection from "./AttributeFilterSection";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
-import { getAttributeScoreColor } from "../../utils/colorUtils";
+import { getAttributeScoreColor, getContrastTextColor } from "../../utils/colorUtils";
 import GradeChip from "../GradeChip";
 import PositionMultiSelect from "./PositionMultiSelect";
 import { POSITION_ORDER } from "../../constants/positions";
@@ -432,11 +431,6 @@ const PlayerAnalyticsTab: React.FC = () => {
                   </OverlayTrigger>
                 </h6>
               </div>
-              <ExportButton
-                data={data.top_players_by_performance || []}
-                filename="top_players_by_performance"
-                type="data"
-              />
             </Card.Header>
             <Card.Body className="p-0" style={{ flex: 1, overflow: "auto" }}>
               <div className="table-responsive">
@@ -498,11 +492,6 @@ const PlayerAnalyticsTab: React.FC = () => {
                   </OverlayTrigger>
                 </h6>
               </div>
-              <ExportButton
-                data={data.top_players_by_attributes || []}
-                filename="top_players_by_attributes"
-                type="data"
-              />
             </Card.Header>
             <Card.Body className="p-0" style={{ flex: 1, overflow: "auto" }}>
               <div className="table-responsive">
@@ -533,11 +522,10 @@ const PlayerAnalyticsTab: React.FC = () => {
                           <td>{player.position}</td>
                           <td>
                             <span
-                              className="badge"
+                              className="grade-chip grade-chip-md"
                               style={{
                                 backgroundColor: getAttributeScoreColor(player.avg_attribute_score),
-                                color: "white",
-                                fontWeight: "bold"
+                                color: getContrastTextColor(getAttributeScoreColor(player.avg_attribute_score)),
                               }}
                             >
                               {player.avg_attribute_score.toFixed(2)}
@@ -573,11 +561,6 @@ const PlayerAnalyticsTab: React.FC = () => {
                   </OverlayTrigger>
                 </h6>
               </div>
-              <ExportButton
-                data={data.positive_flagged_players || []}
-                filename="positive_flagged_players"
-                type="data"
-              />
             </Card.Header>
             <Card.Body className="p-0" style={{ flex: 1, overflow: "auto" }}>
               <div className="table-responsive">
@@ -613,7 +596,7 @@ const PlayerAnalyticsTab: React.FC = () => {
               {data.total_positive_flagged_count > (data.positive_flagged_players?.length || 0) && (
                 <div className="text-center py-2 bg-light border-top">
                   <small className="text-muted">
-                    Showing top 25 of {data.total_positive_flagged_count} total players. Use position filter to narrow results. Note: Export only includes the 25 players shown here.
+                    Showing top 25 of {data.total_positive_flagged_count} total players. Use position filter to narrow results.
                   </small>
                 </div>
               )}
@@ -753,11 +736,10 @@ const PlayerAnalyticsTab: React.FC = () => {
                           </td>
                           <td>
                             <span
-                              className="badge"
+                              className="grade-chip grade-chip-md"
                               style={{
                                 backgroundColor: getAttributeScoreColor(player.avg_attribute_score),
-                                color: "white",
-                                fontWeight: "bold"
+                                color: getContrastTextColor(getAttributeScoreColor(player.avg_attribute_score)),
                               }}
                             >
                               {player.avg_attribute_score.toFixed(1)}

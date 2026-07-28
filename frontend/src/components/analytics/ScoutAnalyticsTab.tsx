@@ -3,6 +3,8 @@ import { Row, Col, Form, Card, Button, ButtonGroup, Table, OverlayTrigger, Toolt
 import axiosInstance from "../../axiosInstance";
 import SimpleLineChart from "./SimpleLineChart";
 import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
+import GradeChip from "../GradeChip";
+import { getAttributeScoreColor, getContrastTextColor } from "../../utils/colorUtils";
 
 interface ScoutAnalytics {
   scout_stats: Array<{
@@ -347,27 +349,58 @@ const ScoutAnalyticsTab: React.FC = () => {
                           <td><span className="badge bg-dark">{scout.total_reports}</span></td>
                           <td>{scout.player_assessments}</td>
                           <td>{scout.flags}</td>
-                          <td><span className="badge bg-success">{scout.live_reports}</span></td>
-                          <td><span className="badge bg-info">{scout.video_reports}</span></td>
+                          <td><span className="badge badge-neutral-grey">{scout.live_reports}</span></td>
+                          <td><span className="badge badge-neutral-grey">{scout.video_reports}</span></td>
                           <td>{scout.unique_players_reported_on}</td>
                           <td>{scout.games_fixtures_covered}</td>
-                          <td><span className="badge bg-secondary">{(scout.avg_performance_given ?? 0).toFixed(2)}</span></td>
-                          <td><span className="badge bg-secondary">{(scout.avg_attribute_given ?? 0).toFixed(1)}</span></td>
+                          <td><GradeChip score={scout.avg_performance_given ?? 0} decimals={2} size="md" /></td>
+                          <td>
+                            <span
+                              className="grade-chip grade-chip-md"
+                              style={{
+                                backgroundColor: getAttributeScoreColor(scout.avg_attribute_given ?? 0),
+                                color: getContrastTextColor(getAttributeScoreColor(scout.avg_attribute_given ?? 0)),
+                              }}
+                            >
+                              {(scout.avg_attribute_given ?? 0).toFixed(1)}
+                            </span>
+                          </td>
                         </tr>
                       ))}
                       {/* Totals Row */}
                       {(comparisonScouts.length === 0) && (
-                        <tr style={{ backgroundColor: '#f8f9fa', fontWeight: 600 }}>
+                        <tr style={{ backgroundColor: 'var(--color-background)', fontWeight: 600 }}>
                           <td><strong>TOTAL</strong></td>
                           <td><span className="badge bg-dark">{data.scout_stats.reduce((sum, s) => sum + s.total_reports, 0)}</span></td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.player_assessments, 0)}</td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.flags, 0)}</td>
-                          <td><span className="badge bg-success">{data.scout_stats.reduce((sum, s) => sum + s.live_reports, 0)}</span></td>
-                          <td><span className="badge bg-info">{data.scout_stats.reduce((sum, s) => sum + s.video_reports, 0)}</span></td>
+                          <td><span className="badge badge-neutral-grey">{data.scout_stats.reduce((sum, s) => sum + s.live_reports, 0)}</span></td>
+                          <td><span className="badge badge-neutral-grey">{data.scout_stats.reduce((sum, s) => sum + s.video_reports, 0)}</span></td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.unique_players_reported_on, 0)}</td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.games_fixtures_covered, 0)}</td>
-                          <td><span className="badge bg-secondary">{(data.scout_stats.reduce((sum, s) => sum + (s.avg_performance_given ?? 0), 0) / data.scout_stats.length).toFixed(2)}</span></td>
-                          <td><span className="badge bg-secondary">{(data.scout_stats.reduce((sum, s) => sum + (s.avg_attribute_given ?? 0), 0) / data.scout_stats.length).toFixed(1)}</span></td>
+                          <td>
+                            <GradeChip
+                              score={data.scout_stats.reduce((sum, s) => sum + (s.avg_performance_given ?? 0), 0) / data.scout_stats.length}
+                              decimals={2}
+                              size="md"
+                            />
+                          </td>
+                          <td>
+                            {(() => {
+                              const avgAttr = data.scout_stats.reduce((sum, s) => sum + (s.avg_attribute_given ?? 0), 0) / data.scout_stats.length;
+                              return (
+                                <span
+                                  className="grade-chip grade-chip-md"
+                                  style={{
+                                    backgroundColor: getAttributeScoreColor(avgAttr),
+                                    color: getContrastTextColor(getAttributeScoreColor(avgAttr)),
+                                  }}
+                                >
+                                  {avgAttr.toFixed(1)}
+                                </span>
+                              );
+                            })()}
+                          </td>
                         </tr>
                       )}
                     </tbody>
