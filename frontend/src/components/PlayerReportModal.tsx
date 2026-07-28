@@ -1015,7 +1015,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                           }}
                           title={report.is_potential ? "Potential Score" : undefined}
                         >
-                          {report.performance_score}{report.is_potential && "*"}
+                          {report.performance_score}
+                          {report.is_potential && <sup className="score-potential-mark">*</sup>}
                         </span>
                       </div>
                     </div>

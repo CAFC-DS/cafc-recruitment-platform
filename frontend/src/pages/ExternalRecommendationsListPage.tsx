@@ -6,7 +6,7 @@ import DealTypeBadges from '../components/recommendations/DealTypeBadges';
 import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
 import { getRecommendationStatusConfig } from '../utils/agentRecommendationStatus';
-import { getPerformanceScoreColor } from '../utils/colorUtils';
+import GradeChip from '../components/GradeChip';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import {
   InternalRecommendation,
@@ -763,15 +763,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                             <span className="fw-bold text-truncate">{item.player_name}</span>
                           )}
                           {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
-                            <span
-                              className="external-recommendations-score-badge"
-                              style={{
-                                backgroundColor: getPerformanceScoreColor(item.avg_performance_score),
-                                color: item.avg_performance_score >= 7 ? '#ffffff' : '#111827',
-                              }}
-                            >
-                              {item.avg_performance_score.toFixed(1)}
-                            </span>
+                            <GradeChip score={item.avg_performance_score} decimals={1} size="sm" />
                           ) : null}
                         </div>
                         {hasPendingStatusChange ? (

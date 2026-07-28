@@ -8,25 +8,34 @@
   border-radius: 6px;
   line-height: 1;
   white-space: nowrap;
+  box-sizing: content-box;
 }
 
+/* min-width (not width) so a potential badge (9*) still ends up the
+   same rendered size as a plain one (9) -- the asterisk is back in
+   normal inline flow, right next to the digit like a real superscript,
+   instead of being pinned to a corner. min-width absorbs the extra
+   character instead of the badge growing past its neighbors. */
 .grade-chip-sm {
-  font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  padding: 0.22rem 0.38rem;
+  min-width: 1.3em;
 }
 
 .grade-chip-md {
-  font-size: 0.85rem;
-  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.46rem;
+  min-width: 1.3em;
 }
 
 .grade-chip-lg {
-  font-size: 1rem;
-  padding: 0.4rem 0.85rem;
+  font-size: 0.92rem;
+  padding: 0.38rem 0.58rem;
+  min-width: 1.3em;
 }
 
 .grade-chip-potential-mark {
-  font-size: 0.75em;
+  font-size: 0.65em;
   line-height: 0;
   margin-left: 0.05em;
 }

@@ -11,7 +11,8 @@ import SimpleBarChart from "./SimpleBarChart";
 import ExportButton from "./ExportButton";
 import AttributeFilterSection from "./AttributeFilterSection";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
-import { getPerformanceScoreColor, getAttributeScoreColor } from "../../utils/colorUtils";
+import { getAttributeScoreColor } from "../../utils/colorUtils";
+import GradeChip from "../GradeChip";
 import PositionMultiSelect from "./PositionMultiSelect";
 import { POSITION_ORDER } from "../../constants/positions";
 import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
@@ -465,16 +466,7 @@ const PlayerAnalyticsTab: React.FC = () => {
                           <td>{player.player_name}</td>
                           <td>{player.position}</td>
                           <td>
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor: getPerformanceScoreColor(player.avg_performance_score),
-                                color: "white",
-                                fontWeight: "bold"
-                              }}
-                            >
-                              {player.avg_performance_score.toFixed(2)}
-                            </span>
+                            <GradeChip score={player.avg_performance_score} decimals={2} size="md" />
                           </td>
                           <td>{player.report_count}</td>
                         </tr>
@@ -757,16 +749,7 @@ const PlayerAnalyticsTab: React.FC = () => {
                           </td>
                           {showPosition && <td>{player.position}</td>}
                           <td>
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor: getPerformanceScoreColor(player.avg_performance_score),
-                                color: "white",
-                                fontWeight: "bold"
-                              }}
-                            >
-                              {player.avg_performance_score.toFixed(2)}
-                            </span>
+                            <GradeChip score={player.avg_performance_score} decimals={2} size="md" />
                           </td>
                           <td>
                             <span

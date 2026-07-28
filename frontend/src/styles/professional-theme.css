@@ -136,6 +136,19 @@ body {
   font-weight: 500;
 }
 
+/* Potential-score asterisk, sized down to match GradeChip's superscript
+   treatment (see .grade-chip-potential-mark in GradeChip.css) -- for the
+   legacy score badges in PlayerReportModal, SharedReportPage, and
+   PersonalAnalyticsPage that render their own markup instead of GradeChip.
+   Normal inline flow, like a real superscript; .performance-score-large's
+   min-width (below) absorbs the extra character so potential and plain
+   badges still render the same size. */
+.score-potential-mark {
+  font-size: 0.65em;
+  line-height: 0;
+  margin-left: 0.05em;
+}
+
 /* Badge colors are now handled by inline styles and color utility functions
    Removed !important overrides to allow proper dynamic coloring */
 
@@ -158,6 +171,7 @@ body {
 .badge.bg-light {
   background-color: var(--color-border, #e5e7eb) !important;
   color: var(--color-text, #374151) !important;
+  border: 1px solid var(--color-text-muted, #d1d5db);
 }
 /* Commented out to allow custom clips colors */
 /* .badge.bg-secondary {
@@ -252,16 +266,6 @@ body {
 .container-fluid {
   padding-top: 1rem;
   padding-bottom: 1rem;
-}
-
-/* Dark mode specific styles */
-[data-bs-theme="dark"] {
-  --color-background: #111827;
-  --color-surface: #1f2937;
-  --color-border: #374151;
-  --color-text: #f9fafb;
-  --color-text-muted: #d1d5db;
-  --color-header-bg: #111827;
 }
 
 [data-bs-theme="dark"] .table th {
@@ -931,21 +935,8 @@ body {
   border-color: var(--color-border, #374151);
 }
 
-.badge.bg-dark {
-  background-color: #374151;
-  color: white;
-  border: none;
-}
-
 /* Note: Badge colors are now handled dynamically by inline styles using color utility functions
    Removed static color overrides to allow proper color scaling for performance/attribute scores */
-
-/* Light badges - Light gray theme */
-.badge.bg-light {
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
 
 /* Gold and Silver performance badges */
 .badge.bg-gold {
@@ -1279,23 +1270,13 @@ body.theme-dark .btn-action-circle.btn-action-decision-active {
 
 /* Default performance score styling */
 .performance-score-large {
-  font-size: 24px !important;
-  padding: 8px 16px !important;
+  font-size: 21px !important;
+  padding: 9px 11px !important;
   font-weight: 700 !important;
-}
-
-/* Special styling for performance scores 9 and 10 - make them "special" */
-.performance-badge:has-text("9"), .performance-badge:has-text("10"),
-.performance-badge[data-score="9"], .performance-badge[data-score="10"] {
-  border: 2px solid #000 !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* Alternative approach using content selectors for scores 9 and 10 */
-.performance-badge.performance-score-large:contains("9"),
-.performance-badge.performance-score-large:contains("10") {
-  border: 2px solid #000 !important;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+  min-width: 1.3em !important;
+  box-sizing: content-box !important;
+  display: inline-block !important;
+  text-align: center !important;
 }
 
 /* Specific classes for scores 9 and 10 (to be applied via JavaScript) */
@@ -2846,19 +2827,6 @@ span.badge.badge-neutral-grey {
   min-width: 0;
 }
 
-.external-recommendations-score-badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.18rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  background: #e2e8f0;
-  color: #0f172a;
-  white-space: nowrap;
-}
-
 .deal-type-badge-neutral {
   background: rgba(55, 65, 81, 0.08);
   color: #374151;
@@ -3720,11 +3688,6 @@ span.badge.badge-neutral-grey {
 
 [data-bs-theme="dark"] .external-recommendations-result-copy {
   color: var(--color-text-muted);
-}
-
-[data-bs-theme="dark"] .external-recommendations-score-badge {
-  background: var(--color-border);
-  color: var(--color-text);
 }
 
 [data-bs-theme="dark"] .deal-type-badge-neutral {

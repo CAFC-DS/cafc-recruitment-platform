@@ -3,10 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge, Card, Row, Col, OverlayTrigger, Popover, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import {
-  getPerformanceScoreColor,
-  getContrastTextColor,
-} from "../../utils/colorUtils";
+import GradeChip from "../GradeChip";
 import MultiListBadges from "../PlayerLists/MultiListBadges";
 import { PlayerListMembership } from "../../services/playerListsService";
 
@@ -135,11 +132,6 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
     userSelect: "none" as const,
   };
 
-  const scoreColor = player.avg_performance_score
-    ? getPerformanceScoreColor(player.avg_performance_score)
-    : "#6b7280";
-  const textColor = getContrastTextColor(scoreColor);
-
   const getPlayerPath = (universalId: string) => {
     if (universalId.startsWith("internal_")) {
       const cafcId = universalId.replace("internal_", "");
@@ -210,17 +202,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
               {player.avg_performance_score !== null && (
                 <>
                   <small className="text-muted fw-semibold d-block">Score</small>
-                  <Badge
-                    bg=""
-                    style={{
-                      backgroundColor: scoreColor,
-                      color: textColor,
-                      fontWeight: "bold",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    {player.avg_performance_score.toFixed(1)}
-                  </Badge>
+                  <GradeChip score={player.avg_performance_score} decimals={1} size="md" />
                 </>
               )}
             </Col>
