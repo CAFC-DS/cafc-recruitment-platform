@@ -349,8 +349,8 @@ const ScoutAnalyticsTab: React.FC = () => {
                           <td><span className="badge bg-dark">{scout.total_reports}</span></td>
                           <td>{scout.player_assessments}</td>
                           <td>{scout.flags}</td>
-                          <td><span className="badge badge-neutral-grey">{scout.live_reports}</span></td>
-                          <td><span className="badge badge-neutral-grey">{scout.video_reports}</span></td>
+                          <td><span className="badge badge-accent-live">{scout.live_reports}</span></td>
+                          <td><span className="badge badge-accent-video">{scout.video_reports}</span></td>
                           <td>{scout.unique_players_reported_on}</td>
                           <td>{scout.games_fixtures_covered}</td>
                           <td><GradeChip score={scout.avg_performance_given ?? 0} decimals={2} size="md" /></td>
@@ -374,8 +374,8 @@ const ScoutAnalyticsTab: React.FC = () => {
                           <td><span className="badge bg-dark">{data.scout_stats.reduce((sum, s) => sum + s.total_reports, 0)}</span></td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.player_assessments, 0)}</td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.flags, 0)}</td>
-                          <td><span className="badge badge-neutral-grey">{data.scout_stats.reduce((sum, s) => sum + s.live_reports, 0)}</span></td>
-                          <td><span className="badge badge-neutral-grey">{data.scout_stats.reduce((sum, s) => sum + s.video_reports, 0)}</span></td>
+                          <td><span className="badge badge-accent-live">{data.scout_stats.reduce((sum, s) => sum + s.live_reports, 0)}</span></td>
+                          <td><span className="badge badge-accent-video">{data.scout_stats.reduce((sum, s) => sum + s.video_reports, 0)}</span></td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.unique_players_reported_on, 0)}</td>
                           <td>{data.scout_stats.reduce((sum, s) => sum + s.games_fixtures_covered, 0)}</td>
                           <td>

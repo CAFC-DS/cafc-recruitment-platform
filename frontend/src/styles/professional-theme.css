@@ -1303,6 +1303,23 @@ span.badge.badge-neutral-grey {
   font-weight: 500 !important;
 }
 
+/* Live/Video count badges (Scout Analytics, Match & Team Analytics, Team
+   Coverage table) -- distinct but muted, using the app's existing generic
+   UI accents (--color-pitch / --color-amber, ThemeContext.tsx) rather than
+   the semantic success/info greens/blues, so the two are tellable apart at
+   a glance without reading as status colors. */
+span.badge.badge-accent-live {
+  background-color: transparent !important;
+  color: var(--color-pitch, #1e7a44) !important;
+  font-weight: 600 !important;
+}
+
+span.badge.badge-accent-video {
+  background-color: transparent !important;
+  color: var(--color-amber, #b45309) !important;
+  font-weight: 600 !important;
+}
+
 /* Ensure inline styles work properly - no Bootstrap class interference */
 
 /* ================================

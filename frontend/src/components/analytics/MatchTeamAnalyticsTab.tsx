@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 import { Row, Col, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip, Form, InputGroup } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
@@ -53,6 +54,7 @@ interface MatchTeamAnalytics {
 }
 
 const MatchTeamAnalyticsTab: React.FC = () => {
+  const { theme } = useTheme();
   const [data, setData] = useState<MatchTeamAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [monthFilter, setMonthFilter] = useState<number>(6);
@@ -88,12 +90,15 @@ const MatchTeamAnalyticsTab: React.FC = () => {
 
   // Prepare timeline data
   const timelineLabels = data.match_timeline?.labels || [];
-  // No per-series color override here -- SimpleLineChart's own neutral
-  // default/secondary line colors (the same ones Monthly Reports Timeline
-  // uses) apply automatically, instead of tinting Live/Video green/cyan.
+  // Muted accent colors (same pitch/amber pair used by the Live/Video count
+  // badges elsewhere on this page) instead of the old semantic green/cyan --
+  // distinct enough to tell the two lines apart without reading as a status
+  // color.
   const timelineDatasets = (data.match_timeline?.datasets || []).map((ds) => ({
     label: ds.label || "",
     data: ds.data || [],
+    borderColor: ds.label === "Live" ? theme.colors.pitch : ds.label === "Video" ? theme.colors.amber : undefined,
+    backgroundColor: "transparent",
   }));
 
   // Prepare formation data
@@ -240,10 +245,10 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                             <span className="badge bg-dark">{comp.report_count}</span>
                           </td>
                           <td>
-                            <span className="badge badge-neutral-grey">{comp.live_reports}</span>
+                            <span className="badge badge-accent-live">{comp.live_reports}</span>
                           </td>
                           <td>
-                            <span className="badge badge-neutral-grey">{comp.video_reports}</span>
+                            <span className="badge badge-accent-video">{comp.video_reports}</span>
                           </td>
                         </tr>
                       ))
@@ -286,10 +291,10 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                             <span className="badge bg-dark">{team.total_reports}</span>
                           </td>
                           <td>
-                            <span className="badge badge-neutral-grey">{team.live_reports}</span>
+                            <span className="badge badge-accent-live">{team.live_reports}</span>
                           </td>
                           <td>
-                            <span className="badge badge-neutral-grey">{team.video_reports}</span>
+                            <span className="badge badge-accent-video">{team.video_reports}</span>
                           </td>
                         </tr>
                       ))
