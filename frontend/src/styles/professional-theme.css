@@ -140,9 +140,19 @@ body {
    treatment (see .grade-chip-potential-mark in GradeChip.css) -- for the
    legacy score badges in PlayerReportModal, SharedReportPage, and
    PersonalAnalyticsPage that render their own markup instead of GradeChip. */
+/* Positioned absolutely (out of flow), matching GradeChip's
+   .grade-chip-potential-mark, so a potential badge stays exactly the
+   same size as a plain one instead of growing to fit the asterisk. */
+.badge:has(.score-potential-mark) {
+  position: relative;
+}
+
 .score-potential-mark {
-  font-size: 0.72em;
-  margin-left: -0.02em;
+  position: absolute;
+  top: -0.35em;
+  right: -0.15em;
+  font-size: 0.6em;
+  line-height: 1;
 }
 
 /* Badge colors are now handled by inline styles and color utility functions

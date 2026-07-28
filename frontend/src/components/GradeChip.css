@@ -1,4 +1,5 @@
 .grade-chip {
+  position: relative;
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
@@ -25,10 +26,15 @@
   padding: 0.4rem 0.85rem;
 }
 
+/* Positioned absolutely (out of flow) so a potential badge stays exactly
+   the same size as a plain one -- the asterisk floats over the corner
+   instead of adding width. */
 .grade-chip-potential-mark {
-  font-size: 0.72em;
-  line-height: 0;
-  margin-left: -0.02em;
+  position: absolute;
+  top: -0.35em;
+  right: -0.15em;
+  font-size: 0.6em;
+  line-height: 1;
 }
 
 /* Silver (9) / gold (10) keep their existing shine treatment -- structural
