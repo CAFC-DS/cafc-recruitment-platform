@@ -2827,19 +2827,6 @@ span.badge.badge-neutral-grey {
   min-width: 0;
 }
 
-.external-recommendations-score-badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.18rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  background: #e2e8f0;
-  color: #0f172a;
-  white-space: nowrap;
-}
-
 .deal-type-badge-neutral {
   background: rgba(55, 65, 81, 0.08);
   color: #374151;
@@ -3701,11 +3688,6 @@ span.badge.badge-neutral-grey {
 
 [data-bs-theme="dark"] .external-recommendations-result-copy {
   color: var(--color-text-muted);
-}
-
-[data-bs-theme="dark"] .external-recommendations-score-badge {
-  background: var(--color-border);
-  color: var(--color-text);
 }
 
 [data-bs-theme="dark"] .deal-type-badge-neutral {

@@ -3,10 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge, Collapse, OverlayTrigger, Popover, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import {
-  getPerformanceScoreColor,
-  getContrastTextColor,
-} from "../../utils/colorUtils";
+import GradeChip from "../GradeChip";
 import MultiListBadges from "../PlayerLists/MultiListBadges";
 import { PlayerListMembership } from "../../services/playerListsService";
 import { getPlayerNotes } from "../../utils/playerListPreferences";
@@ -145,11 +142,6 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
     userSelect: "none" as const,
   };
 
-  const scoreColor = player.avg_performance_score
-    ? getPerformanceScoreColor(player.avg_performance_score)
-    : "#6b7280";
-  const textColor = getContrastTextColor(scoreColor);
-
   const getPlayerPath = (universalId: string) => {
     if (universalId.startsWith("internal_")) {
       const cafcId = universalId.replace("internal_", "");
@@ -267,19 +259,12 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
 
           {/* Score Badge */}
           {player.avg_performance_score !== null && (
-            <Badge
-              bg=""
-              style={{
-                backgroundColor: scoreColor,
-                color: textColor,
-                fontWeight: "bold",
-                fontSize: "0.7rem",
-                padding: "3px 8px",
-                flexShrink: 0,
-              }}
-            >
-              {player.avg_performance_score.toFixed(1)}
-            </Badge>
+            <GradeChip
+              score={player.avg_performance_score}
+              decimals={1}
+              size="sm"
+              className="flex-shrink-0"
+            />
           )}
 
           {/* Status Indicators */}

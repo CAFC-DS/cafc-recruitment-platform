@@ -5,7 +5,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../axiosInstance";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
-import { getAverageAttributeScoreColor, getPerformanceScoreColor } from "../../utils/colorUtils";
+import { getAverageAttributeScoreColor } from "../../utils/colorUtils";
+import GradeChip from "../GradeChip";
 
 // CSS for range sliders
 const rangeSliderStyles = `
@@ -612,17 +613,11 @@ const AttributeFilterSection: React.FC = () => {
                           </span>
                         </td>
                         <td>
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: getPerformanceScoreColor(report.PERFORMANCE_SCORE),
-                              color: "white",
-                              fontWeight: "bold",
-                              fontSize: "0.9rem"
-                            }}
-                          >
-                            {report.PERFORMANCE_SCORE || 'N/A'}
-                          </span>
+                          {report.PERFORMANCE_SCORE ? (
+                            <GradeChip score={report.PERFORMANCE_SCORE} size="md" />
+                          ) : (
+                            'N/A'
+                          )}
                         </td>
                       </tr>
                     ))}

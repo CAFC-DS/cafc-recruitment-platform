@@ -21,6 +21,7 @@ import SimpleBarChart from "../components/analytics/SimpleBarChart";
 import SimpleLineChart from "../components/analytics/SimpleLineChart";
 import SimpleStatsCard from "../components/analytics/SimpleStatsCard";
 import PlayerReportModal from "../components/PlayerReportModal";
+import GradeChip from "../components/GradeChip";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
   PersonalAnalyticsReportRow,
@@ -32,7 +33,6 @@ import {
   getAttributeScoreColor,
   getFlagColor,
   getGradeColor,
-  getPerformanceScoreColor,
 } from "../utils/colorUtils";
 import { Player } from "../types/Player";
 import { getPlayerProfilePath, getPlayerProfilePathFromSource } from "../utils/playerNavigation";
@@ -288,11 +288,6 @@ const PersonalAnalyticsPage: React.FC = () => {
     return new Date(value).toLocaleDateString();
   };
 
-  const formatScore = (value: number | null) => {
-    if (value == null) return "—";
-    return value.toFixed(2);
-  };
-
   const getFlagBadge = (report: PersonalAnalyticsReportRow) => {
     if (report.is_archived && report.flag_category) {
       return (
@@ -488,20 +483,11 @@ const PersonalAnalyticsPage: React.FC = () => {
                   <div className="d-flex flex-column align-items-center justify-content-center text-center h-100">
                     <div className="text-muted small mb-2">Average Performance</div>
                     <div>
-                        <span
-                          className="badge"
-                          style={{
-                            backgroundColor: getPerformanceScoreColor(
-                              analytics?.summary.avg_performance_score || 0,
-                            ),
-                            color: "white",
-                            fontWeight: 700,
-                            fontSize: "1rem",
-                            padding: "0.5rem 0.85rem",
-                          }}
-                        >
-                          {formatScore(analytics?.summary.avg_performance_score || 0)}
-                        </span>
+                        <GradeChip
+                          score={analytics?.summary.avg_performance_score || 0}
+                          decimals={2}
+                          size="lg"
+                        />
                     </div>
                   </div>
                 </Card.Body>
@@ -566,17 +552,7 @@ const PersonalAnalyticsPage: React.FC = () => {
                             <td>{player.player_name}</td>
                             <td>{player.position}</td>
                             <td>
-                              <span
-                                className="badge"
-                                style={{
-                                  backgroundColor: getPerformanceScoreColor(
-                                    player.avg_performance_score,
-                                  ),
-                                  color: "white",
-                                }}
-                              >
-                                {player.avg_performance_score.toFixed(2)}
-                              </span>
+                              <GradeChip score={player.avg_performance_score} decimals={2} size="md" />
                             </td>
                             <td>{player.report_count}</td>
                           </tr>
@@ -866,35 +842,11 @@ const PersonalAnalyticsPage: React.FC = () => {
                               <td>
                                 <div className="d-flex align-items-center justify-content-center gap-1">
                                   {report.performance_score != null ? (
-                                    <span
-                                      className={`badge ${
-                                        report.performance_score === 9
-                                          ? "performance-score-9"
-                                          : report.performance_score === 10
-                                            ? "performance-score-10"
-                                            : ""
-                                      }`}
-                                      style={{
-                                        backgroundColor: getPerformanceScoreColor(
-                                          report.performance_score,
-                                        ),
-                                        color: "white !important",
-                                        fontWeight: "bold",
-                                        fontSize: "0.9rem",
-                                        ...(report.performance_score !== 9 &&
-                                        report.performance_score !== 10
-                                          ? { border: "none" }
-                                          : {}),
-                                      }}
-                                      title={
-                                        report.is_potential
-                                          ? "Potential Score"
-                                          : undefined
-                                      }
-                                    >
-                                      {report.performance_score}
-                                      {report.is_potential && <sup className="score-potential-mark">*</sup>}
-                                    </span>
+                                    <GradeChip
+                                      score={report.performance_score}
+                                      isPotential={!!report.is_potential}
+                                      size="md"
+                                    />
                                   ) : (
                                     "—"
                                   )}
