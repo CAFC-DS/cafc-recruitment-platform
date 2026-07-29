@@ -48,6 +48,9 @@ from services.ollama_service import ollama_service
 # Import iteration mapping
 from iteration_mapping import ITERATION_MAPPING
 
+# Import shared duplicate-player scoring (pure, DB-free)
+from duplicate_detection import score_player_match, normalize_text as dd_normalize_text
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -6149,58 +6152,16 @@ async def internal_player_audit(
             by_exact_name.setdefault(ext_name, []).append(ext)
 
         def score_candidate(internal_row, external_row):
-            internal_name = normalize_text(internal_row[1] or "")
-            external_name = normalize_text(external_row[1] or "")
-            internal_squad = normalize_text(internal_row[5] or "")
-            external_squad = normalize_text(external_row[5] or "")
-            internal_dob = internal_row[4]
-            external_dob = external_row[4]
-
-            max_len_name = max(len(internal_name), len(external_name), 1)
-            name_dist = levenshtein_module.distance(internal_name, external_name)
-            name_similarity = (1 - (name_dist / max_len_name)) * 100
-
-            max_len_squad = max(len(internal_squad), len(external_squad), 1)
-            squad_dist = levenshtein_module.distance(internal_squad, external_squad)
-            squad_similarity = (1 - (squad_dist / max_len_squad)) * 100
-
-            name_exact = internal_name == external_name and internal_name != ""
-            dob_exact = (
-                internal_dob is not None
-                and external_dob is not None
-                and internal_dob == external_dob
+            scored = score_player_match(
+                name_a=internal_row[1],
+                name_b=external_row[1],
+                dob_a=internal_row[4],
+                dob_b=external_row[4],
+                squad_a=internal_row[5],
+                squad_b=external_row[5],
             )
-            squad_exact = internal_squad == external_squad and internal_squad != ""
-            squad_near = squad_similarity >= 90
-
-            conf = None
-            if name_exact and dob_exact:
-                conf = "high"
-            elif name_exact and squad_exact:
-                conf = "medium"
-            elif name_similarity >= 88 and (squad_exact or squad_near):
-                conf = "low"
-
-            if conf is None:
+            if scored is None:
                 return None
-
-            evidence = []
-            if name_exact:
-                evidence.append("Name exact")
-            else:
-                evidence.append(f"Fuzzy {round(name_similarity, 1)}%")
-            if dob_exact:
-                evidence.append("DOB exact")
-            elif internal_dob is None or external_dob is None:
-                evidence.append("DOB missing")
-            else:
-                evidence.append("DOB mismatch")
-            if squad_exact:
-                evidence.append("Squad exact")
-            elif squad_near:
-                evidence.append(f"Squad near {round(squad_similarity, 1)}%")
-            else:
-                evidence.append("Squad mismatch")
 
             return {
                 "external": {
@@ -6214,10 +6175,10 @@ async def internal_player_audit(
                     "data_source": external_row[7],
                     "universal_id": f"external_{external_row[0]}",
                 },
-                "confidence": conf,
-                "name_similarity": round(name_similarity, 1),
-                "squad_similarity": round(squad_similarity, 1),
-                "evidence": evidence,
+                "confidence": scored["confidence"],
+                "name_similarity": scored["name_similarity"],
+                "squad_similarity": scored["squad_similarity"],
+                "evidence": scored["evidence"],
             }
 
         confidence_rank = {"high": 3, "medium": 2, "low": 1}
