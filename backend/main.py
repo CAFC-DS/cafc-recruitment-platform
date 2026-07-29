@@ -5808,6 +5808,22 @@ async def merge_players(
             )
             results.append(f"Updated {cursor.rowcount} rows in player_list_flags")
 
+        # Reassign player_recommendations (also keyed by UNIVERSAL_ID text,
+        # same "internal_<id>" / "external_<id>" format as player_list_flags
+        # above). Unlike player_list_flags, this table is many-rows-per-player
+        # by design (a player can have multiple recommendation submissions),
+        # so a plain UPDATE is correct here — no dedupe/delete branch needed.
+        # The column is schema-conditional (older tables may not have it),
+        # so guard with the same recommendation_column_exists() check used
+        # when building the player_recommendations SELECT elsewhere in this
+        # file.
+        if recommendation_column_exists("player_recommendations", "LINKED_UNIVERSAL_ID"):
+            cursor.execute(
+                "UPDATE player_recommendations SET LINKED_UNIVERSAL_ID = %s WHERE LINKED_UNIVERSAL_ID = %s",
+                (keep_universal_id, remove_universal_id),
+            )
+            results.append(f"Updated {cursor.rowcount} rows in player_recommendations")
+
         # Delete the losing player's row now that everything referencing it
         # has been reassigned.
         cursor.execute(f"DELETE FROM players WHERE {remove_condition}", remove_params)
@@ -6664,6 +6680,41 @@ async def internal_player_audit_bulk_merge(
                 "external_name": external[1],
                 "confidence": best_confidence,
             })
+
+        # Second ambiguity pass: the loop above only catches one internal
+        # anchor having multiple tied candidates. It does not catch the
+        # reverse collision — two DIFFERENT internal anchors each
+        # independently landing on the SAME external candidate as their
+        # single best match. Since merges always keep the external record
+        # as survivor, letting both proceed would delete both internal
+        # players into one external row (a silent double-collapse). Move
+        # every pair sharing a contested external_universal_id into
+        # `skipped` before the dry_run/live branch so the dry-run preview
+        # and the live run agree on what will/won't be merged.
+        external_id_counts: Dict[str, int] = {}
+        for pair in pairs:
+            external_id_counts[pair["external_universal_id"]] = (
+                external_id_counts.get(pair["external_universal_id"], 0) + 1
+            )
+        contested_external_ids = {
+            ext_id for ext_id, count in external_id_counts.items() if count > 1
+        }
+        if contested_external_ids:
+            still_ok = []
+            for pair in pairs:
+                if pair["external_universal_id"] in contested_external_ids:
+                    n = external_id_counts[pair["external_universal_id"]]
+                    skipped.append({
+                        "internal_universal_id": pair["internal_universal_id"],
+                        "internal_name": pair["internal_name"],
+                        "reason": (
+                            f"Ambiguous: {n} internal anchors matched to the same "
+                            f"external candidate ({pair['external_name']})"
+                        ),
+                    })
+                else:
+                    still_ok.append(pair)
+            pairs = still_ok
 
         if dry_run:
             return {

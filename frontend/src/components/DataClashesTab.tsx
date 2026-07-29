@@ -108,6 +108,14 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
     const keep = keepPlayer === 1 ? clash.player1 : clash.player2;
     const remove = keepPlayer === 1 ? clash.player2 : clash.player1;
 
+    if (
+      !window.confirm(
+        `Merge these two records, keeping "${keep.name}"?\n\nThis will re-assign related records and permanently delete "${remove.name}".`
+      )
+    ) {
+      return;
+    }
+
     setActionLoading(true);
     setError(null);
     setSuccess(null);
@@ -450,8 +458,10 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
           {selectedClash && "player1" in selectedClash && (
             <>
               <Alert variant="info">
-                Choose which player record to keep. All reports from the other
-                player will be reassigned to the kept player.
+                Choose which player record to keep. All reports and related
+                records from the other player will be re-assigned to the kept
+                player, and the other player record will be permanently
+                deleted.
               </Alert>
               <div className="d-flex justify-content-around">
                 <div>
