@@ -5654,6 +5654,20 @@ async def merge_players(
             raise HTTPException(status_code=404, detail="Player to remove (remove_universal_id) not found")
         remove_cafc_id, remove_player_id, remove_name, remove_source = remove_row
 
+        # Guard against merging a player into itself when the two universal
+        # IDs are textually different but resolve to the same underlying
+        # player (e.g. "internal_5" vs "internal_05" both resolve to
+        # CAFC_PLAYER_ID=5 via int()). If this slipped through, every
+        # reassignment below would be a no-op and the final DELETE would
+        # remove the player that was supposed to survive.
+        keep_identity = (keep_source, keep_cafc_id if keep_source == "internal" else keep_player_id)
+        remove_identity = (remove_source, remove_cafc_id if remove_source == "internal" else remove_player_id)
+        if keep_identity == remove_identity:
+            raise HTTPException(
+                status_code=400,
+                detail="keep_universal_id and remove_universal_id resolve to the same player",
+            )
+
         results = []
 
         # Reassign scout_reports, player_information, player_notes: these
@@ -5662,89 +5676,137 @@ async def merge_players(
         # id columns is populated onto the corresponding survivor id column,
         # and null out the loser's id so no row can resolve to the deleted
         # player after this transaction commits.
-        for table_name, has_intel_table_guard in (
-            ("scout_reports", False),
-            ("player_information", True),
-            ("player_notes", True),
-        ):
-            try:
-                if remove_source == "external" and keep_source == "internal":
-                    cursor.execute(
-                        f"""
-                        UPDATE {table_name}
-                        SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
-                        WHERE PLAYER_ID = %s
-                        """,
-                        (keep_cafc_id, remove_player_id),
-                    )
-                elif remove_source == "internal" and keep_source == "external":
-                    cursor.execute(
-                        f"""
-                        UPDATE {table_name}
-                        SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
-                        WHERE CAFC_PLAYER_ID = %s
-                        """,
-                        (keep_player_id, remove_cafc_id),
-                    )
-                elif remove_source == "internal" and keep_source == "internal":
-                    cursor.execute(
-                        f"""
-                        UPDATE {table_name}
-                        SET CAFC_PLAYER_ID = %s
-                        WHERE CAFC_PLAYER_ID = %s
-                        """,
-                        (keep_cafc_id, remove_cafc_id),
-                    )
-                else:  # both external
-                    cursor.execute(
-                        f"""
-                        UPDATE {table_name}
-                        SET PLAYER_ID = %s
-                        WHERE PLAYER_ID = %s
-                        """,
-                        (keep_player_id, remove_player_id),
-                    )
-                results.append(f"Updated {cursor.rowcount} rows in {table_name}")
-            except Exception as e:
-                if not has_intel_table_guard:
-                    raise
-                results.append(f"{table_name} table not found or no updates needed: {e}")
-
-        # Reassign player_list_items (same dual PLAYER_ID/CAFC_PLAYER_ID pattern).
-        try:
+        #
+        # Any exception here is allowed to propagate to the outer except
+        # blocks (which roll back) instead of being swallowed: this
+        # reassignment runs immediately before the losing player's row is
+        # permanently deleted, so a silently-skipped UPDATE would leave
+        # those rows pointing at a row that no longer exists. Snowflake does
+        # not auto-abort an open transaction on a statement error, so
+        # tolerating a failure here would let the DELETE and COMMIT still go
+        # through.
+        for table_name in ("scout_reports", "player_information", "player_notes"):
             if remove_source == "external" and keep_source == "internal":
+                # Guard: only move rows whose CAFC_PLAYER_ID isn't already
+                # pointing at some other (third) internal player — otherwise
+                # a dual-populated row would silently have its real link
+                # overwritten and its PLAYER_ID erased.
                 cursor.execute(
-                    "UPDATE player_list_items SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL WHERE PLAYER_ID = %s",
-                    (keep_cafc_id, remove_player_id),
+                    f"""
+                    UPDATE {table_name}
+                    SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
+                    WHERE PLAYER_ID = %s AND (CAFC_PLAYER_ID IS NULL OR CAFC_PLAYER_ID = %s)
+                    """,
+                    (keep_cafc_id, remove_player_id, keep_cafc_id),
                 )
             elif remove_source == "internal" and keep_source == "external":
                 cursor.execute(
-                    "UPDATE player_list_items SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL WHERE CAFC_PLAYER_ID = %s",
-                    (keep_player_id, remove_cafc_id),
+                    f"""
+                    UPDATE {table_name}
+                    SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
+                    WHERE CAFC_PLAYER_ID = %s AND (PLAYER_ID IS NULL OR PLAYER_ID = %s)
+                    """,
+                    (keep_player_id, remove_cafc_id, keep_player_id),
                 )
             elif remove_source == "internal" and keep_source == "internal":
                 cursor.execute(
-                    "UPDATE player_list_items SET CAFC_PLAYER_ID = %s WHERE CAFC_PLAYER_ID = %s",
+                    f"""
+                    UPDATE {table_name}
+                    SET CAFC_PLAYER_ID = %s
+                    WHERE CAFC_PLAYER_ID = %s
+                    """,
                     (keep_cafc_id, remove_cafc_id),
                 )
-            else:
+            else:  # both external
                 cursor.execute(
-                    "UPDATE player_list_items SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                    f"""
+                    UPDATE {table_name}
+                    SET PLAYER_ID = %s
+                    WHERE PLAYER_ID = %s
+                    """,
                     (keep_player_id, remove_player_id),
                 )
-            results.append(f"Updated {cursor.rowcount} rows in player_list_items")
-        except Exception as e:
-            results.append(f"player_list_items table not found or no updates needed: {e}")
+            results.append(f"Updated {cursor.rowcount} rows in {table_name}")
 
-        # Reassign player_list_flags (keyed by UNIVERSAL_ID text, not a dual column pair).
-        try:
+        # Reassign player_list_items (same dual PLAYER_ID/CAFC_PLAYER_ID
+        # pattern). List membership should stay unique per player, so first
+        # drop any of the loser's list_items rows for a LIST_ID the survivor
+        # is already on (otherwise reassigning would create a duplicate
+        # entry for that player on that list), then reassign whatever's
+        # left. As with the loop above, any failure here aborts the merge.
+        keep_list_col = "CAFC_PLAYER_ID" if keep_source == "internal" else "PLAYER_ID"
+        keep_list_id = keep_cafc_id if keep_source == "internal" else keep_player_id
+        remove_list_col = "CAFC_PLAYER_ID" if remove_source == "internal" else "PLAYER_ID"
+        remove_list_id = remove_cafc_id if remove_source == "internal" else remove_player_id
+
+        cursor.execute(
+            f"""
+            DELETE FROM player_list_items
+            WHERE {remove_list_col} = %s
+              AND LIST_ID IN (
+                  SELECT LIST_ID FROM player_list_items WHERE {keep_list_col} = %s
+              )
+            """,
+            (remove_list_id, keep_list_id),
+        )
+        results.append(
+            f"Removed {cursor.rowcount} duplicate player_list_items rows (already on survivor's lists)"
+        )
+
+        if remove_source == "external" and keep_source == "internal":
+            cursor.execute(
+                """
+                UPDATE player_list_items
+                SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
+                WHERE PLAYER_ID = %s AND (CAFC_PLAYER_ID IS NULL OR CAFC_PLAYER_ID = %s)
+                """,
+                (keep_cafc_id, remove_player_id, keep_cafc_id),
+            )
+        elif remove_source == "internal" and keep_source == "external":
+            cursor.execute(
+                """
+                UPDATE player_list_items
+                SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
+                WHERE CAFC_PLAYER_ID = %s AND (PLAYER_ID IS NULL OR PLAYER_ID = %s)
+                """,
+                (keep_player_id, remove_cafc_id, keep_player_id),
+            )
+        elif remove_source == "internal" and keep_source == "internal":
+            cursor.execute(
+                "UPDATE player_list_items SET CAFC_PLAYER_ID = %s WHERE CAFC_PLAYER_ID = %s",
+                (keep_cafc_id, remove_cafc_id),
+            )
+        else:
+            cursor.execute(
+                "UPDATE player_list_items SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                (keep_player_id, remove_player_id),
+            )
+        results.append(f"Updated {cursor.rowcount} rows in player_list_items")
+
+        # Reassign player_list_flags (keyed by UNIVERSAL_ID text, not a dual
+        # column pair). Snowflake does not enforce a uniqueness constraint on
+        # UNIVERSAL_ID, so a blind UPDATE could create two rows for the same
+        # survivor if both players already had a flags row. Delete the
+        # loser's row instead when the survivor already has one (last-write
+        # on flags is an acceptable trade-off; a duplicate row is not).
+        cursor.execute(
+            "SELECT 1 FROM player_list_flags WHERE UNIVERSAL_ID = %s",
+            (keep_universal_id,),
+        )
+        if cursor.fetchone():
+            cursor.execute(
+                "DELETE FROM player_list_flags WHERE UNIVERSAL_ID = %s",
+                (remove_universal_id,),
+            )
+            results.append(
+                f"Deleted {cursor.rowcount} duplicate player_list_flags row(s) (survivor already had flags)"
+            )
+        else:
             cursor.execute(
                 "UPDATE player_list_flags SET UNIVERSAL_ID = %s WHERE UNIVERSAL_ID = %s",
                 (keep_universal_id, remove_universal_id),
             )
             results.append(f"Updated {cursor.rowcount} rows in player_list_flags")
-        except Exception as e:
-            results.append(f"player_list_flags table not found or no updates needed: {e}")
 
         # Delete the losing player's row now that everything referencing it
         # has been reassigned.
@@ -5770,14 +5832,32 @@ async def merge_players(
         raise HTTPException(status_code=500, detail=f"Error merging players: {e}")
     finally:
         if conn:
+            reset_ok = True
             try:
                 if cursor:
                     cursor.execute("ALTER SESSION SET AUTOCOMMIT = TRUE")
             except Exception:
-                # Don't let a reset failure mask the original error or block
-                # the connection from being returned to the pool.
-                pass
-            conn.close()
+                # Don't let a reset failure mask the original error.
+                reset_ok = False
+            if reset_ok:
+                conn.close()
+            else:
+                # PooledSnowflakeConnection.close() returns the underlying
+                # connection to the pool rather than actually closing it, so
+                # if we couldn't confirm AUTOCOMMIT was reset to TRUE, do NOT
+                # let this connection go back into circulation — a stuck
+                # AUTOCOMMIT=FALSE session handed to an unrelated future
+                # request would silently accumulate uncommitted DML with no
+                # commit. Bypass the pooling close() and shut the real
+                # connection down instead.
+                try:
+                    real_conn = getattr(conn, "_real_conn", None)
+                    if real_conn is not None:
+                        real_conn.close()
+                    else:
+                        conn.close()
+                except Exception:
+                    pass
 
 
 @app.get("/admin/detect-clashes")
