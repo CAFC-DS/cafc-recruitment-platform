@@ -5603,82 +5603,165 @@ async def check_player_deletion_safety(
 
 @app.post("/admin/merge-players")
 async def merge_players(
-    keep_cafc_id: int,
-    remove_player_id: int,
+    keep_universal_id: str,
+    remove_universal_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Merge a removed player back to existing CAFC_PLAYER_ID (admin only)"""
+    """Merge two player records: reassign all dependent rows from the losing
+    player onto the surviving player, then delete the losing player's row.
+    Works in either direction (keep internal or keep external) — the caller
+    picks which universal ID survives. (admin only)"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    if keep_universal_id == remove_universal_id:
+        raise HTTPException(
+            status_code=400, detail="keep_universal_id and remove_universal_id must differ"
+        )
+
     conn = None
+    cursor = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        # NOTE: `conn.autocommit = False` is a no-op here — snowflake-connector-python's
+        # `autocommit` is a plain method (`autocommit(mode)`), not a property, and
+        # PooledSnowflakeConnection has no __setattr__ override, so assignment merely
+        # shadows the attribute on the wrapper instead of calling the method or issuing
+        # any SQL. Sessions from _create_new_connection() are never opened with
+        # autocommit=False either. Toggle it explicitly via the cursor so the DELETE
+        # below is actually covered by a real transaction that conn.rollback() can undo.
+        cursor.execute("ALTER SESSION SET AUTOCOMMIT = FALSE")
 
-        # Verify the CAFC_PLAYER_ID exists
+        keep_condition, keep_params = resolve_player_lookup(keep_universal_id)
+        remove_condition, remove_params = resolve_player_lookup(remove_universal_id)
+
         cursor.execute(
-            "SELECT PLAYERNAME FROM players WHERE CAFC_PLAYER_ID = %s", (keep_cafc_id,)
+            f"SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, DATA_SOURCE FROM players WHERE {keep_condition}",
+            keep_params,
         )
-        existing_player = cursor.fetchone()
-        if not existing_player:
-            raise HTTPException(
-                status_code=404, detail="Target CAFC_PLAYER_ID not found"
-            )
+        keep_row = cursor.fetchone()
+        if not keep_row:
+            raise HTTPException(status_code=404, detail="Target player (keep_universal_id) not found")
+        keep_cafc_id, keep_player_id, keep_name, keep_source = keep_row
+
+        cursor.execute(
+            f"SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, DATA_SOURCE FROM players WHERE {remove_condition}",
+            remove_params,
+        )
+        remove_row = cursor.fetchone()
+        if not remove_row:
+            raise HTTPException(status_code=404, detail="Player to remove (remove_universal_id) not found")
+        remove_cafc_id, remove_player_id, remove_name, remove_source = remove_row
 
         results = []
 
-        # Update scout reports
-        cursor.execute(
-            """
-            UPDATE scout_reports 
-            SET CAFC_PLAYER_ID = %s 
-            WHERE PLAYER_ID = %s AND CAFC_PLAYER_ID IS NULL
-        """,
-            (keep_cafc_id, remove_player_id),
-        )
-        scout_updated = cursor.rowcount
-        results.append(f"Updated {scout_updated} scout reports")
+        # Reassign scout_reports, player_information, player_notes: these
+        # tables carry both a legacy PLAYER_ID (external) column and a
+        # CAFC_PLAYER_ID (internal) column. Move whichever of the loser's
+        # id columns is populated onto the corresponding survivor id column,
+        # and null out the loser's id so no row can resolve to the deleted
+        # player after this transaction commits.
+        for table_name, has_intel_table_guard in (
+            ("scout_reports", False),
+            ("player_information", True),
+            ("player_notes", True),
+        ):
+            try:
+                if remove_source == "external" and keep_source == "internal":
+                    cursor.execute(
+                        f"""
+                        UPDATE {table_name}
+                        SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
+                        WHERE PLAYER_ID = %s
+                        """,
+                        (keep_cafc_id, remove_player_id),
+                    )
+                elif remove_source == "internal" and keep_source == "external":
+                    cursor.execute(
+                        f"""
+                        UPDATE {table_name}
+                        SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
+                        WHERE CAFC_PLAYER_ID = %s
+                        """,
+                        (keep_player_id, remove_cafc_id),
+                    )
+                elif remove_source == "internal" and keep_source == "internal":
+                    cursor.execute(
+                        f"""
+                        UPDATE {table_name}
+                        SET CAFC_PLAYER_ID = %s
+                        WHERE CAFC_PLAYER_ID = %s
+                        """,
+                        (keep_cafc_id, remove_cafc_id),
+                    )
+                else:  # both external
+                    cursor.execute(
+                        f"""
+                        UPDATE {table_name}
+                        SET PLAYER_ID = %s
+                        WHERE PLAYER_ID = %s
+                        """,
+                        (keep_player_id, remove_player_id),
+                    )
+                results.append(f"Updated {cursor.rowcount} rows in {table_name}")
+            except Exception as e:
+                if not has_intel_table_guard:
+                    raise
+                results.append(f"{table_name} table not found or no updates needed: {e}")
 
-        # Update intel reports
+        # Reassign player_list_items (same dual PLAYER_ID/CAFC_PLAYER_ID pattern).
+        try:
+            if remove_source == "external" and keep_source == "internal":
+                cursor.execute(
+                    "UPDATE player_list_items SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL WHERE PLAYER_ID = %s",
+                    (keep_cafc_id, remove_player_id),
+                )
+            elif remove_source == "internal" and keep_source == "external":
+                cursor.execute(
+                    "UPDATE player_list_items SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL WHERE CAFC_PLAYER_ID = %s",
+                    (keep_player_id, remove_cafc_id),
+                )
+            elif remove_source == "internal" and keep_source == "internal":
+                cursor.execute(
+                    "UPDATE player_list_items SET CAFC_PLAYER_ID = %s WHERE CAFC_PLAYER_ID = %s",
+                    (keep_cafc_id, remove_cafc_id),
+                )
+            else:
+                cursor.execute(
+                    "UPDATE player_list_items SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                    (keep_player_id, remove_player_id),
+                )
+            results.append(f"Updated {cursor.rowcount} rows in player_list_items")
+        except Exception as e:
+            results.append(f"player_list_items table not found or no updates needed: {e}")
+
+        # Reassign player_list_flags (keyed by UNIVERSAL_ID text, not a dual column pair).
         try:
             cursor.execute(
-                """
-                UPDATE player_information 
-                SET CAFC_PLAYER_ID = %s 
-                WHERE PLAYER_ID = %s AND CAFC_PLAYER_ID IS NULL
-            """,
-                (keep_cafc_id, remove_player_id),
+                "UPDATE player_list_flags SET UNIVERSAL_ID = %s WHERE UNIVERSAL_ID = %s",
+                (keep_universal_id, remove_universal_id),
             )
-            intel_updated = cursor.rowcount
-            results.append(f"Updated {intel_updated} intel reports")
-        except:
-            results.append("Intel reports table not found or no updates needed")
+            results.append(f"Updated {cursor.rowcount} rows in player_list_flags")
+        except Exception as e:
+            results.append(f"player_list_flags table not found or no updates needed: {e}")
 
-        # Update player notes
-        try:
-            cursor.execute(
-                """
-                UPDATE player_notes 
-                SET CAFC_PLAYER_ID = %s 
-                WHERE PLAYER_ID = %s AND CAFC_PLAYER_ID IS NULL
-            """,
-                (keep_cafc_id, remove_player_id),
-            )
-            notes_updated = cursor.rowcount
-            results.append(f"Updated {notes_updated} player notes")
-        except:
-            results.append("Player notes table not found or no updates needed")
+        # Delete the losing player's row now that everything referencing it
+        # has been reassigned.
+        cursor.execute(f"DELETE FROM players WHERE {remove_condition}", remove_params)
+        results.append(f"Deleted losing player record ({remove_universal_id})")
 
         conn.commit()
 
         return {
-            "message": f"Successfully merged player data to CAFC_PLAYER_ID {keep_cafc_id}",
-            "target_player": existing_player[0],
+            "message": f"Successfully merged {remove_name or remove_universal_id} into {keep_name or keep_universal_id}",
+            "target_player": keep_name,
             "results": results,
         }
 
     except HTTPException:
+        if conn:
+            conn.rollback()
         raise
     except Exception as e:
         if conn:
@@ -5687,6 +5770,13 @@ async def merge_players(
         raise HTTPException(status_code=500, detail=f"Error merging players: {e}")
     finally:
         if conn:
+            try:
+                if cursor:
+                    cursor.execute("ALTER SESSION SET AUTOCOMMIT = TRUE")
+            except Exception:
+                # Don't let a reset failure mask the original error or block
+                # the connection from being returned to the pool.
+                pass
             conn.close()
 
 
