@@ -6477,6 +6477,150 @@ async def internal_player_audit(
             conn.close()
 
 
+@app.post("/admin/internal-player-audit/bulk-merge")
+async def internal_player_audit_bulk_merge(
+    dry_run: bool = True,
+    current_user: User = Depends(get_current_user),
+):
+    """Merge every internal anchor whose best candidate is High or Medium
+    confidence, always keeping the EXTERNAL record as survivor. Internal
+    anchors with more than one Medium-confidence candidate are skipped as
+    ambiguous. Set dry_run=false to actually perform the merges; dry_run=true
+    (default) returns the pair list without writing anything, for the
+    confirmation-modal preview. (admin only)"""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION,
+                   COALESCE(DATA_SOURCE, 'internal') as DATA_SOURCE
+            FROM players
+            WHERE CAFC_PLAYER_ID IS NOT NULL AND PLAYERID IS NULL
+            ORDER BY PLAYERNAME, CAFC_PLAYER_ID
+            """
+        )
+        internal_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT PLAYERID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION,
+                   COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE
+            FROM players
+            WHERE PLAYERID IS NOT NULL AND COALESCE(DATA_SOURCE, 'external') = 'external'
+            ORDER BY PLAYERNAME, PLAYERID
+            """
+        )
+        external_rows = cursor.fetchall()
+
+        by_exact_name: Dict[str, list] = {}
+        for ext in external_rows:
+            ext_name = dd_normalize_text(ext[1] or "")
+            if ext_name:
+                by_exact_name.setdefault(ext_name, []).append(ext)
+
+        confidence_rank = {"high": 3, "medium": 2, "low": 1}
+        pairs = []
+        skipped = []
+
+        for internal in internal_rows:
+            internal_name_norm = dd_normalize_text(internal[1] or "")
+            candidate_rows = by_exact_name.get(internal_name_norm, [])
+
+            scored_candidates = []
+            for external in candidate_rows:
+                scored = score_player_match(
+                    name_a=internal[1], name_b=external[1],
+                    dob_a=internal[4], dob_b=external[4],
+                    squad_a=internal[5], squad_b=external[5],
+                )
+                if scored and scored["confidence"] in ("high", "medium"):
+                    scored_candidates.append((scored, external))
+
+            if not scored_candidates:
+                continue
+
+            scored_candidates.sort(key=lambda sc: confidence_rank[sc[0]["confidence"]], reverse=True)
+            best_confidence = scored_candidates[0][0]["confidence"]
+            same_tier = [sc for sc in scored_candidates if sc[0]["confidence"] == best_confidence]
+
+            if len(same_tier) > 1:
+                skipped.append({
+                    "internal_universal_id": f"internal_{internal[0]}",
+                    "internal_name": internal[1],
+                    "reason": f"Ambiguous: {len(same_tier)} candidates tied at {best_confidence} confidence",
+                })
+                continue
+
+            external = same_tier[0][1]
+            pairs.append({
+                "internal_universal_id": f"internal_{internal[0]}",
+                "internal_name": internal[1],
+                "external_universal_id": f"external_{external[0]}",
+                "external_name": external[1],
+                "confidence": best_confidence,
+            })
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "merged_count": 0,
+                "pairs": pairs,
+                "skipped": skipped,
+                "failed": [],
+            }
+
+        merged_count = 0
+        failed = []
+        for pair in pairs:
+            # Reuse the exact same merge logic as the per-row Review modal
+            # (Task 3's merge_players) instead of reimplementing reassignment
+            # and deletion here — merge_players is a plain async function,
+            # directly callable in-process, so this is a normal function
+            # call, not an HTTP round-trip.
+            try:
+                await merge_players(
+                    keep_universal_id=pair["external_universal_id"],
+                    remove_universal_id=pair["internal_universal_id"],
+                    current_user=current_user,
+                )
+                merged_count += 1
+            except HTTPException as e:
+                failed.append({
+                    "internal_universal_id": pair["internal_universal_id"],
+                    "external_universal_id": pair["external_universal_id"],
+                    "error": e.detail,
+                })
+            except Exception as e:
+                failed.append({
+                    "internal_universal_id": pair["internal_universal_id"],
+                    "external_universal_id": pair["external_universal_id"],
+                    "error": str(e),
+                })
+
+        return {
+            "dry_run": False,
+            "merged_count": merged_count,
+            "pairs": pairs,
+            "skipped": skipped,
+            "failed": failed,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error running bulk merge: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.post("/admin/merge-duplicate-match")
 async def merge_duplicate_match(
     keep_match_universal_id: str,
