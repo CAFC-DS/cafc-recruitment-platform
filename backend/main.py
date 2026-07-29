@@ -5884,17 +5884,22 @@ async def detect_data_clashes(
 
         # Detect player clashes - OPTIMIZED: compare across all clubs
         # Optional name filter for targeted search
+        has_transfermarkt = has_column("players", "TRANSFERMARKT_LINK")
+        transfermarkt_select = ", TRANSFERMARKT_LINK" if has_transfermarkt else ""
+
         if name_filter:
             cursor.execute(
-                """
+                f"""
                 SELECT
                     CAFC_PLAYER_ID,
                     PLAYERID,
                     PLAYERNAME,
                     SQUADNAME,
-                    DATA_SOURCE,
+                    COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE,
                     FIRSTNAME,
-                    LASTNAME
+                    LASTNAME,
+                    BIRTHDATE
+                    {transfermarkt_select}
                 FROM players
                 WHERE PLAYERNAME IS NOT NULL
                   AND PLAYERNAME ILIKE %s
@@ -5904,15 +5909,17 @@ async def detect_data_clashes(
             )
         else:
             cursor.execute(
-                """
+                f"""
                 SELECT
                     CAFC_PLAYER_ID,
                     PLAYERID,
                     PLAYERNAME,
                     SQUADNAME,
-                    DATA_SOURCE,
+                    COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE,
                     FIRSTNAME,
-                    LASTNAME
+                    LASTNAME,
+                    BIRTHDATE
+                    {transfermarkt_select}
                 FROM players
                 WHERE PLAYERNAME IS NOT NULL
                 ORDER BY PLAYERNAME
@@ -5923,7 +5930,11 @@ async def detect_data_clashes(
         # Build a list of all players
         all_players = []
         for player in players:
-            cafc_id, player_id, name, squad, data_source, firstname, lastname = player
+            if has_transfermarkt:
+                cafc_id, player_id, name, squad, data_source, firstname, lastname, birthdate, transfermarkt = player
+            else:
+                cafc_id, player_id, name, squad, data_source, firstname, lastname, birthdate = player
+                transfermarkt = None
             all_players.append({
                 "cafc_player_id": cafc_id,
                 "player_id": player_id,
@@ -5932,6 +5943,8 @@ async def detect_data_clashes(
                 "data_source": data_source,
                 "firstname": firstname,
                 "lastname": lastname,
+                "birthdate": birthdate,
+                "transfermarkt_link": transfermarkt,
             })
 
         # PRIORITY: First check for exact name duplicates (100% matches)
@@ -5956,6 +5969,21 @@ async def detect_data_clashes(
                         if (p1["player_id"] == p2["player_id"] and
                             p1["player_id"] is not None):
                             continue
+
+                        if p1["data_source"] != p2["data_source"]:
+                            # Internal-vs-external duplicates are handled by
+                            # the Internal Player Audit tab, not here.
+                            continue
+
+                        scored = score_player_match(
+                            name_a=p1["name"], name_b=p2["name"],
+                            dob_a=p1["birthdate"], dob_b=p2["birthdate"],
+                            squad_a=p1["squad"], squad_b=p2["squad"],
+                            transfermarkt_a=p1["transfermarkt_link"],
+                            transfermarkt_b=p2["transfermarkt_link"],
+                        )
+                        confidence = scored["confidence"] if scored else "low"
+                        evidence = scored["evidence"] if scored else ["Name exact"]
 
                         player_clashes.append({
                             "player1": {
@@ -5987,6 +6015,8 @@ async def detect_data_clashes(
                             "squad1": p1["squad"],
                             "squad2": p2["squad"],
                             "similarity": 100.0,
+                            "confidence": confidence,
+                            "evidence": evidence,
                             "clash_type": "player",
                         })
 
@@ -6012,6 +6042,9 @@ async def detect_data_clashes(
                     p1["player_id"] is not None):
                     continue
 
+                if p1["data_source"] != p2["data_source"]:
+                    continue
+
                 # Calculate Levenshtein distance
                 name1 = (p1["name"] or "").lower().strip()
                 name2 = (p2["name"] or "").lower().strip()
@@ -6034,6 +6067,24 @@ async def detect_data_clashes(
 
                 # Flag if similarity > 70% AND < 100% (70-99% similar, not exact)
                 if similarity > 70 and similarity < 100:
+                    scored = score_player_match(
+                        name_a=p1["name"], name_b=p2["name"],
+                        dob_a=p1["birthdate"], dob_b=p2["birthdate"],
+                        squad_a=p1["squad"], squad_b=p2["squad"],
+                        transfermarkt_a=p1["transfermarkt_link"],
+                        transfermarkt_b=p2["transfermarkt_link"],
+                    )
+                    if scored is None:
+                        # Below every confidence threshold (e.g. fuzzy name
+                        # 71-87% with no squad corroboration) — still surface
+                        # it as low, matching this endpoint's existing
+                        # behavior of showing all 70%+ matches.
+                        confidence = "low"
+                        evidence = [f"Fuzzy {round(similarity, 1)}%"]
+                    else:
+                        confidence = scored["confidence"]
+                        evidence = scored["evidence"]
+
                     player_clashes.append({
                         "player1": {
                             "universal_id": get_player_universal_id({
@@ -6064,11 +6115,59 @@ async def detect_data_clashes(
                         "squad1": p1["squad"],
                         "squad2": p2["squad"],
                         "similarity": round(similarity, 1),
+                        "confidence": confidence,
+                        "evidence": evidence,
                         "clash_type": "player",
                     })
 
             if total_comparisons > max_comparisons:
                 break
+
+        # Annotate each player clash with whether both sides already have
+        # their own scout reports — a caution signal (not a confidence
+        # input) since merging two actively-reported players is higher risk.
+        if player_clashes:
+            all_ids = set()
+            for clash in player_clashes:
+                for side in ("player1", "player2"):
+                    p = clash[side]
+                    if p["data_source"] == "internal" and p["cafc_player_id"] is not None:
+                        all_ids.add(("internal", p["cafc_player_id"]))
+                    elif p["player_id"] is not None:
+                        all_ids.add(("external", p["player_id"]))
+
+            internal_ids = [pid for source, pid in all_ids if source == "internal"]
+            external_ids = [pid for source, pid in all_ids if source == "external"]
+
+            has_reports = set()
+            if internal_ids:
+                placeholders = ",".join(["%s"] * len(internal_ids))
+                cursor.execute(
+                    f"SELECT DISTINCT CAFC_PLAYER_ID FROM scout_reports WHERE CAFC_PLAYER_ID IN ({placeholders})",
+                    internal_ids,
+                )
+                for row in cursor.fetchall():
+                    has_reports.add(("internal", row[0]))
+            if external_ids:
+                placeholders = ",".join(["%s"] * len(external_ids))
+                cursor.execute(
+                    f"SELECT DISTINCT PLAYER_ID FROM scout_reports WHERE PLAYER_ID IN ({placeholders})",
+                    external_ids,
+                )
+                for row in cursor.fetchall():
+                    has_reports.add(("external", row[0]))
+
+            def _player_has_reports(p):
+                if p["data_source"] == "internal" and p["cafc_player_id"] is not None:
+                    return ("internal", p["cafc_player_id"]) in has_reports
+                if p["player_id"] is not None:
+                    return ("external", p["player_id"]) in has_reports
+                return False
+
+            for clash in player_clashes:
+                clash["both_have_reports"] = (
+                    _player_has_reports(clash["player1"]) and _player_has_reports(clash["player2"])
+                )
 
         # Detect fixture clashes - same teams on same date
         cursor.execute(
