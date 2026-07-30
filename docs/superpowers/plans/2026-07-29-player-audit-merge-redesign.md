@@ -616,7 +616,7 @@ git commit -m "Rework merge-players endpoint: bidirectional, transactional, dele
 - Modify: `backend/main.py` — add new route after `internal_player_audit()` (after line 6346, before `merge_duplicate_match` at line 6349).
 
 **Interfaces:**
-- Consumes: the merge logic from Task 3 (calls the same reassignment/delete sequence, inlined per-pair inside a loop — see note below on why this isn't a shared helper function).
+- Consumes: `merge_players()` from Task 3, called directly as an in-process async function per pair (not over HTTP) — this is the single source of truth for merge/delete behavior; this task must not reimplement it.
 - Produces: `POST /admin/internal-player-audit/bulk-merge?dry_run=<bool>` → `{"dry_run": bool, "merged_count": int, "pairs": [{"internal_universal_id": str, "internal_name": str, "external_universal_id": str, "external_name": str, "confidence": str}], "skipped": [{"internal_universal_id": str, "internal_name": str, "reason": str}], "failed": [{"internal_universal_id": str, "external_universal_id": str, "error": str}]}`.
 
 Note on scope: this endpoint recomputes the candidate list itself (never trusts a stale client-supplied list — the spec requires this), which means duplicating the "one internal anchor → one best external candidate" selection already done inside `internal_player_audit()`. Rather than refactor `internal_player_audit()` into a separately-callable helper (a larger change than this plan's scope), this task re-queries with the same SQL shape and reuses `score_player_match` directly — a small amount of duplication is the right tradeoff here per YAGNI (extracting a shared "compute candidate list" helper is worth doing only if a third caller shows up).
@@ -727,61 +727,30 @@ async def internal_player_audit_bulk_merge(
         merged_count = 0
         failed = []
         for pair in pairs:
-            merge_conn = None
+            # Reuse the exact same merge logic as the per-row Review modal
+            # (Task 3's merge_players) instead of reimplementing reassignment
+            # and deletion here — merge_players is a plain async function,
+            # directly callable in-process, so this is a normal function
+            # call, not an HTTP round-trip.
             try:
-                merge_conn = get_snowflake_connection()
-                merge_cursor = merge_conn.cursor()
-                merge_conn.autocommit = False
-
-                keep_condition, keep_params = resolve_player_lookup(pair["external_universal_id"])
-                remove_condition, remove_params = resolve_player_lookup(pair["internal_universal_id"])
-
-                merge_cursor.execute(
-                    f"SELECT PLAYERID FROM players WHERE {keep_condition}", keep_params
+                await merge_players(
+                    keep_universal_id=pair["external_universal_id"],
+                    remove_universal_id=pair["internal_universal_id"],
+                    current_user=current_user,
                 )
-                keep_row = merge_cursor.fetchone()
-                merge_cursor.execute(
-                    f"SELECT CAFC_PLAYER_ID FROM players WHERE {remove_condition}", remove_params
-                )
-                remove_row = merge_cursor.fetchone()
-                if not keep_row or not remove_row:
-                    raise Exception("Player no longer exists (already merged or deleted)")
-
-                keep_player_id = keep_row[0]
-                remove_cafc_id = remove_row[0]
-
-                for table_name in ("scout_reports", "player_information", "player_notes", "player_list_items"):
-                    try:
-                        merge_cursor.execute(
-                            f"UPDATE {table_name} SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL WHERE CAFC_PLAYER_ID = %s",
-                            (keep_player_id, remove_cafc_id),
-                        )
-                    except Exception:
-                        pass
-
-                try:
-                    merge_cursor.execute(
-                        "UPDATE player_list_flags SET UNIVERSAL_ID = %s WHERE UNIVERSAL_ID = %s",
-                        (pair["external_universal_id"], pair["internal_universal_id"]),
-                    )
-                except Exception:
-                    pass
-
-                merge_cursor.execute(f"DELETE FROM players WHERE {remove_condition}", remove_params)
-                merge_conn.commit()
                 merged_count += 1
+            except HTTPException as e:
+                failed.append({
+                    "internal_universal_id": pair["internal_universal_id"],
+                    "external_universal_id": pair["external_universal_id"],
+                    "error": e.detail,
+                })
             except Exception as e:
-                if merge_conn:
-                    merge_conn.rollback()
                 failed.append({
                     "internal_universal_id": pair["internal_universal_id"],
                     "external_universal_id": pair["external_universal_id"],
                     "error": str(e),
                 })
-            finally:
-                if merge_conn:
-                    merge_conn.autocommit = True
-                    merge_conn.close()
 
         return {
             "dry_run": False,

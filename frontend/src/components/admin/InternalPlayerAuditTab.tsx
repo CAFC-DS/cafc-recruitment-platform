@@ -76,6 +76,34 @@ interface SafetyCheck {
   total_dependencies?: number;
 }
 
+interface BulkMergePair {
+  internal_universal_id: string;
+  internal_name: string;
+  external_universal_id: string;
+  external_name: string;
+  confidence: ConfidenceLevel;
+}
+
+interface BulkMergeSkip {
+  internal_universal_id: string;
+  internal_name: string;
+  reason: string;
+}
+
+interface BulkMergeFailure {
+  internal_universal_id: string;
+  external_universal_id: string;
+  error: string;
+}
+
+interface BulkMergeResponse {
+  dry_run: boolean;
+  merged_count: number;
+  pairs: BulkMergePair[];
+  skipped: BulkMergeSkip[];
+  failed: BulkMergeFailure[];
+}
+
 interface InternalPlayerAuditTabProps {
   onStatsChange?: (stats: {
     totalCandidates: number;
@@ -127,6 +155,11 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
   const [candidateImpact, setCandidateImpact] = useState<Record<number, SafetyCheck>>(
     {}
   );
+
+  const [showBulkMergeModal, setShowBulkMergeModal] = useState(false);
+  const [bulkMergePreview, setBulkMergePreview] = useState<BulkMergeResponse | null>(null);
+  const [bulkMergeLoading, setBulkMergeLoading] = useState(false);
+  const [bulkMergeResult, setBulkMergeResult] = useState<BulkMergeResponse | null>(null);
 
   const fetchAudit = useCallback(
     async (isRefresh: boolean = false) => {
@@ -219,26 +252,37 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
     setMergeLoadingId(null);
   };
 
-  const handleMergeToInternal = async (item: AuditItem, candidate: AuditCandidate) => {
-    const keepCafcId = item.internal_player.cafc_player_id;
-    const removePlayerId = candidate.external.player_id;
+  const handleMerge = async (
+    item: AuditItem,
+    candidate: AuditCandidate,
+    keepSide: "internal" | "external"
+  ) => {
+    const keepId =
+      keepSide === "internal"
+        ? item.internal_player.universal_id
+        : candidate.external.universal_id;
+    const removeId =
+      keepSide === "internal"
+        ? candidate.external.universal_id
+        : item.internal_player.universal_id;
+    const keepLabel =
+      keepSide === "internal" ? item.internal_player.player_name : candidate.external.player_name;
+
     if (
       !window.confirm(
-        `Merge external player ${removePlayerId} into internal CAFC ID ${keepCafcId}?\n\nThis will re-assign related records to the internal player.`
+        `Merge these two records, keeping the ${keepSide} record ("${keepLabel}")?\n\nThis will re-assign related records and delete the other record.`
       )
     ) {
       return;
     }
 
     try {
-      setMergeLoadingId(removePlayerId);
+      setMergeLoadingId(candidate.external.player_id);
       setError(null);
       await axiosInstance.post(
-        `/admin/merge-players?keep_cafc_id=${keepCafcId}&remove_player_id=${removePlayerId}`
+        `/admin/merge-players?keep_universal_id=${keepId}&remove_universal_id=${removeId}`
       );
-      setSuccess(
-        `Merged external ${removePlayerId} into internal ${keepCafcId} (${item.internal_player.player_name}).`
-      );
+      setSuccess(`Merged, keeping the ${keepSide} record ("${keepLabel}").`);
       closeReview();
       fetchAudit(true);
     } catch (err) {
@@ -250,6 +294,53 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
     } finally {
       setMergeLoadingId(null);
     }
+  };
+
+  const openBulkMergePreview = async () => {
+    setShowBulkMergeModal(true);
+    setBulkMergeResult(null);
+    setBulkMergePreview(null);
+    setBulkMergeLoading(true);
+    try {
+      const response = await axiosInstance.post<BulkMergeResponse>(
+        "/admin/internal-player-audit/bulk-merge?dry_run=true"
+      );
+      setBulkMergePreview(response.data);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.detail || "Failed to preview bulk merge");
+      } else {
+        setError("Failed to preview bulk merge");
+      }
+      setShowBulkMergeModal(false);
+    } finally {
+      setBulkMergeLoading(false);
+    }
+  };
+
+  const confirmBulkMerge = async () => {
+    setBulkMergeLoading(true);
+    try {
+      const response = await axiosInstance.post<BulkMergeResponse>(
+        "/admin/internal-player-audit/bulk-merge?dry_run=false"
+      );
+      setBulkMergeResult(response.data);
+      fetchAudit(true);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        setError(err.response.data.detail || "Failed to run bulk merge");
+      } else {
+        setError("Failed to run bulk merge");
+      }
+    } finally {
+      setBulkMergeLoading(false);
+    }
+  };
+
+  const closeBulkMergeModal = () => {
+    setShowBulkMergeModal(false);
+    setBulkMergePreview(null);
+    setBulkMergeResult(null);
   };
 
   const pagingLabel = useMemo(() => {
@@ -281,14 +372,19 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
                 Internal records matched against external candidates using tiered confidence.
               </small>
             </div>
-            <Button
-              size="sm"
-              variant="outline-light"
-              onClick={() => fetchAudit(true)}
-              disabled={refreshing}
-            >
-              {refreshing ? "Refreshing..." : "Refresh"}
-            </Button>
+            <div className="d-flex gap-2">
+              <Button size="sm" variant="outline-light" onClick={openBulkMergePreview}>
+                Merge all High + Medium
+              </Button>
+              <Button
+                size="sm"
+                variant="outline-light"
+                onClick={() => fetchAudit(true)}
+                disabled={refreshing}
+              >
+                {refreshing ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
           </div>
         </Card.Header>
         <Card.Body>
@@ -569,14 +665,28 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
                         </td>
                         <td>{typeof affected === "number" ? affected : "N/A"}</td>
                         <td>
-                          <Button
-                            size="sm"
-                            variant="dark"
-                            disabled={mergeLoadingId === candidate.external.player_id}
-                            onClick={() => handleMergeToInternal(reviewItem, candidate)}
-                          >
-                            {mergeLoadingId === candidate.external.player_id ? "Merging..." : "Merge to Internal"}
-                          </Button>
+                          <div className="d-flex flex-column gap-1">
+                            <Button
+                              size="sm"
+                              variant="dark"
+                              disabled={mergeLoadingId === candidate.external.player_id}
+                              onClick={() => handleMerge(reviewItem, candidate, "internal")}
+                            >
+                              {mergeLoadingId === candidate.external.player_id
+                                ? "Merging..."
+                                : "Merge (keep internal)"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-dark"
+                              disabled={mergeLoadingId === candidate.external.player_id}
+                              onClick={() => handleMerge(reviewItem, candidate, "external")}
+                            >
+                              {mergeLoadingId === candidate.external.player_id
+                                ? "Merging..."
+                                : "Merge (keep external)"}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -590,6 +700,80 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
           <Button variant="secondary" onClick={closeReview}>
             Close
           </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showBulkMergeModal} onHide={closeBulkMergeModal} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Merge All High + Medium Confidence Pairs</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {bulkMergeLoading && (
+            <div className="text-center py-3">
+              <Spinner animation="border" size="sm" />
+              <span className="ms-2">Loading...</span>
+            </div>
+          )}
+          {!bulkMergeLoading && bulkMergeResult && (
+            <Alert variant="success">
+              Merged {bulkMergeResult.merged_count} pair(s).
+              {bulkMergeResult.failed.length > 0 &&
+                ` ${bulkMergeResult.failed.length} failed — see below.`}
+            </Alert>
+          )}
+          {!bulkMergeLoading && bulkMergeResult && bulkMergeResult.failed.length > 0 && (
+            <ul>
+              {bulkMergeResult.failed.map((f) => (
+                <li key={f.internal_universal_id}>
+                  {f.internal_universal_id} / {f.external_universal_id}: {f.error}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!bulkMergeLoading && !bulkMergeResult && bulkMergePreview && (
+            <>
+              <Alert variant="warning">
+                This will merge {bulkMergePreview.pairs.length} pair(s), keeping the{" "}
+                <strong>external</strong> record as survivor in every case.
+                {bulkMergePreview.skipped.length > 0 &&
+                  ` ${bulkMergePreview.skipped.length} internal player(s) are skipped as ambiguous.`}
+              </Alert>
+              <div className="table-responsive" style={{ maxHeight: 300, overflowY: "auto" }}>
+                <Table size="sm" hover>
+                  <thead>
+                    <tr>
+                      <th>Internal</th>
+                      <th>External (kept)</th>
+                      <th>Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkMergePreview.pairs.map((p) => (
+                      <tr key={p.internal_universal_id}>
+                        <td>{p.internal_name}</td>
+                        <td>{p.external_name}</td>
+                        <td>
+                          <Badge bg={getConfidenceBadge(p.confidence)}>
+                            {p.confidence.toUpperCase()}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeBulkMergeModal}>
+            Close
+          </Button>
+          {!bulkMergeResult && bulkMergePreview && bulkMergePreview.pairs.length > 0 && (
+            <Button variant="danger" onClick={confirmBulkMerge} disabled={bulkMergeLoading}>
+              {bulkMergeLoading ? "Merging..." : `Merge ${bulkMergePreview.pairs.length} pair(s)`}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </div>

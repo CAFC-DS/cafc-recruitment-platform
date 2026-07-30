@@ -48,6 +48,9 @@ from services.ollama_service import ollama_service
 # Import iteration mapping
 from iteration_mapping import ITERATION_MAPPING
 
+# Import shared duplicate-player scoring (pure, DB-free)
+from duplicate_detection import score_player_match, normalize_text as dd_normalize_text
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -5600,82 +5603,243 @@ async def check_player_deletion_safety(
 
 @app.post("/admin/merge-players")
 async def merge_players(
-    keep_cafc_id: int,
-    remove_player_id: int,
+    keep_universal_id: str,
+    remove_universal_id: str,
     current_user: User = Depends(get_current_user),
 ):
-    """Merge a removed player back to existing CAFC_PLAYER_ID (admin only)"""
+    """Merge two player records: reassign all dependent rows from the losing
+    player onto the surviving player, then delete the losing player's row.
+    Works in either direction (keep internal or keep external) — the caller
+    picks which universal ID survives. (admin only)"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    if keep_universal_id == remove_universal_id:
+        raise HTTPException(
+            status_code=400, detail="keep_universal_id and remove_universal_id must differ"
+        )
+
     conn = None
+    cursor = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        # NOTE: `conn.autocommit = False` is a no-op here — snowflake-connector-python's
+        # `autocommit` is a plain method (`autocommit(mode)`), not a property, and
+        # PooledSnowflakeConnection has no __setattr__ override, so assignment merely
+        # shadows the attribute on the wrapper instead of calling the method or issuing
+        # any SQL. Sessions from _create_new_connection() are never opened with
+        # autocommit=False either. Toggle it explicitly via the cursor so the DELETE
+        # below is actually covered by a real transaction that conn.rollback() can undo.
+        cursor.execute("ALTER SESSION SET AUTOCOMMIT = FALSE")
 
-        # Verify the CAFC_PLAYER_ID exists
+        keep_condition, keep_params = resolve_player_lookup(keep_universal_id)
+        remove_condition, remove_params = resolve_player_lookup(remove_universal_id)
+
         cursor.execute(
-            "SELECT PLAYERNAME FROM players WHERE CAFC_PLAYER_ID = %s", (keep_cafc_id,)
+            f"SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, DATA_SOURCE FROM players WHERE {keep_condition}",
+            keep_params,
         )
-        existing_player = cursor.fetchone()
-        if not existing_player:
+        keep_row = cursor.fetchone()
+        if not keep_row:
+            raise HTTPException(status_code=404, detail="Target player (keep_universal_id) not found")
+        keep_cafc_id, keep_player_id, keep_name, keep_source = keep_row
+
+        cursor.execute(
+            f"SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, DATA_SOURCE FROM players WHERE {remove_condition}",
+            remove_params,
+        )
+        remove_row = cursor.fetchone()
+        if not remove_row:
+            raise HTTPException(status_code=404, detail="Player to remove (remove_universal_id) not found")
+        remove_cafc_id, remove_player_id, remove_name, remove_source = remove_row
+
+        # Guard against merging a player into itself when the two universal
+        # IDs are textually different but resolve to the same underlying
+        # player (e.g. "internal_5" vs "internal_05" both resolve to
+        # CAFC_PLAYER_ID=5 via int()). If this slipped through, every
+        # reassignment below would be a no-op and the final DELETE would
+        # remove the player that was supposed to survive.
+        keep_identity = (keep_source, keep_cafc_id if keep_source == "internal" else keep_player_id)
+        remove_identity = (remove_source, remove_cafc_id if remove_source == "internal" else remove_player_id)
+        if keep_identity == remove_identity:
             raise HTTPException(
-                status_code=404, detail="Target CAFC_PLAYER_ID not found"
+                status_code=400,
+                detail="keep_universal_id and remove_universal_id resolve to the same player",
             )
 
         results = []
 
-        # Update scout reports
+        # Reassign scout_reports, player_information, player_notes: these
+        # tables carry both a legacy PLAYER_ID (external) column and a
+        # CAFC_PLAYER_ID (internal) column. Move whichever of the loser's
+        # id columns is populated onto the corresponding survivor id column,
+        # and null out the loser's id so no row can resolve to the deleted
+        # player after this transaction commits.
+        #
+        # Any exception here is allowed to propagate to the outer except
+        # blocks (which roll back) instead of being swallowed: this
+        # reassignment runs immediately before the losing player's row is
+        # permanently deleted, so a silently-skipped UPDATE would leave
+        # those rows pointing at a row that no longer exists. Snowflake does
+        # not auto-abort an open transaction on a statement error, so
+        # tolerating a failure here would let the DELETE and COMMIT still go
+        # through.
+        for table_name in ("scout_reports", "player_information", "player_notes"):
+            if remove_source == "external" and keep_source == "internal":
+                # Guard: only move rows whose CAFC_PLAYER_ID isn't already
+                # pointing at some other (third) internal player — otherwise
+                # a dual-populated row would silently have its real link
+                # overwritten and its PLAYER_ID erased.
+                cursor.execute(
+                    f"""
+                    UPDATE {table_name}
+                    SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
+                    WHERE PLAYER_ID = %s AND (CAFC_PLAYER_ID IS NULL OR CAFC_PLAYER_ID = %s)
+                    """,
+                    (keep_cafc_id, remove_player_id, keep_cafc_id),
+                )
+            elif remove_source == "internal" and keep_source == "external":
+                cursor.execute(
+                    f"""
+                    UPDATE {table_name}
+                    SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
+                    WHERE CAFC_PLAYER_ID = %s AND (PLAYER_ID IS NULL OR PLAYER_ID = %s)
+                    """,
+                    (keep_player_id, remove_cafc_id, keep_player_id),
+                )
+            elif remove_source == "internal" and keep_source == "internal":
+                cursor.execute(
+                    f"""
+                    UPDATE {table_name}
+                    SET CAFC_PLAYER_ID = %s
+                    WHERE CAFC_PLAYER_ID = %s
+                    """,
+                    (keep_cafc_id, remove_cafc_id),
+                )
+            else:  # both external
+                cursor.execute(
+                    f"""
+                    UPDATE {table_name}
+                    SET PLAYER_ID = %s
+                    WHERE PLAYER_ID = %s
+                    """,
+                    (keep_player_id, remove_player_id),
+                )
+            results.append(f"Updated {cursor.rowcount} rows in {table_name}")
+
+        # Reassign player_list_items (same dual PLAYER_ID/CAFC_PLAYER_ID
+        # pattern). List membership should stay unique per player, so first
+        # drop any of the loser's list_items rows for a LIST_ID the survivor
+        # is already on (otherwise reassigning would create a duplicate
+        # entry for that player on that list), then reassign whatever's
+        # left. As with the loop above, any failure here aborts the merge.
+        keep_list_col = "CAFC_PLAYER_ID" if keep_source == "internal" else "PLAYER_ID"
+        keep_list_id = keep_cafc_id if keep_source == "internal" else keep_player_id
+        remove_list_col = "CAFC_PLAYER_ID" if remove_source == "internal" else "PLAYER_ID"
+        remove_list_id = remove_cafc_id if remove_source == "internal" else remove_player_id
+
         cursor.execute(
-            """
-            UPDATE scout_reports 
-            SET CAFC_PLAYER_ID = %s 
-            WHERE PLAYER_ID = %s AND CAFC_PLAYER_ID IS NULL
-        """,
-            (keep_cafc_id, remove_player_id),
+            f"""
+            DELETE FROM player_list_items
+            WHERE {remove_list_col} = %s
+              AND LIST_ID IN (
+                  SELECT LIST_ID FROM player_list_items WHERE {keep_list_col} = %s
+              )
+            """,
+            (remove_list_id, keep_list_id),
         )
-        scout_updated = cursor.rowcount
-        results.append(f"Updated {scout_updated} scout reports")
+        results.append(
+            f"Removed {cursor.rowcount} duplicate player_list_items rows (already on survivor's lists)"
+        )
 
-        # Update intel reports
-        try:
+        if remove_source == "external" and keep_source == "internal":
             cursor.execute(
                 """
-                UPDATE player_information 
-                SET CAFC_PLAYER_ID = %s 
-                WHERE PLAYER_ID = %s AND CAFC_PLAYER_ID IS NULL
-            """,
-                (keep_cafc_id, remove_player_id),
+                UPDATE player_list_items
+                SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
+                WHERE PLAYER_ID = %s AND (CAFC_PLAYER_ID IS NULL OR CAFC_PLAYER_ID = %s)
+                """,
+                (keep_cafc_id, remove_player_id, keep_cafc_id),
             )
-            intel_updated = cursor.rowcount
-            results.append(f"Updated {intel_updated} intel reports")
-        except:
-            results.append("Intel reports table not found or no updates needed")
-
-        # Update player notes
-        try:
+        elif remove_source == "internal" and keep_source == "external":
             cursor.execute(
                 """
-                UPDATE player_notes 
-                SET CAFC_PLAYER_ID = %s 
-                WHERE PLAYER_ID = %s AND CAFC_PLAYER_ID IS NULL
-            """,
-                (keep_cafc_id, remove_player_id),
+                UPDATE player_list_items
+                SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
+                WHERE CAFC_PLAYER_ID = %s AND (PLAYER_ID IS NULL OR PLAYER_ID = %s)
+                """,
+                (keep_player_id, remove_cafc_id, keep_player_id),
             )
-            notes_updated = cursor.rowcount
-            results.append(f"Updated {notes_updated} player notes")
-        except:
-            results.append("Player notes table not found or no updates needed")
+        elif remove_source == "internal" and keep_source == "internal":
+            cursor.execute(
+                "UPDATE player_list_items SET CAFC_PLAYER_ID = %s WHERE CAFC_PLAYER_ID = %s",
+                (keep_cafc_id, remove_cafc_id),
+            )
+        else:
+            cursor.execute(
+                "UPDATE player_list_items SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                (keep_player_id, remove_player_id),
+            )
+        results.append(f"Updated {cursor.rowcount} rows in player_list_items")
+
+        # Reassign player_list_flags (keyed by UNIVERSAL_ID text, not a dual
+        # column pair). Snowflake does not enforce a uniqueness constraint on
+        # UNIVERSAL_ID, so a blind UPDATE could create two rows for the same
+        # survivor if both players already had a flags row. Delete the
+        # loser's row instead when the survivor already has one (last-write
+        # on flags is an acceptable trade-off; a duplicate row is not).
+        cursor.execute(
+            "SELECT 1 FROM player_list_flags WHERE UNIVERSAL_ID = %s",
+            (keep_universal_id,),
+        )
+        if cursor.fetchone():
+            cursor.execute(
+                "DELETE FROM player_list_flags WHERE UNIVERSAL_ID = %s",
+                (remove_universal_id,),
+            )
+            results.append(
+                f"Deleted {cursor.rowcount} duplicate player_list_flags row(s) (survivor already had flags)"
+            )
+        else:
+            cursor.execute(
+                "UPDATE player_list_flags SET UNIVERSAL_ID = %s WHERE UNIVERSAL_ID = %s",
+                (keep_universal_id, remove_universal_id),
+            )
+            results.append(f"Updated {cursor.rowcount} rows in player_list_flags")
+
+        # Reassign player_recommendations (also keyed by UNIVERSAL_ID text,
+        # same "internal_<id>" / "external_<id>" format as player_list_flags
+        # above). Unlike player_list_flags, this table is many-rows-per-player
+        # by design (a player can have multiple recommendation submissions),
+        # so a plain UPDATE is correct here — no dedupe/delete branch needed.
+        # The column is schema-conditional (older tables may not have it),
+        # so guard with the same recommendation_column_exists() check used
+        # when building the player_recommendations SELECT elsewhere in this
+        # file.
+        if recommendation_column_exists("player_recommendations", "LINKED_UNIVERSAL_ID"):
+            cursor.execute(
+                "UPDATE player_recommendations SET LINKED_UNIVERSAL_ID = %s WHERE LINKED_UNIVERSAL_ID = %s",
+                (keep_universal_id, remove_universal_id),
+            )
+            results.append(f"Updated {cursor.rowcount} rows in player_recommendations")
+
+        # Delete the losing player's row now that everything referencing it
+        # has been reassigned.
+        cursor.execute(f"DELETE FROM players WHERE {remove_condition}", remove_params)
+        results.append(f"Deleted losing player record ({remove_universal_id})")
 
         conn.commit()
 
         return {
-            "message": f"Successfully merged player data to CAFC_PLAYER_ID {keep_cafc_id}",
-            "target_player": existing_player[0],
+            "message": f"Successfully merged {remove_name or remove_universal_id} into {keep_name or keep_universal_id}",
+            "target_player": keep_name,
             "results": results,
         }
 
     except HTTPException:
+        if conn:
+            conn.rollback()
         raise
     except Exception as e:
         if conn:
@@ -5684,7 +5848,32 @@ async def merge_players(
         raise HTTPException(status_code=500, detail=f"Error merging players: {e}")
     finally:
         if conn:
-            conn.close()
+            reset_ok = True
+            try:
+                if cursor:
+                    cursor.execute("ALTER SESSION SET AUTOCOMMIT = TRUE")
+            except Exception:
+                # Don't let a reset failure mask the original error.
+                reset_ok = False
+            if reset_ok:
+                conn.close()
+            else:
+                # PooledSnowflakeConnection.close() returns the underlying
+                # connection to the pool rather than actually closing it, so
+                # if we couldn't confirm AUTOCOMMIT was reset to TRUE, do NOT
+                # let this connection go back into circulation — a stuck
+                # AUTOCOMMIT=FALSE session handed to an unrelated future
+                # request would silently accumulate uncommitted DML with no
+                # commit. Bypass the pooling close() and shut the real
+                # connection down instead.
+                try:
+                    real_conn = getattr(conn, "_real_conn", None)
+                    if real_conn is not None:
+                        real_conn.close()
+                    else:
+                        conn.close()
+                except Exception:
+                    pass
 
 
 @app.get("/admin/detect-clashes")
@@ -5711,17 +5900,22 @@ async def detect_data_clashes(
 
         # Detect player clashes - OPTIMIZED: compare across all clubs
         # Optional name filter for targeted search
+        has_transfermarkt = has_column("players", "TRANSFERMARKT_LINK")
+        transfermarkt_select = ", TRANSFERMARKT_LINK" if has_transfermarkt else ""
+
         if name_filter:
             cursor.execute(
-                """
+                f"""
                 SELECT
                     CAFC_PLAYER_ID,
                     PLAYERID,
                     PLAYERNAME,
                     SQUADNAME,
-                    DATA_SOURCE,
+                    COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE,
                     FIRSTNAME,
-                    LASTNAME
+                    LASTNAME,
+                    BIRTHDATE
+                    {transfermarkt_select}
                 FROM players
                 WHERE PLAYERNAME IS NOT NULL
                   AND PLAYERNAME ILIKE %s
@@ -5731,15 +5925,17 @@ async def detect_data_clashes(
             )
         else:
             cursor.execute(
-                """
+                f"""
                 SELECT
                     CAFC_PLAYER_ID,
                     PLAYERID,
                     PLAYERNAME,
                     SQUADNAME,
-                    DATA_SOURCE,
+                    COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE,
                     FIRSTNAME,
-                    LASTNAME
+                    LASTNAME,
+                    BIRTHDATE
+                    {transfermarkt_select}
                 FROM players
                 WHERE PLAYERNAME IS NOT NULL
                 ORDER BY PLAYERNAME
@@ -5750,7 +5946,11 @@ async def detect_data_clashes(
         # Build a list of all players
         all_players = []
         for player in players:
-            cafc_id, player_id, name, squad, data_source, firstname, lastname = player
+            if has_transfermarkt:
+                cafc_id, player_id, name, squad, data_source, firstname, lastname, birthdate, transfermarkt = player
+            else:
+                cafc_id, player_id, name, squad, data_source, firstname, lastname, birthdate = player
+                transfermarkt = None
             all_players.append({
                 "cafc_player_id": cafc_id,
                 "player_id": player_id,
@@ -5759,6 +5959,8 @@ async def detect_data_clashes(
                 "data_source": data_source,
                 "firstname": firstname,
                 "lastname": lastname,
+                "birthdate": birthdate,
+                "transfermarkt_link": transfermarkt,
             })
 
         # PRIORITY: First check for exact name duplicates (100% matches)
@@ -5783,6 +5985,21 @@ async def detect_data_clashes(
                         if (p1["player_id"] == p2["player_id"] and
                             p1["player_id"] is not None):
                             continue
+
+                        if p1["data_source"] != p2["data_source"]:
+                            # Internal-vs-external duplicates are handled by
+                            # the Internal Player Audit tab, not here.
+                            continue
+
+                        scored = score_player_match(
+                            name_a=p1["name"], name_b=p2["name"],
+                            dob_a=p1["birthdate"], dob_b=p2["birthdate"],
+                            squad_a=p1["squad"], squad_b=p2["squad"],
+                            transfermarkt_a=p1["transfermarkt_link"],
+                            transfermarkt_b=p2["transfermarkt_link"],
+                        )
+                        confidence = scored["confidence"] if scored else "low"
+                        evidence = scored["evidence"] if scored else ["Name exact"]
 
                         player_clashes.append({
                             "player1": {
@@ -5814,6 +6031,8 @@ async def detect_data_clashes(
                             "squad1": p1["squad"],
                             "squad2": p2["squad"],
                             "similarity": 100.0,
+                            "confidence": confidence,
+                            "evidence": evidence,
                             "clash_type": "player",
                         })
 
@@ -5839,6 +6058,9 @@ async def detect_data_clashes(
                     p1["player_id"] is not None):
                     continue
 
+                if p1["data_source"] != p2["data_source"]:
+                    continue
+
                 # Calculate Levenshtein distance
                 name1 = (p1["name"] or "").lower().strip()
                 name2 = (p2["name"] or "").lower().strip()
@@ -5861,6 +6083,24 @@ async def detect_data_clashes(
 
                 # Flag if similarity > 70% AND < 100% (70-99% similar, not exact)
                 if similarity > 70 and similarity < 100:
+                    scored = score_player_match(
+                        name_a=p1["name"], name_b=p2["name"],
+                        dob_a=p1["birthdate"], dob_b=p2["birthdate"],
+                        squad_a=p1["squad"], squad_b=p2["squad"],
+                        transfermarkt_a=p1["transfermarkt_link"],
+                        transfermarkt_b=p2["transfermarkt_link"],
+                    )
+                    if scored is None:
+                        # Below every confidence threshold (e.g. fuzzy name
+                        # 71-87% with no squad corroboration) — still surface
+                        # it as low, matching this endpoint's existing
+                        # behavior of showing all 70%+ matches.
+                        confidence = "low"
+                        evidence = [f"Fuzzy {round(similarity, 1)}%"]
+                    else:
+                        confidence = scored["confidence"]
+                        evidence = scored["evidence"]
+
                     player_clashes.append({
                         "player1": {
                             "universal_id": get_player_universal_id({
@@ -5891,11 +6131,59 @@ async def detect_data_clashes(
                         "squad1": p1["squad"],
                         "squad2": p2["squad"],
                         "similarity": round(similarity, 1),
+                        "confidence": confidence,
+                        "evidence": evidence,
                         "clash_type": "player",
                     })
 
             if total_comparisons > max_comparisons:
                 break
+
+        # Annotate each player clash with whether both sides already have
+        # their own scout reports — a caution signal (not a confidence
+        # input) since merging two actively-reported players is higher risk.
+        if player_clashes:
+            all_ids = set()
+            for clash in player_clashes:
+                for side in ("player1", "player2"):
+                    p = clash[side]
+                    if p["data_source"] == "internal" and p["cafc_player_id"] is not None:
+                        all_ids.add(("internal", p["cafc_player_id"]))
+                    elif p["player_id"] is not None:
+                        all_ids.add(("external", p["player_id"]))
+
+            internal_ids = [pid for source, pid in all_ids if source == "internal"]
+            external_ids = [pid for source, pid in all_ids if source == "external"]
+
+            has_reports = set()
+            if internal_ids:
+                placeholders = ",".join(["%s"] * len(internal_ids))
+                cursor.execute(
+                    f"SELECT DISTINCT CAFC_PLAYER_ID FROM scout_reports WHERE CAFC_PLAYER_ID IN ({placeholders})",
+                    internal_ids,
+                )
+                for row in cursor.fetchall():
+                    has_reports.add(("internal", row[0]))
+            if external_ids:
+                placeholders = ",".join(["%s"] * len(external_ids))
+                cursor.execute(
+                    f"SELECT DISTINCT PLAYER_ID FROM scout_reports WHERE PLAYER_ID IN ({placeholders})",
+                    external_ids,
+                )
+                for row in cursor.fetchall():
+                    has_reports.add(("external", row[0]))
+
+            def _player_has_reports(p):
+                if p["data_source"] == "internal" and p["cafc_player_id"] is not None:
+                    return ("internal", p["cafc_player_id"]) in has_reports
+                if p["player_id"] is not None:
+                    return ("external", p["player_id"]) in has_reports
+                return False
+
+            for clash in player_clashes:
+                clash["both_have_reports"] = (
+                    _player_has_reports(clash["player1"]) and _player_has_reports(clash["player2"])
+                )
 
         # Detect fixture clashes - same teams on same date
         cursor.execute(
@@ -6149,58 +6437,16 @@ async def internal_player_audit(
             by_exact_name.setdefault(ext_name, []).append(ext)
 
         def score_candidate(internal_row, external_row):
-            internal_name = normalize_text(internal_row[1] or "")
-            external_name = normalize_text(external_row[1] or "")
-            internal_squad = normalize_text(internal_row[5] or "")
-            external_squad = normalize_text(external_row[5] or "")
-            internal_dob = internal_row[4]
-            external_dob = external_row[4]
-
-            max_len_name = max(len(internal_name), len(external_name), 1)
-            name_dist = levenshtein_module.distance(internal_name, external_name)
-            name_similarity = (1 - (name_dist / max_len_name)) * 100
-
-            max_len_squad = max(len(internal_squad), len(external_squad), 1)
-            squad_dist = levenshtein_module.distance(internal_squad, external_squad)
-            squad_similarity = (1 - (squad_dist / max_len_squad)) * 100
-
-            name_exact = internal_name == external_name and internal_name != ""
-            dob_exact = (
-                internal_dob is not None
-                and external_dob is not None
-                and internal_dob == external_dob
+            scored = score_player_match(
+                name_a=internal_row[1],
+                name_b=external_row[1],
+                dob_a=internal_row[4],
+                dob_b=external_row[4],
+                squad_a=internal_row[5],
+                squad_b=external_row[5],
             )
-            squad_exact = internal_squad == external_squad and internal_squad != ""
-            squad_near = squad_similarity >= 90
-
-            conf = None
-            if name_exact and dob_exact:
-                conf = "high"
-            elif name_exact and squad_exact:
-                conf = "medium"
-            elif name_similarity >= 88 and (squad_exact or squad_near):
-                conf = "low"
-
-            if conf is None:
+            if scored is None:
                 return None
-
-            evidence = []
-            if name_exact:
-                evidence.append("Name exact")
-            else:
-                evidence.append(f"Fuzzy {round(name_similarity, 1)}%")
-            if dob_exact:
-                evidence.append("DOB exact")
-            elif internal_dob is None or external_dob is None:
-                evidence.append("DOB missing")
-            else:
-                evidence.append("DOB mismatch")
-            if squad_exact:
-                evidence.append("Squad exact")
-            elif squad_near:
-                evidence.append(f"Squad near {round(squad_similarity, 1)}%")
-            else:
-                evidence.append("Squad mismatch")
 
             return {
                 "external": {
@@ -6214,10 +6460,10 @@ async def internal_player_audit(
                     "data_source": external_row[7],
                     "universal_id": f"external_{external_row[0]}",
                 },
-                "confidence": conf,
-                "name_similarity": round(name_similarity, 1),
-                "squad_similarity": round(squad_similarity, 1),
-                "evidence": evidence,
+                "confidence": scored["confidence"],
+                "name_similarity": scored["name_similarity"],
+                "squad_similarity": scored["squad_similarity"],
+                "evidence": scored["evidence"],
             }
 
         confidence_rank = {"high": 3, "medium": 2, "low": 1}
@@ -6341,6 +6587,185 @@ async def internal_player_audit(
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error running internal player audit: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/admin/internal-player-audit/bulk-merge")
+async def internal_player_audit_bulk_merge(
+    dry_run: bool = True,
+    current_user: User = Depends(get_current_user),
+):
+    """Merge every internal anchor whose best candidate is High or Medium
+    confidence, always keeping the EXTERNAL record as survivor. Internal
+    anchors with more than one Medium-confidence candidate are skipped as
+    ambiguous. Set dry_run=false to actually perform the merges; dry_run=true
+    (default) returns the pair list without writing anything, for the
+    confirmation-modal preview. (admin only)"""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION,
+                   COALESCE(DATA_SOURCE, 'internal') as DATA_SOURCE
+            FROM players
+            WHERE CAFC_PLAYER_ID IS NOT NULL AND PLAYERID IS NULL
+            ORDER BY PLAYERNAME, CAFC_PLAYER_ID
+            """
+        )
+        internal_rows = cursor.fetchall()
+
+        cursor.execute(
+            """
+            SELECT PLAYERID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION,
+                   COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE
+            FROM players
+            WHERE PLAYERID IS NOT NULL AND COALESCE(DATA_SOURCE, 'external') = 'external'
+            ORDER BY PLAYERNAME, PLAYERID
+            """
+        )
+        external_rows = cursor.fetchall()
+
+        by_exact_name: Dict[str, list] = {}
+        for ext in external_rows:
+            ext_name = dd_normalize_text(ext[1] or "")
+            if ext_name:
+                by_exact_name.setdefault(ext_name, []).append(ext)
+
+        confidence_rank = {"high": 3, "medium": 2, "low": 1}
+        pairs = []
+        skipped = []
+
+        for internal in internal_rows:
+            internal_name_norm = dd_normalize_text(internal[1] or "")
+            candidate_rows = by_exact_name.get(internal_name_norm, [])
+
+            scored_candidates = []
+            for external in candidate_rows:
+                scored = score_player_match(
+                    name_a=internal[1], name_b=external[1],
+                    dob_a=internal[4], dob_b=external[4],
+                    squad_a=internal[5], squad_b=external[5],
+                )
+                if scored and scored["confidence"] in ("high", "medium"):
+                    scored_candidates.append((scored, external))
+
+            if not scored_candidates:
+                continue
+
+            scored_candidates.sort(key=lambda sc: confidence_rank[sc[0]["confidence"]], reverse=True)
+            best_confidence = scored_candidates[0][0]["confidence"]
+            same_tier = [sc for sc in scored_candidates if sc[0]["confidence"] == best_confidence]
+
+            if len(same_tier) > 1:
+                skipped.append({
+                    "internal_universal_id": f"internal_{internal[0]}",
+                    "internal_name": internal[1],
+                    "reason": f"Ambiguous: {len(same_tier)} candidates tied at {best_confidence} confidence",
+                })
+                continue
+
+            external = same_tier[0][1]
+            pairs.append({
+                "internal_universal_id": f"internal_{internal[0]}",
+                "internal_name": internal[1],
+                "external_universal_id": f"external_{external[0]}",
+                "external_name": external[1],
+                "confidence": best_confidence,
+            })
+
+        # Second ambiguity pass: the loop above only catches one internal
+        # anchor having multiple tied candidates. It does not catch the
+        # reverse collision — two DIFFERENT internal anchors each
+        # independently landing on the SAME external candidate as their
+        # single best match. Since merges always keep the external record
+        # as survivor, letting both proceed would delete both internal
+        # players into one external row (a silent double-collapse). Move
+        # every pair sharing a contested external_universal_id into
+        # `skipped` before the dry_run/live branch so the dry-run preview
+        # and the live run agree on what will/won't be merged.
+        external_id_counts: Dict[str, int] = {}
+        for pair in pairs:
+            external_id_counts[pair["external_universal_id"]] = (
+                external_id_counts.get(pair["external_universal_id"], 0) + 1
+            )
+        contested_external_ids = {
+            ext_id for ext_id, count in external_id_counts.items() if count > 1
+        }
+        if contested_external_ids:
+            still_ok = []
+            for pair in pairs:
+                if pair["external_universal_id"] in contested_external_ids:
+                    n = external_id_counts[pair["external_universal_id"]]
+                    skipped.append({
+                        "internal_universal_id": pair["internal_universal_id"],
+                        "internal_name": pair["internal_name"],
+                        "reason": (
+                            f"Ambiguous: {n} internal anchors matched to the same "
+                            f"external candidate ({pair['external_name']})"
+                        ),
+                    })
+                else:
+                    still_ok.append(pair)
+            pairs = still_ok
+
+        if dry_run:
+            return {
+                "dry_run": True,
+                "merged_count": 0,
+                "pairs": pairs,
+                "skipped": skipped,
+                "failed": [],
+            }
+
+        merged_count = 0
+        failed = []
+        for pair in pairs:
+            # Reuse the exact same merge logic as the per-row Review modal
+            # (Task 3's merge_players) instead of reimplementing reassignment
+            # and deletion here — merge_players is a plain async function,
+            # directly callable in-process, so this is a normal function
+            # call, not an HTTP round-trip.
+            try:
+                await merge_players(
+                    keep_universal_id=pair["external_universal_id"],
+                    remove_universal_id=pair["internal_universal_id"],
+                    current_user=current_user,
+                )
+                merged_count += 1
+            except HTTPException as e:
+                failed.append({
+                    "internal_universal_id": pair["internal_universal_id"],
+                    "external_universal_id": pair["external_universal_id"],
+                    "error": e.detail,
+                })
+            except Exception as e:
+                failed.append({
+                    "internal_universal_id": pair["internal_universal_id"],
+                    "external_universal_id": pair["external_universal_id"],
+                    "error": str(e),
+                })
+
+        return {
+            "dry_run": False,
+            "merged_count": merged_count,
+            "pairs": pairs,
+            "skipped": skipped,
+            "failed": failed,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error running bulk merge: {e}")
     finally:
         if conn:
             conn.close()

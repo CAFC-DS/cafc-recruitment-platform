@@ -33,12 +33,17 @@ interface Match {
   data_source: string;
 }
 
+type ConfidenceLevel = "high" | "medium" | "low";
+
 interface PlayerClash {
   player1: Player;
   player2: Player;
   squad1: string;
   squad2: string;
   similarity: number;
+  confidence: ConfidenceLevel;
+  evidence: string[];
+  both_have_reports: boolean;
   clash_type: "player";
 }
 
@@ -103,17 +108,25 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
     const keep = keepPlayer === 1 ? clash.player1 : clash.player2;
     const remove = keepPlayer === 1 ? clash.player2 : clash.player1;
 
+    if (
+      !window.confirm(
+        `Merge these two records, keeping "${keep.name}"?\n\nThis will re-assign related records and permanently delete "${remove.name}".`
+      )
+    ) {
+      return;
+    }
+
     setActionLoading(true);
     setError(null);
     setSuccess(null);
 
     try {
       await axiosInstance.post(
-        `/admin/merge-players?keep_cafc_id=${keep.cafc_player_id}&remove_player_id=${remove.player_id || remove.cafc_player_id}`
+        `/admin/merge-players?keep_universal_id=${keep.universal_id}&remove_universal_id=${remove.universal_id}`
       );
       setSuccess(`Successfully merged players: kept "${keep.name}"`);
       setShowMergePlayerModal(false);
-      fetchClashes(); // Refresh
+      fetchClashes();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data.detail || "Failed to merge players");
@@ -190,6 +203,12 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
     return "info";
   };
 
+  const getConfidenceBadgeVariant = (confidence: ConfidenceLevel) => {
+    if (confidence === "high") return "danger";
+    if (confidence === "medium") return "warning";
+    return "info";
+  };
+
   if (loading) {
     return (
       <Card>
@@ -237,7 +256,9 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
         <Card.Header>
           <h5>👤 Player Clashes ({playerClashes.length})</h5>
           <small className="text-muted">
-            Similar player names across all clubs (70%+ similarity)
+            Duplicates within internal records or within external records
+            (70%+ name similarity). Internal-vs-external duplicates are
+            handled in the Internal Player Audit tab.
           </small>
         </Card.Header>
         <Card.Body>
@@ -254,6 +275,8 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
                   <th>Player 2</th>
                   <th>Club 2</th>
                   <th>Similarity</th>
+                  <th>Confidence</th>
+                  <th>Evidence</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -286,6 +309,25 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
                       >
                         {clash.similarity}%
                       </Badge>
+                    </td>
+                    <td>
+                      <Badge bg={getConfidenceBadgeVariant(clash.confidence)}>
+                        {clash.confidence.toUpperCase()}
+                      </Badge>
+                      {clash.both_have_reports && (
+                        <div className="mt-1">
+                          <Badge bg="dark">⚠ Both have reports</Badge>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="d-flex flex-wrap gap-1">
+                        {clash.evidence.map((ev) => (
+                          <Badge key={ev} bg="secondary">
+                            {ev}
+                          </Badge>
+                        ))}
+                      </div>
                     </td>
                     <td>
                       <ButtonGroup size="sm" className="d-flex">
@@ -416,8 +458,10 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
           {selectedClash && "player1" in selectedClash && (
             <>
               <Alert variant="info">
-                Choose which player record to keep. All reports from the other
-                player will be reassigned to the kept player.
+                Choose which player record to keep. All reports and related
+                records from the other player will be re-assigned to the kept
+                player, and the other player record will be permanently
+                deleted.
               </Alert>
               <div className="d-flex justify-content-around">
                 <div>
