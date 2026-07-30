@@ -5686,7 +5686,28 @@ async def merge_players(
         # tolerating a failure here would let the DELETE and COMMIT still go
         # through.
         for table_name in ("scout_reports", "player_information", "player_notes"):
-            if remove_source == "external" and keep_source == "internal":
+            # player_information and player_notes never got the CAFC_PLAYER_ID
+            # migration applied (unlike scout_reports) — they only have a
+            # single PLAYER_ID column. Confirmed against add_player_note()
+            # (line ~11314) and add_player_information()'s actual_player_id
+            # computation (line ~11690: `player_data[0] if data_source ==
+            # "external" else player_data[1]`, i.e. PLAYERID for external
+            # rows, CAFC_PLAYER_ID for internal rows): this single column is
+            # OVERLOADED — it stores whichever ID actually matches the
+            # player's DATA_SOURCE, not always players.PLAYERID. Using the
+            # literal CAFC_PLAYER_ID column name against these tables raises
+            # "invalid identifier 'CAFC_PLAYER_ID'" (no such column exists).
+            # Reassign using the same source-aware "overloaded id" each side
+            # actually has, mirroring the keep_list_id/remove_list_id pattern
+            # used for player_list_items below.
+            if not has_column(table_name, "CAFC_PLAYER_ID"):
+                keep_overloaded_id = keep_cafc_id if keep_source == "internal" else keep_player_id
+                remove_overloaded_id = remove_cafc_id if remove_source == "internal" else remove_player_id
+                cursor.execute(
+                    f"UPDATE {table_name} SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                    (keep_overloaded_id, remove_overloaded_id),
+                )
+            elif remove_source == "external" and keep_source == "internal":
                 # Guard: only move rows whose CAFC_PLAYER_ID isn't already
                 # pointing at some other (third) internal player — otherwise
                 # a dual-populated row would silently have its real link

@@ -40,6 +40,32 @@ CANDIDATE_FK_TABLES: tuple[str, ...] = (
 )
 CANDIDATE_FK_COLUMNS: tuple[str, ...] = ("PLAYER_ID", "CAFC_PLAYER_ID")
 
+# Some tables don't reference players via a raw PLAYERID/CAFC_PLAYER_ID
+# column — they store a "universal ID" text string instead (format
+# "internal_<id>" / "external_<id>", the same scheme backend/main.py's
+# get_player_universal_id() produces). Discovered directly against the dev
+# database while investigating a duplicate ("Mauricio Benítez") that had an
+# agent recommendation attached: PLAYER_RECOMMENDATIONS.LINKED_UNIVERSAL_ID
+# pointed at the orphan row and would have been silently left dangling if
+# this script only handled the CANDIDATE_FK_TABLES above.
+#
+# `dedupe_per_key` controls whether a table can have at most one row per
+# player (PLAYER_LIST_FLAGS is effectively a one-row-per-player table with
+# UNIVERSAL_ID as its key — blindly UPDATE-ing could create a duplicate key
+# if the canonical player already has a row) vs. many-rows-per-player
+# (PLAYER_RECOMMENDATIONS — a plain UPDATE is correct, no dedupe needed).
+UNIVERSAL_ID_TABLES: tuple[tuple[str, str, bool], ...] = (
+    ("PLAYER_LIST_FLAGS", "UNIVERSAL_ID", True),
+    ("PLAYER_RECOMMENDATIONS", "LINKED_UNIVERSAL_ID", False),
+)
+
+
+def player_universal_id(row: "PlayerRow") -> str:
+    """Mirror backend/main.py's get_player_universal_id() convention."""
+    if row.data_source == "internal" and row.cafc_player_id is not None:
+        return f"internal_{row.cafc_player_id}"
+    return f"external_{row.playerid}"
+
 
 @dataclass
 class PlayerRow:
@@ -303,8 +329,30 @@ def discover_reference_columns(cursor) -> list[tuple[str, tuple[str, ...]]]:
     return result
 
 
+def discover_universal_id_tables(cursor) -> list[tuple[str, str, bool]]:
+    """Return the subset of UNIVERSAL_ID_TABLES whose table/column actually
+    exist in this environment (mirrors discover_reference_columns)."""
+    result: list[tuple[str, str, bool]] = []
+    for table, column, dedupe_per_key in UNIVERSAL_ID_TABLES:
+        try:
+            cursor.execute(f"DESCRIBE TABLE RECRUITMENT_TEST.PUBLIC.{table}")
+        except snowflake.connector.errors.ProgrammingError as e:
+            logging.warning("Skipping missing table %s: %s", table, e.msg)
+            continue
+        existing_cols = {row[0].upper() for row in cursor.fetchall()}
+        if column not in existing_cols:
+            logging.warning("Table %s has no %s column — skipping", table, column)
+            continue
+        result.append((table, column, dedupe_per_key))
+    return result
+
+
 def count_fk_references(
-    cursor, wrong_id: int, reference_tables: list[tuple[str, tuple[str, ...]]]
+    cursor,
+    wrong_id: int,
+    reference_tables: list[tuple[str, tuple[str, ...]]],
+    wrong_universal_id: str | None = None,
+    universal_id_tables: list[tuple[str, str, bool]] | None = None,
 ) -> dict[str, int]:
     """Return {column_label: row_count} for each reference table/column."""
     counts: dict[str, int] = {}
@@ -313,6 +361,13 @@ def count_fk_references(
             cursor.execute(
                 f"SELECT COUNT(*) FROM RECRUITMENT_TEST.PUBLIC.{table} WHERE {column} = %s",
                 (wrong_id,),
+            )
+            counts[f"{table}.{column}"] = int(cursor.fetchone()[0])
+    if wrong_universal_id and universal_id_tables:
+        for table, column, _dedupe in universal_id_tables:
+            cursor.execute(
+                f"SELECT COUNT(*) FROM RECRUITMENT_TEST.PUBLIC.{table} WHERE {column} = %s",
+                (wrong_universal_id,),
             )
             counts[f"{table}.{column}"] = int(cursor.fetchone()[0])
     return counts
@@ -327,6 +382,8 @@ def apply_group(
     canonical_cafc_id: int | None,
     reference_tables: list[tuple[str, tuple[str, ...]]],
     dry_run: bool,
+    canonical_universal_id: str | None = None,
+    universal_id_tables: list[tuple[str, str, bool]] | None = None,
 ) -> None:
     """Re-point FKs and delete wrong PLAYERIDs in a single transaction."""
     try:
@@ -334,12 +391,12 @@ def apply_group(
             wrong_row = next(r for r in group.rows if r.playerid == wrong_id)
 
             for table, columns in reference_tables:
-                # PLAYER_ID update — always safe when source has rows.
-                cursor.execute(
-                    f"UPDATE RECRUITMENT_TEST.PUBLIC.{table} "
-                    f"SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
-                    (canonical_id, wrong_id),
-                )
+                if "PLAYER_ID" in columns:
+                    cursor.execute(
+                        f"UPDATE RECRUITMENT_TEST.PUBLIC.{table} "
+                        f"SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                        (canonical_id, wrong_id),
+                    )
 
                 if "CAFC_PLAYER_ID" in columns:
                     if wrong_row.cafc_player_id is not None and canonical_cafc_id is not None:
@@ -357,6 +414,39 @@ def apply_group(
                             wrong_row.cafc_player_id,
                             canonical_id,
                             table,
+                        )
+
+            if canonical_universal_id and universal_id_tables:
+                wrong_universal_id = player_universal_id(wrong_row)
+                for table, column, dedupe_per_key in universal_id_tables:
+                    if dedupe_per_key:
+                        # One-row-per-player table (e.g. PLAYER_LIST_FLAGS,
+                        # keyed on this column): if the canonical player
+                        # already has a row, updating would create a
+                        # duplicate key, so delete the wrong row instead.
+                        cursor.execute(
+                            f"SELECT COUNT(*) FROM RECRUITMENT_TEST.PUBLIC.{table} WHERE {column} = %s",
+                            (canonical_universal_id,),
+                        )
+                        canonical_has_row = cursor.fetchone()[0] > 0
+                        if canonical_has_row:
+                            cursor.execute(
+                                f"DELETE FROM RECRUITMENT_TEST.PUBLIC.{table} WHERE {column} = %s",
+                                (wrong_universal_id,),
+                            )
+                        else:
+                            cursor.execute(
+                                f"UPDATE RECRUITMENT_TEST.PUBLIC.{table} "
+                                f"SET {column} = %s WHERE {column} = %s",
+                                (canonical_universal_id, wrong_universal_id),
+                            )
+                    else:
+                        # Many-rows-per-player table (e.g.
+                        # PLAYER_RECOMMENDATIONS) — plain UPDATE is safe.
+                        cursor.execute(
+                            f"UPDATE RECRUITMENT_TEST.PUBLIC.{table} "
+                            f"SET {column} = %s WHERE {column} = %s",
+                            (canonical_universal_id, wrong_universal_id),
                         )
 
         placeholders = ", ".join(["%s"] * len(wrong_ids))
@@ -447,12 +537,23 @@ def main() -> int:
 
     conn = _connect()
     cursor = conn.cursor()
+    # snowflake-connector-python connections default to autocommit=True, and
+    # `conn.autocommit = False` is a silent no-op (autocommit is a plain
+    # method, not a settable property) — without this, every UPDATE/DELETE
+    # below commits immediately as it runs, and the dry-run `conn.rollback()`
+    # in apply_group() has nothing left to undo. Confirmed via the same
+    # discovery made while fixing backend/main.py's merge_players endpoint.
+    cursor.execute("ALTER SESSION SET AUTOCOMMIT = FALSE")
 
     try:
         reference_tables = discover_reference_columns(cursor)
+        universal_id_tables = discover_universal_id_tables(cursor)
         print("Reference tables in scope:")
         for table, columns in reference_tables:
             print(f"  - {table}: {', '.join(columns)}")
+        for table, column, dedupe_per_key in universal_id_tables:
+            kind = "dedupe-on-collision" if dedupe_per_key else "many-per-player"
+            print(f"  - {table}: {column} ({kind})")
 
         groups = find_duplicate_groups(cursor)
         print(f"Found {len(groups)} duplicate group(s).")
@@ -477,9 +578,17 @@ def main() -> int:
 
             canonical_row = next(r for r in group.rows if r.playerid == canonical_id)
             canonical_cafc_id = canonical_row.cafc_player_id
+            canonical_universal_id = player_universal_id(canonical_row)
 
             for wid in wrong_ids:
-                outcome.fk_counts[wid] = count_fk_references(cursor, wid, reference_tables)
+                wrong_row = next(r for r in group.rows if r.playerid == wid)
+                outcome.fk_counts[wid] = count_fk_references(
+                    cursor,
+                    wid,
+                    reference_tables,
+                    wrong_universal_id=player_universal_id(wrong_row),
+                    universal_id_tables=universal_id_tables,
+                )
 
             try:
                 apply_group(
@@ -491,6 +600,8 @@ def main() -> int:
                     canonical_cafc_id,
                     reference_tables,
                     dry_run=not args.apply,
+                    canonical_universal_id=canonical_universal_id,
+                    universal_id_tables=universal_id_tables,
                 )
                 outcome.applied = args.apply
             except Exception as e:
