@@ -3151,24 +3151,52 @@ def build_recommendation_select():
     # Task 8: no column persists "was this recommendation's player link
     # created via manual entry" long-term, and we're not adding one (per the
     # plan's global constraints). Instead we derive a best-effort signal from
-    # data already available: the linked player is 'external' (matched_data_source_expr
-    # above) AND that player's own TRANSFERMARKT_LINK is empty - a manually
-    # created external player row is typically created without one, while a
-    # normally-searched/imported external player almost always has one. This
-    # mirrors matched_player_dob_expr's shape (a correlated MIN(...) lookup
-    # against `players`, resolved by the same matched_player_id_expr used for
-    # LINKED_PLAYER_ID so it stays consistent with whichever player the row
-    # is actually linked to).
+    # data already available: the linked player is 'external'
+    # (matched_data_source_expr above) AND that player's own
+    # TRANSFERMARKT_LINK is empty - a manually created external player row is
+    # typically created without one, while a normally-searched/imported
+    # external player almost always has one.
+    #
+    # Fail-closed: when this signal genuinely cannot be computed (the guard
+    # columns below don't exist in this environment's schema), we must NOT
+    # let serialize_recommendation_row() read that as "blank link" and flag
+    # every external-linked recommendation as manually created. So in that
+    # case we emit a non-blank sentinel string instead of NULL - it reads to
+    # serialize_recommendation_row() as "this player has a link", i.e. never
+    # flagged, which is the safe default when we can't actually tell.
+    #
+    # Deliberately kept as its own independent, flat correlated subquery
+    # (mirroring the shape of matched_player_dob_expr / matched_cafc_player_id_expr
+    # below) rather than nesting inside matched_player_id_expr's CASE - two
+    # correlated subqueries nested inside one another is an unverified shape
+    # this codebase doesn't otherwise use, and an unnecessary risk for what
+    # only needs to be a sibling lookup keyed the same way.
     has_players_transfermarkt = recommendation_column_exists("players", "TRANSFERMARKT_LINK")
-    linked_player_transfermarkt_link_expr = "NULL"
+    linked_player_transfermarkt_link_expr = "'__signal_unavailable__'"
     if has_players_playerid and has_players_transfermarkt:
-        linked_player_transfermarkt_link_expr = f"""
-            (
-                SELECT MIN(p.TRANSFERMARKT_LINK)
-                FROM {read_table('players')} p
-                WHERE p.PLAYERID = ({matched_player_id_expr})
+        if has_players_playername:
+            linked_player_transfermarkt_link_expr = f"""
+                (
+                    SELECT MIN(p.TRANSFERMARKT_LINK)
+                    FROM {read_table('players')} p
+                    WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
+                )
+            """
+        if has_linked_universal_id:
+            # Prefer the stored LINKED_UNIVERSAL_ID over the name-match
+            # fallback above, same precedence matched_player_id_expr/
+            # matched_cafc_player_id_expr/matched_data_source_expr already
+            # use - but as a flat, standalone CASE, not a reuse/nesting of
+            # those other expressions.
+            linked_player_transfermarkt_link_expr = (
+                "CASE "
+                "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'external_%%' THEN "
+                "(SELECT MIN(p.TRANSFERMARKT_LINK) "
+                f"FROM {read_table('players')} p "
+                "WHERE p.PLAYERID = TRY_TO_NUMBER(SUBSTR(pr.LINKED_UNIVERSAL_ID, 10))) "
+                "WHEN pr.LINKED_UNIVERSAL_ID LIKE 'internal_%%' THEN NULL "
+                f"ELSE {linked_player_transfermarkt_link_expr} END"
             )
-        """
 
     return """
         SELECT
@@ -3275,18 +3303,28 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
     wage_basis = row[49] if len(row) > 49 else None
     linked_universal_id = row[50] if len(row) > 50 else None
-    linked_player_transfermarkt_link = row[51] if len(row) > 51 else None
+    # "__signal_unavailable__" mirrors the sentinel build_recommendation_select
+    # emits when the derivation signal genuinely can't be computed (guard
+    # columns missing from the schema). Used here too for a row shorter than
+    # expected (e.g. an older/hand-built row shape), so both cases fail
+    # CLOSED the same way: treated as "has a link" -> never flagged, rather
+    # than misread as "blank link" -> flagged for every external player.
+    SIGNAL_UNAVAILABLE = "__signal_unavailable__"
+    linked_player_transfermarkt_link = row[51] if len(row) > 51 else SIGNAL_UNAVAILABLE
     # Task 8 derived signal: flag a recommendation as "manually added player"
     # when it's linked to an *external* player (row[48]) that actually has a
     # LINKED_PLAYER_ID (row[46] - i.e. this row really is linked to something,
-    # not just an unmatched name) and that linked player has no
-    # TRANSFERMARKT_LINK of its own. Best-effort only: no schema change, so a
-    # normally-searched external player that happens to lack a Transfermarkt
-    # link would also trip this - reviewers get a nudge to double check, not
-    # a guarantee.
+    # not just an unmatched name) and that linked player genuinely has no
+    # TRANSFERMARKT_LINK of its own (not merely "we couldn't tell"). Best-effort
+    # only: no schema change, so a normally-searched external player that
+    # happens to lack a Transfermarkt link would also trip this - reviewers
+    # get a nudge to double check, not a guarantee. When the signal is
+    # unavailable, we default to False (fail closed) rather than flagging
+    # every external-linked recommendation.
     player_manual_entry = bool(
         row[48] == "external"
         and row[46] is not None
+        and linked_player_transfermarkt_link != SIGNAL_UNAVAILABLE
         and not (linked_player_transfermarkt_link or "").strip()
     )
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None

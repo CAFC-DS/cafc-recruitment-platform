@@ -106,15 +106,31 @@ def test_does_not_flag_when_no_linked_player_at_all():
 def test_backward_compatible_with_pre_task_8_row_shape():
     # A row shaped like build_recommendation_select produced before this
     # task (51 columns, no LINKED_PLAYER_TRANSFERMARKT_LINK) must not raise
-    # an IndexError. With no way to know the linked player's own
-    # TRANSFERMARKT_LINK, the missing column is treated the same as "empty"
-    # (conservative: nudge a reviewer to check rather than silently hide a
-    # possible duplicate) - in practice build_recommendation_select always
-    # emits this column now, so this only matters for hand-built tuples.
+    # an IndexError, and MUST fail closed: with no way to know the linked
+    # player's own TRANSFERMARKT_LINK, we must never treat "can't tell" the
+    # same as "genuinely blank" - that would flag every external-linked
+    # recommendation as manually created, including normally-searched ones,
+    # which directly violates "never flag a normally-linked player." In
+    # practice build_recommendation_select always emits this column now
+    # (with its own fail-closed '__signal_unavailable__' sentinel when the
+    # guard columns are missing from the schema - see
+    # test_signal_unavailable_sentinel_is_not_flagged below), so this only
+    # matters for hand-built/legacy-shaped tuples.
     row = _row(linked_player_id=42, linked_player_data_source="external", width=51)
     assert len(row) == 51
     response = main.serialize_recommendation_row(row)
-    assert response.player_manual_entry is True
+    assert response.player_manual_entry is False
+
+
+def test_signal_unavailable_sentinel_is_not_flagged():
+    # Mirrors what build_recommendation_select emits when the guard columns
+    # (players.TRANSFERMARKT_LINK / players.PLAYERID) don't exist in this
+    # environment's schema: a non-blank sentinel string, not NULL, so the
+    # "blank link" flagging logic can't misfire on it.
+    response = main.serialize_recommendation_row(
+        _row(linked_player_id=42, linked_player_data_source="external", linked_player_transfermarkt_link="__signal_unavailable__")
+    )
+    assert response.player_manual_entry is False
 
 
 def test_internal_response_also_carries_the_flag():
