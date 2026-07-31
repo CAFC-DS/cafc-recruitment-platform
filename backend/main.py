@@ -49,7 +49,7 @@ from services.ollama_service import ollama_service
 from iteration_mapping import ITERATION_MAPPING
 
 # Import shared duplicate-player scoring (pure, DB-free)
-from duplicate_detection import score_player_match, normalize_text as dd_normalize_text
+from duplicate_detection import score_player_match, score_intake_match, normalize_text as dd_normalize_text
 
 # Load environment variables from .env file
 load_dotenv()
@@ -100,6 +100,21 @@ def resolve_player_lookup(universal_id):
     else:
         player_id = int(universal_id[9:])
         return "PLAYERID = %s AND DATA_SOURCE = 'external'", [player_id]
+
+
+def derive_universal_id(cafc_id: Any, external_id: Any, data_source: Any) -> Optional[str]:
+    """Derive a universal_id ('internal_<id>' / 'external_<id>') from raw
+    PLAYERS identity columns (CAFC_PLAYER_ID, PLAYERID, DATA_SOURCE). Shared
+    by GET /agents/player-search and _find_agent_intake_duplicate_candidates
+    so both use the same ID scheme."""
+    source = (data_source or "").strip().lower() if isinstance(data_source, str) else None
+    if source == "internal" and cafc_id is not None:
+        return f"internal_{int(cafc_id)}"
+    if external_id is not None:
+        return f"external_{int(external_id)}"
+    if cafc_id is not None:
+        return f"internal_{int(cafc_id)}"
+    return None
 
 
 def resolve_match_lookup(universal_id):
@@ -2484,6 +2499,130 @@ def _create_external_player_from_agent_intake(
     return f"external_{new_player_id}"
 
 
+def _find_agent_intake_duplicate_candidates(
+    cursor,
+    player_name: str,
+    player_dob,
+    transfermarkt_link: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Look up existing PLAYERS rows that might be duplicates of an
+    agent-portal manual player entry, before a new row is created.
+
+    SQL shape mirrors GET /agents/player-search's NORMALIZE_TEXT_UDF ILIKE
+    pass plus JAROWINKLER_SIMILARITY fallback, but deliberately skips that
+    endpoint's GROUP BY/MIN(...) collapsing — we need distinct candidate
+    rows so score_intake_match can be run against each one individually.
+
+    Returns up to 5 candidates with confidence in {medium, high}, sorted
+    high-before-medium then by name similarity descending.
+    """
+    if not player_name or not player_name.strip():
+        return []
+    player_columns = get_table_columns("players")
+    if "PLAYERNAME" not in player_columns:
+        return []
+
+    normalized_search = dd_normalize_text(player_name.strip())
+    if not normalized_search:
+        return []
+    search_pattern = f"%{normalized_search}%"
+    search_name_expr = "NORMALIZE_TEXT_UDF(PLAYERNAME)"
+    candidate_columns = (
+        "PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, BIRTHDATE, POSITION, "
+        "DATA_SOURCE, TRANSFERMARKT_LINK, SQUADNAME"
+    )
+
+    cursor.execute(
+        f"""
+        SELECT {candidate_columns}
+        FROM {read_table('players')}
+        WHERE {search_name_expr} ILIKE %s
+        LIMIT 10
+        """,
+        (search_pattern,),
+    )
+    rows = list(cursor.fetchall())
+
+    if len(rows) < 10 and len(normalized_search) >= 3:
+        try:
+            first_token_expr = f"SPLIT_PART({search_name_expr}, ' ', 1)"
+            last_token_expr = f"REGEXP_SUBSTR({search_name_expr}, '\\\\S+$')"
+            cursor.execute(
+                f"""
+                SELECT {candidate_columns}
+                FROM {read_table('players')}
+                WHERE (
+                        JAROWINKLER_SIMILARITY({search_name_expr}, %s) >= 80
+                     OR JAROWINKLER_SIMILARITY({first_token_expr}, %s) >= 80
+                     OR JAROWINKLER_SIMILARITY({last_token_expr}, %s) >= 80
+                    )
+                  AND {search_name_expr} NOT ILIKE %s
+                LIMIT 10
+                """,
+                (normalized_search, normalized_search, normalized_search, search_pattern),
+            )
+            rows.extend(cursor.fetchall())
+        except Exception as fuzzy_error:
+            # Same rationale as the typeahead endpoint: if JAROWINKLER_SIMILARITY
+            # is unavailable, still return whatever the exact-ish ILIKE pass found.
+            logging.warning(f"Agent intake duplicate fuzzy fallback failed: {fuzzy_error}")
+
+    # score_intake_match does a raw `==` on the two DOB values. Snowflake can
+    # hand BIRTHDATE back as a datetime rather than a bare date (see
+    # _agent_intake_dob_key's docstring), which would otherwise false-negative
+    # an exact-DOB match into "DOB mismatch" and silently drop it from the
+    # medium/high tiers. Normalize both sides to a YYYY-MM-DD string (not
+    # Task 2's score_intake_match itself, which stays DB-agnostic).
+    normalized_player_dob = player_dob if player_dob is None else _agent_intake_dob_key(player_dob)
+
+    scored: List[Dict[str, Any]] = []
+    seen_universal_ids = set()
+    for row in rows:
+        (
+            external_id,
+            cafc_id,
+            candidate_name,
+            birthdate,
+            position,
+            data_source,
+            candidate_tm_link,
+            squad_name,
+        ) = row
+        universal_id = derive_universal_id(cafc_id, external_id, data_source)
+        if not universal_id or universal_id in seen_universal_ids:
+            continue
+        normalized_birthdate = birthdate if birthdate is None else _agent_intake_dob_key(birthdate)
+        match = score_intake_match(
+            player_name,
+            normalized_player_dob,
+            transfermarkt_link,
+            candidate_name,
+            normalized_birthdate,
+            candidate_tm_link,
+        )
+        if match is None or match["confidence"] not in ("high", "medium"):
+            continue
+        seen_universal_ids.add(universal_id)
+        dob_iso = serialize_datetime(birthdate)
+        if dob_iso and "T" in dob_iso:
+            dob_iso = dob_iso.split("T")[0]
+        scored.append(
+            {
+                "universal_id": universal_id,
+                "player_name": candidate_name,
+                "date_of_birth": dob_iso,
+                "squad_name": squad_name,
+                "position": position,
+                "confidence": match["confidence"],
+                "name_similarity": match["name_similarity"],
+                "evidence": match["evidence"],
+            }
+        )
+
+    scored.sort(key=lambda c: (0 if c["confidence"] == "high" else 1, -c["name_similarity"]))
+    return scored[:5]
+
+
 def resolve_agent_intake_player_link(
     cursor,
     *,
@@ -2493,14 +2632,20 @@ def resolve_agent_intake_player_link(
     player_dob,
     recommended_position: Optional[str],
     transfermarkt_link: Optional[str],
+    confirm_new_player: bool = False,
 ) -> Optional[str]:
     """Decide which universal_id to store on an agent intake row.
 
     Path A — agent picked a real player in the typeahead and we got a
     linked_universal_id. Verify it resolves to a real PLAYERS row and return it.
 
-    Path B — agent ticked "Other (Manual Entry)" or no link was sent. Create a
-    new external PLAYERS row from the agent-provided fields and return that.
+    Path B — agent ticked "Other (Manual Entry)" or no link was sent (or the
+    provided link didn't resolve). Before minting a new external PLAYERS row,
+    check for existing players that plausibly match the typed name/DOB. If
+    any medium/high confidence candidates are found and the caller hasn't
+    passed confirm_new_player=True, raise a 409 so the caller can show those
+    candidates instead of silently creating a duplicate. No INSERT has
+    happened yet at this point.
     """
     if linked_universal_id and not player_manual_entry:
         normalized_link = linked_universal_id.strip()
@@ -2513,6 +2658,16 @@ def resolve_agent_intake_player_link(
                 return normalized_link
             # Universal id was provided but didn't resolve — fall through to
             # the manual path so the recommendation still gets a real link.
+
+    if not confirm_new_player:
+        candidates = _find_agent_intake_duplicate_candidates(
+            cursor, player_name, player_dob, transfermarkt_link
+        )
+        if candidates:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "possible_duplicate_player", "candidates": candidates},
+            )
 
     return _create_external_player_from_agent_intake(
         cursor,
@@ -3537,16 +3692,6 @@ async def search_agent_players(
                 (search_pattern, normalized_search, normalized_search + "%", safe_limit),
             )
 
-        def derive_universal_id(cafc_id: Any, external_id: Any, data_source: Any) -> Optional[str]:
-            source = (data_source or "").strip().lower() if isinstance(data_source, str) else None
-            if source == "internal" and cafc_id is not None:
-                return f"internal_{int(cafc_id)}"
-            if external_id is not None:
-                return f"external_{int(external_id)}"
-            if cafc_id is not None:
-                return f"internal_{int(cafc_id)}"
-            return None
-
         def build_result(row: List[Any], similarity: Optional[int] = None) -> Optional[AgentPlayerSearchResult]:
             row_name = row[0]
             if not row_name:
@@ -3716,6 +3861,7 @@ async def create_agent_recommendation(
     additional_information: Optional[str] = Form(None),
     linked_universal_id: Optional[str] = Form(None),
     player_manual_entry: Optional[bool] = Form(False),
+    confirm_new_player: Optional[bool] = Form(False),
     supporting_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(require_agent_user),
 ):
@@ -3763,6 +3909,7 @@ async def create_agent_recommendation(
             player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
             recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
             transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
+            confirm_new_player=bool(confirm_new_player),
         )
 
         recommendation_columns = get_table_columns("player_recommendations")
@@ -3919,6 +4066,7 @@ async def update_agent_recommendation(
     additional_information: Optional[str] = Form(None),
     linked_universal_id: Optional[str] = Form(None),
     player_manual_entry: Optional[bool] = Form(False),
+    confirm_new_player: Optional[bool] = Form(False),
     supporting_file: Optional[UploadFile] = File(None),
     current_user: User = Depends(require_agent_user),
 ):
@@ -3996,6 +4144,7 @@ async def update_agent_recommendation(
                 player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
                 recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
                 transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
+                confirm_new_player=bool(confirm_new_player),
             )
 
         recommendation_columns = get_table_columns("player_recommendations")
