@@ -2504,6 +2504,7 @@ def _find_agent_intake_duplicate_candidates(
     player_name: str,
     player_dob,
     transfermarkt_link: Optional[str] = None,
+    exclude_universal_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Look up existing PLAYERS rows that might be duplicates of an
     agent-portal manual player entry, before a new row is created.
@@ -2512,6 +2513,12 @@ def _find_agent_intake_duplicate_candidates(
     pass plus JAROWINKLER_SIMILARITY fallback, but deliberately skips that
     endpoint's GROUP BY/MIN(...) collapsing — we need distinct candidate
     rows so score_intake_match can be run against each one individually.
+
+    exclude_universal_id lets the update path exclude the recommendation's
+    own currently-linked player: editing a manual-entry recommendation
+    (e.g. fixing a DOB typo) should not treat the player it's already
+    linked to as a "possible duplicate of a different, brand-new player"
+    candidate.
 
     Returns up to 5 candidates with confidence in {medium, high}, sorted
     high-before-medium then by name similarity descending.
@@ -2543,7 +2550,14 @@ def _find_agent_intake_duplicate_candidates(
     )
     rows = list(cursor.fetchall())
 
-    if len(rows) < 10 and len(normalized_search) >= 3:
+    # Mirrors GET /agents/player-search's rationale for only running the
+    # heavier JAROWINKLER_SIMILARITY scan when the cheap pass found little:
+    # that endpoint gates on its deduped result count being < 3. This helper
+    # doesn't dedupe/collapse rows (see docstring), but the ILIKE pass's raw
+    # row count is the equivalent "found little" signal here, so use the
+    # same threshold rather than the LIMIT-10 cap (which would make the
+    # fuzzy pass run on nearly every submission).
+    if len(rows) < 3 and len(normalized_search) >= 3:
         try:
             first_token_expr = f"SPLIT_PART({search_name_expr}, ' ', 1)"
             last_token_expr = f"REGEXP_SUBSTR({search_name_expr}, '\\\\S+$')"
@@ -2574,6 +2588,7 @@ def _find_agent_intake_duplicate_candidates(
     # medium/high tiers. Normalize both sides to a YYYY-MM-DD string (not
     # Task 2's score_intake_match itself, which stays DB-agnostic).
     normalized_player_dob = player_dob if player_dob is None else _agent_intake_dob_key(player_dob)
+    normalized_exclude_id = exclude_universal_id.strip() if exclude_universal_id else None
 
     scored: List[Dict[str, Any]] = []
     seen_universal_ids = set()
@@ -2590,6 +2605,8 @@ def _find_agent_intake_duplicate_candidates(
         ) = row
         universal_id = derive_universal_id(cafc_id, external_id, data_source)
         if not universal_id or universal_id in seen_universal_ids:
+            continue
+        if normalized_exclude_id and universal_id == normalized_exclude_id:
             continue
         normalized_birthdate = birthdate if birthdate is None else _agent_intake_dob_key(birthdate)
         match = score_intake_match(
@@ -2633,6 +2650,7 @@ def resolve_agent_intake_player_link(
     recommended_position: Optional[str],
     transfermarkt_link: Optional[str],
     confirm_new_player: bool = False,
+    exclude_universal_id: Optional[str] = None,
 ) -> Optional[str]:
     """Decide which universal_id to store on an agent intake row.
 
@@ -2646,6 +2664,11 @@ def resolve_agent_intake_player_link(
     passed confirm_new_player=True, raise a 409 so the caller can show those
     candidates instead of silently creating a duplicate. No INSERT has
     happened yet at this point.
+
+    exclude_universal_id (used by the update path): the recommendation's own
+    currently-linked player, if any, so an edit that genuinely changes the
+    typed name/DOB (e.g. fixing a DOB typo) doesn't get flagged as a
+    "possible duplicate" of the very player it's already linked to.
     """
     if linked_universal_id and not player_manual_entry:
         normalized_link = linked_universal_id.strip()
@@ -2661,7 +2684,11 @@ def resolve_agent_intake_player_link(
 
     if not confirm_new_player:
         candidates = _find_agent_intake_duplicate_candidates(
-            cursor, player_name, player_dob, transfermarkt_link
+            cursor,
+            player_name,
+            player_dob,
+            transfermarkt_link,
+            exclude_universal_id=exclude_universal_id,
         )
         if candidates:
             raise HTTPException(
@@ -4145,6 +4172,10 @@ async def update_agent_recommendation(
                 recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
                 transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
                 confirm_new_player=bool(confirm_new_player),
+                # Don't let the recommendation's own already-linked player
+                # (e.g. before a DOB typo fix) surface as a "possible
+                # duplicate of a different, brand-new player" candidate.
+                exclude_universal_id=existing_linked_universal_id,
             )
 
         recommendation_columns = get_table_columns("player_recommendations")

@@ -148,6 +148,41 @@ def test_shared_transfermarkt_link_scores_high_even_with_different_names():
     assert result[0]["confidence"] == "high"
 
 
+def test_exclude_universal_id_filters_out_self_linked_player():
+    # The recommendation's own currently-linked player (same name, DOB now
+    # edited to differ) must not surface as a "possible duplicate of a
+    # different, brand-new player" candidate.
+    rows = [_candidate_row(player_id=42, name="Jon Smith", birthdate=date(2000, 1, 1))]
+    cursor = _cursor_with_ilike_results(rows)
+    with patch.object(main, "get_table_columns", return_value=["PLAYERNAME"]), \
+         patch.object(main, "read_table", return_value="players"):
+        result = main._find_agent_intake_duplicate_candidates(
+            cursor,
+            "Jon Smith",
+            date(2005, 6, 15),
+            exclude_universal_id="external_42",
+        )
+    assert result == []
+
+
+def test_exclude_universal_id_does_not_filter_out_other_players():
+    rows = [
+        _candidate_row(player_id=42, name="Jon Smith", birthdate=date(2000, 1, 1)),
+        _candidate_row(player_id=43, name="Jon Smith", birthdate=date(2000, 1, 1)),
+    ]
+    cursor = _cursor_with_ilike_results(rows)
+    with patch.object(main, "get_table_columns", return_value=["PLAYERNAME"]), \
+         patch.object(main, "read_table", return_value="players"):
+        result = main._find_agent_intake_duplicate_candidates(
+            cursor,
+            "Jon Smith",
+            date(2000, 1, 1),
+            exclude_universal_id="external_42",
+        )
+    assert len(result) == 1
+    assert result[0]["universal_id"] == "external_43"
+
+
 def test_internal_player_derives_internal_universal_id():
     rows = [
         _candidate_row(
@@ -273,6 +308,25 @@ def test_resolve_proceeds_without_gate_when_no_candidates_found():
     assert result == "external_99"
     mock_find.assert_called_once()
     mock_create.assert_called_once()
+
+
+def test_resolve_forwards_exclude_universal_id_to_candidate_lookup():
+    cursor = MagicMock()
+    with patch.object(main, "_find_agent_intake_duplicate_candidates", return_value=[]) as mock_find, \
+         patch.object(main, "_create_external_player_from_agent_intake", return_value="external_99"):
+        main.resolve_agent_intake_player_link(
+            cursor,
+            linked_universal_id=None,
+            player_manual_entry=True,
+            player_name="Jon Smith",
+            player_dob=date(2005, 6, 15),
+            recommended_position="CB",
+            transfermarkt_link=None,
+            exclude_universal_id="external_42",
+        )
+    mock_find.assert_called_once_with(
+        cursor, "Jon Smith", date(2005, 6, 15), None, exclude_universal_id="external_42"
+    )
 
 
 def test_resolve_does_not_run_gate_on_resolved_typeahead_link():
@@ -523,5 +577,107 @@ def test_update_endpoint_confirm_new_player_bypasses_gate_and_commits():
     assert result == {"id": 1}
     mock_resolve.assert_called_once()
     assert mock_resolve.call_args.kwargs["confirm_new_player"] is True
+    fake_conn.commit.assert_called_once()
+    fake_conn.rollback.assert_not_called()
+
+
+# --- Fix report regression: no self-collision 409 on the update path -------
+#
+# End-to-end: neither resolve_agent_intake_player_link nor
+# _find_agent_intake_duplicate_candidates are mocked here, so this actually
+# exercises the exclude_universal_id wiring through the real functions
+# against a fake cursor, not just the wiring assertions above.
+
+
+def test_update_endpoint_no_409_when_editing_own_linked_players_dob():
+    """Editing a manual-entry recommendation's DOB (a genuine field change,
+    so Task 1's should_reuse_existing_agent_intake_link correctly declines to
+    reuse the link) must not raise a 409 just because the only "duplicate"
+    the lookup finds is the player already linked to this recommendation."""
+    fake_cursor = MagicMock()
+    fake_conn = MagicMock()
+    fake_conn.cursor.return_value = fake_cursor
+
+    row = [None] * 51
+    row[0] = 1
+    row[24] = 1
+    row[25] = "Submitted"
+    row[50] = "external_42"  # recommendation's own currently-linked player
+
+    # The PLAYERS row still has the OLD dob in the DB (2000-01-01); the agent
+    # is submitting a corrected DOB (2005-06-15) for the same person.
+    self_linked_player_row = _candidate_row(player_id=42, name="Jon Smith", birthdate=date(2000, 1, 1))
+    # ILIKE pass finds only the self-linked player; JAROWINKLER fallback
+    # (triggered since 1 row < 3) finds nothing extra.
+    fake_cursor.fetchall.side_effect = [[self_linked_player_row], []]
+
+    def table_columns_side_effect(table_name):
+        if table_name == "players":
+            return ["PLAYERNAME", "BIRTHDATE", "POSITION", "DATA_SOURCE", "TRANSFERMARKT_LINK", "SQUADNAME", "PLAYERID", "CAFC_PLAYER_ID"]
+        return RECOMMENDATION_COLUMNS
+
+    with patch.object(main, "get_snowflake_connection", return_value=fake_conn), \
+         patch.object(main, "validate_recommendation_schema_ready"), \
+         patch.object(main, "get_table_columns", side_effect=table_columns_side_effect), \
+         patch.object(main, "read_table", return_value="players"), \
+         patch.object(main, "fetch_recommendation_detail", return_value=tuple(row)), \
+         patch.object(
+             main,
+             "prepare_agent_recommendation_payload",
+             return_value=_payload_stub(player_name="Jon Smith", player_dob=date(2005, 6, 15)),
+         ), \
+         patch.object(
+             main,
+             "find_player_by_universal_or_legacy_id",
+             return_value=(
+                 (42, None, "Jon Smith", "Jon", "Smith", date(2000, 1, 1), "Charlton", "CB", "external"),
+                 "external",
+             ),
+         ), \
+         patch.object(
+             main, "_create_external_player_from_agent_intake", return_value="external_99"
+         ) as mock_create, \
+         patch.object(main, "serialize_recommendation_row", return_value={"id": 1}):
+
+        coro = main.update_agent_recommendation(
+            recommendation_id=1,
+            agent_name="Agent Smith",
+            agency=None,
+            agent_email="agent@example.com",
+            agent_number=None,
+            submission_date="2026-01-01",
+            player_name="Jon Smith",
+            player_date_of_birth="2005-06-15",
+            recommended_position="CB",
+            transfermarkt_link="https://transfermarkt.com/jon-smith",
+            agreement_type="Free Transfer",
+            confirmed_contract_expiry="2027-01-01",
+            contract_options="None",
+            potential_deal_type="Permanent Transfer",
+            transfer_fee=None,
+            transfer_fee_currency=None,
+            current_wages_per_week=None,
+            current_wages_currency=None,
+            wage_basis=None,
+            current_wages_basis=None,
+            expected_wages_per_week="1000",
+            expected_wages_currency="GBP",
+            expected_wages_basis="Gross",
+            additional_information=None,
+            linked_universal_id=None,
+            player_manual_entry=True,
+            confirm_new_player=False,  # no confirm bypass — proves the gate genuinely didn't fire
+            supporting_file=None,
+            current_user=_FakeUser(),
+        )
+
+        # Must NOT raise HTTPException(409, ...): the only lookup match is
+        # the recommendation's own already-linked player, which is excluded.
+        result = asyncio.run(coro)
+
+    assert result == {"id": 1}
+    # A genuine field change (DOB) still isn't reused per Task 1's scope —
+    # it falls through to player creation, just without a spurious 409 first.
+    mock_create.assert_called_once()
     fake_conn.commit.assert_called_once()
     fake_conn.rollback.assert_not_called()
