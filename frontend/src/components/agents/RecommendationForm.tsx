@@ -328,6 +328,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
   const [searchSuggestions, setSearchSuggestions] = useState<AgentPlayerSearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [hasCompletedSearch, setHasCompletedSearch] = useState(initialManualPlayerEntry || !!initialSelectedPlayerLabel);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   // Transient — only populated when the agent commits a selection during this
   // mount. On edit-mode rehydration we don't have squad/position to display
@@ -392,6 +393,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
       } finally {
         if (!cancelled) {
           setSearchLoading(false);
+          setHasCompletedSearch(true);
         }
       }
     }, 250);
@@ -522,10 +524,11 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
 
         <div className="agent-portal-section-title">Player Details</div>
         <div className="agent-portal-inline-actions" style={{ justifyContent: 'flex-start', marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-          <label className="agent-manual-toggle">
+          <label className="agent-manual-toggle" title={!isManualPlayerEntry && !hasCompletedSearch ? 'Search for the player above first' : undefined}>
             <input
               type="checkbox"
               checked={isManualPlayerEntry}
+              disabled={!isManualPlayerEntry && !hasCompletedSearch}
               onChange={(event) => {
                 const checked = event.target.checked;
                 setIsManualPlayerEntry(checked);
