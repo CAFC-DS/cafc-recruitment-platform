@@ -552,7 +552,23 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                   <input
                     className="agent-portal-input"
                     value={values.player_name}
-                    onChange={(event) => onChange('player_name', event.target.value)}
+                    onChange={(event) => {
+                      onChange('player_name', event.target.value);
+                      // Guards against a narrow but real race: if a prior
+                      // "link to this player instead" resubmit failed
+                      // (network blip) after setting linked_universal_id,
+                      // the agent is still looking at these manual-entry
+                      // fields (this component's local isManualPlayerEntry
+                      // doesn't get resynced from that resubmit). Editing
+                      // the name here must not let a stale linked_universal_id
+                      // ride along to a mismatched candidate — clearing it
+                      // forces the backend's duplicate gate to re-run
+                      // against the edited value instead of blindly reusing
+                      // the old link.
+                      if (values.linked_universal_id) {
+                        onChange('linked_universal_id', null);
+                      }
+                    }}
                     required
                   />
                 </div>
@@ -571,7 +587,13 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                     type="date"
                     className="agent-portal-input"
                     value={values.player_date_of_birth || ''}
-                    onChange={(event) => onChange('player_date_of_birth', event.target.value)}
+                    onChange={(event) => {
+                      onChange('player_date_of_birth', event.target.value);
+                      // See comment on the Player Name field above.
+                      if (values.linked_universal_id) {
+                        onChange('linked_universal_id', null);
+                      }
+                    }}
                     required
                   />
                 </div>
