@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import SubmissionStatusBadge from '../../components/agents/SubmissionStatusBadge';
 import NotesHistoryModal from '../../components/recommendations/NotesHistoryModal';
+import ManualEntryBadge from '../../components/recommendations/ManualEntryBadge';
 import { internalRecommendationsService } from '../../services/internalRecommendationsService';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import {
@@ -20,7 +21,7 @@ interface RecommendationFilterState {
 }
 
 const InternalRecommendationsPage: React.FC = () => {
-  const { isIntelReviewer } = useCurrentUser();
+  const { isIntelReviewer, isAdmin } = useCurrentUser();
   const [filters, setFilters] = useState<RecommendationFilterState>({
     status: '',
     agent_user_id: '',
@@ -129,6 +130,10 @@ const InternalRecommendationsPage: React.FC = () => {
     } finally {
       setSavingNotes(false);
     }
+  };
+
+  const handleFlagDuplicate = async (recommendationId: number) => {
+    await internalRecommendationsService.flagDuplicate(recommendationId);
   };
 
   const handleExport = async () => {
@@ -256,6 +261,16 @@ const InternalRecommendationsPage: React.FC = () => {
                           <td>
                             <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.player_name}</div>
                             <div className="agent-portal-meta">{item.potential_deal_type || 'No deal type'}</div>
+                            {item.player_manual_entry ? (
+                              <div className="mt-1">
+                                <ManualEntryBadge
+                                  playerName={item.player_name}
+                                  isAdmin={isAdmin}
+                                  onFlag={() => handleFlagDuplicate(item.id)}
+                                  size="sm"
+                                />
+                              </div>
+                            ) : null}
                           </td>
                           <td>
                             <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{item.agent_name || item.submitted_by_username || '-'}</div>
@@ -296,6 +311,15 @@ const InternalRecommendationsPage: React.FC = () => {
                   <div>
                     <h2 className="h4 mb-1" style={{ color: 'var(--color-text)' }}>{selected.player_name}</h2>
                     <div className="agent-portal-meta">{selected.agent_name} {selected.agency ? `- ${selected.agency}` : ''}</div>
+                    {selected.player_manual_entry ? (
+                      <div className="mt-2">
+                        <ManualEntryBadge
+                          playerName={selected.player_name}
+                          isAdmin={isAdmin}
+                          onFlag={() => handleFlagDuplicate(selected.id)}
+                        />
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="agent-portal-info-card">

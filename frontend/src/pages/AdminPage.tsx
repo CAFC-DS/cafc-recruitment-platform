@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -60,8 +61,31 @@ const getRoleLabel = (role: string): string => {
 };
 
 const AdminPage: React.FC = () => {
+  const location = useLocation();
   const [activeSection, setActiveSection] = useState<string>("data-quality");
   const [activeDataQualityTab, setActiveDataQualityTab] = useState<string>("internal-audit");
+  // Deep-link support (Task 8): the internal recommendations review page
+  // links admins straight into the relevant duplicate-review tab,
+  // pre-filtered to a specific player, e.g.
+  // /admin?tab=internal-audit&name=Jon%20Smith or
+  // /admin?tab=general-clashes&name=Jon%20Smith.
+  const [auditNameFilter, setAuditNameFilter] = useState<string>("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    const name = params.get("name") || "";
+    if (tab === "internal-audit" || tab === "general-clashes") {
+      setActiveSection("data-quality");
+      setActiveDataQualityTab(tab);
+    }
+    if (name) {
+      setAuditNameFilter(name);
+    }
+    // Only react to the URL on initial load / navigation, not on every
+    // internal tab-state change this page makes afterwards.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -359,6 +383,7 @@ const AdminPage: React.FC = () => {
                 <Tab eventKey="internal-audit" title="Internal Player Audit">
                   <InternalPlayerAuditTab
                     onStatsChange={handleAuditStatsChange}
+                    initialNameFilter={auditNameFilter}
                   />
                 </Tab>
                 <Tab eventKey="general-clashes" title="General Clashes">

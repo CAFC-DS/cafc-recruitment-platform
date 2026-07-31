@@ -90,6 +90,10 @@ export interface Recommendation {
   agent_status_updated_at?: string;
   shared_notes?: string;
   linked_universal_id?: string | null;
+  // Best-effort server-derived signal (Task 8): true when this
+  // recommendation's linked player looks like it was created via
+  // agent-portal manual entry rather than matched from an existing search.
+  player_manual_entry?: boolean;
 }
 
 export interface RecommendationStatusHistory {

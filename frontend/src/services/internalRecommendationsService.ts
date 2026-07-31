@@ -83,6 +83,10 @@ export const internalRecommendationsService = {
     const response = await axiosInstance.get<RecommendationNoteHistory[]>(`/internal/recommendations/${id}/notes-history`);
     return response.data;
   },
+  async flagDuplicate(id: number) {
+    const response = await axiosInstance.post<RecommendationNoteHistory[]>(`/internal/recommendations/${id}/flag-duplicate`);
+    return response.data;
+  },
   async exportCsv() {
     const response = await axiosInstance.get('/internal/recommendations/export.csv', {
       responseType: 'blob',

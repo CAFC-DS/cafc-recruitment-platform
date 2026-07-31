@@ -161,7 +161,7 @@ def test_reuses_link_when_existing_player_dob_is_a_datetime():
 # resolve_agent_intake_player_link (and therefore _create_external_player_
 # from_agent_intake's INSERT INTO players) actually runs.
 
-RECOMMENDATION_ROW_WIDTH = 51  # matches build_recommendation_select's column count
+RECOMMENDATION_ROW_WIDTH = 52  # matches build_recommendation_select's column count
 ID_IDX = 0
 PLAYER_NAME_IDX = 6
 SUBMITTED_BY_USER_ID_IDX = 24

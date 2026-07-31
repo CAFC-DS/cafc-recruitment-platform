@@ -110,6 +110,10 @@ interface InternalPlayerAuditTabProps {
     unresolved: number;
     lastScanAt: string;
   }) => void;
+  // Deep-link support (Task 8): pre-fill and apply the name filter, e.g.
+  // when an admin arrives here via a manually-linked-player badge on the
+  // internal recommendations review page.
+  initialNameFilter?: string;
 }
 
 const CONFIDENCE_OPTIONS = [
@@ -133,6 +137,7 @@ const formatDate = (value?: string | null) => {
 
 const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
   onStatsChange,
+  initialNameFilter,
 }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -208,6 +213,18 @@ const InternalPlayerAuditTab: React.FC<InternalPlayerAuditTabProps> = ({
   useEffect(() => {
     fetchAudit();
   }, [fetchAudit]);
+
+  useEffect(() => {
+    if (initialNameFilter && initialNameFilter.trim()) {
+      const trimmed = initialNameFilter.trim();
+      setName(trimmed);
+      setSearchName(trimmed);
+      setPage(1);
+    }
+    // Only apply the deep-linked filter once, when it's provided/changes -
+    // not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNameFilter]);
 
   const applyFilters = () => {
     setPage(1);

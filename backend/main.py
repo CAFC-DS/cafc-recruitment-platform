@@ -1357,6 +1357,12 @@ class RecommendationResponse(BaseModel):
     agent_status_updated_at: Optional[str] = None
     shared_notes: Optional[str] = None
     linked_universal_id: Optional[str] = None
+    # Task 8: best-effort derived signal (no schema change) - True when this
+    # recommendation's linked player looks like it was manually created via
+    # agent-portal manual entry rather than matched from an existing search.
+    # See build_recommendation_select()/serialize_recommendation_row() for
+    # the derivation.
+    player_manual_entry: bool = False
 
 
 class RecommendationStatusHistoryResponse(BaseModel):
@@ -3142,6 +3148,28 @@ def build_recommendation_select():
         )
     linked_universal_id_expr = "pr.LINKED_UNIVERSAL_ID" if has_linked_universal_id else "NULL"
 
+    # Task 8: no column persists "was this recommendation's player link
+    # created via manual entry" long-term, and we're not adding one (per the
+    # plan's global constraints). Instead we derive a best-effort signal from
+    # data already available: the linked player is 'external' (matched_data_source_expr
+    # above) AND that player's own TRANSFERMARKT_LINK is empty - a manually
+    # created external player row is typically created without one, while a
+    # normally-searched/imported external player almost always has one. This
+    # mirrors matched_player_dob_expr's shape (a correlated MIN(...) lookup
+    # against `players`, resolved by the same matched_player_id_expr used for
+    # LINKED_PLAYER_ID so it stays consistent with whichever player the row
+    # is actually linked to).
+    has_players_transfermarkt = recommendation_column_exists("players", "TRANSFERMARKT_LINK")
+    linked_player_transfermarkt_link_expr = "NULL"
+    if has_players_playerid and has_players_transfermarkt:
+        linked_player_transfermarkt_link_expr = f"""
+            (
+                SELECT MIN(p.TRANSFERMARKT_LINK)
+                FROM {read_table('players')} p
+                WHERE p.PLAYERID = ({matched_player_id_expr})
+            )
+        """
+
     return """
         SELECT
             pr.ID,
@@ -3194,7 +3222,8 @@ def build_recommendation_select():
             {matched_cafc_player_id_expr} AS LINKED_CAFC_PLAYER_ID,
             {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
             {wage_basis_expr} AS WAGE_BASIS,
-            {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID
+            {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID,
+            {linked_player_transfermarkt_link_expr} AS LINKED_PLAYER_TRANSFERMARKT_LINK
         FROM {player_recommendations_table} pr
         LEFT JOIN {users_table} u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
@@ -3221,6 +3250,7 @@ def build_recommendation_select():
         matched_cafc_player_id_expr=matched_cafc_player_id_expr,
         matched_data_source_expr=matched_data_source_expr,
         linked_universal_id_expr=linked_universal_id_expr,
+        linked_player_transfermarkt_link_expr=linked_player_transfermarkt_link_expr,
     )
 
 
@@ -3245,6 +3275,20 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     expected_wages_currency_value = (expected_wages_currency or "GBP") if expected_wages_value is not None else None
     wage_basis = row[49] if len(row) > 49 else None
     linked_universal_id = row[50] if len(row) > 50 else None
+    linked_player_transfermarkt_link = row[51] if len(row) > 51 else None
+    # Task 8 derived signal: flag a recommendation as "manually added player"
+    # when it's linked to an *external* player (row[48]) that actually has a
+    # LINKED_PLAYER_ID (row[46] - i.e. this row really is linked to something,
+    # not just an unmatched name) and that linked player has no
+    # TRANSFERMARKT_LINK of its own. Best-effort only: no schema change, so a
+    # normally-searched external player that happens to lack a Transfermarkt
+    # link would also trip this - reviewers get a nudge to double check, not
+    # a guarantee.
+    player_manual_entry = bool(
+        row[48] == "external"
+        and row[46] is not None
+        and not (linked_player_transfermarkt_link or "").strip()
+    )
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None
     display_transfer_fee_value = transfer_fee_value or legacy_transfer_fee
     display_transfer_fee = (
@@ -3298,6 +3342,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agent_status_updated_at": serialize_datetime(row[45]),
         "shared_notes": row[28],
         "linked_universal_id": linked_universal_id,
+        "player_manual_entry": player_manual_entry,
     }
 
     if not include_internal:
@@ -4815,6 +4860,59 @@ async def get_internal_recommendation_notes_history(
             raise HTTPException(status_code=404, detail="Recommendation not found")
         ensure_recommendation_notes_history_table(cursor)
         return fetch_recommendation_notes_history(cursor, recommendation_id, include_actor_names=True)
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/internal/recommendations/{recommendation_id}/flag-duplicate", response_model=List[RecommendationNoteHistoryResponse])
+async def flag_internal_recommendation_duplicate(
+    recommendation_id: int, current_user: User = Depends(require_recs_viewer)
+):
+    """Task 8 minimal safety-net action for non-admin recs-viewer roles
+    (Scout, Loan Manager, Manager, Senior Manager, Intel Reviewer): records
+    that this recommendation's (likely manually-linked) player was flagged as
+    a possible duplicate for an admin to review, without granting the
+    flagging user access to admin-only merge tooling.
+
+    Deliberately reuses the existing append-only recommendation_notes_history
+    table/endpoints (already surfaced to admins via the "View Note History"
+    modal on this same page) rather than adding new schema or a new
+    workflow - per the plan's instruction to keep this minimal.
+    """
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        row = fetch_recommendation_detail(cursor, recommendation_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Recommendation not found")
+
+        ensure_recommendation_notes_history_table(cursor)
+        actor_label = current_user.username or f"user #{current_user.id}"
+        note_text = (
+            f"[Duplicate review flag] Flagged by {actor_label} ({current_user.role}) - "
+            "this recommendation's linked player may have been manually added and "
+            "should be checked against existing players before it's actioned."
+        )
+        flagged_at = datetime.utcnow()
+        cursor.execute(
+            """
+            INSERT INTO recommendation_notes_history (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+            VALUES (%s, %s, %s, %s)
+        """,
+            (recommendation_id, note_text, current_user.id, flagged_at),
+        )
+        conn.commit()
+        return fetch_recommendation_notes_history(cursor, recommendation_id, include_actor_names=True)
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(f"Failed to flag recommendation {recommendation_id} for duplicate review: {e}")
+        raise HTTPException(status_code=500, detail="Failed to flag recommendation for duplicate review")
     finally:
         if conn:
             conn.close()
