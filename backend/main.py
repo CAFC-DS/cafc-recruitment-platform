@@ -2523,6 +2523,65 @@ def resolve_agent_intake_player_link(
     )
 
 
+def _agent_intake_name_matches(name_a: Optional[str], name_b: Optional[str]) -> bool:
+    """Trimmed, accent/case-insensitive comparison of two player names."""
+    return normalize_text((name_a or "").strip()) == normalize_text((name_b or "").strip())
+
+
+def _agent_intake_dob_key(value) -> str:
+    """Normalize a DOB value (date, datetime, or string) down to its
+    YYYY-MM-DD date portion so comparisons don't false-negative on
+    datetime-vs-date or trailing-midnight-timestamp differences."""
+    if hasattr(value, "date") and hasattr(value, "hour"):  # datetime-like
+        value = value.date()
+    if hasattr(value, "isoformat"):  # date-like
+        return value.isoformat()
+    return str(value).strip()[:10]
+
+
+def _agent_intake_dob_matches(dob_a, dob_b) -> bool:
+    """Compare two DOB values that may arrive as date/datetime objects or strings."""
+    if dob_a is None or dob_b is None:
+        return dob_a is None and dob_b is None
+    return _agent_intake_dob_key(dob_a) == _agent_intake_dob_key(dob_b)
+
+
+def should_reuse_existing_agent_intake_link(
+    *,
+    player_manual_entry: bool,
+    existing_linked_universal_id: Optional[str],
+    existing_player_data,
+    new_player_name: str,
+    new_player_dob,
+) -> bool:
+    """Decide whether an edit to a manual-entry recommendation should keep
+    pointing at the PLAYERS row it already links to, instead of running
+    resolve_agent_intake_player_link (which can mint a brand-new duplicate
+    PLAYERS row).
+
+    Only reuses the existing link when:
+    - the incoming request is manual entry,
+    - there is an existing link to compare against, and
+    - the resolved player behind that link still exists, and
+    - the typed name and DOB are unchanged from that player's record.
+
+    Any other case (no existing link, the linked player vanished, or the
+    typed name/DOB actually changed) returns False so the caller falls back
+    to the normal resolve_agent_intake_player_link path.
+    """
+    if not player_manual_entry:
+        return False
+    if not existing_linked_universal_id or not existing_player_data:
+        return False
+    existing_name = existing_player_data[2]  # PLAYERNAME
+    existing_dob = existing_player_data[5]  # BIRTHDATE
+    if not _agent_intake_name_matches(new_player_name, existing_name):
+        return False
+    if not _agent_intake_dob_matches(new_player_dob, existing_dob):
+        return False
+    return True
+
+
 def prepare_agent_recommendation_payload(
     cursor,
     current_user: User,
@@ -3906,15 +3965,38 @@ async def update_agent_recommendation(
             additional_information=additional_information,
         )
 
-        resolved_universal_id = resolve_agent_intake_player_link(
-            cursor,
-            linked_universal_id=linked_universal_id,
+        # Avoid re-running player creation/resolution on every edit: the
+        # frontend clears linked_universal_id whenever manual entry is
+        # checked, so without this check every PATCH to a manual-entry
+        # recommendation would mint a brand-new PLAYERS row (see task brief).
+        # If the typed name/DOB match the player already linked to this
+        # recommendation, reuse that link untouched instead of calling
+        # resolve_agent_intake_player_link.
+        existing_linked_universal_id = row[50] if len(row) > 50 else None
+        existing_player_data = None
+        if player_manual_entry and existing_linked_universal_id:
+            existing_player_data, _ = find_player_by_universal_or_legacy_id(
+                existing_linked_universal_id, cursor
+            )
+
+        if should_reuse_existing_agent_intake_link(
             player_manual_entry=bool(player_manual_entry),
-            player_name=recommendation_payload["PLAYER_NAME"],
-            player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
-            recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
-            transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
-        )
+            existing_linked_universal_id=existing_linked_universal_id,
+            existing_player_data=existing_player_data,
+            new_player_name=recommendation_payload["PLAYER_NAME"],
+            new_player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
+        ):
+            resolved_universal_id = existing_linked_universal_id
+        else:
+            resolved_universal_id = resolve_agent_intake_player_link(
+                cursor,
+                linked_universal_id=linked_universal_id,
+                player_manual_entry=bool(player_manual_entry),
+                player_name=recommendation_payload["PLAYER_NAME"],
+                player_dob=recommendation_payload["PLAYER_DATE_OF_BIRTH"],
+                recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
+                transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
+            )
 
         recommendation_columns = get_table_columns("player_recommendations")
         update_values = {
