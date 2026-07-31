@@ -245,6 +245,103 @@ def test_skips_jarowinkler_fallback_when_ilike_pass_already_hits_limit():
     assert len(result) == 5  # capped, even though 10 candidates matched
 
 
+# --- _create_external_player_from_agent_intake (Task 5 squad column) -------
+
+
+def _cursor_for_create(new_player_id=42):
+    cursor = MagicMock()
+    cursor.fetchone.return_value = (new_player_id,)
+    return cursor
+
+
+def test_create_external_player_includes_squadname_when_provided_and_column_exists():
+    cursor = _cursor_for_create()
+    with patch.object(
+        main,
+        "get_table_columns",
+        return_value=["PLAYERID", "PLAYERNAME", "DATA_SOURCE", "BIRTHDATE", "POSITION", "TRANSFERMARKT_LINK", "SQUADNAME"],
+    ):
+        universal_id = main._create_external_player_from_agent_intake(
+            cursor,
+            player_name="Jon Smith",
+            player_dob=date(2000, 1, 1),
+            recommended_position="CB",
+            transfermarkt_link=None,
+            player_squad="Charlton Athletic",
+        )
+    assert universal_id == "external_42"
+    insert_calls = [c for c in cursor.execute.call_args_list if "INSERT INTO players" in c.args[0]]
+    assert len(insert_calls) == 1
+    insert_sql, insert_params = insert_calls[0].args
+    assert "SQUADNAME" in insert_sql
+    assert "Charlton Athletic" in insert_params
+
+
+def test_create_external_player_omits_squadname_when_not_provided():
+    # Squad is fully optional: no squad typed must behave exactly as before
+    # this task, with no SQUADNAME column in the INSERT at all.
+    cursor = _cursor_for_create()
+    with patch.object(
+        main,
+        "get_table_columns",
+        return_value=["PLAYERID", "PLAYERNAME", "DATA_SOURCE", "BIRTHDATE", "POSITION", "TRANSFERMARKT_LINK", "SQUADNAME"],
+    ):
+        main._create_external_player_from_agent_intake(
+            cursor,
+            player_name="Jon Smith",
+            player_dob=date(2000, 1, 1),
+            recommended_position="CB",
+            transfermarkt_link=None,
+        )
+    insert_sql, insert_params = [
+        c for c in cursor.execute.call_args_list if "INSERT INTO players" in c.args[0]
+    ][0].args
+    assert "SQUADNAME" not in insert_sql
+
+
+def test_create_external_player_omits_squadname_when_column_missing():
+    # Defensive: even if a squad was typed, don't reference a column that
+    # doesn't exist on this players table (mirrors the BIRTHDATE/POSITION/
+    # TRANSFERMARKT_LINK pattern this function already follows).
+    cursor = _cursor_for_create()
+    with patch.object(
+        main, "get_table_columns", return_value=["PLAYERID", "PLAYERNAME", "DATA_SOURCE"]
+    ):
+        main._create_external_player_from_agent_intake(
+            cursor,
+            player_name="Jon Smith",
+            player_dob=date(2000, 1, 1),
+            recommended_position="CB",
+            transfermarkt_link=None,
+            player_squad="Charlton Athletic",
+        )
+    insert_sql, insert_params = [
+        c for c in cursor.execute.call_args_list if "INSERT INTO players" in c.args[0]
+    ][0].args
+    assert "SQUADNAME" not in insert_sql
+
+
+def test_create_external_player_omits_squadname_when_blank_string():
+    cursor = _cursor_for_create()
+    with patch.object(
+        main,
+        "get_table_columns",
+        return_value=["PLAYERID", "PLAYERNAME", "DATA_SOURCE", "SQUADNAME"],
+    ):
+        main._create_external_player_from_agent_intake(
+            cursor,
+            player_name="Jon Smith",
+            player_dob=date(2000, 1, 1),
+            recommended_position="CB",
+            transfermarkt_link=None,
+            player_squad="   ",
+        )
+    insert_sql, insert_params = [
+        c for c in cursor.execute.call_args_list if "INSERT INTO players" in c.args[0]
+    ][0].args
+    assert "SQUADNAME" not in insert_sql
+
+
 # --- resolve_agent_intake_player_link gate ----------------------------------
 
 
@@ -325,8 +422,27 @@ def test_resolve_forwards_exclude_universal_id_to_candidate_lookup():
             exclude_universal_id="external_42",
         )
     mock_find.assert_called_once_with(
-        cursor, "Jon Smith", date(2005, 6, 15), None, exclude_universal_id="external_42"
+        cursor, "Jon Smith", date(2005, 6, 15), None, exclude_universal_id="external_42", player_squad=None
     )
+
+
+def test_resolve_forwards_player_squad_to_candidate_lookup_and_create():
+    cursor = MagicMock()
+    with patch.object(main, "_find_agent_intake_duplicate_candidates", return_value=[]) as mock_find, \
+         patch.object(main, "_create_external_player_from_agent_intake", return_value="external_99") as mock_create:
+        result = main.resolve_agent_intake_player_link(
+            cursor,
+            linked_universal_id=None,
+            player_manual_entry=True,
+            player_name="Jon Smith",
+            player_dob=date(2005, 6, 15),
+            recommended_position="CB",
+            transfermarkt_link=None,
+            player_squad="Charlton Athletic",
+        )
+    assert result == "external_99"
+    assert mock_find.call_args.kwargs["player_squad"] == "Charlton Athletic"
+    assert mock_create.call_args.kwargs["player_squad"] == "Charlton Athletic"
 
 
 def test_resolve_does_not_run_gate_on_resolved_typeahead_link():
@@ -390,6 +506,7 @@ def _payload_stub(player_name="Jon Smith", player_dob=date(2000, 1, 1)):
         "WAGE_BASIS": "Gross",
         "RECOMMENDED_POSITION": "CB",
         "PLAYER_DATE_OF_BIRTH": player_dob,
+        "PLAYER_MANUAL_SQUAD": None,
     }
 
 

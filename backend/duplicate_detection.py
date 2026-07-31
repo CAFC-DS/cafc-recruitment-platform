@@ -125,21 +125,32 @@ def score_intake_match(
     candidate_name: Optional[str],
     candidate_dob,
     candidate_transfermarkt: Optional[str],
+    typed_squad: Optional[str] = None,
+    candidate_squad: Optional[str] = None,
 ) -> Optional[dict]:
     """Score a duplicate pair from agent-portal intake vs. existing player.
     Returns None if no confidence tier is met, otherwise a dict with
     confidence/evidence/name_similarity fields.
 
     This function is separate from score_player_match because agent-portal
-    manual entry does not collect squad/club evidence. Reusing score_player_match
-    would make intake duplicates nearly unscorable since both medium and low
-    tiers require squad evidence.
+    manual entry historically did not collect squad/club evidence. Squad is
+    now an optional signal (Task 5): when present on both sides it can boost
+    an existing tier or, combined with a fuzzy name match, surface a medium
+    match that pure name/DOB scoring would otherwise miss. Squad remains
+    fully optional — every squad-free tier from before this task is
+    unchanged and still the floor.
 
     Tiers:
       - high: exact normalized name AND exact DOB match, OR a shared non-empty
         Transfermarkt link (treated as definitive external-system evidence).
       - medium: exact normalized name with DOB missing on either side or DOB
         mismatch, OR fuzzy name similarity >= 90% AND exact DOB match.
+      - squad boost (additive, only applies when both typed and candidate
+        squad are present): an exact normalized squad match promotes an
+        existing medium verdict to high; a near squad match (>=90%
+        similarity, mirroring score_player_match's squad_near threshold)
+        combined with fuzzy name similarity >= 80% can produce a medium
+        verdict on its own, even when no other tier was met.
       - Otherwise: no tier, return None.
     """
     norm_name_typed = normalize_text(typed_name or "")
@@ -154,6 +165,16 @@ def score_intake_match(
     tm_candidate = (candidate_transfermarkt or "").strip()
     transfermarkt_match = tm_typed != "" and tm_candidate != "" and tm_typed == tm_candidate
 
+    norm_squad_typed = normalize_text(typed_squad or "")
+    norm_squad_candidate = normalize_text(candidate_squad or "")
+    squad_similarity = _similarity(norm_squad_typed, norm_squad_candidate)
+    squad_exact = norm_squad_typed == norm_squad_candidate and norm_squad_typed != ""
+    # Guard against the empty-vs-empty case, same as score_player_match's
+    # squad_near: Levenshtein distance between two empty strings is 0, which
+    # would otherwise compute a false 100% "near match" when neither side
+    # has a squad on file.
+    squad_near = squad_similarity >= 90 and norm_squad_typed != "" and norm_squad_candidate != ""
+
     confidence = None
     if transfermarkt_match or (name_exact and dob_exact):
         confidence = "high"
@@ -165,6 +186,16 @@ def score_intake_match(
         confidence = "medium"
     elif name_similarity >= 90 and dob_exact:
         # Fuzzy name >= 90% with exact DOB match
+        confidence = "medium"
+
+    if confidence == "medium" and squad_exact:
+        # Squad boost: an exact squad match on top of an already-medium
+        # verdict is strong enough corroborating evidence to promote to high.
+        confidence = "high"
+    elif confidence is None and squad_near and name_similarity >= 80:
+        # Squad-assisted medium: no name/DOB tier was met on its own, but a
+        # near-identical squad plus a reasonably close name is evidence pure
+        # name/DOB scoring would otherwise miss entirely.
         confidence = "medium"
 
     if confidence is None:
@@ -183,6 +214,13 @@ def score_intake_match(
         evidence.append("DOB missing")
     else:
         evidence.append("DOB mismatch")
+    if norm_squad_typed != "" or norm_squad_candidate != "":
+        if squad_exact:
+            evidence.append("Squad exact")
+        elif squad_near:
+            evidence.append(f"Squad near {round(squad_similarity, 1)}%")
+        else:
+            evidence.append("Squad mismatch")
 
     return {
         "confidence": confidence,

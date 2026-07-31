@@ -211,6 +211,7 @@ def _payload_stub(player_name="Jon Smith", player_dob=date(2000, 1, 1)):
         "WAGE_BASIS": "Gross",
         "RECOMMENDED_POSITION": "CB",
         "PLAYER_DATE_OF_BIRTH": player_dob,
+        "PLAYER_MANUAL_SQUAD": None,
     }
 
 

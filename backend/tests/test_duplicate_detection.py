@@ -199,3 +199,104 @@ def test_intake_no_match_fuzzy_name_below_90_with_dob_mismatch():
         candidate_transfermarkt=None,
     )
     assert result is None
+
+
+# Tests for score_intake_match's squad boost (Task 5)
+
+
+def test_intake_squad_exact_promotes_medium_to_high():
+    # Exact name with DOB missing on either side is medium on its own
+    # (see test_intake_medium_confidence_exact_name_missing_dob); an exact
+    # squad match on top of that is strong enough to promote to high.
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="John Smith", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+        typed_squad="Charlton Athletic",
+        candidate_squad="Charlton Athletic",
+    )
+    assert result is not None
+    assert result["confidence"] == "high"
+    assert "Name exact" in result["evidence"]
+    assert "Squad exact" in result["evidence"]
+
+
+def test_intake_squad_exact_case_and_accent_insensitive_still_promotes():
+    result = score_intake_match(
+        typed_name="Jose Garcia", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="Jose Garcia", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+        typed_squad="josé garcía fc",
+        candidate_squad="JOSE GARCIA FC",
+    )
+    assert result is not None
+    assert result["confidence"] == "high"
+
+
+def test_intake_squad_mismatch_does_not_promote_medium():
+    # A medium verdict must stay medium (not be demoted or promoted) when
+    # the squads are both present but clearly different.
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="John Smith", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+        typed_squad="Charlton Athletic",
+        candidate_squad="Millwall",
+    )
+    assert result is not None
+    assert result["confidence"] == "medium"
+    assert "Squad mismatch" in result["evidence"]
+
+
+def test_intake_squad_near_match_with_fuzzy_name_yields_medium():
+    # Neither name/DOB tier fires on its own (fuzzy name is 85.7%, below the
+    # 90% threshold needed alongside an exact DOB, and DOB is absent here
+    # anyway) but a near-identical squad (>=90% similarity, mirroring
+    # score_player_match's squad_near — a realistic misspelling, not just
+    # whitespace, since the typed side is stripped before scoring in
+    # production) combined with a reasonably close name (>=80%) is evidence
+    # pure name/DOB scoring would otherwise miss.
+    result = score_intake_match(
+        typed_name="Michael Turner", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="Micheal Turner", candidate_dob=None,
+        candidate_transfermarkt=None,
+        typed_squad="Nottingham Forest",
+        candidate_squad="Nottingham Forrest",
+    )
+    assert result is not None
+    assert result["confidence"] == "medium"
+    assert 80 <= result["name_similarity"] < 90
+    assert any(e.startswith("Squad near") for e in result["evidence"])
+
+
+def test_intake_squad_near_match_with_low_fuzzy_name_still_no_match():
+    # Squad near-match alone isn't enough without at least an 80% fuzzy
+    # name match — otherwise two unrelated players at the same club would
+    # false-positive.
+    result = score_intake_match(
+        typed_name="Alice Jones", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="Bob Taylor", candidate_dob=None,
+        candidate_transfermarkt=None,
+        typed_squad="Nottingham Forest",
+        candidate_squad="Nottingham Forrest",
+    )
+    assert result is None
+
+
+def test_intake_squad_free_tiers_unaffected_when_squad_omitted():
+    # Squad params default to None; omitting them entirely must behave
+    # exactly like before this task (squad stays fully optional).
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="John Smith", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+    )
+    assert result is not None
+    assert result["confidence"] == "medium"
+    assert not any(e.startswith("Squad") for e in result["evidence"])

@@ -159,6 +159,7 @@ export interface RecommendationFormValues {
   submission_date: string;
   player_name: string;
   player_date_of_birth?: string;
+  player_manual_squad?: string;
   recommended_position: string[];
   transfermarkt_link: string;
   agreement_type: AgreementType[];

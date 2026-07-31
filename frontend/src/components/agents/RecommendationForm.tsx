@@ -410,6 +410,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
     onChange('player_date_of_birth', result.date_of_birth || '');
     onChange('linked_universal_id', result.universal_id ?? null);
     onChange('player_manual_entry', false);
+    onChange('player_manual_squad', '');
     setSearchResults([]);
     setSearchSuggestions([]);
     setSearchOpen(false);
@@ -538,6 +539,9 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                 if (!checked && values.player_date_of_birth) {
                   onChange('player_date_of_birth', '');
                 }
+                if (!checked && values.player_manual_squad) {
+                  onChange('player_manual_squad', '');
+                }
               }}
             />
             <span>Other (Manual Entry)</span>
@@ -595,6 +599,21 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                       }
                     }}
                     required
+                  />
+                </div>
+                <div>
+                  <label className="agent-portal-label">Club / Squad</label>
+                  <input
+                    className="agent-portal-input"
+                    value={values.player_manual_squad || ''}
+                    onChange={(event) => {
+                      onChange('player_manual_squad', event.target.value);
+                      // See comment on the Player Name field above.
+                      if (values.linked_universal_id) {
+                        onChange('linked_universal_id', null);
+                      }
+                    }}
+                    placeholder="Optional — helps us avoid duplicate records"
                   />
                 </div>
               </div>

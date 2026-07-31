@@ -10,6 +10,7 @@ export const getInitialRecommendationFormValues = (): RecommendationFormValues =
   submission_date: getToday(),
   player_name: '',
   player_date_of_birth: '',
+  player_manual_squad: '',
   recommended_position: [],
   transfermarkt_link: '',
   agreement_type: [],
@@ -90,6 +91,11 @@ export const mapRecommendationToFormValues = (item: Recommendation): Recommendat
   submission_date: toDateInputValue(item.submission_date),
   player_name: item.player_name || '',
   player_date_of_birth: toDateInputValue(item.player_date_of_birth),
+  // Squad is only used at intake time to strengthen duplicate-match
+  // confidence and populate SQUADNAME on the newly created player — it
+  // isn't persisted on the recommendation row itself, so there's nothing
+  // to pre-fill here when editing an existing submission.
+  player_manual_squad: '',
   recommended_position: splitMultiValueField(item.recommended_position),
   transfermarkt_link: item.transfermarkt_link || '',
   agreement_type: splitMultiValueField(item.agreement_type) as RecommendationFormValues['agreement_type'],

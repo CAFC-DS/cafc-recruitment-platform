@@ -2463,6 +2463,7 @@ def _create_external_player_from_agent_intake(
     player_dob,
     recommended_position: Optional[str],
     transfermarkt_link: Optional[str],
+    player_squad: Optional[str] = None,
 ) -> str:
     """Create a new external PLAYERS row from an agent's manual-entry intake and
     return its universal_id (e.g. 'external_12345')."""
@@ -2490,6 +2491,9 @@ def _create_external_player_from_agent_intake(
     if transfermarkt_link and "TRANSFERMARKT_LINK" in player_columns:
         columns.append("TRANSFERMARKT_LINK")
         values.append(transfermarkt_link.strip())
+    if player_squad and player_squad.strip() and "SQUADNAME" in player_columns:
+        columns.append("SQUADNAME")
+        values.append(player_squad.strip())
 
     placeholders = ", ".join(["%s"] * len(columns))
     cursor.execute(
@@ -2505,6 +2509,7 @@ def _find_agent_intake_duplicate_candidates(
     player_dob,
     transfermarkt_link: Optional[str] = None,
     exclude_universal_id: Optional[str] = None,
+    player_squad: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Look up existing PLAYERS rows that might be duplicates of an
     agent-portal manual player entry, before a new row is created.
@@ -2616,6 +2621,8 @@ def _find_agent_intake_duplicate_candidates(
             candidate_name,
             normalized_birthdate,
             candidate_tm_link,
+            typed_squad=player_squad,
+            candidate_squad=squad_name,
         )
         if match is None or match["confidence"] not in ("high", "medium"):
             continue
@@ -2651,6 +2658,7 @@ def resolve_agent_intake_player_link(
     transfermarkt_link: Optional[str],
     confirm_new_player: bool = False,
     exclude_universal_id: Optional[str] = None,
+    player_squad: Optional[str] = None,
 ) -> Optional[str]:
     """Decide which universal_id to store on an agent intake row.
 
@@ -2689,6 +2697,7 @@ def resolve_agent_intake_player_link(
             player_dob,
             transfermarkt_link,
             exclude_universal_id=exclude_universal_id,
+            player_squad=player_squad,
         )
         if candidates:
             raise HTTPException(
@@ -2702,6 +2711,7 @@ def resolve_agent_intake_player_link(
         player_dob=player_dob,
         recommended_position=recommended_position,
         transfermarkt_link=transfermarkt_link,
+        player_squad=player_squad,
     )
 
 
@@ -2790,6 +2800,7 @@ def prepare_agent_recommendation_payload(
     expected_wages_currency: Optional[str],
     expected_wages_basis: Optional[str],
     additional_information: Optional[str],
+    player_manual_squad: Optional[str] = None,
 ) -> Dict[str, Any]:
     profile = get_agent_profile_row(cursor, current_user.id)
     fallback_agent_number = (
@@ -2910,6 +2921,7 @@ def prepare_agent_recommendation_payload(
         "WAGE_BASIS": normalized_wage_basis,
         "RECOMMENDED_POSITION": normalized_recommended_position,
         "PLAYER_DATE_OF_BIRTH": player_dob,
+        "PLAYER_MANUAL_SQUAD": player_manual_squad.strip() if player_manual_squad else None,
     }
 
 
@@ -3872,6 +3884,7 @@ async def create_agent_recommendation(
     player_date_of_birth: Optional[str] = Form(None),
     recommended_position: Optional[str] = Form(None),
     transfermarkt_link: Optional[str] = Form(None),
+    player_manual_squad: Optional[str] = Form(None),
     agreement_type: Optional[str] = Form(None),
     confirmed_contract_expiry: Optional[str] = Form(None),
     contract_options: Optional[str] = Form(None),
@@ -3912,6 +3925,7 @@ async def create_agent_recommendation(
             player_date_of_birth=player_date_of_birth,
             recommended_position=recommended_position,
             transfermarkt_link=transfermarkt_link,
+            player_manual_squad=player_manual_squad,
             agreement_type=agreement_type,
             confirmed_contract_expiry=confirmed_contract_expiry,
             contract_options=contract_options,
@@ -3937,6 +3951,7 @@ async def create_agent_recommendation(
             recommended_position=recommendation_payload["RECOMMENDED_POSITION"],
             transfermarkt_link=recommendation_payload["TRANSFERMARKT_LINK"],
             confirm_new_player=bool(confirm_new_player),
+            player_squad=recommendation_payload["PLAYER_MANUAL_SQUAD"],
         )
 
         recommendation_columns = get_table_columns("player_recommendations")
@@ -4077,6 +4092,7 @@ async def update_agent_recommendation(
     player_date_of_birth: Optional[str] = Form(None),
     recommended_position: Optional[str] = Form(None),
     transfermarkt_link: Optional[str] = Form(None),
+    player_manual_squad: Optional[str] = Form(None),
     agreement_type: Optional[str] = Form(None),
     confirmed_contract_expiry: Optional[str] = Form(None),
     contract_options: Optional[str] = Form(None),
@@ -4124,6 +4140,7 @@ async def update_agent_recommendation(
             player_date_of_birth=player_date_of_birth,
             recommended_position=recommended_position,
             transfermarkt_link=transfermarkt_link,
+            player_manual_squad=player_manual_squad,
             agreement_type=agreement_type,
             confirmed_contract_expiry=confirmed_contract_expiry,
             contract_options=contract_options,
@@ -4176,6 +4193,7 @@ async def update_agent_recommendation(
                 # (e.g. before a DOB typo fix) surface as a "possible
                 # duplicate of a different, brand-new player" candidate.
                 exclude_universal_id=existing_linked_universal_id,
+                player_squad=recommendation_payload["PLAYER_MANUAL_SQUAD"],
             )
 
         recommendation_columns = get_table_columns("player_recommendations")
