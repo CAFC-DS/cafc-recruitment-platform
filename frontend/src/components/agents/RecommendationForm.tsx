@@ -4,6 +4,7 @@ import {
   AgentProfile,
   AgreementType,
   ContractOption,
+  DuplicatePlayerCandidate,
   PotentialDealType,
   RecommendationFormValues,
   WageBasis,
@@ -20,7 +21,89 @@ interface RecommendationFormProps {
   mode?: 'create' | 'edit';
   initialManualPlayerEntry?: boolean;
   initialSelectedPlayerLabel?: string;
+  // Populated by the parent page when a manual-entry submit/update is
+  // rejected with the backend's possible_duplicate_player 409. Rendering and
+  // wiring of the two resolution actions lives here so the interstitial sits
+  // directly alongside the manual-entry fields it concerns.
+  duplicateCandidates?: DuplicatePlayerCandidate[] | null;
+  onLinkDuplicateCandidate?: (candidate: DuplicatePlayerCandidate) => void;
+  onConfirmNewPlayer?: () => void;
 }
+
+const formatCandidateDob = (iso?: string | null) => {
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleDateString('en-GB');
+};
+
+const DuplicateCandidateInterstitial: React.FC<{
+  candidates: DuplicatePlayerCandidate[];
+  loading: boolean;
+  onLink: (candidate: DuplicatePlayerCandidate) => void;
+  onConfirmNewPlayer: () => void;
+}> = ({ candidates, loading, onLink, onConfirmNewPlayer }) => {
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    // The interstitial renders mid-form, well below the fold on most
+    // viewports. Without this, a 409 response just re-enables the submit
+    // button with no visible change — exactly the dead-end this feature is
+    // meant to avoid. Scroll it into view whenever a fresh candidate list
+    // arrives.
+    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [candidates]);
+
+  return (
+  <div ref={containerRef} className="agent-portal-card agent-duplicate-interstitial" style={{ marginBottom: '1.5rem' }}>
+    <div className="agent-portal-card-body">
+      <div className="agent-portal-section-title">Possible existing player match</div>
+      <div className="agent-portal-section-copy" style={{ marginTop: '0.35rem' }}>
+        The player details you entered look similar to {candidates.length > 1 ? 'players' : 'a player'} already
+        in the system. Link to an existing player below, or confirm this is a genuinely new player.
+      </div>
+      <div className="agent-portal-review-stack" style={{ marginTop: '1rem' }}>
+        {candidates.map((candidate) => {
+          const metaParts = [candidate.squad_name, candidate.position, formatCandidateDob(candidate.date_of_birth)]
+            .filter(Boolean);
+          return (
+            <div
+              key={candidate.universal_id}
+              className="agent-portal-info-card agent-portal-inline-actions"
+              style={{ justifyContent: 'space-between' }}
+            >
+              <div>
+                <div className="agent-player-selected-name" style={{ fontWeight: 700 }}>{candidate.player_name}</div>
+                {metaParts.length > 0 ? (
+                  <div className="agent-portal-meta" style={{ marginTop: '0.2rem' }}>{metaParts.join(' · ')}</div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="agent-portal-button-secondary"
+                disabled={loading}
+                onClick={() => onLink(candidate)}
+              >
+                Link to this player instead
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      <div className="agent-portal-inline-actions" style={{ justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+        <button
+          type="button"
+          className="agent-auth-button"
+          disabled={loading}
+          onClick={onConfirmNewPlayer}
+        >
+          No, this is a new player
+        </button>
+      </div>
+    </div>
+  </div>
+  );
+};
 
 const AGREEMENT_TYPE_OPTIONS: AgreementType[] = [
   'Exclusive/Registered Player Agreement',
@@ -232,6 +315,9 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
   mode = 'create',
   initialManualPlayerEntry = false,
   initialSelectedPlayerLabel,
+  duplicateCandidates,
+  onLinkDuplicateCandidate,
+  onConfirmNewPlayer,
 }) => {
   const [isManualPlayerEntry, setIsManualPlayerEntry] = useState(initialManualPlayerEntry);
   const [playerSearchQuery, setPlayerSearchQuery] = useState(initialSelectedPlayerLabel || values.player_name || '');
@@ -423,6 +509,15 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
             />
           </div>
         </div>
+
+        {duplicateCandidates && duplicateCandidates.length > 0 && onLinkDuplicateCandidate && onConfirmNewPlayer ? (
+          <DuplicateCandidateInterstitial
+            candidates={duplicateCandidates}
+            loading={loading}
+            onLink={onLinkDuplicateCandidate}
+            onConfirmNewPlayer={onConfirmNewPlayer}
+          />
+        ) : null}
 
         <div className="agent-portal-section-title">Player Details</div>
         <div className="agent-portal-inline-actions" style={{ justifyContent: 'flex-start', marginTop: '0.75rem', marginBottom: '0.5rem' }}>

@@ -1,4 +1,4 @@
-import { Recommendation, RecommendationFormValues } from '../types/recommendations';
+import { DuplicatePlayerCandidate, Recommendation, RecommendationFormValues } from '../types/recommendations';
 
 export const getToday = () => new Date().toISOString().slice(0, 10);
 
@@ -26,6 +26,29 @@ export const getInitialRecommendationFormValues = (): RecommendationFormValues =
   linked_universal_id: null,
   player_manual_entry: false,
 });
+
+// Detects the backend's structured 409 for a possible duplicate player
+// (see intake duplicate gate on POST/PATCH /agents/recommendations). Returns
+// the candidate list when the error matches that shape, otherwise null so
+// callers can fall back to the generic error message below. This is checked
+// separately from getRecommendationSubmitErrorMessage because the object
+// `detail` shape here is meaningfully different from the string/array shapes
+// that function already collapses into a generic message.
+export const getDuplicatePlayerCandidates = (err: any): DuplicatePlayerCandidate[] | null => {
+  if (err?.response?.status !== 409) return null;
+  const detail = err?.response?.data?.detail;
+  if (
+    detail
+    && typeof detail === 'object'
+    && !Array.isArray(detail)
+    && detail.code === 'possible_duplicate_player'
+    && Array.isArray(detail.candidates)
+    && detail.candidates.length > 0
+  ) {
+    return detail.candidates as DuplicatePlayerCandidate[];
+  }
+  return null;
+};
 
 export const getRecommendationSubmitErrorMessage = (err: any) => {
   const detail = err?.response?.data?.detail;

@@ -10,7 +10,7 @@ import {
   RecommendationNoteHistory,
 } from '../types/recommendations';
 
-const toFormData = (values: RecommendationFormValues) => {
+const toFormData = (values: RecommendationFormValues, extra?: Record<string, string | boolean>) => {
   const formData = new FormData();
   Object.entries(values).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') {
@@ -23,8 +23,20 @@ const toFormData = (values: RecommendationFormValues) => {
     }
     formData.append(key, String(value));
   });
+  if (extra) {
+    Object.entries(extra).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      formData.append(key, String(value));
+    });
+  }
   return formData;
 };
+
+export interface RecommendationSubmitOptions {
+  // Bypasses the backend's possible_duplicate_player gate after the agent
+  // has explicitly confirmed the manually-entered player is not a duplicate.
+  confirmNewPlayer?: boolean;
+}
 
 export const agentRecommendationsService = {
   async register(payload: AgentRegisterPayload) {
@@ -47,13 +59,15 @@ export const agentRecommendationsService = {
     return response.data;
   },
 
-  async submit(values: RecommendationFormValues) {
-    const response = await axiosInstance.post<Recommendation>('/agents/recommendations', toFormData(values));
+  async submit(values: RecommendationFormValues, options?: RecommendationSubmitOptions) {
+    const formData = toFormData(values, options?.confirmNewPlayer ? { confirm_new_player: true } : undefined);
+    const response = await axiosInstance.post<Recommendation>('/agents/recommendations', formData);
     return response.data;
   },
 
-  async update(id: number, values: RecommendationFormValues) {
-    const response = await axiosInstance.patch<Recommendation>(`/agents/recommendations/${id}`, toFormData(values));
+  async update(id: number, values: RecommendationFormValues, options?: RecommendationSubmitOptions) {
+    const formData = toFormData(values, options?.confirmNewPlayer ? { confirm_new_player: true } : undefined);
+    const response = await axiosInstance.patch<Recommendation>(`/agents/recommendations/${id}`, formData);
     return response.data;
   },
 

@@ -187,6 +187,19 @@ export interface AgentPlayerSearchResult {
   position?: string | null;
 }
 
+// Shape of a single candidate returned by the backend's
+// `possible_duplicate_player` 409 gate on manual-entry submit/edit.
+export interface DuplicatePlayerCandidate {
+  universal_id: string;
+  player_name: string;
+  date_of_birth?: string | null;
+  squad_name?: string | null;
+  position?: string | null;
+  confidence?: string;
+  name_similarity?: number;
+  evidence?: string[];
+}
+
 export interface AgentPlayerSearchResponse {
   results: AgentPlayerSearchResult[];
   suggestions: AgentPlayerSearchResult[];

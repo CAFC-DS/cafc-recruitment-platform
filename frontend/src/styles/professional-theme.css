@@ -2459,6 +2459,16 @@ span.badge.badge-accent-video {
   color: #6ee7b7;
 }
 
+.agent-duplicate-interstitial {
+  border-color: #fde68a;
+  border-left: 4px solid #d97706;
+}
+
+[data-bs-theme="dark"] .agent-duplicate-interstitial {
+  border-color: rgba(217, 119, 6, 0.45);
+  border-left-color: #d97706;
+}
+
 .agent-portal-kpi-value {
   color: #111827;
   font-size: 2.1rem;

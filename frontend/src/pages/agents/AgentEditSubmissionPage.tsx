@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import RecommendationForm from '../../components/agents/RecommendationForm';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
-import { AgentProfile, Recommendation, RecommendationFormValues } from '../../types/recommendations';
+import { AgentProfile, DuplicatePlayerCandidate, Recommendation, RecommendationFormValues } from '../../types/recommendations';
 import {
+  getDuplicatePlayerCandidates,
   getRecommendationSubmitErrorMessage,
   getRecommendationSelectedPlayerLabel,
   mapRecommendationToFormValues,
@@ -21,6 +22,7 @@ const AgentEditSubmissionPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicatePlayerCandidate[] | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -55,6 +57,34 @@ const AgentEditSubmissionPage: React.FC = () => {
     value: string | string[] | boolean | null,
   ) => {
     setValues((current) => (current ? { ...current, [field]: value as never } : current));
+    // A stale interstitial pointed at a name/DOB the agent has since edited
+    // would let them link to a candidate matched against the old value.
+    if (field === 'player_name' || field === 'player_date_of_birth') {
+      setDuplicateCandidates(null);
+    }
+  };
+
+  const submitValues = async (valuesToSubmit: RecommendationFormValues, confirmNewPlayer = false) => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const updated = await agentRecommendationsService.update(Number(id), valuesToSubmit, { confirmNewPlayer });
+      navigate(`/agents/submissions/${updated.id}`, {
+        replace: true,
+        state: { successMessage: 'Submission updated successfully.' },
+      });
+    } catch (err: any) {
+      console.error(err);
+      const candidates = getDuplicatePlayerCandidates(err);
+      if (candidates) {
+        setDuplicateCandidates(candidates);
+      } else {
+        setError(getRecommendationSubmitErrorMessage(err));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -67,20 +97,26 @@ const AgentEditSubmissionPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await agentRecommendationsService.update(Number(id), values);
-      navigate(`/agents/submissions/${updated.id}`, {
-        replace: true,
-        state: { successMessage: 'Submission updated successfully.' },
-      });
-    } catch (err: any) {
-      console.error(err);
-      setError(getRecommendationSubmitErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
+    setDuplicateCandidates(null);
+    await submitValues(values);
+  };
+
+  const handleLinkDuplicateCandidate = async (candidate: DuplicatePlayerCandidate) => {
+    if (!values) return;
+    const nextValues: RecommendationFormValues = {
+      ...values,
+      linked_universal_id: candidate.universal_id,
+      player_manual_entry: false,
+    };
+    setValues(nextValues);
+    setDuplicateCandidates(null);
+    await submitValues(nextValues);
+  };
+
+  const handleConfirmNewPlayer = async () => {
+    if (!values) return;
+    setDuplicateCandidates(null);
+    await submitValues(values, true);
   };
 
   return (
@@ -120,6 +156,9 @@ const AgentEditSubmissionPage: React.FC = () => {
           mode="edit"
           initialManualPlayerEntry={item ? shouldUseManualPlayerEntry(item) : false}
           initialSelectedPlayerLabel={item ? getRecommendationSelectedPlayerLabel(item) : ''}
+          duplicateCandidates={duplicateCandidates}
+          onLinkDuplicateCandidate={handleLinkDuplicateCandidate}
+          onConfirmNewPlayer={handleConfirmNewPlayer}
         />
       ) : null}
     </AgentPortalShell>

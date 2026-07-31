@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import RecommendationForm from '../../components/agents/RecommendationForm';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
-import { AgentProfile, RecommendationFormValues } from '../../types/recommendations';
+import { AgentProfile, DuplicatePlayerCandidate, RecommendationFormValues } from '../../types/recommendations';
 import {
+  getDuplicatePlayerCandidates,
   getInitialRecommendationFormValues,
   getRecommendationSubmitErrorMessage,
   validateRecommendationFormValues,
@@ -18,6 +19,7 @@ const AgentSubmitPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [values, setValues] = useState<RecommendationFormValues>(getInitialRecommendationFormValues());
+  const [duplicateCandidates, setDuplicateCandidates] = useState<DuplicatePlayerCandidate[] | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +48,32 @@ const AgentSubmitPage: React.FC = () => {
     value: string | string[] | boolean | null,
   ) => {
     setValues((current) => ({ ...current, [field]: value as never }));
+    // A stale interstitial pointed at a name/DOB the agent has since edited
+    // would let them link to a candidate matched against the old value.
+    if (field === 'player_name' || field === 'player_date_of_birth') {
+      setDuplicateCandidates(null);
+    }
+  };
+
+  const submitValues = async (valuesToSubmit: RecommendationFormValues, confirmNewPlayer = false) => {
+    setLoading(true);
+    setError(null);
+    setSubmitSuccess(null);
+    try {
+      const recommendation = await agentRecommendationsService.submit(valuesToSubmit, { confirmNewPlayer });
+      setSubmitSuccess('Recommendation submitted. Redirecting to the submission detail view.');
+      navigate(`/agents/submissions/${recommendation.id}`);
+    } catch (err: any) {
+      console.error(err);
+      const candidates = getDuplicatePlayerCandidates(err);
+      if (candidates) {
+        setDuplicateCandidates(candidates);
+      } else {
+        setError(getRecommendationSubmitErrorMessage(err));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -56,19 +84,24 @@ const AgentSubmitPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    setSubmitSuccess(null);
-    try {
-      const recommendation = await agentRecommendationsService.submit(values);
-      setSubmitSuccess('Recommendation submitted. Redirecting to the submission detail view.');
-      navigate(`/agents/submissions/${recommendation.id}`);
-    } catch (err: any) {
-      console.error(err);
-      setError(getRecommendationSubmitErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
+    setDuplicateCandidates(null);
+    await submitValues(values);
+  };
+
+  const handleLinkDuplicateCandidate = async (candidate: DuplicatePlayerCandidate) => {
+    const nextValues: RecommendationFormValues = {
+      ...values,
+      linked_universal_id: candidate.universal_id,
+      player_manual_entry: false,
+    };
+    setValues(nextValues);
+    setDuplicateCandidates(null);
+    await submitValues(nextValues);
+  };
+
+  const handleConfirmNewPlayer = async () => {
+    setDuplicateCandidates(null);
+    await submitValues(values, true);
   };
 
   return (
@@ -81,7 +114,17 @@ const AgentSubmitPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <RecommendationForm values={values} profile={profile} onChange={handleChange} onSubmit={handleSubmit} loading={loading} error={error} />
+        <RecommendationForm
+          values={values}
+          profile={profile}
+          onChange={handleChange}
+          onSubmit={handleSubmit}
+          loading={loading}
+          error={error}
+          duplicateCandidates={duplicateCandidates}
+          onLinkDuplicateCandidate={handleLinkDuplicateCandidate}
+          onConfirmNewPlayer={handleConfirmNewPlayer}
+        />
       )}
     </AgentPortalShell>
   );
