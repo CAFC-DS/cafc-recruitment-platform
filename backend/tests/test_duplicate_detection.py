@@ -4,7 +4,7 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from duplicate_detection import score_player_match, normalize_text
+from duplicate_detection import score_player_match, score_intake_match, normalize_text
 
 
 def test_normalize_text_strips_accents_and_lowercases():
@@ -100,5 +100,102 @@ def test_transfermarkt_empty_string_is_not_treated_as_a_match():
         dob_a=None, dob_b=None,
         squad_a=None, squad_b=None,
         transfermarkt_a="", transfermarkt_b="",
+    )
+    assert result is None
+
+
+# Tests for score_intake_match
+
+
+def test_intake_high_confidence_exact_name_and_exact_dob():
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=date(2000, 1, 1),
+        typed_transfermarkt=None,
+        candidate_name="John Smith", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+    )
+    assert result is not None
+    assert result["confidence"] == "high"
+    assert "Name exact" in result["evidence"]
+    assert "DOB exact" in result["evidence"]
+
+
+def test_intake_high_confidence_shared_transfermarkt_link():
+    result = score_intake_match(
+        typed_name="Jon Smith", typed_dob=None,
+        typed_transfermarkt="https://transfermarkt.com/john-smith/profil/spieler/12345",
+        candidate_name="John Smyth", candidate_dob=None,
+        candidate_transfermarkt="https://transfermarkt.com/john-smith/profil/spieler/12345",
+    )
+    assert result is not None
+    assert result["confidence"] == "high"
+    assert "Transfermarkt link match" in result["evidence"]
+
+
+def test_intake_medium_confidence_exact_name_missing_dob():
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="John Smith", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+    )
+    assert result is not None
+    assert result["confidence"] == "medium"
+    assert "Name exact" in result["evidence"]
+    assert "DOB missing" in result["evidence"]
+
+
+def test_intake_medium_confidence_exact_name_mismatched_dob():
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=date(2000, 1, 1),
+        typed_transfermarkt=None,
+        candidate_name="John Smith", candidate_dob=date(1999, 5, 15),
+        candidate_transfermarkt=None,
+    )
+    assert result is not None
+    assert result["confidence"] == "medium"
+    assert "Name exact" in result["evidence"]
+    assert "DOB mismatch" in result["evidence"]
+
+
+def test_intake_medium_confidence_fuzzy_name_90_percent_exact_dob():
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=date(2000, 1, 1),
+        typed_transfermarkt=None,
+        candidate_name="Jon Smith", candidate_dob=date(2000, 1, 1),
+        candidate_transfermarkt=None,
+    )
+    assert result is not None
+    assert result["confidence"] == "medium"
+    assert result["name_similarity"] >= 90
+    assert "DOB exact" in result["evidence"]
+
+
+def test_intake_no_match_fuzzy_name_below_90_percent():
+    result = score_intake_match(
+        typed_name="John Smith", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="Alice Jones", candidate_dob=None,
+        candidate_transfermarkt=None,
+    )
+    assert result is None
+
+
+def test_intake_no_match_both_names_empty():
+    result = score_intake_match(
+        typed_name="", typed_dob=None,
+        typed_transfermarkt=None,
+        candidate_name="", candidate_dob=None,
+        candidate_transfermarkt=None,
+    )
+    assert result is None
+
+
+def test_intake_no_match_fuzzy_name_below_90_with_dob_mismatch():
+    result = score_intake_match(
+        typed_name="Alice Jones", typed_dob=date(2000, 1, 1),
+        typed_transfermarkt=None,
+        candidate_name="Bob Taylor", candidate_dob=date(1999, 5, 15),
+        candidate_transfermarkt=None,
     )
     assert result is None

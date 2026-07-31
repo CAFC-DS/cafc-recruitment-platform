@@ -116,3 +116,76 @@ def score_player_match(
         "squad_similarity": round(squad_similarity, 1),
         "evidence": evidence,
     }
+
+
+def score_intake_match(
+    typed_name: Optional[str],
+    typed_dob,
+    typed_transfermarkt: Optional[str],
+    candidate_name: Optional[str],
+    candidate_dob,
+    candidate_transfermarkt: Optional[str],
+) -> Optional[dict]:
+    """Score a duplicate pair from agent-portal intake vs. existing player.
+    Returns None if no confidence tier is met, otherwise a dict with
+    confidence/evidence/name_similarity fields.
+
+    This function is separate from score_player_match because agent-portal
+    manual entry does not collect squad/club evidence. Reusing score_player_match
+    would make intake duplicates nearly unscorable since both medium and low
+    tiers require squad evidence.
+
+    Tiers:
+      - high: exact normalized name AND exact DOB match, OR a shared non-empty
+        Transfermarkt link (treated as definitive external-system evidence).
+      - medium: exact normalized name with DOB missing on either side or DOB
+        mismatch, OR fuzzy name similarity >= 90% AND exact DOB match.
+      - Otherwise: no tier, return None.
+    """
+    norm_name_typed = normalize_text(typed_name or "")
+    norm_name_candidate = normalize_text(candidate_name or "")
+
+    name_similarity = _similarity(norm_name_typed, norm_name_candidate)
+
+    name_exact = norm_name_typed == norm_name_candidate and norm_name_typed != ""
+    dob_exact = typed_dob is not None and candidate_dob is not None and typed_dob == candidate_dob
+
+    tm_typed = (typed_transfermarkt or "").strip()
+    tm_candidate = (candidate_transfermarkt or "").strip()
+    transfermarkt_match = tm_typed != "" and tm_candidate != "" and tm_typed == tm_candidate
+
+    confidence = None
+    if transfermarkt_match or (name_exact and dob_exact):
+        confidence = "high"
+    elif name_exact and (typed_dob is None or candidate_dob is None):
+        # Exact name with DOB missing on either side
+        confidence = "medium"
+    elif name_exact and typed_dob is not None and candidate_dob is not None and typed_dob != candidate_dob:
+        # Exact name with DOB mismatch (both present but different)
+        confidence = "medium"
+    elif name_similarity >= 90 and dob_exact:
+        # Fuzzy name >= 90% with exact DOB match
+        confidence = "medium"
+
+    if confidence is None:
+        return None
+
+    evidence = []
+    if transfermarkt_match:
+        evidence.append("Transfermarkt link match")
+    if name_exact:
+        evidence.append("Name exact")
+    else:
+        evidence.append(f"Fuzzy {round(name_similarity, 1)}%")
+    if dob_exact:
+        evidence.append("DOB exact")
+    elif typed_dob is None or candidate_dob is None:
+        evidence.append("DOB missing")
+    else:
+        evidence.append("DOB mismatch")
+
+    return {
+        "confidence": confidence,
+        "name_similarity": round(name_similarity, 1),
+        "evidence": evidence,
+    }
