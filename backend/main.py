@@ -6302,6 +6302,33 @@ async def detect_data_clashes(
                         confidence = scored["confidence"] if scored else "low"
                         evidence = scored["evidence"] if scored else ["Name exact"]
 
+                        # Agent-portal manual entries (pre-Task-5) never
+                        # collected squad, so exact-name external/external
+                        # duplicates with no squad, DOB, or Transfermarkt
+                        # evidence on either side land at "low" (either via
+                        # score_player_match's squad-emptiness branch, or —
+                        # for pairs it can't score at all — the "low"
+                        # fallback above). That buries exactly the
+                        # duplicates this tool exists to surface. Promote
+                        # this narrow, evidence-free case to "medium" so it
+                        # doesn't get lost at the bottom of the list or past
+                        # max_results. Any other combination (internal
+                        # pairs, or pairs with squad/DOB/Transfermarkt
+                        # evidence on either side) is left untouched.
+                        if (
+                            confidence == "low"
+                            and p1["data_source"] == "external"
+                            and p2["data_source"] == "external"
+                            and p1["birthdate"] is None
+                            and p2["birthdate"] is None
+                            and not (p1["transfermarkt_link"] or "").strip()
+                            and not (p2["transfermarkt_link"] or "").strip()
+                            and not (p1["squad"] or "").strip()
+                            and not (p2["squad"] or "").strip()
+                        ):
+                            confidence = "medium"
+                            evidence = ["Name exact, no squad on file"]
+
                         player_clashes.append({
                             "player1": {
                                 "universal_id": get_player_universal_id({
