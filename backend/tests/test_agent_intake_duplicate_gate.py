@@ -234,6 +234,80 @@ def test_sorted_high_before_medium_then_by_name_similarity_and_capped_at_5():
     assert all(c["confidence"] == "medium" for c in result[1:])
 
 
+def test_ilike_query_orders_exact_match_first_so_it_survives_the_cap():
+    # Finding 3 regression: the ILIKE candidate lookup has no ORDER BY other
+    # than what we add, so Snowflake could otherwise return an arbitrary 10
+    # rows for a common/short substring - excluding the real exact-name
+    # duplicate entirely. Assert the SQL text prioritizes an exact
+    # (normalized) name match, and that the normalized search name is bound
+    # as an extra parameter for that CASE comparison.
+    rows = [_candidate_row(player_id=1, name="Jon Smith", birthdate=date(2000, 1, 1))]
+    cursor = _cursor_with_ilike_results(rows)
+    with patch.object(main, "get_table_columns", return_value=["PLAYERNAME"]), \
+         patch.object(main, "read_table", return_value="players"):
+        main._find_agent_intake_duplicate_candidates(cursor, "Jon Smith", date(2000, 1, 1))
+
+    ilike_call = cursor.execute.call_args_list[0]
+    sql, params = ilike_call.args
+    assert "ORDER BY" in sql
+    assert "CASE WHEN" in sql
+    # search_pattern (ILIKE) then normalized_search (ORDER BY CASE), in that
+    # positional order matching the %s placeholders in the query text.
+    assert params == ("%jon smith%", "jon smith")
+
+
+def test_exact_duplicate_survives_limit_10_cap_among_substring_decoys():
+    # End-to-end version of the regression above: simulate what Snowflake's
+    # ORDER BY + LIMIT 10 would actually do given our query, by having the
+    # fake cursor apply the same ordering/cap logic the SQL expresses, over
+    # a candidate pool of 15 decoys (all sharing the "smith" substring, none
+    # an exact name match) plus 1 exact "Jon Smith" match. Without the
+    # ORDER BY fix, an arbitrary unordered LIMIT 10 could easily exclude the
+    # exact match; with it, the exact match must always be present.
+    decoys = [
+        _candidate_row(player_id=100 + i, name=f"Jon Smithers{i}", birthdate=date(1990, 1, 1))
+        for i in range(15)
+    ]
+    exact_match = _candidate_row(player_id=42, name="Jon Smith", birthdate=date(2000, 1, 1))
+    full_pool = decoys + [exact_match]
+
+    class _OrderAwareCursor:
+        """Fake cursor standing in for Snowflake: applies the same ORDER BY
+        CASE + LIMIT 10 semantics the real SQL expresses, over the full
+        candidate pool, so the test exercises the actual fix (not just that
+        the Python code passes rows through)."""
+
+        def __init__(self, pool):
+            self.pool = pool
+            self.execute_calls = []
+            self._last_result = []
+
+        def execute(self, sql, params):
+            self.execute_calls.append((sql, params))
+            if "ORDER BY" in sql:
+                _search_pattern, normalized_search = params
+                ordered = sorted(
+                    self.pool,
+                    key=lambda row: (0 if row[2].strip().lower() == normalized_search else 1, row[2]),
+                )
+                self._last_result = ordered[:10]
+            else:
+                # JAROWINKLER fallback pass - not exercised meaningfully here.
+                self._last_result = []
+
+        def fetchall(self):
+            return self._last_result
+
+    cursor = _OrderAwareCursor(full_pool)
+    with patch.object(main, "get_table_columns", return_value=["PLAYERNAME"]), \
+         patch.object(main, "read_table", return_value="players"):
+        result = main._find_agent_intake_duplicate_candidates(cursor, "Jon Smith", date(2000, 1, 1))
+
+    assert any(c["universal_id"] == "external_42" for c in result), (
+        "exact-name duplicate was excluded by the LIMIT 10 cap despite the ORDER BY fix"
+    )
+
+
 def test_skips_jarowinkler_fallback_when_ilike_pass_already_hits_limit():
     rows = [_candidate_row(player_id=i, name="Jon Smith", birthdate=date(2000, 1, 1)) for i in range(10)]
     cursor = MagicMock()

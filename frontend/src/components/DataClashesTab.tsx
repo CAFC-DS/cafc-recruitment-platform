@@ -55,9 +55,10 @@ interface FixtureClash {
 
 interface DataClashesTabProps {
   onSummaryChange?: (total: number) => void;
+  initialNameFilter?: string;
 }
 
-const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
+const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange, initialNameFilter }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -79,11 +80,22 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
   } | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
+  // Deep-link support (Task 8 / Finding 2 fix): the internal recommendations
+  // review page's manual-entry badge links admins straight into this tab,
+  // pre-filtered to a specific player, e.g.
+  // /admin?tab=general-clashes&name=Jon%20Smith. Mirrors
+  // InternalPlayerAuditTab's initialNameFilter pattern.
+  const [nameFilter, setNameFilter] = useState("");
+
   const fetchClashes = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axiosInstance.get("/admin/detect-clashes");
+      const response = await axiosInstance.get("/admin/detect-clashes", {
+        params: {
+          name_filter: nameFilter.trim() || undefined,
+        },
+      });
       setPlayerClashes(response.data.player_clashes);
       setFixtureClashes(response.data.fixture_clashes);
       if (onSummaryChange) {
@@ -98,11 +110,20 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange }) => {
     } finally {
       setLoading(false);
     }
-  }, [onSummaryChange]);
+  }, [onSummaryChange, nameFilter]);
 
   useEffect(() => {
     fetchClashes();
   }, [fetchClashes]);
+
+  useEffect(() => {
+    if (initialNameFilter && initialNameFilter.trim()) {
+      setNameFilter(initialNameFilter.trim());
+    }
+    // Only apply the deep-linked filter once, when it's provided/changes -
+    // not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialNameFilter]);
 
   const handleMergePlayer = async (clash: PlayerClash, keepPlayer: 1 | 2) => {
     const keep = keepPlayer === 1 ? clash.player1 : clash.player2;

@@ -8,8 +8,16 @@ endpoint that reuses the existing recommendation_notes_history table.
 Covers:
   - serialize_recommendation_row's derivation of player_manual_entry from
     LINKED_PLAYER_DATA_SOURCE / LINKED_PLAYER_ID / the linked player's own
-    TRANSFERMARKT_LINK (row indices 48 / 46 / 51 of build_recommendation_select's
-    SELECT list).
+    TRANSFERMARKT_LINK vs. the recommendation's own TRANSFERMARKT_LINK (row
+    indices 48 / 46 / 51 / 7 of build_recommendation_select's SELECT list).
+    Agent intake (_create_external_player_from_agent_intake) copies the
+    recommendation's typed TM link verbatim onto the newly-created player,
+    so an intake-created player's link equals the recommendation's link by
+    construction - "blank link = manual" was checked previously, but every
+    agent submission requires a non-blank TM link
+    (frontend/src/utils/agentRecommendationForm.ts), so that signal could
+    never fire in production. The fixtures below reflect the corrected
+    equality-based derivation.
   - Backward compatibility with rows shaped before this task (51 columns,
     no LINKED_PLAYER_TRANSFERMARKT_LINK) - must not raise and must default
     to not-flagged.
@@ -33,6 +41,7 @@ from fastapi import HTTPException
 ROW_WIDTH = 52
 ID_IDX = 0
 PLAYER_NAME_IDX = 6
+RECOMMENDATION_TRANSFERMARKT_LINK_IDX = 7
 STATUS_IDX = 25
 LINKED_PLAYER_ID_IDX = 46
 LINKED_CAFC_PLAYER_ID_IDX = 47
@@ -45,11 +54,14 @@ def _row(
     linked_player_id=None,
     linked_player_data_source=None,
     linked_player_transfermarkt_link=None,
+    recommendation_transfermarkt_link=None,
     width=ROW_WIDTH,
 ):
     row = [None] * width
     row[ID_IDX] = 1
     row[PLAYER_NAME_IDX] = "Jon Smith"
+    if width > RECOMMENDATION_TRANSFERMARKT_LINK_IDX:
+        row[RECOMMENDATION_TRANSFERMARKT_LINK_IDX] = recommendation_transfermarkt_link
     row[STATUS_IDX] = "Submitted"
     if width > LINKED_PLAYER_ID_IDX:
         row[LINKED_PLAYER_ID_IDX] = linked_player_id
@@ -63,26 +75,48 @@ def _row(
 # --- serialize_recommendation_row: player_manual_entry derivation ----------
 
 
-def test_flags_external_linked_player_with_no_transfermarkt_link():
-    response = main.serialize_recommendation_row(
-        _row(linked_player_id=42, linked_player_data_source="external", linked_player_transfermarkt_link=None)
-    )
-    assert response.player_manual_entry is True
-
-
-def test_flags_external_linked_player_with_blank_transfermarkt_link():
-    response = main.serialize_recommendation_row(
-        _row(linked_player_id=42, linked_player_data_source="external", linked_player_transfermarkt_link="   ")
-    )
-    assert response.player_manual_entry is True
-
-
-def test_does_not_flag_when_linked_player_has_transfermarkt_link():
+def test_flags_when_linked_player_tm_link_equals_recommendation_tm_link():
+    # This is the agent-intake case Task 8 exists to catch:
+    # _create_external_player_from_agent_intake copies the recommendation's
+    # typed TM link verbatim onto the newly-created player, so the two
+    # values match by construction.
     response = main.serialize_recommendation_row(
         _row(
             linked_player_id=42,
             linked_player_data_source="external",
             linked_player_transfermarkt_link="https://transfermarkt.com/jon-smith",
+            recommendation_transfermarkt_link="https://transfermarkt.com/jon-smith",
+        )
+    )
+    assert response.player_manual_entry is True
+
+
+def test_does_not_flag_when_linked_player_tm_link_differs_from_recommendation():
+    # A genuinely-synced provider player: its own TM link differs from
+    # whatever the agent typed on this recommendation (the common case for
+    # a normally-searched/linked external player).
+    response = main.serialize_recommendation_row(
+        _row(
+            linked_player_id=42,
+            linked_player_data_source="external",
+            linked_player_transfermarkt_link="https://transfermarkt.com/canonical-jon-smith",
+            recommendation_transfermarkt_link="https://transfermarkt.com/jon-smith",
+        )
+    )
+    assert response.player_manual_entry is False
+
+
+def test_does_not_flag_when_both_transfermarkt_links_are_blank():
+    # Blank-on-both-sides must NOT be treated as a match (mirrors
+    # duplicate_detection.score_player_match's transfermarkt_match
+    # convention) - otherwise every unmatched/legacy row with no TM link on
+    # either side would be flagged.
+    response = main.serialize_recommendation_row(
+        _row(
+            linked_player_id=42,
+            linked_player_data_source="external",
+            linked_player_transfermarkt_link="   ",
+            recommendation_transfermarkt_link=None,
         )
     )
     assert response.player_manual_entry is False
@@ -90,7 +124,12 @@ def test_does_not_flag_when_linked_player_has_transfermarkt_link():
 
 def test_does_not_flag_internal_players():
     response = main.serialize_recommendation_row(
-        _row(linked_player_id=None, linked_player_data_source="internal", linked_player_transfermarkt_link=None)
+        _row(
+            linked_player_id=None,
+            linked_player_data_source="internal",
+            linked_player_transfermarkt_link=None,
+            recommendation_transfermarkt_link="https://transfermarkt.com/jon-smith",
+        )
     )
     assert response.player_manual_entry is False
 
@@ -98,7 +137,12 @@ def test_does_not_flag_internal_players():
 def test_does_not_flag_when_no_linked_player_at_all():
     # Unmatched player name - not "manually linked", just unmatched.
     response = main.serialize_recommendation_row(
-        _row(linked_player_id=None, linked_player_data_source=None, linked_player_transfermarkt_link=None)
+        _row(
+            linked_player_id=None,
+            linked_player_data_source=None,
+            linked_player_transfermarkt_link=None,
+            recommendation_transfermarkt_link=None,
+        )
     )
     assert response.player_manual_entry is False
 
@@ -108,7 +152,7 @@ def test_backward_compatible_with_pre_task_8_row_shape():
     # task (51 columns, no LINKED_PLAYER_TRANSFERMARKT_LINK) must not raise
     # an IndexError, and MUST fail closed: with no way to know the linked
     # player's own TRANSFERMARKT_LINK, we must never treat "can't tell" the
-    # same as "genuinely blank" - that would flag every external-linked
+    # same as "genuinely matches" - that would flag every external-linked
     # recommendation as manually created, including normally-searched ones,
     # which directly violates "never flag a normally-linked player." In
     # practice build_recommendation_select always emits this column now
@@ -126,15 +170,26 @@ def test_signal_unavailable_sentinel_is_not_flagged():
     # Mirrors what build_recommendation_select emits when the guard columns
     # (players.TRANSFERMARKT_LINK / players.PLAYERID) don't exist in this
     # environment's schema: a non-blank sentinel string, not NULL, so the
-    # "blank link" flagging logic can't misfire on it.
+    # equality-based flagging logic can't misfire on it (even if it happened
+    # to equal the recommendation's own TM link, which it never would).
     response = main.serialize_recommendation_row(
-        _row(linked_player_id=42, linked_player_data_source="external", linked_player_transfermarkt_link="__signal_unavailable__")
+        _row(
+            linked_player_id=42,
+            linked_player_data_source="external",
+            linked_player_transfermarkt_link="__signal_unavailable__",
+            recommendation_transfermarkt_link="__signal_unavailable__",
+        )
     )
     assert response.player_manual_entry is False
 
 
 def test_internal_response_also_carries_the_flag():
-    row = _row(linked_player_id=42, linked_player_data_source="external", linked_player_transfermarkt_link=None)
+    row = _row(
+        linked_player_id=42,
+        linked_player_data_source="external",
+        linked_player_transfermarkt_link="https://transfermarkt.com/jon-smith",
+        recommendation_transfermarkt_link="https://transfermarkt.com/jon-smith",
+    )
     response = main.serialize_recommendation_row(row, include_internal=True)
     assert response.player_manual_entry is True
 

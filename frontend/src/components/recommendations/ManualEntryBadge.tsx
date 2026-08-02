@@ -14,7 +14,11 @@ interface ManualEntryBadgeProps {
  * `serialize_recommendation_row` in backend/main.py).
  *
  * - Admins get a link straight into the admin duplicate-review tooling
- *   (Internal Player Audit tab), pre-filtered to this player's name.
+ *   (General Clashes tab), pre-filtered to this player's name. General
+ *   Clashes - not Internal Player Audit - is the tab that can actually
+ *   surface an agent-created external duplicate paired with another
+ *   external (synced) player; Internal Player Audit only anchors on
+ *   internal players (CAFC_PLAYER_ID IS NOT NULL AND PLAYERID IS NULL).
  * - Every other `require_recs_viewer`-eligible role gets an informational
  *   badge plus a "Flag for admin review" action that never attempts to
  *   navigate to an admin-only page.
@@ -55,12 +59,12 @@ const ManualEntryBadge: React.FC<ManualEntryBadgeProps> = ({ playerName, isAdmin
   };
 
   if (isAdmin) {
-    const deepLinkHref = `/admin?tab=internal-audit&name=${encodeURIComponent(playerName)}`;
+    const deepLinkHref = `/admin?tab=general-clashes&name=${encodeURIComponent(playerName)}`;
     return (
       <Link
         to={deepLinkHref}
         style={{ ...badgeStyle, textDecoration: 'none', cursor: 'pointer' }}
-        title="Open the Internal Player Audit tab, pre-filtered to this player"
+        title="Open the General Clashes tab, pre-filtered to this player"
       >
         ⚠ Unverified — Manually Added Player
       </Link>

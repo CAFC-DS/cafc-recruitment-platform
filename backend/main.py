@@ -2550,14 +2550,24 @@ def _find_agent_intake_duplicate_candidates(
         "DATA_SOURCE, TRANSFERMARKT_LINK, SQUADNAME"
     )
 
+    # ORDER BY ensures an exact (case/accent-insensitive) name match always
+    # survives the LIMIT 10 cap. Without it, Snowflake can return an
+    # arbitrary 10 rows for a common/short name substring, potentially
+    # excluding the actual exact-name duplicate entirely - the duplicate
+    # check would then silently pass. This also protects the JAROWINKLER
+    # fallback below, which is gated on len(rows) < 3: if 3+ irrelevant
+    # substring matches happened to come back before the real duplicate, the
+    # fuzzy fallback that might otherwise have caught it would get skipped
+    # too.
     cursor.execute(
         f"""
         SELECT {candidate_columns}
         FROM {read_table('players')}
         WHERE {search_name_expr} ILIKE %s
+        ORDER BY CASE WHEN {search_name_expr} = %s THEN 0 ELSE 1 END, PLAYERNAME
         LIMIT 10
         """,
-        (search_pattern,),
+        (search_pattern, normalized_search),
     )
     rows = list(cursor.fetchall())
 
@@ -3153,9 +3163,19 @@ def build_recommendation_select():
     # plan's global constraints). Instead we derive a best-effort signal from
     # data already available: the linked player is 'external'
     # (matched_data_source_expr above) AND that player's own
-    # TRANSFERMARKT_LINK is empty - a manually created external player row is
-    # typically created without one, while a normally-searched/imported
-    # external player almost always has one.
+    # TRANSFERMARKT_LINK exactly equals this recommendation's own
+    # pr.TRANSFERMARKT_LINK (selected separately, see SELECT list above) -
+    # agent intake (_create_external_player_from_agent_intake) copies the
+    # recommendation's typed TM link verbatim onto the newly-created player,
+    # so an intake-created player's link matches the recommendation's link by
+    # construction. Note this is NOT "the linked player's TM link is blank" -
+    # every agent submission requires a non-blank TM link
+    # (frontend/src/utils/agentRecommendationForm.ts), so a blank-link check
+    # would never fire; comparing against pr.TRANSFERMARKT_LINK is the signal
+    # that actually distinguishes intake-created players. The equality
+    # comparison itself (including the blank-vs-blank guard) happens in
+    # serialize_recommendation_row(), which has both values; this expression
+    # just makes sure the raw linked-player TM link is fetched.
     #
     # Fail-closed: when this signal genuinely cannot be computed (the guard
     # columns below don't exist in this environment's schema), we must NOT
@@ -3311,21 +3331,38 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     # than misread as "blank link" -> flagged for every external player.
     SIGNAL_UNAVAILABLE = "__signal_unavailable__"
     linked_player_transfermarkt_link = row[51] if len(row) > 51 else SIGNAL_UNAVAILABLE
+    # pr.TRANSFERMARKT_LINK - the recommendation's own typed-in TM link
+    # (SELECT position 7, see build_recommendation_select). Agent intake
+    # (_create_external_player_from_agent_intake) copies this value verbatim
+    # onto the newly-created external player, so for an intake-created player
+    # the linked player's own TRANSFERMARKT_LINK equals this value by
+    # construction.
+    recommendation_transfermarkt_link = row[7] if len(row) > 7 else None
+    linked_tm_normalized = (linked_player_transfermarkt_link or "").strip()
+    recommendation_tm_normalized = (recommendation_transfermarkt_link or "").strip()
     # Task 8 derived signal: flag a recommendation as "manually added player"
     # when it's linked to an *external* player (row[48]) that actually has a
     # LINKED_PLAYER_ID (row[46] - i.e. this row really is linked to something,
-    # not just an unmatched name) and that linked player genuinely has no
-    # TRANSFERMARKT_LINK of its own (not merely "we couldn't tell"). Best-effort
-    # only: no schema change, so a normally-searched external player that
-    # happens to lack a Transfermarkt link would also trip this - reviewers
-    # get a nudge to double check, not a guarantee. When the signal is
-    # unavailable, we default to False (fail closed) rather than flagging
+    # not just an unmatched name) and that linked player's own
+    # TRANSFERMARKT_LINK exactly equals this recommendation's own
+    # TRANSFERMARKT_LINK (not merely "we couldn't tell"). Every agent
+    # submission requires a non-blank TM link
+    # (frontend/src/utils/agentRecommendationForm.ts), so "blank link = manual"
+    # would never fire in production - this equality check is the signal that
+    # actually distinguishes intake-created players. Blank-on-both-sides is
+    # deliberately NOT treated as a match (normalize_text/transfermarkt_match
+    # convention in duplicate_detection.py's score_player_match). Best-effort
+    # only: no schema change, so a normally-synced provider player whose TM
+    # link happens to equal what the agent typed would also trip this -
+    # reviewers get a nudge to double check, not a guarantee. When the signal
+    # is unavailable, we default to False (fail closed) rather than flagging
     # every external-linked recommendation.
     player_manual_entry = bool(
         row[48] == "external"
         and row[46] is not None
         and linked_player_transfermarkt_link != SIGNAL_UNAVAILABLE
-        and not (linked_player_transfermarkt_link or "").strip()
+        and linked_tm_normalized != ""
+        and linked_tm_normalized == recommendation_tm_normalized
     )
     legacy_transfer_fee = str(row[12]) if row[12] is not None else None
     display_transfer_fee_value = transfer_fee_value or legacy_transfer_fee

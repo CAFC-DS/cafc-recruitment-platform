@@ -387,7 +387,10 @@ const AdminPage: React.FC = () => {
                   />
                 </Tab>
                 <Tab eventKey="general-clashes" title="General Clashes">
-                  <DataClashesTab onSummaryChange={handleClashSummaryChange} />
+                  <DataClashesTab
+                    onSummaryChange={handleClashSummaryChange}
+                    initialNameFilter={auditNameFilter}
+                  />
                 </Tab>
               </Tabs>
             </Card.Body>
