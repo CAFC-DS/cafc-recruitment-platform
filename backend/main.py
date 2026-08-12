@@ -2545,9 +2545,17 @@ def _find_agent_intake_duplicate_candidates(
         return []
     search_pattern = f"%{normalized_search}%"
     search_name_expr = "NORMALIZE_TEXT_UDF(PLAYERNAME)"
+    # TRANSFERMARKT_LINK/SQUADNAME aren't guaranteed present on every schema
+    # variant this app can point at (e.g. the legacy RECRUITMENT_TEST.PUBLIC
+    # players table predates these columns, which only exist on the newer
+    # canonical schema) — guard them the same way _create_external_player_
+    # from_agent_intake already does, falling back to a literal NULL so the
+    # downstream row-unpacking (fixed 8-column shape) stays stable either way.
+    transfermarkt_link_expr = "TRANSFERMARKT_LINK" if "TRANSFERMARKT_LINK" in player_columns else "NULL"
+    squadname_expr = "SQUADNAME" if "SQUADNAME" in player_columns else "NULL"
     candidate_columns = (
-        "PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, BIRTHDATE, POSITION, "
-        "DATA_SOURCE, TRANSFERMARKT_LINK, SQUADNAME"
+        f"PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, BIRTHDATE, POSITION, "
+        f"DATA_SOURCE, {transfermarkt_link_expr}, {squadname_expr}"
     )
 
     # ORDER BY ensures an exact (case/accent-insensitive) name match always
