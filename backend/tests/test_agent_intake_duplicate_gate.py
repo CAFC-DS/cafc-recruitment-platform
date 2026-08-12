@@ -256,6 +256,31 @@ def test_ilike_query_orders_exact_match_first_so_it_survives_the_cap():
     assert params == ("%jon smith%", "jon smith")
 
 
+def test_select_falls_back_to_null_when_transfermarkt_and_squad_columns_absent():
+    # Live-testing regression: some players table variants (e.g. a legacy
+    # schema that predates the canonical-schema cutover) have PLAYERNAME but
+    # not TRANSFERMARKT_LINK/SQUADNAME. The candidate SELECT must not
+    # hardcode those column names unconditionally - Snowflake raises an
+    # "invalid identifier" SQL compilation error otherwise, which surfaced
+    # as a 500 on the whole recommendation-submission endpoint. Assert the
+    # SELECT falls back to a literal NULL for each column that's absent from
+    # get_table_columns, and that the function still returns usable results
+    # (transfermarkt_link/squad_name simply come back as None).
+    rows = [_candidate_row(player_id=1, name="Jon Smith", birthdate=date(2000, 1, 1))]
+    cursor = _cursor_with_ilike_results(rows)
+    with patch.object(main, "get_table_columns", return_value=["PLAYERNAME"]), \
+         patch.object(main, "read_table", return_value="players"):
+        result = main._find_agent_intake_duplicate_candidates(cursor, "Jon Smith", date(2000, 1, 1))
+
+    ilike_call = cursor.execute.call_args_list[0]
+    sql, _params = ilike_call.args
+    assert "SELECT PLAYERID, CAFC_PLAYER_ID, PLAYERNAME, BIRTHDATE, POSITION, DATA_SOURCE, NULL, NULL" in sql
+    assert "TRANSFERMARKT_LINK" not in sql
+    assert "SQUADNAME" not in sql
+    assert len(result) == 1
+    assert result[0]["squad_name"] == "Charlton"  # from the mocked row, unaffected by SQL text
+
+
 def test_exact_duplicate_survives_limit_10_cap_among_substring_decoys():
     # End-to-end version of the regression above: simulate what Snowflake's
     # ORDER BY + LIMIT 10 would actually do given our query, by having the
