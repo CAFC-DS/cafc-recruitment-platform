@@ -85,7 +85,13 @@ const DataClashesTab: React.FC<DataClashesTabProps> = ({ onSummaryChange, initia
   // pre-filtered to a specific player, e.g.
   // /admin?tab=general-clashes&name=Jon%20Smith. Mirrors
   // InternalPlayerAuditTab's initialNameFilter pattern.
-  const [nameFilter, setNameFilter] = useState("");
+  // Lazy-initialize from the prop (not "") so the very first fetch already
+  // carries the deep-linked filter. Initializing to "" here previously fired
+  // an unconditional unfiltered fetch on mount that raced the filtered one
+  // set by the effect below - whichever of the two responses landed last
+  // silently won, so the deep link intermittently showed the full unfiltered
+  // list instead of the intended single pair.
+  const [nameFilter, setNameFilter] = useState(() => initialNameFilter?.trim() || "");
 
   const fetchClashes = useCallback(async () => {
     try {

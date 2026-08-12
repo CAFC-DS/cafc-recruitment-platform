@@ -60,16 +60,34 @@ const getRoleLabel = (role: string): string => {
   return role;
 };
 
+// Deep-link support (Task 8): the internal recommendations review page links
+// admins straight into the relevant duplicate-review tab, pre-filtered to a
+// specific player, e.g. /admin?tab=internal-audit&name=Jon%20Smith or
+// /admin?tab=general-clashes&name=Jon%20Smith. Read synchronously (not in a
+// post-mount effect) because react-bootstrap's <Tabs> mounts every <Tab>'s
+// content immediately regardless of which is active - InternalPlayerAuditTab
+// and DataClashesTab both mount on the very first render, so if the initial
+// state here were "" (set correctly only later, in an effect), both tabs'
+// own initialNameFilter-driven fetch would race their default unfiltered
+// fetch fired at their own mount - whichever response landed last would
+// silently win, intermittently showing the full unfiltered list instead of
+// the deep-linked pair.
+const getInitialAdminDeepLink = () => {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get("tab");
+  return {
+    dataQualityTab: tab === "internal-audit" || tab === "general-clashes" ? tab : "internal-audit",
+    nameFilter: params.get("name") || "",
+  };
+};
+
 const AdminPage: React.FC = () => {
   const location = useLocation();
   const [activeSection, setActiveSection] = useState<string>("data-quality");
-  const [activeDataQualityTab, setActiveDataQualityTab] = useState<string>("internal-audit");
-  // Deep-link support (Task 8): the internal recommendations review page
-  // links admins straight into the relevant duplicate-review tab,
-  // pre-filtered to a specific player, e.g.
-  // /admin?tab=internal-audit&name=Jon%20Smith or
-  // /admin?tab=general-clashes&name=Jon%20Smith.
-  const [auditNameFilter, setAuditNameFilter] = useState<string>("");
+  const [activeDataQualityTab, setActiveDataQualityTab] = useState<string>(
+    () => getInitialAdminDeepLink().dataQualityTab
+  );
+  const [auditNameFilter, setAuditNameFilter] = useState<string>(() => getInitialAdminDeepLink().nameFilter);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
