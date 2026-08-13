@@ -16398,6 +16398,10 @@ class PlayerStageUpdate(BaseModel):
     description: Optional[str] = None  # Optional description for stage change
 
 
+class PlayerListMove(BaseModel):
+    destination_list_id: int
+
+
 class BulkStageUpdateItem(BaseModel):
     item_id: Optional[int] = None
     # Optional canonical player identifier. When supplied the backend will
@@ -17762,6 +17766,143 @@ async def remove_player_from_list(
             conn.rollback()
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error removing player: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.post("/player-lists/{list_id}/players/{item_id}/move")
+async def move_player_between_lists(
+    list_id: int,
+    item_id: int,
+    move_data: PlayerListMove,
+    current_user: User = Depends(get_current_user),
+):
+    """Move one player membership to another list in the same shortlist."""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins and senior managers can move players between lists",
+        )
+    if move_data.destination_list_id == list_id:
+        raise HTTPException(status_code=400, detail="Choose a different destination list")
+
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        ensure_player_stage_history_table(cursor)
+        ensure_player_lists_category_column(cursor)
+
+        cursor.execute(
+            """
+            SELECT pli.PLAYER_ID, pli.CAFC_PLAYER_ID, pli.STAGE, pli.NOTES, pl.LIST_NAME,
+                   COALESCE(pl.LIST_CATEGORY, 'first_team')
+            FROM player_list_items pli
+            JOIN player_lists pl ON pl.ID = pli.LIST_ID
+            WHERE pli.ID = %s AND pli.LIST_ID = %s
+            """,
+            (item_id, list_id),
+        )
+        source = cursor.fetchone()
+        if not source:
+            raise HTTPException(status_code=404, detail="Player not found in source list")
+
+        player_id, cafc_player_id, stage, notes, source_name, source_category = source
+        cursor.execute(
+            """
+            SELECT LIST_NAME, COALESCE(LIST_CATEGORY, 'first_team')
+            FROM player_lists WHERE ID = %s
+            """,
+            (move_data.destination_list_id,),
+        )
+        destination = cursor.fetchone()
+        if not destination:
+            raise HTTPException(status_code=404, detail="Destination list not found")
+        destination_name, destination_category = destination
+        if destination_category != source_category:
+            raise HTTPException(
+                status_code=400,
+                detail="Players can only be moved between lists in the same shortlist",
+            )
+
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE LIST_ID = %s
+              AND ((PLAYER_ID IS NOT NULL AND PLAYER_ID = %s)
+                   OR (CAFC_PLAYER_ID IS NOT NULL AND CAFC_PLAYER_ID = %s))
+            """,
+            (move_data.destination_list_id, player_id, cafc_player_id),
+        )
+        if cursor.fetchone():
+            raise HTTPException(status_code=409, detail="Player is already in the destination list")
+
+        cursor.execute(
+            "SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM player_list_items WHERE LIST_ID = %s",
+            (move_data.destination_list_id,),
+        )
+        destination_order = cursor.fetchone()[0]
+        cursor.execute(
+            """
+            INSERT INTO player_list_items
+                (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY, STAGE, CREATED_AT)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                move_data.destination_list_id,
+                player_id,
+                cafc_player_id,
+                destination_order + 1,
+                notes,
+                current_user.id,
+                stage,
+                datetime.utcnow(),
+            ),
+        )
+        # Snowflake does not provide a portable last-insert-id API, so resolve the
+        # newly inserted membership using its unique player/list combination.
+        cursor.execute(
+            """
+            SELECT ID FROM player_list_items
+            WHERE LIST_ID = %s
+              AND ((PLAYER_ID IS NOT NULL AND PLAYER_ID = %s)
+                   OR (CAFC_PLAYER_ID IS NOT NULL AND CAFC_PLAYER_ID = %s))
+            ORDER BY CREATED_AT DESC, ID DESC LIMIT 1
+            """,
+            (move_data.destination_list_id, player_id, cafc_player_id),
+        )
+        destination_item_id = cursor.fetchone()[0]
+        insert_player_stage_history_record(
+            cursor=cursor,
+            list_item_id=destination_item_id,
+            list_id=move_data.destination_list_id,
+            player_id=player_id or cafc_player_id,
+            old_stage=None,
+            new_stage=stage,
+            reason="Moved between lists",
+            description=f"Moved from {source_name} to {destination_name}",
+            changed_by=current_user.id,
+        )
+        cursor.execute("DELETE FROM player_list_items WHERE ID = %s AND LIST_ID = %s", (item_id, list_id))
+        timestamp = datetime.utcnow()
+        cursor.execute("UPDATE player_lists SET UPDATED_AT = %s WHERE ID IN (%s, %s)", (timestamp, list_id, move_data.destination_list_id))
+        conn.commit()
+        invalidate_cache("player_lists_all")
+        return {
+            "message": "Player moved successfully",
+            "source_list_id": list_id,
+            "destination_list_id": move_data.destination_list_id,
+            "destination_item_id": destination_item_id,
+            "stage": stage,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error moving player between lists: {e}")
     finally:
         if conn:
             conn.close()

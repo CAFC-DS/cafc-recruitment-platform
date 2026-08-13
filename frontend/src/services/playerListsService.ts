@@ -306,6 +306,19 @@ export const removePlayerFromList = async (
   return response.data;
 };
 
+/** Move a player's membership from one list to another, preserving its stage. */
+export const movePlayerBetweenLists = async (
+  sourceListId: number,
+  itemId: number,
+  destinationListId: number
+): Promise<{ message: string; destination_item_id: number; stage: string }> => {
+  const response = await axiosInstance.post(
+    `/player-lists/${sourceListId}/players/${itemId}/move`,
+    { destination_list_id: destinationListId }
+  );
+  return response.data;
+};
+
 /**
  * Update a player's stage in a list
  */

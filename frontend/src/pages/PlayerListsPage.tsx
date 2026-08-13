@@ -43,6 +43,8 @@ import {
   deletePlayerList,
   bulkAddPlayersToList,
   bulkRemovePlayersFromList,
+  removePlayerFromList,
+  movePlayerBetweenLists,
   bulkUpdatePlayerStages,
   searchPlayersPaginated,
   updatePlayerStage,
@@ -73,6 +75,7 @@ import {
   CircleAlert,
   Circle,
   Info,
+  ArrowRightLeft,
 } from "lucide-react";
 import { IconBuildingStadium } from "@tabler/icons-react";
 import { useTheme } from "../contexts/ThemeContext";
@@ -320,6 +323,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     playerName: string;
     targetStage: "Stage 1" | "Archived";
     itemId: number;
+    listId: number;
     oldStage: string;
   } | null>(null);
   const [stage1Reasons, setStage1Reasons] = useState<string[]>([]);
@@ -333,6 +337,11 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     itemId: number;
     playerName: string;
   } | null>(null);
+  const [selectedMembershipContexts, setSelectedMembershipContexts] = useState<Record<string, PlayerListMembership>>({});
+  const [moveModalPlayer, setMoveModalPlayer] = useState<any | null>(null);
+  const [moveSourceMembership, setMoveSourceMembership] = useState<PlayerListMembership | null>(null);
+  const [moveDestinationListId, setMoveDestinationListId] = useState<string>("");
+  const [movingPlayer, setMovingPlayer] = useState(false);
 
   // Archive info cache for popovers
   const [archiveInfoCache, setArchiveInfoCache] = useState<{
@@ -902,13 +911,88 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     }
   };
 
-  const handleRemovePlayer = (itemId: number) => {
+  const handleRemovePlayer = async (itemId: number, listId?: number) => {
+    // In the merged view, changes must be applied against the membership the
+    // user selected for this player rather than an arbitrary merged row.
+    if (!currentList && listId) {
+      try {
+        setError(null);
+        await removePlayerFromList(listId, itemId);
+        await refetch();
+      } catch (err: any) {
+        setError(err.response?.data?.detail || "Failed to remove player from list.");
+      }
+      return;
+    }
     // Add to pending removals instead of saving immediately (batch mode)
     setPendingRemovals((prev) => {
       const newSet = new Set(prev);
       newSet.add(itemId);
       return newSet;
     });
+  };
+
+  const getMembershipContext = (player: any): PlayerListMembership | null => {
+    if (currentList) {
+      return {
+        list_id: currentList.id,
+        list_name: currentList.list_name,
+        description: currentList.description,
+        item_id: player.item_id,
+        stage: player.stage,
+        added_at: player.created_at || null,
+      };
+    }
+    return selectedMembershipContexts[player.universal_id] || null;
+  };
+
+  const getPlayerMemberships = (player: any): PlayerListMembership[] => {
+    if (!player) return [];
+    const memberships = batchMemberships[player.universal_id] || [];
+    if (!currentList || memberships.some((membership) => membership.list_id === currentList.id)) {
+      return memberships;
+    }
+    return [{
+      list_id: currentList.id,
+      list_name: currentList.list_name,
+      description: currentList.description,
+      item_id: player.item_id,
+      stage: player.stage,
+      added_at: player.created_at || null,
+    }, ...memberships];
+  };
+
+  const setMembershipContext = (player: any, membership: PlayerListMembership) => {
+    setSelectedMembershipContexts((previous) => ({ ...previous, [player.universal_id]: membership }));
+  };
+
+  const openMoveModal = (player: any) => {
+    const memberships = getPlayerMemberships(player);
+    const source = getMembershipContext(player) || memberships[0] || null;
+    setMoveModalPlayer(player);
+    setMoveSourceMembership(source);
+    setMoveDestinationListId("");
+  };
+
+  const confirmMovePlayer = async () => {
+    if (!moveModalPlayer || !moveSourceMembership || !moveDestinationListId) return;
+    try {
+      setMovingPlayer(true);
+      setError(null);
+      await movePlayerBetweenLists(
+        moveSourceMembership.list_id,
+        moveSourceMembership.item_id,
+        Number(moveDestinationListId)
+      );
+      setMoveModalPlayer(null);
+      setMoveSourceMembership(null);
+      setMoveDestinationListId("");
+      await refetch();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to move player between lists.");
+    } finally {
+      setMovingPlayer(false);
+    }
   };
 
   // Notes and favorites handlers
@@ -998,7 +1082,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     };
   }, []);
 
-  const handleStageChange = (itemId: number, newStage: string, player?: any) => {
+  const handleStageChange = (itemId: number, newStage: string, player?: any, listId?: number) => {
+    const targetListId = listId || currentList?.id;
+    if (!targetListId) return;
     // Stage 1 and Archived require reason modal
     if (newStage === "Stage 1" || newStage === "Archived") {
       if (!player) {
@@ -1010,11 +1096,18 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         playerName: player.player_name,
         targetStage: newStage as "Stage 1" | "Archived",
         itemId: itemId,
+        listId: targetListId,
         oldStage: player.stage,
       });
       setShowStageReasonModal(true);
     } else {
-      // Stage 2, 3, 4 use batch mode as before
+      if (!currentList) {
+        updatePlayerStage(targetListId, itemId, newStage)
+          .then(refetch)
+          .catch((err: any) => setError(err.response?.data?.detail || "Failed to update player stage."));
+        return;
+      }
+      // Stage 2, 3, 4 use batch mode in a single-list view.
       setPendingStageChanges((prev) => {
         const newMap = new Map(prev);
         newMap.set(itemId, newStage);
@@ -1025,14 +1118,14 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
 
   // Confirm stage change with reason
   const confirmStageChange = async (reason: string, description?: string) => {
-    if (!currentList || !stageReasonModalData) return;
+    if (!stageReasonModalData) return;
 
     try {
       setSavingChanges(true);
       setError(null);
 
       await updatePlayerStage(
-        currentList.id,
+        stageReasonModalData.listId,
         stageReasonModalData.itemId,
         stageReasonModalData.targetStage,
         reason,
@@ -1051,12 +1144,13 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   };
 
   // Open stage history modal
-  const openStageHistory = (player: any) => {
-    if (!currentList) return;
+  const openStageHistory = (player: any, membership?: PlayerListMembership | null) => {
+    const targetMembership = membership || getMembershipContext(player);
+    if (!targetMembership) return;
 
     setHistoryModalData({
-      listId: currentList.id,
-      itemId: player.item_id,
+      listId: targetMembership.list_id,
+      itemId: targetMembership.item_id,
       playerName: player.player_name,
     });
     setShowHistoryModal(true);
@@ -1534,13 +1628,13 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                         Switch to Kanban View
                       </Dropdown.Item>
                       <Dropdown.Divider />
-                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)} className="d-flex align-items-center gap-2">
+                      <Dropdown.Item onClick={() => currentList && openEditModal(currentList)} disabled={!currentList} className="d-flex align-items-center gap-2">
                         <Pencil size={15} />
-                        Edit List
+                        {currentList ? "Edit List" : "Edit List (select one)"}
                       </Dropdown.Item>
-                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)} className="d-flex align-items-center gap-2">
+                      <Dropdown.Item onClick={() => currentList && handleDeleteList(currentList.id)} disabled={!currentList} className="d-flex align-items-center gap-2">
                         <Trash2 size={15} />
-                        Delete List
+                        {currentList ? "Delete List" : "Delete List (select one)"}
                       </Dropdown.Item>
                       <Dropdown.Divider />
                       <Dropdown.Item onClick={handleExport} className="d-flex align-items-center gap-2">
@@ -1594,7 +1688,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
 
             {visibleListIds.size > 0 && !currentList && (
               <div className="mt-2 text-muted" style={{ fontSize: "0.875rem" }}>
-                Select a single list to access actions
+                Stage history is available for each of a player’s lists from their Actions menu. List edit and delete require one selected list.
               </div>
             )}
           </div>
@@ -1642,13 +1736,15 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     </thead>
                     <tbody>
                       {sortedPlayers.map((player) => {
+                        const activeMembership = getMembershipContext(player);
+                        const playerMemberships = getPlayerMemberships(player);
 
                         // Check for pending changes (for visual indicators)
                         const hasPendingStageChange = pendingStageChanges.has(player.item_id);
                         const pendingRemoval = pendingRemovals.has(player.item_id);
                         const currentStage = hasPendingStageChange
                           ? pendingStageChanges.get(player.item_id)!
-                          : player.stage;
+                          : activeMembership?.stage || player.stage;
                         const isArchived = currentStage === "Archived";
 
                         return (
@@ -1772,11 +1868,11 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             <td>{player.age || "N/A"}</td>
                             <td>{player.squad_name || "Unknown"}</td>
                             <td>
-                              {currentList ? (
+                              {currentList && activeMembership ? (
                                 <Form.Select
                                   size="sm"
                                   value={currentStage}
-                                  onChange={(e) => handleStageChange(player.item_id, e.target.value, player)}
+                                  onChange={(e) => handleStageChange(activeMembership.item_id, e.target.value, { ...player, stage: activeMembership.stage }, activeMembership.list_id)}
                                   disabled={pendingRemoval}
                                   style={{
                                     fontSize: "0.75rem",
@@ -1794,23 +1890,33 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   <option value="Archived">Archived</option>
                                 </Form.Select>
                               ) : (
-                                <Badge
-                                  bg=""
-                                  style={{
-                                    fontSize: "0.75rem",
-                                    backgroundColor: getStageBgColor(currentStage),
-                                    color: getStageTextColor(currentStage),
-                                    fontWeight: "600",
-                                  }}
-                                >
-                                  {currentStage}
-                                </Badge>
+                                <div className="d-flex flex-column gap-1" style={{ minWidth: "105px" }}>
+                                  {playerMemberships.map((membership) => (
+                                    <Badge
+                                      key={`stage-${membership.item_id}`}
+                                      bg=""
+                                      style={{
+                                        fontSize: "0.7rem",
+                                        backgroundColor: getStageBgColor(membership.stage),
+                                        color: getStageTextColor(membership.stage),
+                                        fontWeight: "600",
+                                        textAlign: "left",
+                                      }}
+                                      title={`${membership.list_name}: ${membership.stage}`}
+                                    >
+                                      {membership.stage}
+                                    </Badge>
+                                  ))}
+                                  {!loadingMemberships && playerMemberships.length === 0 && (
+                                    <span className="text-muted" style={{ fontSize: "0.75rem" }}>No stage</span>
+                                  )}
+                                </div>
                               )}
                             </td>
                             <td>
                               <MultiListBadges
                                 universalId={player.universal_id}
-                                maxVisible={2}
+                                maxVisible={99}
                                 showStage={false}
                                 memberships={batchMemberships[player.universal_id] || []}
                                 loading={loadingMemberships}
@@ -1862,50 +1968,46 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             </td>
                             <td>{formatLastReportDate(player.last_report_date)}</td>
                             <td>
-                              <div className="btn-group" style={{ justifyContent: "center" }}>
-                                <Button
-                                  size="sm"
-                                  title="Add/Edit Notes"
-                                  onClick={() => handleOpenNotesModal(player)}
-                                  className="btn-action-circle btn-action-edit"
-                                >
-                                  <StickyNote size={13} />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  title="View stage history"
-                                  onClick={() => openStageHistory(player)}
-                                  className="btn-action-circle"
-                                  disabled={!currentList}
-                                >
-                                  <History size={13} />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  title={playerFavorites.has(player.universal_id) ? "Remove from favorites" : "Add to favorites"}
-                                  onClick={() => handleToggleFavorite(player.universal_id)}
-                                  className={`btn-action-circle${playerFavorites.has(player.universal_id) ? " btn-action-favorite-active" : ""}`}
-                                >
-                                  <Star size={13} fill={playerFavorites.has(player.universal_id) ? "currentColor" : "none"} />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  title={playerDecisions.has(player.universal_id) ? "Remove decision" : "Mark as decision"}
-                                  onClick={() => handleToggleDecision(player.universal_id)}
-                                  className={`btn-action-circle${playerDecisions.has(player.universal_id) ? " btn-action-decision-active" : ""}`}
-                                >
-                                  {playerDecisions.has(player.universal_id) ? <CircleAlert size={13} /> : <Circle size={13} />}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  title={!currentList ? "Select a single list to remove players" : pendingRemoval ? "Pending removal" : "Remove from list"}
-                                  onClick={() => handleRemovePlayer(player.item_id)}
-                                  className="btn-action-circle btn-action-delete"
-                                  disabled={!currentList || pendingRemoval}
-                                >
-                                  {pendingRemoval ? "..." : <Trash2 size={13} />}
-                                </Button>
-                              </div>
+                              <Dropdown align="end">
+                                <Dropdown.Toggle size="sm" variant="outline-secondary">Actions</Dropdown.Toggle>
+                                <Dropdown.Menu>
+                                  <Dropdown.Item onClick={() => handleOpenNotesModal(player)}><StickyNote size={14} className="me-2" />Notes</Dropdown.Item>
+                                  {currentList ? (
+                                    <Dropdown.Item onClick={() => openStageHistory(player, activeMembership)}>
+                                      <History size={14} className="me-2" />Stage history
+                                    </Dropdown.Item>
+                                  ) : (
+                                    <>
+                                      <Dropdown.Header>Stage history</Dropdown.Header>
+                                      {playerMemberships.map((membership) => (
+                                        <Dropdown.Item key={`history-${membership.item_id}`} onClick={() => openStageHistory(player, membership)}>
+                                          <History size={14} className="me-2" />{membership.list_name}
+                                        </Dropdown.Item>
+                                      ))}
+                                    </>
+                                  )}
+                                  <Dropdown.Item onClick={() => openMoveModal(player)} disabled={playerMemberships.length === 0 && !activeMembership}>
+                                    <ArrowRightLeft size={14} className="me-2" />Move to list
+                                  </Dropdown.Item>
+                                  <Dropdown.Divider />
+                                  <Dropdown.Item onClick={() => handleToggleFavorite(player.universal_id)}>
+                                    <Star size={14} className="me-2" fill={playerFavorites.has(player.universal_id) ? "currentColor" : "none"} />
+                                    {playerFavorites.has(player.universal_id) ? "Remove from favorites" : "Add to favorites"}
+                                  </Dropdown.Item>
+                                  <Dropdown.Item onClick={() => handleToggleDecision(player.universal_id)}>
+                                    {playerDecisions.has(player.universal_id) ? <CircleAlert size={14} className="me-2" /> : <Circle size={14} className="me-2" />}
+                                    {playerDecisions.has(player.universal_id) ? "Remove decision" : "Mark as decision"}
+                                  </Dropdown.Item>
+                                  <Dropdown.Divider />
+                                  <Dropdown.Item
+                                    className="text-danger"
+                                    onClick={() => handleRemovePlayer(activeMembership?.item_id || player.item_id, activeMembership?.list_id)}
+                                    disabled={!activeMembership || pendingRemoval}
+                                  >
+                                    <Trash2 size={14} className="me-2" />{pendingRemoval ? "Removing…" : "Remove from list"}
+                                  </Dropdown.Item>
+                                </Dropdown.Menu>
+                              </Dropdown>
                             </td>
                           </tr>
                         );
@@ -2153,6 +2255,71 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             ) : (
               `Add ${batchPlayers.length || ""} Player${batchPlayers.length === 1 ? "" : "s"}`
             )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Move Player Modal */}
+      <Modal
+        show={!!moveModalPlayer}
+        onHide={() => !movingPlayer && setMoveModalPlayer(null)}
+        centered
+      >
+        <Modal.Header closeButton={!movingPlayer}>
+          <Modal.Title>Move {moveModalPlayer?.player_name}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small">
+            This removes the player from the source list and adds them to the destination list with the same stage.
+          </p>
+          <Form.Group className="mb-3">
+            <Form.Label>Move from</Form.Label>
+            <Form.Select
+              value={moveSourceMembership?.item_id || ""}
+              disabled={movingPlayer}
+              onChange={(event) => {
+                const membership = getPlayerMemberships(moveModalPlayer).find(
+                  (item) => item.item_id === Number(event.target.value)
+                );
+                setMoveSourceMembership(membership || null);
+                setMoveDestinationListId("");
+              }}
+            >
+              <option value="">Select source list</option>
+              {getPlayerMemberships(moveModalPlayer).map((membership) => (
+                <option key={membership.item_id} value={membership.item_id}>
+                  {membership.list_name} · {membership.stage}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          <Form.Group>
+            <Form.Label>Move to</Form.Label>
+            <Form.Select
+              value={moveDestinationListId}
+              disabled={!moveSourceMembership || movingPlayer}
+              onChange={(event) => setMoveDestinationListId(event.target.value)}
+            >
+              <option value="">Select destination list</option>
+              {lists
+                .filter((list) => list.id !== moveSourceMembership?.list_id)
+                .map((list) => {
+                  const alreadyMember = getPlayerMemberships(moveModalPlayer).some(
+                    (membership) => membership.list_id === list.id
+                  );
+                  return (
+                    <option key={list.id} value={list.id} disabled={alreadyMember}>
+                      {list.list_name}{alreadyMember ? " (already in this list)" : ""}
+                    </option>
+                  );
+                })}
+            </Form.Select>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setMoveModalPlayer(null)} disabled={movingPlayer}>Cancel</Button>
+          <Button variant="primary" onClick={confirmMovePlayer} disabled={!moveSourceMembership || !moveDestinationListId || movingPlayer}>
+            {movingPlayer ? <><Spinner animation="border" size="sm" className="me-2" />Moving...</> : "Move player"}
           </Button>
         </Modal.Footer>
       </Modal>
