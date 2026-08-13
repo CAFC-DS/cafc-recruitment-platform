@@ -79,6 +79,7 @@ interface PlayerReport {
   REPORT_TYPE: string;
   SCOUTING_TYPE: string;
   PURPOSE: string;
+  IS_ARCHIVED: boolean;
   attribute_scores: { [key: string]: number };
   selected_attributes_avg: number | null;
   AGE: number | null;
@@ -107,6 +108,7 @@ const AttributeFilterSection: React.FC = () => {
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
   const [attributeFilters, setAttributeFilters] = useState<AttributeFilter[]>([]);
   const [monthFilter, setMonthFilter] = useState<number>(12);
+  const [includeArchived, setIncludeArchived] = useState<boolean>(false);
 
   // Results
   const [reports, setReports] = useState<PlayerReport[]>([]);
@@ -123,7 +125,7 @@ const AttributeFilterSection: React.FC = () => {
       setSelectedAttributes([]);
       setAttributeFilters([]);
     }
-  }, [selectedPosition]);
+  }, [selectedPosition, includeArchived]);
 
   const fetchAvailableAttributes = async () => {
     try {
@@ -131,7 +133,7 @@ const AttributeFilterSection: React.FC = () => {
       setAttributeError("");
       console.log("Fetching attributes for position:", selectedPosition);
       const response = await axiosInstance.get("/analytics/attributes/by-position", {
-        params: { position: selectedPosition }
+        params: { position: selectedPosition, include_archived: includeArchived }
       });
       console.log("Attributes response:", response.data);
       const attrs = response.data.attributes || [];
@@ -186,7 +188,8 @@ const AttributeFilterSection: React.FC = () => {
 
       const params: any = {
         position: selectedPosition,
-        months: monthFilter
+        months: monthFilter,
+        include_archived: includeArchived
       };
 
       // Only add attribute filters if some have been explicitly set
@@ -211,6 +214,7 @@ const AttributeFilterSection: React.FC = () => {
     setSelectedAttributes([]);
     setAttributeFilters([]);
     setReports([]);
+    setIncludeArchived(false);
   };
 
   const handlePlayerClick = (playerId: number | null, cafcPlayerId: number | null) => {
@@ -330,6 +334,17 @@ const AttributeFilterSection: React.FC = () => {
                 <option value="24">Last 24 Months</option>
               </Form.Select>
             </Form.Group>
+          </Col>
+
+          <Col md={3} className="d-flex align-items-end">
+            <Form.Check
+              type="checkbox"
+              id="include-archived-reports"
+              label="Include archived reports"
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+              className="mb-2"
+            />
           </Col>
         </Row>
 
@@ -580,7 +595,7 @@ const AttributeFilterSection: React.FC = () => {
                   </thead>
                   <tbody>
                     {reports.map((report) => (
-                      <tr key={report.REPORT_ID}>
+                      <tr key={report.REPORT_ID} className={report.IS_ARCHIVED ? "report-card-archived" : ""}>
                         <td>{new Date(report.REPORT_DATE).toLocaleDateString()}</td>
                         <td>
                           <a
@@ -593,6 +608,11 @@ const AttributeFilterSection: React.FC = () => {
                           >
                             {report.PLAYER_NAME}
                           </a>
+                          {report.IS_ARCHIVED && (
+                            <span className="badge-archived d-block mt-1" style={{ width: "fit-content" }}>
+                              ARCHIVED
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span className="age-text">{report.AGE || 'N/A'}</span>

@@ -15820,7 +15820,8 @@ async def get_players_by_score(
 @app.get("/analytics/attributes/by-position")
 async def get_attributes_by_position(
     current_user: User = Depends(get_current_user),
-    position: Optional[str] = None
+    position: Optional[str] = None,
+    include_archived: bool = False
 ):
     """Get available attributes for a specific position"""
     # Analytics access restricted to Admin, Senior Manager, and Manager
@@ -15837,13 +15838,14 @@ async def get_attributes_by_position(
         if position:
             # Get attributes from actual scout reports for this position
             logging.info(f"Fetching attributes from scout reports for position: {position}")
-            cursor.execute("""
+            archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
+            cursor.execute(f"""
                 SELECT DISTINCT
                     sras.ATTRIBUTE_NAME
                 FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
                 JOIN SCOUT_REPORTS sr ON sras.SCOUT_REPORT_ID = sr.ID
                 WHERE sr.POSITION = %s
-                    AND sr.IS_ARCHIVED = FALSE
+                    {archived_filter}
                 ORDER BY sras.ATTRIBUTE_NAME
             """, (position,))
 
@@ -15898,7 +15900,8 @@ async def get_players_by_attributes(
     attributes: Optional[str] = None,
     min_scores: Optional[str] = None,
     max_scores: Optional[str] = None,
-    months: Optional[int] = None
+    months: Optional[int] = None,
+    include_archived: bool = False
 ):
     """Get individual scout reports filtered by position and specific attribute scores"""
     # Analytics access restricted to Admin, Senior Manager, and Manager
@@ -15922,7 +15925,8 @@ async def get_players_by_attributes(
         logging.info(f"Parsed - attribute_list: {attribute_list}, min_score_list: {min_score_list}, max_score_list: {max_score_list}")
 
         # Build base query
-        query = """
+        archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
+        query = f"""
             SELECT
                 sr.ID as report_id,
                 COALESCE(p.PLAYERNAME, 'Unknown') as player_name,
@@ -15936,6 +15940,7 @@ async def get_players_by_attributes(
                 sr.REPORT_TYPE as report_type,
                 sr.SCOUTING_TYPE as scouting_type,
                 sr.PURPOSE as purpose,
+                sr.IS_ARCHIVED as is_archived,
                 DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()) as age,
                 DATE(m.SCHEDULEDDATE) as fixture_date,
                 CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) as fixture
@@ -15946,8 +15951,8 @@ async def get_players_by_attributes(
             )
             LEFT JOIN USERS u ON sr.USER_ID = u.ID
             LEFT JOIN MATCHES m ON sr.MATCH_ID = m.ID
-            WHERE sr.IS_ARCHIVED = FALSE
-            AND sr.REPORT_TYPE = 'Player Assessment'
+            WHERE sr.REPORT_TYPE = 'Player Assessment'
+            {archived_filter}
         """
 
         params = []
@@ -16057,7 +16062,8 @@ async def get_players_by_attributes(
                 "attributes": attribute_list,
                 "min_scores": min_score_list,
                 "max_scores": max_score_list,
-                "months": months
+                "months": months,
+                "include_archived": include_archived
             }
         }
 
