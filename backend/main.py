@@ -15836,32 +15836,70 @@ async def get_attributes_by_position(
         cursor = conn.cursor(snowflake.connector.DictCursor)
 
         if position:
-            # Get attributes from actual scout reports for this position
-            logging.info(f"Fetching attributes from scout reports for position: {position}")
-            archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
+            # Position attributes are the canonical filter options.  Querying the
+            # report-score table first requires a DISTINCT join across every
+            # historical report for the position; including archived reports made
+            # that query large enough for Snowflake to cancel it.  It also meant
+            # the choices changed depending on whether archived reports were
+            # selected, even though the position's assessment attributes do not.
+            position_to_attribute_group = {
+                "GK": "GOALKEEPER",
+                "RB": "FULL BACK",
+                "LB": "FULL BACK",
+                "RWB": "WINGBACK",
+                "LWB": "WINGBACK",
+                "RCB(3)": "WIDE CB",
+                "LCB(3)": "WIDE CB",
+                "RCB(2)": "CENTRAL CB",
+                "LCB(2)": "CENTRAL CB",
+                "CCB(3)": "CENTRAL CB",
+                "DM": "DEFENSIVE MIDFIELDER",
+                "CM": "CENTRAL MIDFIELDER",
+                "AM": "ATTACKING MIDFIELDER",
+                "RAM": "ATTACKING MIDFIELDER",
+                "LAM": "ATTACKING MIDFIELDER",
+                "RW": "WINGER",
+                "LW": "WINGER",
+                "Target Man CF": "TARGET CF",
+                "In Behind CF": "IN BEHIND CF",
+            }
+            attribute_group = position_to_attribute_group.get(position, position)
+
+            logging.info(
+                "Fetching configured attributes for position %s (group %s)",
+                position,
+                attribute_group,
+            )
             cursor.execute(f"""
-                SELECT DISTINCT
-                    sras.ATTRIBUTE_NAME
-                FROM SCOUT_REPORT_ATTRIBUTE_SCORES sras
-                JOIN SCOUT_REPORTS sr ON sras.SCOUT_REPORT_ID = sr.ID
-                WHERE sr.POSITION = %s
-                    {archived_filter}
-                ORDER BY sras.ATTRIBUTE_NAME
-            """, (position,))
+                SELECT
+                    ATTRIBUTE_NAME,
+                    ATTRIBUTE_GROUP,
+                    DISPLAY_ORDER
+                FROM POSITION_ATTRIBUTES
+                WHERE POSITION = %s
+                ORDER BY DISPLAY_ORDER, ATTRIBUTE_NAME
+            """, (attribute_group,))
 
             attributes = cursor.fetchall()
 
-            # If no attributes found in reports, try POSITION_ATTRIBUTES table
+            # Preserve support for any future position that has reports but has
+            # not yet been added to POSITION_ATTRIBUTES. This is deliberately a
+            # fallback: configured positions never need the expensive score join.
             if not attributes:
-                logging.info(f"No attributes in reports, trying POSITION_ATTRIBUTES table")
-                cursor.execute("""
-                    SELECT
-                        ATTRIBUTE_NAME,
-                        ATTRIBUTE_GROUP,
-                        DISPLAY_ORDER
-                    FROM POSITION_ATTRIBUTES
-                    WHERE POSITION = %s
-                    ORDER BY DISPLAY_ORDER
+                logging.info(
+                    "No configured attributes for position %s; falling back to report data",
+                    position,
+                )
+                archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
+                cursor.execute(f"""
+                    SELECT DISTINCT sras.ATTRIBUTE_NAME
+                    FROM SCOUT_REPORTS sr
+                    JOIN SCOUT_REPORT_ATTRIBUTE_SCORES sras
+                        ON sras.SCOUT_REPORT_ID = sr.ID
+                    WHERE sr.POSITION = %s
+                    AND sr.REPORT_TYPE = 'Player Assessment'
+                    {archived_filter}
+                    ORDER BY sras.ATTRIBUTE_NAME
                 """, (position,))
                 attributes = cursor.fetchall()
         else:

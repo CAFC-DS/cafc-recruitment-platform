@@ -370,7 +370,7 @@ const AttributeFilterSection: React.FC = () => {
           <Alert variant="warning">
             {attributeError}
             <br />
-            <small>This may mean there are no attributes configured for this position in the database.</small>
+            <small>Please try again, or check that attributes are configured for this position.</small>
           </Alert>
         ) : availableAttributes.length === 0 ? (
           <Alert variant="info">
