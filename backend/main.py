@@ -16881,12 +16881,16 @@ async def get_all_lists_with_details(
         # Map individual IDs to complete keys for recommendation matching
         player_id_to_key = {}  # Maps external ID to (player_id, cafc_player_id)
         cafc_id_to_key = {}    # Maps internal ID to (player_id, cafc_player_id)
+        player_name_to_key = {}  # Fallback for imported logs keyed only by player name
 
         for row in cursor.fetchall():
             player_rows.append(row)
             player_id = row[2]  # PLAYER_ID
             cafc_player_id = row[3]  # CAFC_PLAYER_ID
             key = (player_id, cafc_player_id)
+            player_name = str(row[9] or "").strip().casefold()
+            if player_name:
+                player_name_to_key[player_name] = key
 
             if player_id:
                 all_player_ids.add(player_id)
@@ -17015,6 +17019,74 @@ async def get_all_lists_with_details(
                     import traceback
                     print(f"DEBUG: Exception in recommendation counting: {traceback.format_exc()}")
 
+        # Squad changes are optional enrichment: older deployments may not have
+        # SQUAD_CHANGE_LOG, or may use a different column naming convention. A
+        # schema mismatch must never prevent the lists page from loading.
+        squad_change_lookup = {}
+        squad_change_name_lookup = {}
+        if all_player_ids or all_cafc_ids:
+            try:
+                cursor.execute("DESCRIBE TABLE squad_change_log")
+                squad_change_columns = {str(row[0]).upper(): str(row[0]) for row in cursor.fetchall()}
+
+                def squad_change_column(*candidates):
+                    return next((squad_change_columns[name] for name in candidates if name in squad_change_columns), None)
+
+                external_id_column = squad_change_column("PLAYER_ID", "PLAYERID", "EXTERNAL_PLAYER_ID")
+                internal_id_column = squad_change_column("CAFC_PLAYER_ID", "INTERNAL_PLAYER_ID")
+                player_name_column = squad_change_column("PLAYER_NAME", "PLAYERNAME", "NAME")
+                old_squad_column = squad_change_column("OLD_SQUAD", "OLD_SQUADNAME", "OLD_SQUAD_NAME", "PREVIOUS_SQUAD", "FROM_SQUAD")
+                new_squad_column = squad_change_column("NEW_SQUAD", "NEW_SQUADNAME", "NEW_SQUAD_NAME", "CURRENT_SQUAD", "TO_SQUAD")
+                changed_at_column = squad_change_column("DETECTED_AT", "CHANGED_AT", "CHANGE_DATE", "CHANGED_DATE", "SQUAD_CHANGE_DATE", "SQUAD_CHANGE_TIMESTAMP", "TRANSFER_DATE", "CREATED_AT")
+
+                if old_squad_column and new_squad_column and changed_at_column and (external_id_column or internal_id_column or player_name_column):
+                    squad_conditions = []
+                    squad_params = []
+                    if external_id_column and all_player_ids:
+                        external_ids = ", ".join(str(player_id) for player_id in all_player_ids)
+                        squad_conditions.append(f"scl.{external_id_column} IN ({external_ids})")
+                    if internal_id_column and all_cafc_ids:
+                        internal_ids = ", ".join(str(player_id) for player_id in all_cafc_ids)
+                        squad_conditions.append(f"scl.{internal_id_column} IN ({internal_ids})")
+                    if player_name_column and player_name_to_key:
+                        name_placeholders = ", ".join(["%s"] * len(player_name_to_key))
+                        squad_conditions.append(f"UPPER(TRIM(scl.{player_name_column})) IN ({name_placeholders})")
+                        squad_params.extend(name.upper() for name in player_name_to_key)
+
+                    if squad_conditions:
+                        external_select = f"scl.{external_id_column}" if external_id_column else "NULL"
+                        internal_select = f"scl.{internal_id_column}" if internal_id_column else "NULL"
+                        name_select = f"scl.{player_name_column}" if player_name_column else "NULL"
+                        cursor.execute(
+                            f"""
+                            SELECT {external_select}, {internal_select}, {name_select},
+                                   scl.{old_squad_column}, scl.{new_squad_column}, scl.{changed_at_column}
+                            FROM squad_change_log scl
+                            WHERE ({' OR '.join(squad_conditions)})
+                              AND scl.{changed_at_column} >= DATEADD(day, -7, CURRENT_TIMESTAMP())
+                            QUALIFY ROW_NUMBER() OVER (
+                                PARTITION BY {external_select}, {internal_select}, {name_select}
+                                ORDER BY scl.{changed_at_column} DESC
+                            ) = 1
+                            """,
+                            squad_params,
+                        )
+                        for change_row in cursor.fetchall():
+                            change_key = (change_row[0], change_row[1])
+                            change_data = {
+                                "old_squad": change_row[3],
+                                "new_squad": change_row[4],
+                                "changed_at": change_row[5].isoformat() if change_row[5] else None,
+                            }
+                            if change_row[0] is not None or change_row[1] is not None:
+                                squad_change_lookup[change_key] = change_data
+                            if change_row[2]:
+                                squad_change_name_lookup[str(change_row[2]).strip().casefold()] = change_data
+                else:
+                    logging.warning("SQUAD_CHANGE_LOG has no supported player/squad/date column combination")
+            except Exception as squad_change_error:
+                logging.warning(f"Could not enrich lists with recent squad changes: {squad_change_error}")
+
         # Build player data and attach to lists
         for row in player_rows:
             list_id = row[0]
@@ -17086,6 +17158,8 @@ async def get_all_lists_with_details(
                 "video_reports": stats["video_reports"],
                 "last_report_date": stats["last_report_date"].isoformat() if stats["last_report_date"] else None,
                 "intel_reports_count": intel_reports_count,
+                "recent_squad_change": squad_change_lookup.get((player_id, cafc_player_id))
+                or squad_change_name_lookup.get(str(row[9] or "").strip().casefold()),
             }
 
             lists_data[list_id]["players"].append(player_obj)

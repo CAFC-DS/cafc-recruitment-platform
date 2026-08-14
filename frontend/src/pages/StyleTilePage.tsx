@@ -1,10 +1,10 @@
 import React from "react";
 import { Table, Button } from "react-bootstrap";
-import { UserRound, Eye, Pencil, Trash2, ClipboardList, Laptop, Flag, Star, CircleAlert } from "lucide-react";
-import { IconBuildingStadium } from "@tabler/icons-react";
+import { UserRound, Eye, Pencil, Trash2, ClipboardList, Flag, Star, CircleAlert } from "lucide-react";
 import DarkModeToggle from "../components/DarkModeToggle";
 import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import { getFlagColor, getContrastTextColor } from "../utils/colorUtils";
 import "./StyleTilePage.css";
 
@@ -80,11 +80,7 @@ const TypeCell: React.FC<{
           <Flag size={11} fill="currentColor" />
         </span>
       )}
-      {scoutingType === "Live" ? (
-        <IconBuildingStadium size={18} aria-label="Live" stroke={1.75} />
-      ) : (
-        <Laptop size={16} aria-label="Video" />
-      )}
+      <ScoutingTypeBadge scoutingType={scoutingType} />
     </div>
   );
 };

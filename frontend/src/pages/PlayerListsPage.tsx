@@ -60,6 +60,7 @@ import {
   PlayerListFilters,
 } from "../services/playerListsService";
 import GradeChip from "../components/GradeChip";
+import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import {
   Goal,
   Plus,
@@ -77,7 +78,6 @@ import {
   Info,
   ArrowRightLeft,
 } from "lucide-react";
-import { IconBuildingStadium } from "@tabler/icons-react";
 import { useTheme } from "../contexts/ThemeContext";
 import {
   colors,
@@ -969,6 +969,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const openMoveModal = (player: any) => {
     const memberships = getPlayerMemberships(player);
     const source = getMembershipContext(player) || memberships[0] || null;
+    if (!source) {
+      setError("This player's list memberships are still loading. Please try again in a moment.");
+      return;
+    }
     setMoveModalPlayer(player);
     setMoveSourceMembership(source);
     setMoveDestinationListId("");
@@ -1772,6 +1776,31 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 }}
                                 style={{ textDecoration: "none", color: theme.isDark ? "#60a5fa" : colors.primary }}
                               >
+                                {player.recent_squad_change && (
+                                  <OverlayTrigger
+                                    trigger={["hover", "focus"]}
+                                    placement="top"
+                                    overlay={
+                                      <Popover id={`squad-change-${player.item_id}`}>
+                                        <Popover.Body>
+                                          <strong>Recent squad change</strong><br />
+                                          {player.recent_squad_change.old_squad || "Unknown"} → {player.recent_squad_change.new_squad || "Unknown"}
+                                          {player.recent_squad_change.changed_at && (
+                                            <><br /><small>{new Date(player.recent_squad_change.changed_at).toLocaleDateString("en-GB")}</small></>
+                                          )}
+                                        </Popover.Body>
+                                      </Popover>
+                                    }
+                                  >
+                                    <span
+                                      role="img"
+                                      aria-label="Recent squad change"
+                                      title="Recent squad change"
+                                      className="me-2 d-inline-block"
+                                      style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#f59e0b", boxShadow: "0 0 4px rgba(245, 158, 11, 0.55)" }}
+                                    />
+                                  </OverlayTrigger>
+                                )}
                                 <strong>
                                   {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
                                 </strong>
@@ -1932,21 +1961,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             <td>
                               {player.report_count}
                               {player.live_reports > 0 && (
-                                <Badge
-                                  bg=""
-                                  className="ms-2 d-inline-flex align-items-center gap-1"
-                                  title={`${player.live_reports} live report${player.live_reports === 1 ? "" : "s"}`}
-                                  style={{
-                                    backgroundColor: "var(--color-surface)",
-                                    color: "var(--color-text)",
-                                    border: "1px solid var(--color-border)",
-                                    fontSize: "0.75rem",
-                                    padding: "3px 6px",
-                                  }}
-                                >
-                                  <IconBuildingStadium size={12} stroke={1.75} />
-                                  {player.live_reports}
-                                </Badge>
+                                <span className="ms-2"><ScoutingTypeBadge scoutingType="Live" count={player.live_reports} /></span>
+                              )}
+                              {player.video_reports > 0 && (
+                                <span className="ms-2"><ScoutingTypeBadge scoutingType="Video" count={player.video_reports} /></span>
                               )}
                               {(player.intel_reports_count || 0) > 0 && (
                                 <Badge

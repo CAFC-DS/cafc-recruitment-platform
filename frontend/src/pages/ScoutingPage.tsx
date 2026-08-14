@@ -34,9 +34,9 @@ import { Player } from "../types/Player";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import {
   Flag,
-  Laptop,
   Clapperboard,
   Eye,
   Pencil,
@@ -46,7 +46,6 @@ import {
   SlidersHorizontal,
   Check,
 } from "lucide-react";
-import { IconBuildingStadium } from "@tabler/icons-react";
 
 interface ScoutReport {
   report_id: number;
@@ -516,20 +515,7 @@ const ScoutingPage: React.FC = () => {
   };
 
   const getScoutingTypeBadge = (scoutingType: string) => {
-    const isLive = scoutingType.toLowerCase() === "live";
-    return (
-      <span
-        className="badge badge-neutral-grey"
-        style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
-        title={`Scouting Type: ${scoutingType}`}
-      >
-        {isLive ? (
-          <IconBuildingStadium size={24} stroke={1.75} aria-label="Live" />
-        ) : (
-          <Laptop size={24} aria-label="Video" />
-        )}
-      </span>
-    );
+    return <ScoutingTypeBadge scoutingType={scoutingType} size="md" />;
   };
 
   const handlePageChange = (pageNumber: number) => {

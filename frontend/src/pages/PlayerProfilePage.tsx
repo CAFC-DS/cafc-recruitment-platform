@@ -42,10 +42,10 @@ import { getFlagColor, getRecommendationColor, getContrastTextColor, getGradeCol
 import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import ShimmerLoading from "../components/ShimmerLoading";
 import {
   Flag,
-  Laptop,
   Clapperboard,
   TriangleAlert,
   History,
@@ -57,7 +57,6 @@ import {
   ClipboardList,
   BarChart3,
 } from "lucide-react";
-import { IconBuildingStadium } from "@tabler/icons-react";
 import { getStageBgColor, getStageTextColor } from "../styles/playerLists.theme";
 import { getRecommendationStatusConfig } from "../utils/agentRecommendationStatus";
 import {
@@ -157,20 +156,7 @@ const getFlagBadge = (report: ScoutReport) => {
 };
 
 const getScoutingTypeBadge = (scoutingType: string) => {
-  const isLive = scoutingType.toLowerCase() === "live";
-  return (
-    <span
-      className="badge badge-neutral-grey"
-      style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
-      title={`Scouting Type: ${scoutingType}`}
-    >
-      {isLive ? (
-        <IconBuildingStadium size={24} stroke={1.75} aria-label="Live" />
-      ) : (
-        <Laptop size={24} aria-label="Video" />
-      )}
-    </span>
-  );
+  return <ScoutingTypeBadge scoutingType={scoutingType} size="md" />;
 };
 
 // Age at a given date (used so clip cards show the player's age at the report's

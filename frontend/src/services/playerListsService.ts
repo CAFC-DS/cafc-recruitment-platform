@@ -48,6 +48,11 @@ export interface PlayerInList {
   video_reports: number;
   last_report_date?: string | null;
   intel_reports_count?: number;
+  recent_squad_change?: {
+    old_squad: string | null;
+    new_squad: string | null;
+    changed_at: string | null;
+  } | null;
 }
 
 export interface ListWithPlayers extends PlayerList {

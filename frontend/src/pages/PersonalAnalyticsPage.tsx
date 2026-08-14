@@ -22,6 +22,7 @@ import SimpleLineChart from "../components/analytics/SimpleLineChart";
 import SimpleStatsCard from "../components/analytics/SimpleStatsCard";
 import PlayerReportModal from "../components/PlayerReportModal";
 import GradeChip from "../components/GradeChip";
+import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
   PersonalAnalyticsReportRow,
@@ -345,17 +346,7 @@ const PersonalAnalyticsPage: React.FC = () => {
   };
 
   const getScoutingTypeBadge = (scoutingType: string | null) => {
-    if (!scoutingType) return null;
-    const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
-    return (
-      <span
-        className="badge badge-neutral-grey"
-        style={{ cursor: "pointer", fontSize: "16px" }}
-        title={`Scouting Type: ${scoutingType}`}
-      >
-        {icon}
-      </span>
-    );
+    return <ScoutingTypeBadge scoutingType={scoutingType} size="md" />;
   };
 
   if (currentUserLoading || loading) {

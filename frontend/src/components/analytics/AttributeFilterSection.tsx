@@ -7,6 +7,7 @@ import axiosInstance from "../../axiosInstance";
 import { getPlayerProfilePathFromSource } from "../../utils/playerNavigation";
 import { getAverageAttributeScoreColor } from "../../utils/colorUtils";
 import GradeChip from "../GradeChip";
+import ScoutingTypeBadge from "../ScoutingTypeBadge";
 
 // CSS for range sliders
 const rangeSliderStyles = `
@@ -227,9 +228,7 @@ const AttributeFilterSection: React.FC = () => {
   };
 
   const getScoutingTypeBadge = (scoutingType: string | null) => {
-    if (!scoutingType) return 'N/A';
-    const icon = scoutingType.toLowerCase() === "live" ? "🏟️" : "💻";
-    return `${icon} ${scoutingType}`;
+    return scoutingType ? <ScoutingTypeBadge scoutingType={scoutingType} /> : 'N/A';
   };
 
   const handleExportCSV = () => {
