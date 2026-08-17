@@ -1804,6 +1804,16 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 <strong>
                                   {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
                                 </strong>
+                                {playerFavorites.has(player.universal_id) && (
+                                  <span
+                                    className="ms-2 d-inline-flex align-items-center"
+                                    title="Favorited"
+                                    aria-label="Favorited"
+                                    style={{ color: "#FFD700" }}
+                                  >
+                                    <Star size={14} fill="currentColor" aria-hidden="true" />
+                                  </span>
+                                )}
                                 {getPlayerNotes(player.universal_id) && (
                                   <span
                                     className="ms-2 d-inline-flex align-items-center"
