@@ -32,6 +32,7 @@ import axiosInstance from "../axiosInstance";
 import PlayerReportModal from "../components/PlayerReportModal";
 import IntelReportModal from "../components/IntelReportModal";
 import IntelModal from "../components/IntelModal";
+import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
 import AgentRecommendationModal from "../components/AgentRecommendationModal";
 import SubmissionStatusBadge from "../components/agents/SubmissionStatusBadge";
 import ShareLinkModal from "../components/ShareLinkModal";
@@ -583,6 +584,8 @@ const PlayerProfilePage: React.FC = () => {
 
   // Scout report edit/delete state
   const [editScoutReportId, setEditScoutReportId] = useState<number | null>(null);
+  const [editScoutReportData, setEditScoutReportData] = useState<any>(null);
+  const [showEditScoutModal, setShowEditScoutModal] = useState(false);
   const [deleteScoutReportId, setDeleteScoutReportId] = useState<number | null>(null);
   const [deleteScoutLoading, setDeleteScoutLoading] = useState(false);
   const [showDeleteScoutModal, setShowDeleteScoutModal] = useState(false);
@@ -879,13 +882,21 @@ const PlayerProfilePage: React.FC = () => {
   const handleEditScoutReport = async (reportId: number) => {
     try {
       setLoadingReportId(reportId);
-      // Navigate to scouting page with edit parameters
-      navigate(`/scouting?editReportId=${reportId}`);
+      const response = await axiosInstance.get(`/scout_reports/details/${reportId}`);
+      setEditScoutReportData(response.data);
+      setEditScoutReportId(reportId);
+      setShowEditScoutModal(true);
     } catch (error) {
       console.error("Error initiating edit for scout report:", error);
     } finally {
       setLoadingReportId(null);
     }
+  };
+
+  const handleEditScoutModalHide = () => {
+    setShowEditScoutModal(false);
+    setEditScoutReportId(null);
+    setEditScoutReportData(null);
   };
 
   const handleDeleteScoutReport = (reportId: number) => {
@@ -3707,6 +3718,19 @@ const PlayerProfilePage: React.FC = () => {
         editMode={editMode}
         reportId={editReportId}
         existingReportData={editReportData}
+      />
+
+      {/* Scout Report Edit Modal */}
+      <ScoutingAssessmentModal
+        show={showEditScoutModal}
+        onHide={handleEditScoutModalHide}
+        selectedPlayer={profile ? { player_id: profile.player_id, player_name: profile.player_name } : null}
+        onAssessmentSubmitSuccess={() => {
+          fetchPlayerProfile();
+        }}
+        editMode={true}
+        reportId={editScoutReportId}
+        existingReportData={editScoutReportData}
       />
 
       {/* Delete Confirmation Modal */}
