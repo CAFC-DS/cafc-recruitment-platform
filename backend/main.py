@@ -33,6 +33,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
 import uuid
+import math
+import statistics
 import secrets
 import hashlib
 import tempfile
@@ -11509,6 +11511,403 @@ async def get_player_attributes(
         raise HTTPException(
             status_code=500, detail=f"Error fetching player attributes: {e}"
         )
+    finally:
+        if conn:
+            conn.close()
+
+
+TECHNICAL_ALL_OUTFIELD = {
+    "central_centre_back", "full_back", "defensive_midfielder",
+    "central_midfielder", "attacking_midfielder", "winger",
+    "in_behind_centre_forward",
+}
+TECHNICAL_METRICS = (
+    {"id": "passes", "category": "Possession", "label": "Passes", "roles": TECHNICAL_ALL_OUTFIELD | {"goalkeeper"}},
+    {"id": "pass_completion", "category": "Possession", "label": "Pass completion", "roles": TECHNICAL_ALL_OUTFIELD | {"goalkeeper"}, "unit": "%"},
+    {"id": "progressive_passes", "category": "Possession", "label": "Progressive passes", "roles": TECHNICAL_ALL_OUTFIELD | {"goalkeeper"}},
+    {"id": "crosses", "category": "Attacking", "label": "Crosses", "roles": {"full_back", "attacking_midfielder", "winger"}},
+    {"id": "successful_crosses", "category": "Attacking", "label": "Successful crosses", "roles": {"full_back", "attacking_midfielder", "winger"}},
+    {"id": "dribbles", "category": "Possession", "label": "Dribbles", "roles": TECHNICAL_ALL_OUTFIELD - {"central_centre_back"}},
+    {"id": "successful_dribbles", "category": "Possession", "label": "Successful dribbles", "roles": TECHNICAL_ALL_OUTFIELD - {"central_centre_back"}},
+    {"id": "shots", "category": "Attacking", "label": "Shots", "roles": TECHNICAL_ALL_OUTFIELD},
+    {"id": "goals", "category": "Attacking", "label": "Goals", "roles": TECHNICAL_ALL_OUTFIELD},
+    {"id": "box_receptions", "category": "Attacking", "label": "Box receptions", "roles": TECHNICAL_ALL_OUTFIELD - {"central_centre_back"}},
+    {"id": "hold_up_receptions", "category": "Attacking", "label": "Hold-up receptions", "roles": {"in_behind_centre_forward"}},
+    {"id": "interceptions", "category": "Defending", "label": "Interceptions", "roles": TECHNICAL_ALL_OUTFIELD},
+    {"id": "loose_ball_regains", "category": "Defending", "label": "Loose-ball regains", "roles": TECHNICAL_ALL_OUTFIELD | {"goalkeeper"}},
+    {"id": "ground_duels", "category": "Defending", "label": "Ground duels", "roles": TECHNICAL_ALL_OUTFIELD},
+    {"id": "clearances", "category": "Defending", "label": "Clearances", "roles": {"central_centre_back", "full_back", "defensive_midfielder", "goalkeeper"}},
+    {"id": "blocks", "category": "Defending", "label": "Blocks", "roles": {"central_centre_back", "full_back", "defensive_midfielder"}},
+    {"id": "fouls", "category": "Defending", "label": "Fouls committed", "roles": TECHNICAL_ALL_OUTFIELD, "invert": True},
+    {"id": "offsides", "category": "Attacking", "label": "Offsides", "roles": {"winger", "in_behind_centre_forward"}, "invert": True},
+    {"id": "saves", "category": "Goalkeeping", "label": "Saves", "roles": {"goalkeeper"}},
+    {"id": "catches", "category": "Goalkeeping", "label": "Catches", "roles": {"goalkeeper"}},
+    {"id": "goal_kicks", "category": "Goalkeeping", "label": "Goal kicks", "roles": {"goalkeeper"}},
+)
+
+TECHNICAL_RADAR_METRICS = {
+    "goalkeeper": ("saves", "catches", "pass_completion", "passes", "progressive_passes", "clearances", "loose_ball_regains"),
+    "central_centre_back": ("pass_completion", "passes", "progressive_passes", "interceptions", "loose_ball_regains", "clearances", "blocks", "ground_duels"),
+    "full_back": ("progressive_passes", "crosses", "successful_crosses", "successful_dribbles", "box_receptions", "interceptions", "loose_ball_regains", "ground_duels"),
+    "defensive_midfielder": ("pass_completion", "passes", "progressive_passes", "interceptions", "loose_ball_regains", "ground_duels", "clearances", "successful_dribbles"),
+    "central_midfielder": ("pass_completion", "passes", "progressive_passes", "successful_dribbles", "box_receptions", "shots", "interceptions", "loose_ball_regains"),
+    "attacking_midfielder": ("goals", "shots", "box_receptions", "successful_dribbles", "progressive_passes", "crosses", "loose_ball_regains", "interceptions"),
+    "winger": ("goals", "shots", "box_receptions", "dribbles", "successful_dribbles", "crosses", "successful_crosses", "progressive_passes"),
+    "in_behind_centre_forward": ("goals", "shots", "box_receptions", "hold_up_receptions", "successful_dribbles", "pass_completion", "offsides", "loose_ball_regains"),
+}
+
+
+@app.get("/players/{player_id}/position-history")
+async def get_player_position_history(
+    player_id: str,
+    competition: Optional[str] = None,
+    season: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+):
+    """Return authoritative seasonal position minutes for the profile header."""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+        if data_source != "external":
+            return {"available": False, "message": "Position history is unavailable for this player.", "filters": {"available": []}, "positions": []}
+
+        source_player_id = int(player_data[0])
+        cursor.execute(
+            """
+            SELECT DISTINCT c.COMPETITION_NAME, k.SEASON
+            FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
+            JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
+              ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
+            WHERE k.SOURCE_PLAYER_ID = %s AND k.PLAY_DURATION_SECONDS > 0
+            ORDER BY k.SEASON DESC, c.COMPETITION_NAME
+            """,
+            (source_player_id,),
+        )
+        available_pairs = [{"competition": row[0], "season": row[1]} for row in cursor.fetchall()]
+        if not available_pairs:
+            return {"available": False, "message": "No position history is available.", "filters": {"available": []}, "positions": []}
+
+        selected = next(
+            (pair for pair in available_pairs if pair["competition"] == competition and pair["season"] == season),
+            available_pairs[0],
+        )
+        competition, season = selected["competition"], selected["season"]
+        cache_key = f"player_position_history_v1_{source_player_id}_{competition}_{season}"
+        cached = get_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        cursor.execute(
+            """
+            WITH player_matches AS (
+                SELECT k.SOURCE_FIXTURE_ID, k.POSITION_CODE,
+                       MAX(k.PLAY_DURATION_SECONDS) AS SECONDS
+                FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
+                JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
+                  ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
+                WHERE k.SOURCE_PLAYER_ID = %s
+                  AND c.COMPETITION_NAME = %s AND k.SEASON = %s
+                  AND k.PLAY_DURATION_SECONDS > 0 AND k.POSITION_CODE IS NOT NULL
+                GROUP BY 1,2
+            )
+            SELECT POSITION_CODE, COUNT(DISTINCT SOURCE_FIXTURE_ID), SUM(SECONDS) / 60.0
+            FROM player_matches
+            GROUP BY 1
+            ORDER BY 3 DESC
+            """,
+            (source_player_id, competition, season),
+        )
+        rows = cursor.fetchall()
+        total_minutes = sum(float(row[2] or 0) for row in rows)
+        positions = [
+            {
+                "position": row[0], "match_count": int(row[1]),
+                "minutes": round(float(row[2] or 0)),
+                "share_pct": round(float(row[2] or 0) * 100 / total_minutes, 1) if total_minutes else 0,
+            }
+            for row in rows
+        ]
+        response = {
+            "available": bool(positions), "message": None if positions else "No position history is available.",
+            "player_id": player_id,
+            "filters": {"competition": competition, "season": season, "available": available_pairs},
+            "positions": positions,
+        }
+        set_cache(cache_key, response, expiry_minutes=60)
+        return response
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.exception(exc)
+        raise HTTPException(status_code=500, detail=f"Error fetching position history: {exc}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/players/{player_id}/technical-metrics")
+async def get_player_technical_metrics(
+    player_id: str,
+    competition: Optional[str] = None,
+    season: Optional[str] = None,
+    position: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+):
+    """Event-derived historical technical metrics, normalised per 90 minutes."""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+        if data_source != "external":
+            return {"available": False, "message": "Technical event data is only available for external players.", "player_id": player_id, "filters": {}, "entries": []}
+
+        source_player_id = int(player_data[0])
+        cursor.execute(
+            """
+            SELECT DISTINCT c.COMPETITION_NAME, k.SEASON
+            FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
+            JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
+              ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
+            JOIN CAFC_DB.IMPECT_RAW.EVENTS e
+              ON e.MATCH_ID = k.SOURCE_FIXTURE_ID AND e.PLAYER_ID = k.SOURCE_PLAYER_ID
+            WHERE k.SOURCE_PLAYER_ID = %s AND k.PLAY_DURATION_SECONDS > 0
+            ORDER BY k.SEASON DESC, c.COMPETITION_NAME
+            """,
+            (source_player_id,),
+        )
+        available_pairs = [{"competition": r[0], "season": r[1]} for r in cursor.fetchall()]
+        if not available_pairs:
+            return {"available": False, "message": "There is no technical event data for this player.", "player_id": player_id, "filters": {"available": []}, "entries": []}
+
+        valid_pair = next((p for p in available_pairs if p["competition"] == competition and p["season"] == season), None)
+        selected = valid_pair or available_pairs[0]
+        competition, season = selected["competition"], selected["season"]
+        cache_key = f"technical_metrics_v2_{source_player_id}_{competition}_{season}_{position or 'Overall'}"
+        cached = get_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        # CORE fixture KPI rows repeat once per KPI. Dedupe them before using the
+        # authoritative provider play duration as the per-90 denominator.
+        cursor.execute(
+            """
+            WITH minutes AS (
+                SELECT k.SOURCE_PLAYER_ID AS PLAYER_ID, k.SOURCE_FIXTURE_ID AS MATCH_ID,
+                       k.POSITION_CODE AS POSITION, MAX(k.PLAY_DURATION_SECONDS) AS SECONDS
+                FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
+                JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
+                  ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
+                WHERE c.COMPETITION_NAME = %s AND k.SEASON = %s
+                  AND k.PLAY_DURATION_SECONDS > 0
+                GROUP BY 1,2,3
+            ), event_match AS (
+                SELECT e.PLAYER_ID, e.MATCH_ID, e.PLAYER_POSITION AS POSITION,
+                    COUNT_IF(e.ACTION_TYPE = 'PASS') AS PASS_ATTEMPTS,
+                    COUNT_IF(e.ACTION_TYPE = 'PASS' AND e.RESULT = 'SUCCESS') AS COMPLETED_PASSES,
+                    COUNT_IF(e.ACTION_TYPE = 'PASS' AND e.RESULT = 'SUCCESS'
+                             AND TRY_TO_DOUBLE(TO_VARCHAR(e.END_DETAIL:adjCoordinates:x)) > TRY_TO_DOUBLE(TO_VARCHAR(e.START_DETAIL:adjCoordinates:x)) + 10) AS PROGRESSIVE_PASSES,
+                    COUNT_IF(e.ACTION_TYPE = 'PASS' AND e.ACTION IN ('HIGH_CROSS','LOW_CROSS')) AS CROSSES,
+                    COUNT_IF(e.ACTION_TYPE = 'PASS' AND e.ACTION IN ('HIGH_CROSS','LOW_CROSS') AND e.RESULT = 'SUCCESS') AS SUCCESSFUL_CROSSES,
+                    COUNT_IF(e.ACTION_TYPE = 'DRIBBLE') AS DRIBBLES,
+                    COUNT_IF(e.ACTION_TYPE = 'DRIBBLE' AND e.RESULT = 'SUCCESS') AS SUCCESSFUL_DRIBBLES,
+                    COUNT_IF(e.ACTION_TYPE IN ('SHOT','GOAL')) AS SHOTS,
+                    COUNT_IF(e.ACTION_TYPE = 'GOAL') AS GOALS,
+                    COUNT_IF(e.ACTION_TYPE = 'RECEPTION' AND e.ACTION = 'AVAILABILITY_IN_THE_BOX') AS BOX_RECEPTIONS,
+                    COUNT_IF(e.ACTION_TYPE = 'RECEPTION' AND e.ACTION = 'HOLD_UP_PLAY') AS HOLD_UP_RECEPTIONS,
+                    COUNT_IF(e.ACTION_TYPE = 'INTERCEPTION') AS INTERCEPTIONS,
+                    COUNT_IF(e.ACTION_TYPE = 'LOOSE_BALL_REGAIN') AS LOOSE_BALL_REGAINS,
+                    COUNT_IF(e.ACTION_TYPE = 'GROUND_DUEL') AS GROUND_DUELS,
+                    COUNT_IF(e.ACTION_TYPE = 'CLEARANCE') AS CLEARANCES,
+                    COUNT_IF(e.ACTION_TYPE = 'BLOCK') AS BLOCKS,
+                    COUNT_IF(e.ACTION_TYPE = 'FOUL') AS FOULS,
+                    COUNT_IF(e.ACTION_TYPE = 'OFFSIDE') AS OFFSIDES,
+                    COUNT_IF(e.ACTION_TYPE = 'GK_SAVE') AS SAVES,
+                    COUNT_IF(e.ACTION_TYPE = 'GK_CATCH') AS CATCHES,
+                    COUNT_IF(e.ACTION_TYPE = 'GOAL_KICK') AS GOAL_KICKS
+                FROM CAFC_DB.IMPECT_RAW.EVENTS e
+                JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+                WHERE i.\"COMPETITION.NAME\" = %s AND i.SEASON = %s AND e.PLAYER_ID IS NOT NULL
+                GROUP BY 1,2,3
+            ), combined AS (
+                SELECT em.*, m.SECONDS
+                FROM event_match em JOIN minutes m
+                  ON m.PLAYER_ID=em.PLAYER_ID AND m.MATCH_ID=em.MATCH_ID AND m.POSITION=em.POSITION
+            )
+            SELECT PLAYER_ID, COALESCE(POSITION, 'Overall') AS POSITION,
+                   COUNT(DISTINCT MATCH_ID) MATCH_COUNT, SUM(SECONDS)/60.0 MINUTES,
+                   SUM(PASS_ATTEMPTS), SUM(COMPLETED_PASSES), SUM(PROGRESSIVE_PASSES),
+                   SUM(CROSSES), SUM(SUCCESSFUL_CROSSES), SUM(DRIBBLES), SUM(SUCCESSFUL_DRIBBLES),
+                   SUM(SHOTS), SUM(GOALS), SUM(BOX_RECEPTIONS), SUM(HOLD_UP_RECEPTIONS), SUM(INTERCEPTIONS),
+                   SUM(LOOSE_BALL_REGAINS), SUM(GROUND_DUELS), SUM(CLEARANCES), SUM(BLOCKS), SUM(FOULS),
+                   SUM(OFFSIDES), SUM(SAVES), SUM(CATCHES), SUM(GOAL_KICKS)
+            FROM combined
+            GROUP BY GROUPING SETS ((PLAYER_ID, POSITION), (PLAYER_ID))
+            """,
+            (competition, season, competition, season),
+        )
+        rows = cursor.fetchall()
+        peer_rows = []
+        for row in rows:
+            minutes = float(row[3] or 0)
+            if minutes <= 0:
+                continue
+            raw = list(row[4:])
+            pass_completion = (raw[1] / raw[0] * 100) if raw[0] else None
+            values = [raw[0] * 90 / minutes, pass_completion] + [v * 90 / minutes for v in raw[2:]]
+            peer_rows.append({"player_id": int(row[0]), "position": row[1], "match_count": int(row[2]), "minutes": minutes, "values": values})
+
+        player_positions = [r for r in peer_rows if r["player_id"] == source_player_id]
+        available_positions = sorted((r["position"] for r in player_positions), key=lambda p: (p != "Overall", p))
+        selected_position = position if position in available_positions else "Overall"
+        dominant_positions = {}
+        for peer_row in peer_rows:
+            if peer_row["position"] == "Overall":
+                continue
+            current = dominant_positions.get(peer_row["player_id"])
+            if current is None or peer_row["minutes"] > current["minutes"]:
+                dominant_positions[peer_row["player_id"]] = {
+                    "position": peer_row["position"], "minutes": peer_row["minutes"]
+                }
+        comparison_position = (
+            dominant_positions.get(source_player_id, {}).get("position")
+            if selected_position == "Overall" else selected_position
+        )
+        cursor.execute(
+            """
+            SELECT PROFILE_KEY, PROFILE_LABEL, COHORT, POSITION_GROUP
+            FROM CAFC_DB.SCOUT_TOOL.POSITION_PROFILE_MAP
+            WHERE SOURCE_SYSTEM = 'IMPECT' AND SOURCE_POSITION_CODE = %s
+              AND IS_PRIMARY = TRUE AND MAPPING_STATUS = 'APPROVED'
+            LIMIT 1
+            """,
+            (comparison_position,),
+        )
+        profile_row = cursor.fetchone()
+        if not profile_row:
+            raise HTTPException(status_code=422, detail=f"No approved technical profile mapping for {comparison_position}")
+        profile_key, profile_label, cohort, position_group = profile_row
+        eligible_metrics = [m for m in TECHNICAL_METRICS if profile_key in m["roles"]]
+
+        overall_minutes = next((r["minutes"] for r in player_positions if r["position"] == "Overall"), 0)
+        position_breakdown = [
+            {"position": r["position"], "matches": r["match_count"], "minutes": round(r["minutes"]), "share_pct": round(r["minutes"] * 100 / overall_minutes, 1) if overall_minutes else 0}
+            for r in player_positions if r["position"] != "Overall"
+        ]
+        position_breakdown.sort(key=lambda item: item["minutes"], reverse=True)
+
+        metric_indexes = {metric["id"]: index for index, metric in enumerate(TECHNICAL_METRICS)}
+
+        def quantile(values, fraction):
+            if not values:
+                return None
+            offset = (len(values) - 1) * fraction
+            lower = math.floor(offset)
+            upper = math.ceil(offset)
+            if lower == upper:
+                return values[lower]
+            return values[lower] + (values[upper] - values[lower]) * (offset - lower)
+
+        def histogram(values, bin_count=12):
+            if not values:
+                return []
+            low, high = values[0], values[-1]
+            if low == high:
+                return [{"start": round(low, 3), "end": round(high, 3), "count": len(values)}]
+            width = (high - low) / bin_count
+            counts = [0] * bin_count
+            for value in values:
+                index = min(int((value - low) / width), bin_count - 1)
+                counts[index] += 1
+            return [
+                {"start": round(low + index * width, 3), "end": round(low + (index + 1) * width, 3), "count": count}
+                for index, count in enumerate(counts)
+            ]
+
+        entries = []
+        for player_row in player_positions:
+            if player_row["position"] != selected_position:
+                continue
+            metrics = []
+            for metric in eligible_metrics:
+                index = metric_indexes[metric["id"]]
+                metric_id, category, label = metric["id"], metric["category"], metric["label"]
+                invert = bool(metric.get("invert", False))
+                value = player_row["values"][index]
+                peers = sorted(
+                    r["values"][index] for r in peer_rows
+                    if r["position"] == selected_position
+                    and r["minutes"] >= 450
+                    and r["values"][index] is not None
+                    and (
+                        selected_position != "Overall"
+                        or dominant_positions.get(r["player_id"], {}).get("position") == comparison_position
+                    )
+                )
+                percentile = None
+                mean_value = statistics.fmean(peers) if peers else None
+                std_value = statistics.stdev(peers) if len(peers) > 1 else None
+                z_score = None
+                if value is not None and peers:
+                    below = sum(v < value for v in peers)
+                    equal = sum(v == value for v in peers)
+                    percentile = 100.0 * (below + 0.5 * equal) / len(peers)
+                    if invert:
+                        percentile = 100.0 - percentile
+                if value is not None and std_value:
+                    z_score = (value - mean_value) / std_value
+                    if invert:
+                        z_score *= -1
+                metrics.append({
+                    "metric_id": metric_id, "category": category, "label": label,
+                    "value": round(value, 2) if value is not None else None,
+                    "percentile": round(percentile, 1) if percentile is not None else None,
+                    "z_score": round(z_score, 2) if z_score is not None else None,
+                    "mean": round(mean_value, 2) if mean_value is not None else None,
+                    "median": round(statistics.median(peers), 2) if peers else None,
+                    "std": round(std_value, 2) if std_value is not None else None,
+                    "q1": round(quantile(peers, 0.25), 2) if peers else None,
+                    "q3": round(quantile(peers, 0.75), 2) if peers else None,
+                    "invert": invert, "peer_count": len(peers),
+                    "unit": metric.get("unit", "per 90"),
+                    "is_profile_metric": metric_id in TECHNICAL_RADAR_METRICS.get(profile_key, ()),
+                    "distribution": histogram(peers),
+                })
+            profile_metrics = [m for m in metrics if m["is_profile_metric"] and m["percentile"] is not None]
+            ordered = sorted(profile_metrics, key=lambda m: m["percentile"], reverse=True)
+            categories = []
+            for category in ("Attacking", "Possession", "Defending", "Goalkeeping"):
+                values = [m["percentile"] for m in metrics if m["category"] == category and m["percentile"] is not None]
+                if values:
+                    categories.append({"category": category, "percentile": round(statistics.fmean(values), 1), "metric_count": len(values)})
+            entries.append({
+                "position": selected_position, "match_count": player_row["match_count"],
+                "minutes": round(player_row["minutes"]), "metrics": metrics,
+                "profile_metric_ids": list(TECHNICAL_RADAR_METRICS.get(profile_key, ())),
+                "category_summaries": categories,
+                "strengths": ordered[:3], "weaknesses": sorted(profile_metrics, key=lambda m: m["percentile"])[:2],
+            })
+
+        response = {
+            "available": bool(entries), "message": None if entries else "There is no technical data for this selection.",
+            "player_id": player_id, "player_name": player_data[2],
+            "profile": {"key": profile_key, "label": profile_label, "cohort": cohort, "position_group": position_group, "comparison_position": comparison_position},
+            "filters": {"competition": competition, "season": season, "position": selected_position, "available": available_pairs, "positions": available_positions, "position_breakdown": position_breakdown, "minimum_peer_minutes": 450},
+            "entries": entries,
+        }
+        set_cache(cache_key, response, expiry_minutes=60)
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching technical metrics: {e}")
     finally:
         if conn:
             conn.close()
