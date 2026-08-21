@@ -112,6 +112,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     minReports: "",
     maxReports: "",
     stages: [],
+    archivedReasons: [],
+    initialReasons: [],
     recencyMonths: "",
   });
 
@@ -208,8 +210,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     oldStage: string;
     listId: number;
   } | null>(null);
-  const [stage1Reasons, setStage1Reasons] = useState<string[]>([]);
-  const [archivedReasons, setArchivedReasons] = useState<string[]>([]);
+  const [stage1ReasonOptions, setStage1ReasonOptions] = useState<string[]>([]);
+  const [archivedReasonOptions, setArchivedReasonOptions] = useState<string[]>([]);
   const [loadingReasons, setLoadingReasons] = useState(false);
 
   // Stage history modal state
@@ -249,8 +251,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
           getStageChangeReasons("stage1"),
           getStageChangeReasons("archived"),
         ]);
-        setStage1Reasons(stage1);
-        setArchivedReasons(archived);
+        setStage1ReasonOptions(stage1);
+        setArchivedReasonOptions(archived);
       } catch (err) {
         console.error("Error fetching stage change reasons:", err);
       } finally {
@@ -310,6 +312,14 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
         apiFilters.stages = filters.stages.join(",");
       }
 
+      // Handle archived/initial reason arrays
+      if (filters.archivedReasons.length > 0) {
+        apiFilters.archivedReasons = filters.archivedReasons.join(",");
+      }
+      if (filters.initialReasons.length > 0) {
+        apiFilters.initialReasons = filters.initialReasons.join(",");
+      }
+
       // Include archived reports in counts
       apiFilters.includeArchivedReports = includeArchivedReports;
 
@@ -342,6 +352,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       minReports: "",
       maxReports: "",
       stages: [],
+      archivedReasons: [],
+      initialReasons: [],
       recencyMonths: "",
     });
     setShowArchived(false);
@@ -1433,6 +1445,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
             includeFlagReports={includeFlagReports}
             onIncludeFlagReportsChange={setIncludeFlagReports}
             competitionOptions={competitionOptions}
+            archivedReasonOptions={archivedReasonOptions}
+            initialReasonOptions={stage1ReasonOptions}
             stageCounts={stageCounts}
           />
 
@@ -1816,8 +1830,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
         targetStage={stageReasonModalData?.targetStage || "Stage 1"}
         reasons={
           stageReasonModalData?.targetStage === "Stage 1"
-            ? stage1Reasons
-            : archivedReasons
+            ? stage1ReasonOptions
+            : archivedReasonOptions
         }
         onConfirm={
           stageReasonModalData?.itemId === -1

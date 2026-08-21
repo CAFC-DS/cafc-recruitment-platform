@@ -19,9 +19,9 @@ const ScoutingTypeBadge: React.FC<ScoutingTypeBadgeProps> = ({
 
   const isLive = type === "live";
   const label = isLive ? "Live" : "Video";
-  // Neutral colours avoid colliding with the application's semantic stage,
-  // score, and alert palette; the icon silhouette identifies the method.
-  const color = isLive ? "#181a1f" : "#374151";
+  // Theme-aware text colour: avoids colliding with the application's semantic
+  // stage/score/alert palette while staying legible in both light and dark
+  // mode; the icon silhouette (not colour) identifies the method.
   const iconSize = size === "md" ? 20 : 15;
 
   return (
@@ -30,10 +30,9 @@ const ScoutingTypeBadge: React.FC<ScoutingTypeBadgeProps> = ({
       title={`${label} scouting${count !== undefined ? `: ${count} report${count === 1 ? "" : "s"}` : ""}`}
       aria-label={`${label} scouting${count !== undefined ? `: ${count} reports` : ""}`}
       style={{
-        color,
+        color: "var(--color-text)",
         fontSize: size === "md" ? "0.85rem" : "0.75rem",
         fontWeight: 700,
-        filter: isLive ? undefined : "drop-shadow(0 1px 0 rgba(255,255,255,0.85))",
       }}
     >
       {isLive ? <IconBuildingStadium size={iconSize} stroke={2} /> : <Video size={iconSize} strokeWidth={2} />}

@@ -221,6 +221,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     minReports: "",
     maxReports: "",
     stages: [],
+    archivedReasons: [],
+    initialReasons: [],
     recencyMonths: "",
   });
 
@@ -326,8 +328,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     listId: number;
     oldStage: string;
   } | null>(null);
-  const [stage1Reasons, setStage1Reasons] = useState<string[]>([]);
-  const [archivedReasons, setArchivedReasons] = useState<string[]>([]);
+  const [stage1ReasonOptions, setStage1ReasonOptions] = useState<string[]>([]);
+  const [archivedReasonOptions, setArchivedReasonOptions] = useState<string[]>([]);
   const [loadingReasons, setLoadingReasons] = useState(false);
 
   // Stage history modal state
@@ -369,8 +371,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           getStageChangeReasons("stage1"),
           getStageChangeReasons("archived"),
         ]);
-        setStage1Reasons(stage1);
-        setArchivedReasons(archived);
+        setStage1ReasonOptions(stage1);
+        setArchivedReasonOptions(archived);
       } catch (err) {
         console.error("Error fetching stage change reasons:", err);
       } finally {
@@ -430,6 +432,14 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         apiFilters.stages = filters.stages.join(",");
       }
 
+      // Handle archived/initial reason arrays
+      if (filters.archivedReasons.length > 0) {
+        apiFilters.archivedReasons = filters.archivedReasons.join(",");
+      }
+      if (filters.initialReasons.length > 0) {
+        apiFilters.initialReasons = filters.initialReasons.join(",");
+      }
+
       // Include archived reports in counts
       apiFilters.includeArchivedReports = includeArchivedReports;
 
@@ -462,6 +472,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       minReports: "",
       maxReports: "",
       stages: [],
+      archivedReasons: [],
+      initialReasons: [],
       recencyMonths: "",
     });
     setShowArchived(false);
@@ -1586,6 +1598,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             includeFlagReports={includeFlagReports}
             onIncludeFlagReportsChange={setIncludeFlagReports}
             competitionOptions={competitionOptions}
+            archivedReasonOptions={archivedReasonOptions}
+            initialReasonOptions={stage1ReasonOptions}
             stageCounts={stageCounts}
           />
 
@@ -1969,30 +1983,32 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                               )}
                             </td>
                             <td>
-                              {player.report_count}
-                              {player.live_reports > 0 && (
-                                <span className="ms-2"><ScoutingTypeBadge scoutingType="Live" count={player.live_reports} /></span>
-                              )}
-                              {player.video_reports > 0 && (
-                                <span className="ms-2"><ScoutingTypeBadge scoutingType="Video" count={player.video_reports} /></span>
-                              )}
-                              {(player.intel_reports_count || 0) > 0 && (
-                                <Badge
-                                  bg=""
-                                  className="ms-2 d-inline-flex align-items-center gap-1"
-                                  title={`${player.intel_reports_count} intel report${player.intel_reports_count === 1 ? "" : "s"}`}
-                                  style={{
-                                    backgroundColor: "var(--color-surface)",
-                                    color: "var(--color-text)",
-                                    border: "1px solid var(--color-border)",
-                                    fontSize: "0.75rem",
-                                    padding: "3px 6px",
-                                  }}
-                                >
-                                  <FileSearch size={12} />
-                                  {player.intel_reports_count}
-                                </Badge>
-                              )}
+                              <div className="d-inline-flex align-items-center gap-2">
+                                <span>{player.report_count}</span>
+                                {player.live_reports > 0 && (
+                                  <ScoutingTypeBadge scoutingType="Live" count={player.live_reports} />
+                                )}
+                                {player.video_reports > 0 && (
+                                  <ScoutingTypeBadge scoutingType="Video" count={player.video_reports} />
+                                )}
+                                {(player.intel_reports_count || 0) > 0 && (
+                                  <Badge
+                                    bg=""
+                                    className="d-inline-flex align-items-center gap-1"
+                                    title={`${player.intel_reports_count} intel report${player.intel_reports_count === 1 ? "" : "s"}`}
+                                    style={{
+                                      backgroundColor: "var(--color-surface)",
+                                      color: "var(--color-text)",
+                                      border: "1px solid var(--color-border)",
+                                      fontSize: "0.75rem",
+                                      padding: "3px 6px",
+                                    }}
+                                  >
+                                    <FileSearch size={12} />
+                                    {player.intel_reports_count}
+                                  </Badge>
+                                )}
+                              </div>
                             </td>
                             <td>{formatLastReportDate(player.last_report_date)}</td>
                             <td>
@@ -2241,7 +2257,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                         onChange={(e) => handleBatchReasonChange(player.universal_id, e.target.value)}
                       >
                         <option value="">Select a reason...</option>
-                        {stage1Reasons.map((r) => (
+                        {stage1ReasonOptions.map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </Form.Select>
@@ -2373,8 +2389,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         targetStage={stageReasonModalData?.targetStage || "Stage 1"}
         reasons={
           stageReasonModalData?.targetStage === "Stage 1"
-            ? stage1Reasons
-            : archivedReasons
+            ? stage1ReasonOptions
+            : archivedReasonOptions
         }
         onConfirm={confirmStageChange}
         loading={savingChanges}

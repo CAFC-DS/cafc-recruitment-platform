@@ -57,6 +57,60 @@ export interface PlayerProfile extends Player {
   notes?: any[];
 }
 
+export interface PlayerTechnicalMetric {
+  metric_id: string;
+  category: string;
+  label: string;
+  value: number | null;
+  percentile: number | null;
+  z_score: number | null;
+  mean: number | null;
+  median: number | null;
+  std: number | null;
+  q1: number | null;
+  q3: number | null;
+  invert: boolean;
+  peer_count: number;
+  unit: "%" | "per 90";
+  is_profile_metric: boolean;
+  distribution: Array<{ start: number; end: number; count: number }>;
+}
+
+export interface PlayerTechnicalEntry {
+  position: string;
+  match_count: number;
+  minutes: number;
+  metrics: PlayerTechnicalMetric[];
+  profile_metric_ids: string[];
+  category_summaries: Array<{ category: string; percentile: number; metric_count: number }>;
+  strengths: PlayerTechnicalMetric[];
+  weaknesses: PlayerTechnicalMetric[];
+}
+
+export interface PlayerTechnicalMetricsResponse {
+  available: boolean;
+  message: string | null;
+  player_id: string;
+  player_name?: string;
+  profile?: {
+    key: string;
+    label: string;
+    cohort: string;
+    position_group: string;
+    comparison_position: string;
+  };
+  filters: {
+    competition?: string;
+    season?: string;
+    position?: string;
+    available?: Array<{ competition: string; season: string }>;
+    positions?: string[];
+    position_breakdown?: Array<{ position: string; matches: number; minutes: number; share_pct: number }>;
+    minimum_peer_minutes?: number;
+  };
+  entries: PlayerTechnicalEntry[];
+}
+
 export interface FlowHistoryEvent {
   id: string;
   event_type:
