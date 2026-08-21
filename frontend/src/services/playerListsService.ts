@@ -165,6 +165,8 @@ export interface PlayerListFilters {
   minReports?: number;
   maxReports?: number;
   stages?: string; // Comma-separated
+  archivedReasons?: string; // Comma-separated
+  initialReasons?: string; // Comma-separated
   recencyMonths?: number;
   includeArchivedReports?: boolean;
   includeFlagReports?: boolean;
@@ -193,6 +195,8 @@ export const getAllListsWithDetails = async (
     if (filters.minReports !== undefined) params.append("min_reports", filters.minReports.toString());
     if (filters.maxReports !== undefined) params.append("max_reports", filters.maxReports.toString());
     if (filters.stages) params.append("stages", filters.stages);
+    if (filters.archivedReasons) params.append("archived_reasons", filters.archivedReasons);
+    if (filters.initialReasons) params.append("initial_reasons", filters.initialReasons);
     if (filters.recencyMonths !== undefined) params.append("recency_months", filters.recencyMonths.toString());
     if (filters.includeArchivedReports !== undefined) params.append("include_archived", filters.includeArchivedReports.toString());
     if (filters.includeFlagReports !== undefined) params.append("include_flags", filters.includeFlagReports.toString());

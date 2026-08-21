@@ -12,6 +12,8 @@ export interface PlayerListFilters {
   minReports: string;
   maxReports: string;
   stages: string[];
+  archivedReasons: string[];
+  initialReasons: string[];
   recencyMonths: string;
 }
 
@@ -28,6 +30,8 @@ interface AdvancedFiltersProps {
   includeFlagReports: boolean;
   onIncludeFlagReportsChange: (include: boolean) => void;
   competitionOptions: string[];
+  archivedReasonOptions: string[];
+  initialReasonOptions: string[];
   stageCounts?: Partial<Record<string, number>>;
 }
 
@@ -46,6 +50,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   includeFlagReports,
   onIncludeFlagReportsChange,
   competitionOptions,
+  archivedReasonOptions,
+  initialReasonOptions,
   stageCounts = {},
 }) => {
   return (
@@ -359,7 +365,95 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             </Col>
           </Row>
 
-          {/* Row 4: Clear Filters */}
+          {/* Row 4: Initial Reason, Archived Reason */}
+          <Row className="mb-3">
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Initial Reason</Form.Label>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="outline-secondary"
+                    size="sm"
+                    className="w-100 text-start"
+                  >
+                    {filters.initialReasons.length > 0
+                      ? `${filters.initialReasons.length} reason${filters.initialReasons.length > 1 ? "s" : ""} selected`
+                      : "All reasons"}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu
+                    className="p-2"
+                    style={{ minWidth: "280px", maxHeight: "280px", overflowY: "auto" }}
+                  >
+                    {initialReasonOptions.map((reason) => (
+                      <div key={reason} className="px-2 py-1">
+                        <Form.Check
+                          type="checkbox"
+                          id={`initial-reason-${reason}`}
+                          label={reason}
+                          checked={filters.initialReasons.includes(reason)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              onFilterChange({
+                                initialReasons: [...filters.initialReasons, reason],
+                              });
+                            } else {
+                              onFilterChange({
+                                initialReasons: filters.initialReasons.filter((r) => r !== reason),
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Archived Reason</Form.Label>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="outline-secondary"
+                    size="sm"
+                    className="w-100 text-start"
+                  >
+                    {filters.archivedReasons.length > 0
+                      ? `${filters.archivedReasons.length} reason${filters.archivedReasons.length > 1 ? "s" : ""} selected`
+                      : "All reasons"}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu
+                    className="p-2"
+                    style={{ minWidth: "280px", maxHeight: "280px", overflowY: "auto" }}
+                  >
+                    {archivedReasonOptions.map((reason) => (
+                      <div key={reason} className="px-2 py-1">
+                        <Form.Check
+                          type="checkbox"
+                          id={`archived-reason-${reason}`}
+                          label={reason}
+                          checked={filters.archivedReasons.includes(reason)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              onFilterChange({
+                                archivedReasons: [...filters.archivedReasons, reason],
+                              });
+                            } else {
+                              onFilterChange({
+                                archivedReasons: filters.archivedReasons.filter((r) => r !== reason),
+                              });
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Form.Group>
+            </Col>
+          </Row>
+
+          {/* Row 5: Clear Filters */}
           <Row className="mb-3">
             <Col md={4}>
               <Form.Group>

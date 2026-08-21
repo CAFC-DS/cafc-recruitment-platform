@@ -17100,6 +17100,8 @@ async def get_all_lists_with_details(
     min_reports: Optional[int] = None,
     max_reports: Optional[int] = None,
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
+    archived_reasons: Optional[str] = None,  # Comma-separated reasons for latest archive event
+    initial_reasons: Optional[str] = None,  # Comma-separated reasons for original add-to-list event
     recency_months: Optional[int] = None,
     include_archived: bool = False,  # Include archived reports in counts
     include_flags: bool = False,  # Include flag reports in counts (default: exclude)
@@ -17203,6 +17205,44 @@ async def get_all_lists_with_details(
             stage_placeholders = " OR ".join(["pli.STAGE = %s"] * len(stage_list))
             filter_conditions.append(f"({stage_placeholders})")
             filter_params.extend(stage_list)
+
+        # Archived reason filter (latest archive event's reason).
+        # Snowflake can't evaluate a correlated subquery with ORDER BY/LIMIT
+        # inside an IN predicate, so use a non-correlated derived table instead.
+        if archived_reasons:
+            reason_list = [r.strip() for r in archived_reasons.split(",") if r.strip()]
+            if reason_list:
+                placeholders = ", ".join(["%s"] * len(reason_list))
+                filter_conditions.append(f"""
+                    pli.ID IN (
+                        SELECT LIST_ITEM_ID FROM (
+                            SELECT LIST_ITEM_ID, REASON,
+                                   ROW_NUMBER() OVER (PARTITION BY LIST_ITEM_ID ORDER BY CHANGED_AT DESC) AS rn
+                            FROM player_stage_history
+                            WHERE NEW_STAGE = 'Archived'
+                        )
+                        WHERE rn = 1 AND REASON IN ({placeholders})
+                    )
+                """)
+                filter_params.extend(reason_list)
+
+        # Initial join reason filter (original add-to-list event's reason)
+        if initial_reasons:
+            reason_list = [r.strip() for r in initial_reasons.split(",") if r.strip()]
+            if reason_list:
+                placeholders = ", ".join(["%s"] * len(reason_list))
+                filter_conditions.append(f"""
+                    pli.ID IN (
+                        SELECT LIST_ITEM_ID FROM (
+                            SELECT LIST_ITEM_ID, REASON,
+                                   ROW_NUMBER() OVER (PARTITION BY LIST_ITEM_ID ORDER BY CHANGED_AT ASC) AS rn
+                            FROM player_stage_history
+                            WHERE OLD_STAGE IS NULL
+                        )
+                        WHERE rn = 1 AND REASON IN ({placeholders})
+                    )
+                """)
+                filter_params.extend(reason_list)
 
         # Position filter (with accent-insensitive collation)
         if position:
