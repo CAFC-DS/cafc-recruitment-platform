@@ -3751,6 +3751,7 @@ const PlayerProfilePage: React.FC = () => {
         selectedPlayer={profile ? { player_id: profile.player_id, player_name: profile.player_name } : null}
         onAssessmentSubmitSuccess={() => {
           fetchPlayerProfile();
+          fetchScoutReports();
         }}
         editMode={true}
         reportId={editScoutReportId}

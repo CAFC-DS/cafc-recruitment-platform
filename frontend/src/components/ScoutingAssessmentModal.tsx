@@ -1133,7 +1133,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
     setLoading(true);
     try {
       const payload: any = {
-        player_id: selectedPlayer?.universal_id,
+        player_id: selectedPlayer?.universal_id || selectedPlayer?.player_id,
         reportType: assessmentType,
       };
 
@@ -2306,7 +2306,11 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
         </Modal.Footer>
       </Modal>
 
-      <ToastContainer position="top-end" className="p-3">
+      <ToastContainer
+        position="top-end"
+        className="p-3"
+        style={{ position: "fixed", zIndex: 9999 }}
+      >
         <Toast
           onClose={() => setShowToast(false)}
           show={showToast}
