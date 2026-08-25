@@ -19,6 +19,8 @@ export const internalRecommendationsService = {
     created_to?: string;
     player_name?: string;
     position?: string;
+    age_min?: string;
+    age_max?: string;
     deal_type?: string;
     transfer_fee_min?: string;
     transfer_fee_max?: string;

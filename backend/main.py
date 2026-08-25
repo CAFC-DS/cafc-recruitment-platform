@@ -4516,6 +4516,8 @@ async def list_internal_recommendations(
     created_to: Optional[str] = None,
     player_name: Optional[str] = None,
     position: Optional[str] = None,
+    age_min: Optional[int] = Query(None, ge=0, le=100),
+    age_max: Optional[int] = Query(None, ge=0, le=100),
     deal_type: Optional[str] = None,
     transfer_fee_min: Optional[float] = None,
     transfer_fee_max: Optional[float] = None,
@@ -4532,6 +4534,8 @@ async def list_internal_recommendations(
     page_size = min(max(page_size, 1), 100)
     if status_filter:
         validate_recommendation_status(status_filter)
+    if age_min is not None and age_max is not None and age_min > age_max:
+        raise HTTPException(status_code=400, detail="Minimum age cannot exceed maximum age")
 
     # Validate sort parameters
     allowed_sort_columns = {
@@ -4573,6 +4577,16 @@ async def list_internal_recommendations(
         if position:
             where_clauses.append("rec.RECOMMENDED_POSITION ILIKE %s")
             params.append(f"%{position}%")
+        if age_min is not None:
+            where_clauses.append(
+                "rec.PLAYER_DATE_OF_BIRTH <= DATEADD(year, -1 * %s, CURRENT_DATE())"
+            )
+            params.append(age_min)
+        if age_max is not None:
+            where_clauses.append(
+                "rec.PLAYER_DATE_OF_BIRTH > DATEADD(year, -1 * (%s + 1), CURRENT_DATE())"
+            )
+            params.append(age_max)
         if deal_type:
             where_clauses.append("rec.POTENTIAL_DEAL_TYPE ILIKE %s")
             params.append(f"%{deal_type}%")

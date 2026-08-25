@@ -22,6 +22,8 @@ interface RecommendationFilterState {
   created_to: string;
   player_name: string;
   position: string;
+  age_min: string;
+  age_max: string;
   deal_type: string;
   transfer_fee_min: string;
   transfer_fee_max: string;
@@ -40,6 +42,8 @@ const defaultFilters: RecommendationFilterState = {
   created_to: '',
   player_name: '',
   position: '',
+  age_min: '',
+  age_max: '',
   deal_type: '',
   transfer_fee_min: '',
   transfer_fee_max: '',
@@ -163,6 +167,8 @@ const ExternalRecommendationsListPage: React.FC = () => {
     if (filters.agent_user_id) count++;
     if (filters.player_name) count++;
     if (filters.position) count++;
+    if (filters.age_min) count++;
+    if (filters.age_max) count++;
     if (filters.deal_type) count++;
     if (filters.created_from) count++;
     if (filters.created_to) count++;
@@ -270,6 +276,8 @@ const ExternalRecommendationsListPage: React.FC = () => {
     filters.created_to,
     filters.player_name,
     filters.position,
+    filters.age_min,
+    filters.age_max,
     filters.deal_type,
     filters.transfer_fee_min,
     filters.transfer_fee_max,
@@ -611,14 +619,30 @@ const ExternalRecommendationsListPage: React.FC = () => {
                   </Col>
                   <Col md={4}>
                     <Form.Group>
-                      <Form.Label className="small fw-bold">Page Size</Form.Label>
-                      <Form.Select
-                        size="sm"
-                        value={filters.page_size}
-                        onChange={(event) => updateFilters({ page_size: Number(event.target.value) })}
-                      >
-                        {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-                      </Form.Select>
+                      <Form.Label className="small fw-bold">Age</Form.Label>
+                      <div className="range-inputs">
+                        <Form.Control
+                          size="sm"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={filters.age_min}
+                          onChange={(event) => updateFilters({ age_min: event.target.value })}
+                          placeholder="Min"
+                          aria-label="Minimum age"
+                        />
+                        <span className="range-separator">to</span>
+                        <Form.Control
+                          size="sm"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={filters.age_max}
+                          onChange={(event) => updateFilters({ age_max: event.target.value })}
+                          placeholder="Max"
+                          aria-label="Maximum age"
+                        />
+                      </div>
                     </Form.Group>
                   </Col>
                 </Row>
@@ -709,7 +733,19 @@ const ExternalRecommendationsListPage: React.FC = () => {
                   </Col>
                   <Col md={4}>
                     <Form.Group>
-                      <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
+                      <Form.Label className="small fw-bold">Page Size</Form.Label>
+                      <Form.Select
+                        size="sm"
+                        value={filters.page_size}
+                        onChange={(event) => updateFilters({ page_size: Number(event.target.value) })}
+                      >
+                        {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={4}>
+                    <Form.Group>
+                      <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Results</Form.Label>
                       <div className="text-muted small">
                         Showing {items.length} on this page ({total} total results)
                         {activeFilterCount > 0 ? ` • ${activeFilterCount} active filter${activeFilterCount > 1 ? 's' : ''}` : ''}
