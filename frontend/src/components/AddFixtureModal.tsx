@@ -50,8 +50,6 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
   const [awaySearch, setAwaySearch] = useState("");
   const [showHomeDropdown, setShowHomeDropdown] = useState(false);
   const [showAwayDropdown, setShowAwayDropdown] = useState(false);
-  const [homeManualEntry, setHomeManualEntry] = useState(false);
-  const [awayManualEntry, setAwayManualEntry] = useState(false);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -153,12 +151,18 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
     setAwaySearch("");
     setShowHomeDropdown(false);
     setShowAwayDropdown(false);
-    setHomeManualEntry(false);
-    setAwayManualEntry(false);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Manual matches must reference real squads by id - the canonical
+    // fixtures table resolves team names from the squads dimension.
+    if (formData.homeTeamId === null || formData.awayTeamId === null) {
+      setToastMessage("Please select both teams from the search results.");
+      setToastVariant("danger");
+      setShowToast(true);
+      return;
+    }
     setLoading(true);
     try {
       await axiosInstance.post("/matches", formData);
@@ -196,37 +200,9 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
           ) : (
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3" controlId="homeTeam">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <Form.Label className="mb-0">Home Team</Form.Label>
-                  <Form.Check
-                    type="checkbox"
-                    label="Enter manually"
-                    checked={homeManualEntry}
-                    onChange={(e) => {
-                      setHomeManualEntry(e.target.checked);
-                      if (e.target.checked) {
-                        setShowHomeDropdown(false);
-                        setHomeSearch("");
-                      } else {
-                        setFormData({ ...formData, homeTeam: "" });
-                      }
-                    }}
-                    style={{ fontSize: "0.875rem" }}
-                  />
-                </div>
+                <Form.Label className="mb-2">Home Team</Form.Label>
                 <div style={{ position: "relative" }}>
-                  {homeManualEntry ? (
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter home team name..."
-                      value={formData.homeTeam}
-                      onChange={(e) =>
-                        setFormData({ ...formData, homeTeam: e.target.value })
-                      }
-                      required
-                    />
-                  ) : (
-                    <>
+                  <>
                       <Form.Control
                         type="text"
                         placeholder="Search for home team..."
@@ -234,6 +210,7 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
                         onChange={(e) => {
                           setHomeSearch(e.target.value);
                           setShowHomeDropdown(true);
+                          setFormData({ ...formData, homeTeam: "", homeTeamId: null });
                         }}
                         onFocus={() => setShowHomeDropdown(true)}
                         required={!formData.homeTeam}
@@ -287,41 +264,12 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
                         </div>
                       )}
                     </>
-                  )}
                 </div>
               </Form.Group>
               <Form.Group className="mb-3" controlId="awayTeam">
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <Form.Label className="mb-0">Away Team</Form.Label>
-                  <Form.Check
-                    type="checkbox"
-                    label="Enter manually"
-                    checked={awayManualEntry}
-                    onChange={(e) => {
-                      setAwayManualEntry(e.target.checked);
-                      if (e.target.checked) {
-                        setShowAwayDropdown(false);
-                        setAwaySearch("");
-                      } else {
-                        setFormData({ ...formData, awayTeam: "" });
-                      }
-                    }}
-                    style={{ fontSize: "0.875rem" }}
-                  />
-                </div>
+                <Form.Label className="mb-2">Away Team</Form.Label>
                 <div style={{ position: "relative" }}>
-                  {awayManualEntry ? (
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter away team name..."
-                      value={formData.awayTeam}
-                      onChange={(e) =>
-                        setFormData({ ...formData, awayTeam: e.target.value })
-                      }
-                      required
-                    />
-                  ) : (
-                    <>
+                  <>
                       <Form.Control
                         type="text"
                         placeholder="Search for away team..."
@@ -329,6 +277,7 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
                         onChange={(e) => {
                           setAwaySearch(e.target.value);
                           setShowAwayDropdown(true);
+                          setFormData({ ...formData, awayTeam: "", awayTeamId: null });
                         }}
                         onFocus={() => setShowAwayDropdown(true)}
                         required={!formData.awayTeam}
@@ -382,7 +331,6 @@ const AddFixtureModal: React.FC<AddFixtureModalProps> = ({ show, onHide }) => {
                         </div>
                       )}
                     </>
-                  )}
                 </div>
               </Form.Group>
               <Form.Group className="mb-3" controlId="date">

@@ -1,0 +1,7 @@
+{
+  "admin":          {"username": "CHANGE_ME", "password": "CHANGE_ME"},
+  "senior_manager": {"username": "CHANGE_ME", "password": "CHANGE_ME"},
+  "manager":        {"username": "CHANGE_ME", "password": "CHANGE_ME"},
+  "loan_manager":   {"username": "CHANGE_ME", "password": "CHANGE_ME"},
+  "scout":          {"username": "CHANGE_ME", "password": "CHANGE_ME"}
+}

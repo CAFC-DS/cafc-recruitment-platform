@@ -78,7 +78,7 @@ const AgentSubmitPage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const validationError = validateRecommendationFormValues(values);
+    const validationError = validateRecommendationFormValues(values, { requireLinkedPlayer: true });
     if (validationError) {
       setError(validationError);
       return;
