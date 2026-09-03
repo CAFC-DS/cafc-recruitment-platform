@@ -14122,9 +14122,9 @@ async def get_database_metadata():
         try:
             cursor.execute(
                 """
-                SELECT TABLE_NAME, CREATED, LAST_ALTERED 
-                FROM INFORMATION_SCHEMA.TABLES 
-                WHERE TABLE_SCHEMA = 'PUBLIC'
+                SELECT TABLE_NAME, CREATED, LAST_ALTERED
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = CURRENT_SCHEMA()
                 AND TABLE_NAME IN ('PLAYERS', 'MATCHES')
                 ORDER BY TABLE_NAME
             """
