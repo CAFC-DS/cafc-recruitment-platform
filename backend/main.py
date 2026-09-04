@@ -1108,6 +1108,9 @@ def ensure_recommendation_notes_history_table(cursor):
         return
 
     try:
+        # Bare names: this backfill runs alongside the CREATE TABLE above and
+        # relies on the CAFC_DB.CORE connection default post-cutover (both
+        # tables are real, APP_ROLE-owned, in CORE after the phase-4 move).
         cursor.execute(
             """
             INSERT INTO recommendation_notes_history
@@ -1131,7 +1134,7 @@ def ensure_recommendation_notes_history_table(cursor):
 
 def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_actor_names: bool = False):
     cursor.execute(
-        """
+        f"""
         SELECT
             rnh.ID,
             rnh.NOTE_CONTENT,
@@ -1140,8 +1143,8 @@ def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_a
             u.FIRSTNAME,
             u.LASTNAME,
             u.USERNAME
-        FROM recommendation_notes_history rnh
-        LEFT JOIN users u ON rnh.CREATED_BY = u.ID
+        FROM {read_table('recommendation_notes_history')} rnh
+        LEFT JOIN {read_table('users')} u ON rnh.CREATED_BY = u.ID
         WHERE rnh.RECOMMENDATION_ID = %s
         ORDER BY rnh.CREATED_AT DESC
     """,
@@ -1183,8 +1186,8 @@ def insert_recommendation_note_history_if_changed(
         return
     ensure_recommendation_notes_history_table(cursor)
     cursor.execute(
-        """
-        INSERT INTO recommendation_notes_history (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+        f"""
+        INSERT INTO {write_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
         VALUES (%s, %s, %s, %s)
     """,
         (recommendation_id, new_notes, changed_by, changed_at or datetime.utcnow()),
@@ -3468,9 +3471,9 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
         cursor = conn.cursor()
 
         cursor.execute(
-            """
+            f"""
             SELECT ID, USER_ID, EXPIRES_AT, USED_AT, IS_ACTIVE
-            FROM PASSWORD_RESET_TOKENS
+            FROM {read_table('password_reset_tokens')}
             WHERE TOKEN_HASH = %s
             """,
             (token_hash,),
@@ -3493,11 +3496,11 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
 
         new_hashed_password = get_password_hash(request.new_password)
         cursor.execute(
-            "UPDATE users SET HASHED_PASSWORD = %s WHERE ID = %s",
+            f"UPDATE {write_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
             (new_hashed_password, token_user_id),
         )
         cursor.execute(
-            "UPDATE PASSWORD_RESET_TOKENS SET USED_AT = CURRENT_TIMESTAMP, IS_ACTIVE = FALSE WHERE ID = %s",
+            f"UPDATE {write_table('password_reset_tokens')} SET USED_AT = CURRENT_TIMESTAMP, IS_ACTIVE = FALSE WHERE ID = %s",
             (token_id,),
         )
         conn.commit()
@@ -4773,8 +4776,8 @@ async def flag_internal_recommendation_duplicate(
         )
         flagged_at = datetime.utcnow()
         cursor.execute(
-            """
-            INSERT INTO recommendation_notes_history (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+            f"""
+            INSERT INTO {write_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
             VALUES (%s, %s, %s, %s)
         """,
             (recommendation_id, note_text, current_user.id, flagged_at),
@@ -5460,7 +5463,7 @@ async def admin_generate_reset_link(
 
         # Verify user exists and grab email/name for the optional email delivery
         cursor.execute(
-            "SELECT ID, USERNAME, EMAIL, FIRSTNAME, LASTNAME FROM users WHERE ID = %s",
+            f"SELECT ID, USERNAME, EMAIL, FIRSTNAME, LASTNAME FROM {read_table('users')} WHERE ID = %s",
             (user_id,),
         )
         row = cursor.fetchone()
@@ -5471,7 +5474,7 @@ async def admin_generate_reset_link(
 
         # Invalidate any prior unused links for this user
         cursor.execute(
-            "UPDATE PASSWORD_RESET_TOKENS SET IS_ACTIVE = FALSE WHERE USER_ID = %s AND USED_AT IS NULL",
+            f"UPDATE {write_table('password_reset_tokens')} SET IS_ACTIVE = FALSE WHERE USER_ID = %s AND USED_AT IS NULL",
             (user_id,),
         )
 
@@ -5480,8 +5483,8 @@ async def admin_generate_reset_link(
         expires_at = datetime.now() + timedelta(hours=24)
 
         cursor.execute(
-            """
-            INSERT INTO PASSWORD_RESET_TOKENS
+            f"""
+            INSERT INTO {write_table('password_reset_tokens')}
             (USER_ID, TOKEN_HASH, EXPIRES_AT, IS_ACTIVE, CREATED_BY)
             VALUES (%s, %s, %s, %s, %s)
             """,
@@ -6324,7 +6327,7 @@ async def detect_data_clashes(
             if internal_ids:
                 placeholders = ",".join(["%s"] * len(internal_ids))
                 cursor.execute(
-                    f"SELECT DISTINCT CAFC_PLAYER_ID FROM scout_reports WHERE CAFC_PLAYER_ID IN ({placeholders})",
+                    f"SELECT DISTINCT CAFC_PLAYER_ID FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID IN ({placeholders})",
                     internal_ids,
                 )
                 for row in cursor.fetchall():
@@ -6332,7 +6335,7 @@ async def detect_data_clashes(
             if external_ids:
                 placeholders = ",".join(["%s"] * len(external_ids))
                 cursor.execute(
-                    f"SELECT DISTINCT PLAYER_ID FROM scout_reports WHERE PLAYER_ID IN ({placeholders})",
+                    f"SELECT DISTINCT PLAYER_ID FROM {read_table('scout_reports')} WHERE PLAYER_ID IN ({placeholders})",
                     external_ids,
                 )
                 for row in cursor.fetchall():
@@ -6777,10 +6780,10 @@ async def internal_player_audit_bulk_merge(
         cursor = conn.cursor()
 
         cursor.execute(
-            """
+            f"""
             SELECT CAFC_PLAYER_ID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION,
                    COALESCE(DATA_SOURCE, 'internal') as DATA_SOURCE
-            FROM players
+            FROM {read_table('players')}
             WHERE CAFC_PLAYER_ID IS NOT NULL AND PLAYERID IS NULL
             ORDER BY PLAYERNAME, CAFC_PLAYER_ID
             """
@@ -6788,10 +6791,10 @@ async def internal_player_audit_bulk_merge(
         internal_rows = cursor.fetchall()
 
         cursor.execute(
-            """
+            f"""
             SELECT PLAYERID, PLAYERNAME, FIRSTNAME, LASTNAME, BIRTHDATE, SQUADNAME, POSITION,
                    COALESCE(DATA_SOURCE, 'external') as DATA_SOURCE
-            FROM players
+            FROM {read_table('players')}
             WHERE PLAYERID IS NOT NULL AND COALESCE(DATA_SOURCE, 'external') = 'external'
             ORDER BY PLAYERNAME, PLAYERID
             """
@@ -7225,10 +7228,11 @@ async def add_player(player: Player, current_user: User = Depends(get_current_us
             cursor.execute("SELECT manual_player_seq.NEXTVAL")
             cafc_player_id = cursor.fetchone()[0]
 
-            # Insert manual player with CAFC_PLAYER_ID, PLAYERID stays NULL
+            # Insert manual player with CAFC_PLAYER_ID, PLAYERID stays NULL.
+            # Legacy (non-CORE) path only — CORE mode mints above.
             cursor.execute(
-                """
-                INSERT INTO players (
+                f"""
+                INSERT INTO {write_table('players')} (
                     FIRSTNAME, LASTNAME, PLAYERNAME, BIRTHDATE, SQUADNAME, POSITION,
                     CAFC_PLAYER_ID, DATA_SOURCE
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -8938,9 +8942,10 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
             cursor.execute("SELECT manual_match_seq.NEXTVAL")
             cafc_match_id = cursor.fetchone()[0]
 
-            # Insert manual match with CAFC_MATCH_ID and all squad metadata if provided
-            sql = """
-                INSERT INTO matches (
+            # Insert manual match with CAFC_MATCH_ID and all squad metadata if
+            # provided. Legacy (non-CORE) path only — CORE mode mints above.
+            sql = f"""
+                INSERT INTO {write_table('matches')} (
                     HOMESQUADNAME, AWAYSQUADNAME, SCHEDULEDDATE,
                     HOMESQUADID, AWAYSQUADID,
                     HOMESQUADTYPE, AWAYSQUADTYPE,
@@ -13707,7 +13712,7 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
 
         # Normalize historical capitalized scout rows.
         cursor.execute(
-            "UPDATE users SET ROLE = %s WHERE ROLE = %s",
+            f"UPDATE {write_table('users')} SET ROLE = %s WHERE ROLE = %s",
             (ROLE_SCOUT, "Scout")
         )
         scout_updates = cursor.rowcount
@@ -15056,7 +15061,7 @@ async def get_player_analytics(
             # 16. Total Live Reports (respects months + position filters)
             cursor.execute(f"""
                 SELECT COUNT(*) as total_live
-                FROM scout_reports sr
+                FROM {read_table('scout_reports')} sr
                 WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
                 AND UPPER(sr.SCOUTING_TYPE) = 'LIVE'
                 {additional_filters}
@@ -15066,7 +15071,7 @@ async def get_player_analytics(
             # 17. Total Video Reports (respects months + position filters)
             cursor.execute(f"""
                 SELECT COUNT(*) as total_video
-                FROM scout_reports sr
+                FROM {read_table('scout_reports')} sr
                 WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
                 AND UPPER(sr.SCOUTING_TYPE) = 'VIDEO'
                 {additional_filters}
@@ -15098,9 +15103,9 @@ async def get_player_analytics(
             data_players_where = " AND ".join(data_players_clauses)
             cursor.execute(f"""
                 SELECT COUNT(DISTINCT COALESCE(pli.CAFC_PLAYER_ID, pli.PLAYER_ID)) as data_players
-                FROM PLAYER_STAGE_HISTORY psh
-                JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID
-                LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+                FROM {read_table('player_stage_history')} psh
+                JOIN {read_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID
+                LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
                 WHERE {data_players_where}
             """, data_players_params)
             total_data_players = (cursor.fetchone() or {}).get('DATA_PLAYERS', 0)
@@ -15695,8 +15700,8 @@ async def get_stage_movement_analytics(
     #                     (fresh LIST_ITEM_IDs for the same player) aren't counted
     #                     more than once.
     list_join = (
-        " LEFT JOIN player_list_items pli ON psh.LIST_ITEM_ID = pli.ID"
-        " LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID"
+        f" LEFT JOIN {read_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID"
+        f" LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID"
     )
     EFFECTIVE_START = "COALESCE(psh.CHANGED_AT, pli.CREATED_AT)"
     PLAYER_KEY = (
@@ -15752,8 +15757,8 @@ async def get_stage_movement_analytics(
                 f"""
                 SELECT pli.STAGE AS stage,
                        COUNT(DISTINCT {LIVE_PLAYER_KEY}) AS player_count
-                FROM player_list_items pli
-                LEFT JOIN player_lists pl ON pli.LIST_ID = pl.ID
+                FROM {read_table('player_list_items')} pli
+                LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
                 WHERE pli.STAGE IS NOT NULL
                   {position_clause}{FIRST_TEAM_ONLY}
                 GROUP BY pli.STAGE
@@ -15771,7 +15776,7 @@ async def get_stage_movement_analytics(
                             PARTITION BY psh.LIST_ITEM_ID
                             ORDER BY {EFFECTIVE_START} DESC, psh.ID DESC
                         ) AS rn
-                    FROM PLAYER_STAGE_HISTORY psh
+                    FROM {read_table('player_stage_history')} psh
                     {list_join}
                     WHERE {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
                       {position_clause}{FIRST_TEAM_ONLY}
@@ -15810,7 +15815,7 @@ async def get_stage_movement_analytics(
                     psh.NEW_STAGE,
                     {EFFECTIVE_START} AS stage_start,
                     psh.ID AS seq
-                FROM PLAYER_STAGE_HISTORY psh
+                FROM {read_table('player_stage_history')} psh
                 {list_join}
                 WHERE 1 = 1
                   {position_clause}{FIRST_TEAM_ONLY}
@@ -16619,6 +16624,9 @@ def ensure_player_lists_category_column(cursor):
     except Exception as e:
         logging.debug(f"LIST_CATEGORY existence check failed: {e}")
     try:
+        # Bare names: runtime DDL must hit a real table, so this relies on the
+        # CAFC_DB.CORE connection default post-cutover (the moved PLAYER_LISTS
+        # already carries LIST_CATEGORY, so the check above short-circuits).
         cursor.execute(
             "ALTER TABLE player_lists ADD COLUMN LIST_CATEGORY VARCHAR(50) DEFAULT 'first_team'"
         )
@@ -16980,7 +16988,7 @@ async def get_all_lists_with_details(
                         SELECT LIST_ITEM_ID FROM (
                             SELECT LIST_ITEM_ID, REASON,
                                    ROW_NUMBER() OVER (PARTITION BY LIST_ITEM_ID ORDER BY CHANGED_AT DESC) AS rn
-                            FROM player_stage_history
+                            FROM {read_table('player_stage_history')}
                             WHERE NEW_STAGE = 'Archived'
                         )
                         WHERE rn = 1 AND REASON IN ({placeholders})
@@ -16998,7 +17006,7 @@ async def get_all_lists_with_details(
                         SELECT LIST_ITEM_ID FROM (
                             SELECT LIST_ITEM_ID, REASON,
                                    ROW_NUMBER() OVER (PARTITION BY LIST_ITEM_ID ORDER BY CHANGED_AT ASC) AS rn
-                            FROM player_stage_history
+                            FROM {read_table('player_stage_history')}
                             WHERE OLD_STAGE IS NULL
                         )
                         WHERE rn = 1 AND REASON IN ({placeholders})
@@ -17192,7 +17200,7 @@ async def get_all_lists_with_details(
                             cursor.execute(
                                 f"""
                                 SELECT LINKED_UNIVERSAL_ID, COUNT(*) as rec_count
-                                FROM player_recommendations
+                                FROM {read_table('player_recommendations')}
                                 WHERE LINKED_UNIVERSAL_ID IN ({placeholders})
                                 GROUP BY LINKED_UNIVERSAL_ID
                                 """,
@@ -17402,9 +17410,9 @@ async def get_player_list_flags(current_user: User = Depends(get_current_user)):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         cursor.execute(
-            """
+            f"""
             SELECT UNIVERSAL_ID, IS_FAVORITE, IS_DECISION
-            FROM player_list_flags
+            FROM {read_table('player_list_flags')}
             WHERE IS_FAVORITE = TRUE OR IS_DECISION = TRUE
             """
         )
@@ -17451,8 +17459,8 @@ async def update_player_list_flag(
 
         # Ensure a row exists for this player (no-op if already present)
         cursor.execute(
-            """
-            MERGE INTO player_list_flags target
+            f"""
+            MERGE INTO {write_table('player_list_flags')} target
             USING (SELECT %s AS UNIVERSAL_ID) source
             ON target.UNIVERSAL_ID = source.UNIVERSAL_ID
             WHEN NOT MATCHED THEN INSERT (UNIVERSAL_ID, IS_FAVORITE, IS_DECISION)
@@ -17480,13 +17488,13 @@ async def update_player_list_flag(
 
         params.append(universal_id)
         cursor.execute(
-            f"UPDATE player_list_flags SET {', '.join(set_clauses)} WHERE UNIVERSAL_ID = %s",
+            f"UPDATE {write_table('player_list_flags')} SET {', '.join(set_clauses)} WHERE UNIVERSAL_ID = %s",
             params,
         )
         conn.commit()
 
         cursor.execute(
-            "SELECT IS_FAVORITE, IS_DECISION FROM player_list_flags WHERE UNIVERSAL_ID = %s",
+            f"SELECT IS_FAVORITE, IS_DECISION FROM {read_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
             (universal_id,),
         )
         row = cursor.fetchone()
@@ -18070,11 +18078,11 @@ async def move_player_between_lists(
         ensure_player_lists_category_column(cursor)
 
         cursor.execute(
-            """
+            f"""
             SELECT pli.PLAYER_ID, pli.CAFC_PLAYER_ID, pli.STAGE, pli.NOTES, pl.LIST_NAME,
                    COALESCE(pl.LIST_CATEGORY, 'first_team')
-            FROM player_list_items pli
-            JOIN player_lists pl ON pl.ID = pli.LIST_ID
+            FROM {read_table('player_list_items')} pli
+            JOIN {read_table('player_lists')} pl ON pl.ID = pli.LIST_ID
             WHERE pli.ID = %s AND pli.LIST_ID = %s
             """,
             (item_id, list_id),
@@ -18085,9 +18093,9 @@ async def move_player_between_lists(
 
         player_id, cafc_player_id, stage, notes, source_name, source_category = source
         cursor.execute(
-            """
+            f"""
             SELECT LIST_NAME, COALESCE(LIST_CATEGORY, 'first_team')
-            FROM player_lists WHERE ID = %s
+            FROM {read_table('player_lists')} WHERE ID = %s
             """,
             (move_data.destination_list_id,),
         )
@@ -18102,8 +18110,8 @@ async def move_player_between_lists(
             )
 
         cursor.execute(
-            """
-            SELECT ID FROM player_list_items
+            f"""
+            SELECT ID FROM {read_table('player_list_items')}
             WHERE LIST_ID = %s
               AND ((PLAYER_ID IS NOT NULL AND PLAYER_ID = %s)
                    OR (CAFC_PLAYER_ID IS NOT NULL AND CAFC_PLAYER_ID = %s))
@@ -18114,13 +18122,13 @@ async def move_player_between_lists(
             raise HTTPException(status_code=409, detail="Player is already in the destination list")
 
         cursor.execute(
-            "SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM player_list_items WHERE LIST_ID = %s",
+            f"SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM {read_table('player_list_items')} WHERE LIST_ID = %s",
             (move_data.destination_list_id,),
         )
         destination_order = cursor.fetchone()[0]
         cursor.execute(
-            """
-            INSERT INTO player_list_items
+            f"""
+            INSERT INTO {write_table('player_list_items')}
                 (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY, STAGE, CREATED_AT)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
@@ -18138,8 +18146,8 @@ async def move_player_between_lists(
         # Snowflake does not provide a portable last-insert-id API, so resolve the
         # newly inserted membership using its unique player/list combination.
         cursor.execute(
-            """
-            SELECT ID FROM player_list_items
+            f"""
+            SELECT ID FROM {read_table('player_list_items')}
             WHERE LIST_ID = %s
               AND ((PLAYER_ID IS NOT NULL AND PLAYER_ID = %s)
                    OR (CAFC_PLAYER_ID IS NOT NULL AND CAFC_PLAYER_ID = %s))
@@ -18159,9 +18167,9 @@ async def move_player_between_lists(
             description=f"Moved from {source_name} to {destination_name}",
             changed_by=current_user.id,
         )
-        cursor.execute("DELETE FROM player_list_items WHERE ID = %s AND LIST_ID = %s", (item_id, list_id))
+        cursor.execute(f"DELETE FROM {write_table('player_list_items')} WHERE ID = %s AND LIST_ID = %s", (item_id, list_id))
         timestamp = datetime.utcnow()
-        cursor.execute("UPDATE player_lists SET UPDATED_AT = %s WHERE ID IN (%s, %s)", (timestamp, list_id, move_data.destination_list_id))
+        cursor.execute(f"UPDATE {write_table('player_lists')} SET UPDATED_AT = %s WHERE ID IN (%s, %s)", (timestamp, list_id, move_data.destination_list_id))
         conn.commit()
         invalidate_cache("player_lists_all")
         return {
@@ -19048,7 +19056,7 @@ async def bulk_add_players_to_list(
 
             # Get max display order
             cursor.execute(
-                "SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM player_list_items WHERE LIST_ID = %s",
+                f"SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM {read_table('player_list_items')} WHERE LIST_ID = %s",
                 (list_id,),
             )
             max_order = cursor.fetchone()[0]
@@ -19064,8 +19072,8 @@ async def bulk_add_players_to_list(
             )
 
             cursor.execute(
-                """
-                SELECT ID FROM player_list_items
+                f"""
+                SELECT ID FROM {read_table('player_list_items')}
                 WHERE LIST_ID = %s
                 ORDER BY CREATED_AT DESC LIMIT 1
                 """,
