@@ -283,7 +283,11 @@ def load_table_schemas():
 
         for table_name in tables_to_cache:
             try:
-                cursor.execute(f"DESCRIBE TABLE {table_name}")
+                # Describe the object the app actually READS (read_table -> the
+                # APP_COMPAT view in the canonical world), not the bare name,
+                # which resolves to CAFC_DB.CORE where players/matches have the
+                # canonical column shape, not the legacy one the app expects.
+                cursor.execute(f"DESCRIBE TABLE {read_table(table_name)}")
                 columns = cursor.fetchall()
                 TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in columns]
                 print(f"✅ Cached schema for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
@@ -321,7 +325,7 @@ def refresh_table_schema(table_name: str):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        cursor.execute(f"DESCRIBE TABLE {table_name}")
+        cursor.execute(f"DESCRIBE TABLE {read_table(table_name)}")
         TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in cursor.fetchall()]
         print(f"✅ Refreshed schema cache for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
         print(f"DEBUG: Columns for {table_name}: {TABLE_SCHEMA_CACHE[table_name]}")
