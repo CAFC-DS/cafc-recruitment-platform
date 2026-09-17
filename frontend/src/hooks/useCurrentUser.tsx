@@ -72,5 +72,6 @@ export const useCurrentUser = () => {
     canSeeAllReports: isAdmin || isSeniorManager || isManager,
     canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanManager,
     canGenerateShareLinks: isAdmin || isSeniorManager || isManager,
+    canViewFlowHistory: isAdmin,
   };
 };

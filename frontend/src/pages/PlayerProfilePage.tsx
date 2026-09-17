@@ -554,7 +554,7 @@ const PlayerProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { viewMode, setViewMode } = useViewMode();
-  const { canGenerateShareLinks, canManageIntel, canSeeAllReports, isAdmin, isIntelReviewer, user } = useCurrentUser();
+  const { canGenerateShareLinks, canManageIntel, canSeeAllReports, canViewFlowHistory, isAdmin, isIntelReviewer, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -1316,7 +1316,7 @@ const PlayerProfilePage: React.FC = () => {
       fetchPositionCounts();
       fetchPlayerStages();
     }
-  }, [actualPlayerId, showScoutingContent]);
+  }, [actualPlayerId, showScoutingContent, canViewFlowHistory]);
 
   // Update available positions when profile changes
   useEffect(() => {
@@ -1436,7 +1436,7 @@ const PlayerProfilePage: React.FC = () => {
   };
 
   const fetchFlowHistory = async () => {
-    if (!actualPlayerId) {
+    if (!actualPlayerId || !canViewFlowHistory) {
       setFlowHistoryLoading(false);
       return;
     }
@@ -1858,7 +1858,7 @@ const PlayerProfilePage: React.FC = () => {
         <>
         {/* Reports Sections - Full Width Stacked Layout */}
         <div className="mt-4 mb-4">
-          {showScoutingContent && (
+          {showScoutingContent && canViewFlowHistory && (
           <div className="mb-4">
             <div className="horizontal-timeline-section mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">

@@ -10422,6 +10422,9 @@ def format_flow_history_deal_type(deal_type: Optional[str]) -> Optional[str]:
 async def get_player_flow_history(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized to view flow history")
+
     cache_key = f"player_flow_history_{player_id}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
 
     cached_data = get_cache(cache_key)
