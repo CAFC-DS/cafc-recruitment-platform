@@ -2,8 +2,11 @@
 .env
 .env.local
 .env.production
+.env.rehearsal
 backend/.env
 frontend/.env
+backend/.venv-rehearsal/
+backend/run_rehearsal.py
 
 # Dependencies
 node_modules/
