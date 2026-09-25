@@ -2864,7 +2864,7 @@ def build_recommendation_select():
             (
                 SELECT AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)
                 FROM {read_table('players')} p
-                LEFT JOIN {read_table('scout_reports')} sr ON ({join_condition})
+                LEFT JOIN {core_table('scout_reports')} sr ON ({join_condition})
                 WHERE NORMALIZE_TEXT_UDF(p.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
             )
         """
@@ -2872,7 +2872,7 @@ def build_recommendation_select():
         avg_performance_expr = f"""
             (
                 SELECT AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 WHERE NORMALIZE_TEXT_UDF(sr.PLAYERNAME) = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)
             )
         """
@@ -3629,7 +3629,7 @@ async def search_agent_players(
                     {select_squadname_expr} AS SQUADNAME,
                     {select_position_expr} AS POSITION
                 FROM {read_table('players')} p
-                LEFT JOIN {read_table('scout_reports')} sr
+                LEFT JOIN {core_table('scout_reports')} sr
                     ON ({join_condition})
                 WHERE {search_name_expr} ILIKE %s
                 GROUP BY p.{player_name_column}, {select_birthdate_expr}
@@ -4859,7 +4859,7 @@ async def get_analytics_timeline(
                 sr.SCOUTING_TYPE,
                 COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             {date_filter}
             GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM'), sr.SCOUTING_TYPE, u.USERNAME
@@ -4959,7 +4959,7 @@ async def get_analytics_timeline_daily(
                 sr.SCOUTING_TYPE,
                 COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())
             GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM-DD'), sr.SCOUTING_TYPE, u.USERNAME
@@ -5055,20 +5055,20 @@ async def debug_scout_reports(current_user: User = Depends(get_current_user)):
 
         if "USER_ID" in column_names:
             # Check USER_ID data quality
-            cursor.execute(f"SELECT COUNT(*) FROM {read_table('scout_reports')}")
+            cursor.execute(f"SELECT COUNT(*) FROM {core_table('scout_reports')}")
             total_reports = cursor.fetchone()[0]
 
             cursor.execute(
-                f"SELECT COUNT(*) FROM {read_table('scout_reports')} WHERE USER_ID IS NOT NULL"
+                f"SELECT COUNT(*) FROM {core_table('scout_reports')} WHERE USER_ID IS NOT NULL"
             )
             reports_with_user_id = cursor.fetchone()[0]
 
-            cursor.execute(f"SELECT COUNT(*) FROM {read_table('scout_reports')} WHERE USER_ID IS NULL")
+            cursor.execute(f"SELECT COUNT(*) FROM {core_table('scout_reports')} WHERE USER_ID IS NULL")
             reports_without_user_id = cursor.fetchone()[0]
 
             # Get sample of USER_ID values
             cursor.execute(
-                f"SELECT DISTINCT USER_ID FROM {read_table('scout_reports')} WHERE USER_ID IS NOT NULL LIMIT 10"
+                f"SELECT DISTINCT USER_ID FROM {core_table('scout_reports')} WHERE USER_ID IS NOT NULL LIMIT 10"
             )
             sample_user_ids = [row[0] for row in cursor.fetchall()]
 
@@ -5591,7 +5591,7 @@ async def get_cafc_system_status(current_user: User = Depends(get_current_user))
             # Count scout reports using CAFC IDs
             try:
                 cursor.execute(
-                    f"SELECT COUNT(*) FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID IS NOT NULL"
+                    f"SELECT COUNT(*) FROM {core_table('scout_reports')} WHERE CAFC_PLAYER_ID IS NOT NULL"
                 )
                 stats["scout_reports_migrated"] = cursor.fetchone()[0]
             except:
@@ -5601,7 +5601,7 @@ async def get_cafc_system_status(current_user: User = Depends(get_current_user))
             try:
                 cursor.execute(
                     f"""
-                    SELECT COUNT(*) FROM {read_table('scout_reports')} sr 
+                    SELECT COUNT(*) FROM {core_table('scout_reports')} sr 
                     WHERE sr.CAFC_PLAYER_ID IS NULL 
                     AND sr.PLAYER_ID IS NOT NULL
                 """
@@ -5668,7 +5668,7 @@ async def check_player_deletion_safety(
 
         # Scout reports
         cursor.execute(
-            f"SELECT COUNT(*) FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s OR PLAYER_ID = %s",
+            f"SELECT COUNT(*) FROM {core_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s OR PLAYER_ID = %s",
             (cafc_player_id, player_id),
         )
         dependencies["scout_reports"] = cursor.fetchone()[0]
@@ -6341,7 +6341,7 @@ async def detect_data_clashes(
             if internal_ids:
                 placeholders = ",".join(["%s"] * len(internal_ids))
                 cursor.execute(
-                    f"SELECT DISTINCT CAFC_PLAYER_ID FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID IN ({placeholders})",
+                    f"SELECT DISTINCT CAFC_PLAYER_ID FROM {core_table('scout_reports')} WHERE CAFC_PLAYER_ID IN ({placeholders})",
                     internal_ids,
                 )
                 for row in cursor.fetchall():
@@ -6349,7 +6349,7 @@ async def detect_data_clashes(
             if external_ids:
                 placeholders = ",".join(["%s"] * len(external_ids))
                 cursor.execute(
-                    f"SELECT DISTINCT PLAYER_ID FROM {read_table('scout_reports')} WHERE PLAYER_ID IN ({placeholders})",
+                    f"SELECT DISTINCT PLAYER_ID FROM {core_table('scout_reports')} WHERE PLAYER_ID IN ({placeholders})",
                     external_ids,
                 )
                 for row in cursor.fetchall():
@@ -7000,7 +7000,7 @@ async def merge_duplicate_match(
         if remove_cafc_id:
             cursor.execute(
                 f"""
-                UPDATE {write_table('scout_reports')}
+                UPDATE {core_table('scout_reports')}
                 SET MATCH_ID = %s
                 WHERE MATCH_ID = %s
             """,
@@ -7011,7 +7011,7 @@ async def merge_duplicate_match(
         if remove_id:
             cursor.execute(
                 f"""
-                UPDATE {write_table('scout_reports')}
+                UPDATE {core_table('scout_reports')}
                 SET MATCH_ID = %s
                 WHERE MATCH_ID = %s
             """,
@@ -7086,7 +7086,7 @@ async def delete_duplicate(
                 report_check = "sr.PLAYER_ID = %s"
             cursor.execute(
                 f"""
-                SELECT COUNT(*) FROM {read_table('scout_reports')} sr
+                SELECT COUNT(*) FROM {core_table('scout_reports')} sr
                 WHERE {report_check}
             """,
                 params[:1],
@@ -7109,7 +7109,7 @@ async def delete_duplicate(
             # Check if match has any reports
             cursor.execute(
                 f"""
-                SELECT COUNT(*) FROM {read_table('scout_reports')}
+                SELECT COUNT(*) FROM {core_table('scout_reports')}
                 WHERE MATCH_ID IN (
                     SELECT COALESCE(CAFC_MATCH_ID, ID) FROM {read_table('matches')} WHERE {condition}
                 )
@@ -7635,7 +7635,7 @@ async def create_scout_report(
         # Try to insert with USER_ID first, fallback to without USER_ID if column doesn't exist
         try:
             sql = f"""
-                INSERT INTO {write_table('scout_reports')} (
+                INSERT INTO {core_table('scout_reports')} (
                     PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
                     SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, IS_POTENTIAL,
                     PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, CLIP_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
@@ -7671,7 +7671,7 @@ async def create_scout_report(
             # If USER_ID column doesn't exist, use the old query
             if "invalid identifier 'USER_ID'" in str(e) or "USER_ID" in str(e):
                 sql = f"""
-                    INSERT INTO {write_table('scout_reports')} (
+                    INSERT INTO {core_table('scout_reports')} (
                         PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
                         SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE, IS_POTENTIAL,
                         PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS
@@ -7711,23 +7711,23 @@ async def create_scout_report(
         if use_user_id:
             if player_data_source == "external":
                 cursor.execute(
-                    f"SELECT ID FROM {read_table('scout_reports')} WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    f"SELECT ID FROM {core_table('scout_reports')} WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
                     (actual_player_id, current_user.id, summary, report_type),
                 )
             else:
                 cursor.execute(
-                    f"SELECT ID FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    f"SELECT ID FROM {core_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
                     (actual_player_id, current_user.id, summary, report_type),
                 )
         else:
             if player_data_source == "external":
                 cursor.execute(
-                    f"SELECT ID FROM {read_table('scout_reports')} WHERE PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    f"SELECT ID FROM {core_table('scout_reports')} WHERE PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
                     (actual_player_id, summary, report_type),
                 )
             else:
                 cursor.execute(
-                    f"SELECT ID FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    f"SELECT ID FROM {core_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
                     (actual_player_id, summary, report_type),
                 )
         report_id_row = cursor.fetchone()
@@ -7909,7 +7909,7 @@ async def create_scout_reports_batch(
 
             # Insert report
             sql = f"""
-                INSERT INTO {write_table('scout_reports')} (
+                INSERT INTO {core_table('scout_reports')} (
                     PLAYER_ID, CAFC_PLAYER_ID, POSITION, BUILD, HEIGHT, STRENGTHS, WEAKNESSES,
                     SUMMARY, JUSTIFICATION, ATTRIBUTE_SCORE, PERFORMANCE_SCORE,
                     PURPOSE, SCOUTING_TYPE, FLAG_CATEGORY, CLIP_CATEGORY, REPORT_TYPE, MATCH_ID, FORMATION, OPPOSITION_DETAILS, USER_ID
@@ -7943,12 +7943,12 @@ async def create_scout_reports_batch(
             # Get the ID of the inserted report
             if player_data_source == "external":
                 cursor.execute(
-                    f"SELECT ID FROM {read_table('scout_reports')} WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    f"SELECT ID FROM {core_table('scout_reports')} WHERE PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
                     (actual_player_id, current_user.id, summary, report_type),
                 )
             else:
                 cursor.execute(
-                    f"SELECT ID FROM {read_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
+                    f"SELECT ID FROM {core_table('scout_reports')} WHERE CAFC_PLAYER_ID = %s AND USER_ID = %s AND SUMMARY = %s AND REPORT_TYPE = %s ORDER BY CREATED_AT DESC LIMIT 1",
                     (actual_player_id, current_user.id, summary, report_type),
                 )
 
@@ -8005,7 +8005,7 @@ async def update_scout_report(
         conn.autocommit = False
 
         # Check if report exists and user has permission to edit it
-        cursor.execute(f"SELECT USER_ID FROM {read_table('scout_reports')} WHERE ID = %s", (report_id,))
+        cursor.execute(f"SELECT USER_ID FROM {core_table('scout_reports')} WHERE ID = %s", (report_id,))
         existing_report = cursor.fetchone()
 
         if not existing_report:
@@ -8115,7 +8115,7 @@ async def update_scout_report(
 
         # Update the scout report with dual column approach
         sql = f"""
-            UPDATE {write_table('scout_reports')} SET
+            UPDATE {core_table('scout_reports')} SET
                 PLAYER_ID = %s, CAFC_PLAYER_ID = %s, POSITION = %s, BUILD = %s, HEIGHT = %s, STRENGTHS = %s, WEAKNESSES = %s,
                 SUMMARY = %s, JUSTIFICATION = %s, ATTRIBUTE_SCORE = %s, PERFORMANCE_SCORE = %s, IS_POTENTIAL = %s,
                 PURPOSE = %s, SCOUTING_TYPE = %s, FLAG_CATEGORY = %s, CLIP_CATEGORY = %s, REPORT_TYPE = %s, MATCH_ID = %s, FORMATION = %s, OPPOSITION_DETAILS = %s
@@ -8194,7 +8194,7 @@ async def delete_scout_report(
         conn.autocommit = False
 
         # Check if report exists and user has permission to delete it
-        cursor.execute(f"SELECT USER_ID FROM {read_table('scout_reports')} WHERE ID = %s", (report_id,))
+        cursor.execute(f"SELECT USER_ID FROM {core_table('scout_reports')} WHERE ID = %s", (report_id,))
         existing_report = cursor.fetchone()
 
         if not existing_report:
@@ -8213,7 +8213,7 @@ async def delete_scout_report(
         )
 
         # Delete the scout report
-        cursor.execute(f"DELETE FROM {write_table('scout_reports')} WHERE ID = %s", (report_id,))
+        cursor.execute(f"DELETE FROM {core_table('scout_reports')} WHERE ID = %s", (report_id,))
 
         conn.commit()
         invalidate_scout_report_caches()
@@ -8251,7 +8251,7 @@ async def get_scout_report(
                    sr.SCOUTING_TYPE, sr.FLAG_CATEGORY, sr.REPORT_TYPE, sr.MATCH_ID, sr.FORMATION,
                    p.PLAYERNAME, p.DATA_SOURCE, m.HOMESQUADNAME, m.AWAYSQUADNAME, DATE(m.SCHEDULEDDATE) as FIXTURE_DATE,
                    sr.OPPOSITION_DETAILS, sr.IS_POTENTIAL
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -9050,7 +9050,7 @@ async def get_all_scout_reports(
 
         # Base SQL query for fetching reports - dual column approach for player separation
         base_sql = f"""
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -9361,7 +9361,7 @@ async def get_recent_scout_reports(
 
         # Base SQL query
         base_sql = f"""
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -9564,7 +9564,7 @@ async def get_top_attribute_reports(
 
         # Base SQL query
         base_sql = f"""
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -9734,7 +9734,7 @@ async def get_single_scout_report(
                 sr.IS_ARCHIVED,
                 sr.IS_POTENTIAL,
                 sr.CLIP_CATEGORY
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -9856,7 +9856,7 @@ async def create_shareable_link(
         cursor = conn.cursor()
 
         # Verify report exists
-        cursor.execute(f"SELECT ID FROM {read_table('scout_reports')} WHERE ID = %s", (report_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('scout_reports')} WHERE ID = %s", (report_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Scout report not found")
 
@@ -9997,7 +9997,7 @@ async def get_public_report(token: str):
                 sr.IS_POTENTIAL,
                 p.POSITION as PLAYER_POSITION,
                 p.SQUADNAME
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -10120,7 +10120,7 @@ async def get_report_share_links(
         cursor = conn.cursor()
 
         # Verify report exists
-        cursor.execute(f"SELECT ID FROM {read_table('scout_reports')} WHERE ID = %s", (report_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('scout_reports')} WHERE ID = %s", (report_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Scout report not found")
 
@@ -10343,7 +10343,7 @@ async def mark_all_reports_viewed(current_user: User = Depends(get_current_user)
 
         get_report_ids_sql = f"""
             SELECT sr.ID
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             {where_clause_sql}
         """
 
@@ -10363,7 +10363,7 @@ async def mark_all_reports_viewed(current_user: User = Depends(get_current_user)
             MERGE INTO {write_table('scout_report_views')} AS target
             USING (
                 SELECT sr.ID AS SCOUT_REPORT_ID, %s AS USER_ID
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 WHERE sr.ID IN ({{placeholders}})
             ) AS source
             ON target.SCOUT_REPORT_ID = source.SCOUT_REPORT_ID
@@ -10794,7 +10794,7 @@ async def get_player_profile(
             SELECT sr.ID, sr.CREATED_AT, sr.REPORT_TYPE, sr.SCOUTING_TYPE,
                    sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
                    u.USERNAME, sr.IS_POTENTIAL
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             WHERE {player_id_column} = %s
             ORDER BY sr.CREATED_AT DESC
@@ -10805,7 +10805,7 @@ async def get_player_profile(
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
-            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {read_table('scout_reports')} LIMIT 1")
+            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {core_table('scout_reports')} LIMIT 1")
             if current_user.role == ROLE_SCOUT:
                 # Scouts see ONLY their own reports
                 scout_sql = scout_sql.replace(
@@ -11130,7 +11130,7 @@ async def get_player_attributes(
                 AVG(CAST(sras.ATTRIBUTE_SCORE AS FLOAT)) as avg_score,
                 COUNT(sras.ATTRIBUTE_SCORE) as report_count
             FROM {read_table('scout_report_attribute_scores')} sras
-            JOIN {read_table('scout_reports')} sr ON sras.SCOUT_REPORT_ID = sr.ID
+            JOIN {core_table('scout_reports')} sr ON sras.SCOUT_REPORT_ID = sr.ID
             WHERE {where_clause} AND sras.ATTRIBUTE_SCORE > 0
         """
 
@@ -11156,7 +11156,7 @@ async def get_player_attributes(
         try:
             # Check if USER_ID column exists
             test_cursor = conn.cursor()
-            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {read_table('scout_reports')} LIMIT 1")
+            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {core_table('scout_reports')} LIMIT 1")
             if current_user.role == ROLE_SCOUT:
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
@@ -11753,7 +11753,7 @@ async def get_player_scout_reports(
                 sr.SUMMARY as summary,
                 sr.IS_POTENTIAL as is_potential,
                 sr.USER_ID as user_id
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {read_table('matches')} m ON (
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
@@ -11768,7 +11768,7 @@ async def get_player_scout_reports(
         # Apply role-based filtering for scout users and loan scouts
         try:
             test_cursor = conn.cursor()
-            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {read_table('scout_reports')} LIMIT 1")
+            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {core_table('scout_reports')} LIMIT 1")
             if current_user.role == ROLE_SCOUT:
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
@@ -11897,7 +11897,7 @@ async def get_player_position_counts(
             SELECT
                 sr.POSITION as position,
                 COUNT(*) as report_count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE {where_clause}
         """
 
@@ -11906,7 +11906,7 @@ async def get_player_position_counts(
         # Apply role-based filtering for scout users and loan scouts
         try:
             test_cursor = conn.cursor()
-            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {read_table('scout_reports')} LIMIT 1")
+            test_cursor.execute(f"SELECT USER_ID, PURPOSE FROM {core_table('scout_reports')} LIMIT 1")
             if current_user.role == ROLE_SCOUT:
                 # Scouts see ONLY their own reports
                 base_query += " AND sr.USER_ID = %s"
@@ -12080,7 +12080,7 @@ async def get_all_players(
                 COUNT(DISTINCT pi.ID) as intel_reports_count,
                 GREATEST(MAX(sr.CREATED_AT), MAX(pi.CREATED_AT)) as last_report_date
             FROM {read_table('players')} p
-            LEFT JOIN {read_table('scout_reports')} sr ON p.PLAYERID = sr.PLAYER_ID
+            LEFT JOIN {core_table('scout_reports')} sr ON p.PLAYERID = sr.PLAYER_ID
             LEFT JOIN {read_table('player_information')} pi ON p.PLAYERID = pi.PLAYER_ID
             WHERE {where_clause}
             GROUP BY p.PLAYERID, p.PLAYERNAME, p.FIRSTNAME, p.LASTNAME, p.BIRTHDATE, p.SQUADNAME, p.POSITION
@@ -12185,7 +12185,7 @@ async def export_player_pdf(
                    sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
                    sr.STRENGTHS, sr.WEAKNESSES, sr.JUSTIFICATION,
                    u.USERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {read_table('matches')} m ON (
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
@@ -13646,14 +13646,14 @@ async def migrate_purpose_values(current_user: User = Depends(get_current_user))
 
         # Check current values
         cursor.execute(
-            f"SELECT DISTINCT PURPOSE, COUNT(*) FROM {read_table('scout_reports')} WHERE PURPOSE IS NOT NULL GROUP BY PURPOSE ORDER BY PURPOSE"
+            f"SELECT DISTINCT PURPOSE, COUNT(*) FROM {core_table('scout_reports')} WHERE PURPOSE IS NOT NULL GROUP BY PURPOSE ORDER BY PURPOSE"
         )
         current_values = cursor.fetchall()
         results.append(f"Current PURPOSE values: {dict(current_values)}")
 
         # Update Player Assessment -> Player Report
         cursor.execute(
-            f"UPDATE {write_table('scout_reports')} SET PURPOSE = 'Player Report' WHERE PURPOSE = 'Player Assessment'"
+            f"UPDATE {core_table('scout_reports')} SET PURPOSE = 'Player Report' WHERE PURPOSE = 'Player Assessment'"
         )
         player_updates = cursor.rowcount
         results.append(
@@ -13662,7 +13662,7 @@ async def migrate_purpose_values(current_user: User = Depends(get_current_user))
 
         # Update Loan Assessment -> Loan Report
         cursor.execute(
-            f"UPDATE {write_table('scout_reports')} SET PURPOSE = 'Loan Report' WHERE PURPOSE = 'Loan Assessment'"
+            f"UPDATE {core_table('scout_reports')} SET PURPOSE = 'Loan Report' WHERE PURPOSE = 'Loan Assessment'"
         )
         loan_updates = cursor.rowcount
         results.append(
@@ -13673,7 +13673,7 @@ async def migrate_purpose_values(current_user: User = Depends(get_current_user))
 
         # Verify updates
         cursor.execute(
-            f"SELECT DISTINCT PURPOSE, COUNT(*) FROM {read_table('scout_reports')} WHERE PURPOSE IS NOT NULL GROUP BY PURPOSE ORDER BY PURPOSE"
+            f"SELECT DISTINCT PURPOSE, COUNT(*) FROM {core_table('scout_reports')} WHERE PURPOSE IS NOT NULL GROUP BY PURPOSE ORDER BY PURPOSE"
         )
         updated_values = cursor.fetchall()
         results.append(f"Updated PURPOSE values: {dict(updated_values)}")
@@ -13961,7 +13961,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(DISTINCT MATCH_ID)
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE MATCH_ID IS NOT NULL
             """
         )
@@ -13971,7 +13971,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(DISTINCT COALESCE(PLAYER_ID, CAFC_PLAYER_ID))
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE PLAYER_ID IS NOT NULL OR CAFC_PLAYER_ID IS NOT NULL
             """
         )
@@ -13981,7 +13981,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(ID)
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             """
         )
         total_reports_all = cursor.fetchone()[0] or 0
@@ -13990,7 +13990,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(DISTINCT MATCH_ID)
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE MATCH_ID IS NOT NULL
             AND UPPER(SCOUTING_TYPE) = 'LIVE'
             """
@@ -14001,7 +14001,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(DISTINCT COALESCE(PLAYER_ID, CAFC_PLAYER_ID))
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE (PLAYER_ID IS NOT NULL OR CAFC_PLAYER_ID IS NOT NULL)
             AND UPPER(SCOUTING_TYPE) = 'LIVE'
             """
@@ -14012,7 +14012,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(ID)
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE UPPER(SCOUTING_TYPE) = 'LIVE'
             """
         )
@@ -14022,7 +14022,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(DISTINCT MATCH_ID)
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE MATCH_ID IS NOT NULL
             AND UPPER(SCOUTING_TYPE) = 'VIDEO'
             """
@@ -14033,7 +14033,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(DISTINCT COALESCE(PLAYER_ID, CAFC_PLAYER_ID))
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE (PLAYER_ID IS NOT NULL OR CAFC_PLAYER_ID IS NOT NULL)
             AND UPPER(SCOUTING_TYPE) = 'VIDEO'
             """
@@ -14044,7 +14044,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
         cursor.execute(
             f"""
             SELECT COUNT(ID)
-            FROM {read_table('scout_reports')}
+            FROM {core_table('scout_reports')}
             WHERE UPPER(SCOUTING_TYPE) = 'VIDEO'
             """
         )
@@ -14084,7 +14084,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
                 COUNT(DISTINCT COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID)) as players_covered,
                 COUNT(sr.ID) as total_reports
             FROM {read_table('matches')} m
-            INNER JOIN {read_table('scout_reports')} sr ON m.ID = sr.MATCH_ID
+            INNER JOIN {core_table('scout_reports')} sr ON m.ID = sr.MATCH_ID
             WHERE m.ID IS NOT NULL
             AND (sr.PLAYER_ID IS NOT NULL OR sr.CAFC_PLAYER_ID IS NOT NULL)
             GROUP BY m.ID, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE, sr.SCOUTING_TYPE
@@ -14115,7 +14115,7 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
                 COUNT(DISTINCT COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID)) as players_covered,
                 sr.SCOUTING_TYPE
             FROM {read_table('matches')} m
-            INNER JOIN {read_table('scout_reports')} sr ON m.ID = sr.MATCH_ID
+            INNER JOIN {core_table('scout_reports')} sr ON m.ID = sr.MATCH_ID
             WHERE m.ID IS NOT NULL
             AND (sr.PLAYER_ID IS NOT NULL OR sr.CAFC_PLAYER_ID IS NOT NULL)
             AND UPPER(sr.SCOUTING_TYPE) = 'LIVE'
@@ -14206,7 +14206,7 @@ async def get_my_analytics(
                 COUNT(DISTINCT CASE
                     WHEN sr.REPORT_TYPE = 'Player Assessment' THEN COALESCE(sr.CAFC_PLAYER_ID, sr.PLAYER_ID)
                 END) AS UNIQUE_PLAYERS_ASSESSED
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE {where_sql}
             """,
             params,
@@ -14219,7 +14219,7 @@ async def get_my_analytics(
                 TO_CHAR(DATE_TRUNC('MONTH', sr.CREATED_AT), 'YYYY-MM') AS MONTH,
                 COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' THEN 1 ELSE 0 END), 0) AS ASSESSMENTS,
                 COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END), 0) AS FLAGS
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE {where_sql}
               AND sr.REPORT_TYPE IN ('Player Assessment', 'Flag')
             GROUP BY DATE_TRUNC('MONTH', sr.CREATED_AT)
@@ -14247,7 +14247,7 @@ async def get_my_analytics(
                 SUM(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' THEN 1 ELSE 0 END) AS ASSESSMENTS,
                 SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END) AS FLAGS,
                 COUNT(*) AS TOTAL
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE {where_sql}
               AND sr.POSITION IS NOT NULL
               AND sr.POSITION != ''
@@ -14277,7 +14277,7 @@ async def get_my_analytics(
                 COUNT(sr.ID) AS REPORT_COUNT,
                 COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
                 COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14315,7 +14315,7 @@ async def get_my_analytics(
                 COUNT(sr.ID) AS REPORT_COUNT,
                 COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
                 COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14352,7 +14352,7 @@ async def get_my_analytics(
                 SELECT
                     COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_KEY,
                     sr.POSITION
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 LEFT JOIN {read_table('players')} p ON (
                     (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                     (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14378,7 +14378,7 @@ async def get_my_analytics(
                 MAX(sr.CREATED_AT) AS MOST_RECENT_FLAG,
                 COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) AS PLAYER_ID,
                 COALESCE(p.DATA_SOURCE, 'external') AS DATA_SOURCE
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14413,7 +14413,7 @@ async def get_my_analytics(
         cursor.execute(
             f"""
             SELECT COUNT(*) AS TOTAL_REPORTS
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE {where_sql}
             """,
             params,
@@ -14447,7 +14447,7 @@ async def get_my_analytics(
                 COALESCE(sr.IS_ARCHIVED, FALSE) AS IS_ARCHIVED,
                 CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END AS HAS_BEEN_VIEWED,
                 LEFT(sr.SUMMARY, 180) AS SUMMARY
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14601,7 +14601,7 @@ async def get_my_reports(
         cursor.execute(
             f"""
             SELECT COUNT(*) AS TOTAL_REPORTS
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE {where_sql}
             """,
             params,
@@ -14635,7 +14635,7 @@ async def get_my_reports(
                 COALESCE(sr.IS_ARCHIVED, FALSE) AS IS_ARCHIVED,
                 CASE WHEN srv.VIEWED_AT IS NOT NULL THEN TRUE ELSE FALSE END AS HAS_BEEN_VIEWED,
                 LEFT(sr.SUMMARY, 180) AS SUMMARY
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14775,7 +14775,7 @@ async def get_player_analytics(
         # 1. Total Player Assessments Count
         cursor.execute(f"""
             SELECT COUNT(*) as total_assessments
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE REPORT_TYPE = 'Player Assessment'
             {additional_filters}
         """, params)
@@ -14784,7 +14784,7 @@ async def get_player_analytics(
         # 2. Average Performance Score
         cursor.execute(f"""
             SELECT AVG(PERFORMANCE_SCORE) as avg_perf
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE PERFORMANCE_SCORE IS NOT NULL
             AND REPORT_TYPE = 'Player Assessment'
             {additional_filters}
@@ -14795,7 +14795,7 @@ async def get_player_analytics(
         # 3. Unique Players Assessed
         cursor.execute(f"""
             SELECT COUNT(DISTINCT COALESCE(CAFC_PLAYER_ID, PLAYER_ID)) as unique_players
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE (CAFC_PLAYER_ID IS NOT NULL OR PLAYER_ID IS NOT NULL)
             AND REPORT_TYPE = 'Player Assessment'
             {additional_filters}
@@ -14805,7 +14805,7 @@ async def get_player_analytics(
         # 4. Performance Score Distribution
         cursor.execute(f"""
             SELECT PERFORMANCE_SCORE, COUNT(*) as count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE PERFORMANCE_SCORE IS NOT NULL
             AND REPORT_TYPE = 'Player Assessment'
             {additional_filters}
@@ -14818,7 +14818,7 @@ async def get_player_analytics(
         # Note: This query only uses months filter to show ALL positions (not filtered by selected position)
         cursor.execute(f"""
             SELECT sr.POSITION, AVG(sr.ATTRIBUTE_SCORE) as avg_attr_score
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE sr.POSITION IS NOT NULL
             AND sr.ATTRIBUTE_SCORE IS NOT NULL
             AND sr.ATTRIBUTE_SCORE > 0
@@ -14838,7 +14838,7 @@ async def get_player_analytics(
                 COALESCE(AVG(sr.ATTRIBUTE_SCORE), 0) as avg_attribute_score,
                 COUNT(sr.ID) as report_count,
                 COALESCE(sr.POSITION, 'Unknown') as position
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14865,7 +14865,7 @@ async def get_player_analytics(
         # 7. Position Distribution
         cursor.execute(f"""
             SELECT POSITION, COUNT(DISTINCT COALESCE(CAFC_PLAYER_ID, PLAYER_ID)) as player_count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE POSITION IS NOT NULL
             AND REPORT_TYPE = 'Player Assessment'
             {('AND ' + where_clauses[0]) if months else ''}
@@ -14877,7 +14877,7 @@ async def get_player_analytics(
         # 8. Flag Category Distribution
         cursor.execute(f"""
             SELECT FLAG_CATEGORY, COUNT(*) as count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE FLAG_CATEGORY IS NOT NULL
             AND REPORT_TYPE = 'Flag'
             {('AND ' + where_clauses[0]) if months else ''}
@@ -14888,7 +14888,7 @@ async def get_player_analytics(
         # 9. Total All Reports
         cursor.execute(f"""
             SELECT COUNT(*) as total_reports
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE (REPORT_TYPE = 'Player Assessment' OR REPORT_TYPE = 'Flag')
             {additional_filters}
         """, params)
@@ -14897,7 +14897,7 @@ async def get_player_analytics(
         # 10. Total Flag Reports
         cursor.execute(f"""
             SELECT COUNT(*) as total_flags
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE REPORT_TYPE = 'Flag'
             {additional_filters}
         """, params)
@@ -14909,7 +14909,7 @@ async def get_player_analytics(
                 TO_CHAR(DATE_TRUNC('MONTH', sr.CREATED_AT), 'YYYY-MM') as month,
                 COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' THEN 1 ELSE 0 END), 0) as assessments,
                 COALESCE(SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END), 0) as flags
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
             {additional_filters}
             GROUP BY DATE_TRUNC('MONTH', sr.CREATED_AT)
@@ -14935,7 +14935,7 @@ async def get_player_analytics(
                 SUM(CASE WHEN sr.REPORT_TYPE = 'Player Assessment' THEN 1 ELSE 0 END) as assessments,
                 SUM(CASE WHEN sr.REPORT_TYPE = 'Flag' THEN 1 ELSE 0 END) as flags,
                 COUNT(*) as total
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE sr.POSITION IS NOT NULL
             AND (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
             {('AND ' + where_clauses[0]) if months else ''}
@@ -14961,7 +14961,7 @@ async def get_player_analytics(
                 COUNT(sr.ID) as report_count,
                 COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
                 COALESCE(p.DATA_SOURCE, 'external') as data_source
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -14994,7 +14994,7 @@ async def get_player_analytics(
                 COUNT(sr.ID) as report_count,
                 COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
                 COALESCE(p.DATA_SOURCE, 'external') as data_source
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -15022,7 +15022,7 @@ async def get_player_analytics(
             SELECT COUNT(*) as total_count
             FROM (
                 SELECT p.PLAYERNAME
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 LEFT JOIN {read_table('players')} p ON (
                     (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                     (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -15044,7 +15044,7 @@ async def get_player_analytics(
                 MAX(sr.CREATED_AT) as most_recent_flag,
                 COALESCE(p.CAFC_PLAYER_ID, p.PLAYERID) as player_id,
                 COALESCE(p.DATA_SOURCE, 'external') as data_source
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -15078,7 +15078,7 @@ async def get_player_analytics(
             # 16. Total Live Reports (respects months + position filters)
             cursor.execute(f"""
                 SELECT COUNT(*) as total_live
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
                 AND UPPER(sr.SCOUTING_TYPE) = 'LIVE'
                 {additional_filters}
@@ -15088,7 +15088,7 @@ async def get_player_analytics(
             # 17. Total Video Reports (respects months + position filters)
             cursor.execute(f"""
                 SELECT COUNT(*) as total_video
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 WHERE (sr.REPORT_TYPE = 'Player Assessment' OR sr.REPORT_TYPE = 'Flag')
                 AND UPPER(sr.SCOUTING_TYPE) = 'VIDEO'
                 {additional_filters}
@@ -15210,7 +15210,7 @@ async def get_match_team_analytics(
                 COUNT(sr.ID) as total_reports,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -15234,7 +15234,7 @@ async def get_match_team_analytics(
             SELECT
                 COALESCE(FORMATION, 'Unknown') as formation,
                 COUNT(*) as count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE FORMATION IS NOT NULL AND FORMATION != ''
             {date_filter}
             GROUP BY FORMATION
@@ -15254,7 +15254,7 @@ async def get_match_team_analytics(
                 TO_CHAR(DATE_TRUNC('MONTH', sr.CREATED_AT), 'YYYY-MM') as month,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_count,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE sr.MATCH_ID IS NOT NULL
             {date_filter}
             GROUP BY DATE_TRUNC('MONTH', sr.CREATED_AT)
@@ -15285,7 +15285,7 @@ async def get_match_team_analytics(
         # 4. Total match-related reports
         cursor.execute(f"""
             SELECT COUNT(*) as total_reports
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE sr.MATCH_ID IS NOT NULL
             {date_filter}
         """)
@@ -15294,7 +15294,7 @@ async def get_match_team_analytics(
         # 5. Number of unique competitions/tournaments
         cursor.execute(f"""
             SELECT COUNT(DISTINCT m.ITERATIONID) as unique_competitions
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             INNER JOIN {read_table('matches')} m ON (
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
@@ -15307,7 +15307,7 @@ async def get_match_team_analytics(
         # 6. Number of unique fixtures watched
         cursor.execute(f"""
             SELECT COUNT(DISTINCT sr.MATCH_ID) as unique_fixtures
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE sr.MATCH_ID IS NOT NULL
             {date_filter}
         """)
@@ -15318,7 +15318,7 @@ async def get_match_team_analytics(
             SELECT
                 SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END) as live,
                 SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END) as video
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             WHERE sr.MATCH_ID IS NOT NULL
             {date_filter}
         """)
@@ -15336,7 +15336,7 @@ async def get_match_team_analytics(
                 COUNT(sr.ID) as report_count,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             INNER JOIN {read_table('matches')} m ON (
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
@@ -15378,7 +15378,7 @@ async def get_match_team_analytics(
                     m.DATA_SOURCE,
                     sr.SCOUTING_TYPE,
                     COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 INNER JOIN {read_table('matches')} m ON (
                     (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                     (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
@@ -15538,7 +15538,7 @@ async def get_scout_analytics(
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports,
                 COUNT(DISTINCT COALESCE(sr.CAFC_PLAYER_ID, sr.PLAYER_ID)) as unique_players_reported_on,
                 COUNT(DISTINCT sr.MATCH_ID) as games_fixtures_covered
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.USER_ID IS NOT NULL
             {date_filter}
@@ -15577,7 +15577,7 @@ async def get_scout_analytics(
                 TO_CHAR(DATE_TRUNC('MONTH', sr.CREATED_AT), 'YYYY-MM') as month,
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.USER_ID IS NOT NULL
             {date_filter}
@@ -15959,7 +15959,7 @@ async def get_players_by_score(
                 COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID) as player_id,
                 COALESCE(p.DATA_SOURCE, 'unknown') as data_source,
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as latest_scout_name
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -16076,7 +16076,7 @@ async def get_attributes_by_position(
                 archived_filter = "" if include_archived else "AND sr.IS_ARCHIVED = FALSE"
                 cursor.execute(f"""
                     SELECT DISTINCT sras.ATTRIBUTE_NAME
-                    FROM {read_table('scout_reports')} sr
+                    FROM {core_table('scout_reports')} sr
                     JOIN {read_table('scout_report_attribute_scores')} sras
                         ON sras.SCOUT_REPORT_ID = sr.ID
                     WHERE sr.POSITION = %s
@@ -16165,7 +16165,7 @@ async def get_players_by_attributes(
                 DATEDIFF(YEAR, p.BIRTHDATE, CURRENT_DATE()) as age,
                 DATE(m.SCHEDULEDDATE) as fixture_date,
                 CONCAT(m.HOMESQUADNAME, ' vs ', m.AWAYSQUADNAME) as fixture
-            FROM {read_table('scout_reports')} sr
+            FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
@@ -16821,7 +16821,7 @@ async def get_all_player_lists(
                 FROM {read_table('player_lists')} pl
                 LEFT JOIN {read_table('users')} u ON pl.USER_ID = u.ID
                 LEFT JOIN {read_table('player_list_items')} pli ON pl.ID = pli.LIST_ID
-                LEFT JOIN {read_table('scout_reports')} sr ON (
+                LEFT JOIN {core_table('scout_reports')} sr ON (
                     (pli.PLAYER_ID IS NOT NULL AND sr.PLAYER_ID = pli.PLAYER_ID) OR
                     (pli.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = pli.CAFC_PLAYER_ID)
                 )
@@ -17144,7 +17144,7 @@ async def get_all_lists_with_details(
                     COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
                     COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports,
                     MAX(sr.CREATED_AT) as last_report_date
-                FROM {read_table('scout_reports')} sr
+                FROM {core_table('scout_reports')} sr
                 WHERE (sr.PLAYER_ID IN ({external_ids_str}) OR sr.CAFC_PLAYER_ID IN ({internal_ids_str}))
                 {archived_filter}
                 {flag_filter}
@@ -17660,7 +17660,7 @@ async def get_player_list_detail(
                         AVG(sr.PERFORMANCE_SCORE) as avg_performance_score,
                         COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 END) as live_reports,
                         COUNT(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 END) as video_reports
-                    FROM {read_table('scout_reports')} sr
+                    FROM {core_table('scout_reports')} sr
                     WHERE ({where_clause})
                       AND sr.PERFORMANCE_SCORE IS NOT NULL
                       AND sr.PERFORMANCE_SCORE > 0
