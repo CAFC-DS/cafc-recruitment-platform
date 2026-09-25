@@ -15,9 +15,27 @@
 - All 13 tables in scope are pure passthroughs — confirmed by reading every `dbt/models/app_compat/<table>.sql` file in the `cafc-data-platform` repo on 2026-09-23. No column-name changes are needed anywhere in `main.py`.
 - `write_table()` already resolves to `CAFC_DB.CORE` in the deployed production state (`WRITE_DB` unset → defaults to `CANONICAL_DB=CAFC_DB`, `CORE_DB_SCHEMA=CORE`). Do not change write behavior — only rename write call sites to `core_table()` for consistency (marks the table as fully migrated off the `read_table`/`write_table` seam).
 - No runtime feature flag. Rollback is `git revert` + redeploy, per the roadmap.
-- There is no separate dev/staging Snowflake target — local dev points at the same production `CAFC_DB` account via gitignored `backend/.env`. Verification for this batch is safe because every change here is read-path only (writes are untouched); do not add or modify any write-path code in this plan.
+- A dev clone now exists: `CAFC_DB.CORE_DEV_RECRUITMENT`, a zero-copy `CREATE SCHEMA ... CLONE CAFC_DB.CORE` taken 2026-09-25 (49 tables, real data — e.g. 11,608 rows in `SCOUT_REPORTS` at clone time). All local dev/testing for this plan runs against this clone, not prod — see "Local Dev Setup" below. This isolates every write the app makes (not just this batch's tables) from production, so manual QA can safely exercise write endpoints too, not just GET requests.
 - The existing pytest suite (`backend/tests/`) has 34 pre-existing failures out of 92 tests as of 2026-09-23, verified against unmodified `main`, unrelated to this work (a pattern-matching bug: tests assert on bare table names in executed SQL, but `read_table()`/`write_table()` always prepend `{DB}.{SCHEMA}.`). This is **not** a reliable regression gate for this plan. Task 10 runs the suite only as a sanity check that no *new* failures appear (34 exactly, not 35+) — it is not treated as proof of correctness. Fixing the pre-existing failures is explicitly out of scope (separate follow-up, per user decision 2026-09-23).
 - Two dynamic-table-name call sites are intentionally left untouched by this plan (documented in Task 4's notes) — they are already correct and only need to change in sub-project 6 (drop `APP_COMPAT`).
+
+---
+
+## Local Dev Setup (do this once, before Task 1)
+
+Every "start/restart the backend" step in this plan means: run it with `CORE_DB_SCHEMA` pointed at the dev clone instead of prod `CORE`. `CANONICAL_DB` and `PLATFORM_DB_SCHEMA` stay at their defaults (`CAFC_DB`/`APP_COMPAT`) — reads for tables not yet migrated in this batch (`matches`, `players`, etc.) still come from prod `APP_COMPAT`, read-only, unaffected. Only `CORE_DB_SCHEMA` changes, which redirects every write plus every `core_table()`/`write_table()` read into the isolated clone.
+
+```bash
+cd backend
+export CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT
+/opt/anaconda3/bin/python3.10 main.py
+```
+
+Confirm the startup log reads `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`. Every task below that says "restart the backend" means: kill it (Ctrl+C) and re-run `CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/` — spelled out as one line each time since each task may run in a fresh shell (e.g. under subagent-driven execution) where a prior `export` won't have persisted.
+
+`cutover_compare`'s `capture.py`/`diff.py` need no changes for this — they hit whatever backend is running at `--base-url` (default `http://localhost:8000`), so they automatically read the dev-clone-backed responses as long as the backend was started with `CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT`.
+
+If the clone drifts too far from prod during testing (e.g. after a lot of manual QA writes) and you want a fresh baseline, re-clone it: `CREATE OR REPLACE SCHEMA CAFC_DB.CORE_DEV_RECRUITMENT CLONE CAFC_DB.CORE;` — instant, zero-copy, safe to do anytime since nothing reads or writes this schema except your local backend.
 
 ---
 
@@ -144,12 +162,14 @@ git commit -m "Phase 6 sub-project 2: extend cutover_compare with scout_reports/
 
 Nothing in Tasks 1-2 changed any table's read/write behavior (`core_table()` exists but is unused; `capture.py` only gained new entries), so this capture reflects current production behavior — reads still via `APP_COMPAT`.
 
-- [ ] **Step 1: Start the backend locally**
+- [ ] **Step 1: Start the backend locally, pointed at the dev clone**
 
+Per "Local Dev Setup" above:
 ```bash
-cd backend && /opt/anaconda3/bin/python3.10 main.py
+cd backend
+CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py
 ```
-Confirm the startup log shows `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE` (today's production default — no env vars needed locally since `backend/.env` already points at the same account).
+Confirm the startup log shows `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`.
 
 - [ ] **Step 2: Capture the baseline**
 
@@ -195,7 +215,7 @@ grep -c "core_table('scout_reports')" main.py                                  #
 
 - [ ] **Step 4: Manual spot-check against the running app**
 
-Restart the local backend (Ctrl+C, then `/opt/anaconda3/bin/python3.10 main.py` again) so the code change takes effect. With a valid bearer token (from `/token`, same credentials as `creds.json`):
+Restart the local backend so the code change takes effect (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/` — see "Local Dev Setup"). With a valid bearer token (from `/token`, same credentials as `creds.json`):
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/scout_reports/all?page=1&limit=5" | head -c 500
@@ -248,7 +268,7 @@ grep -c "read_table('player_lists')\|write_table('player_lists')\|read_table('pl
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend. With a bearer token for an admin/senior-manager user:
+Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`). With a bearer token for an admin/senior-manager user:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/player-lists?category=first_team" | head -c 500
@@ -296,7 +316,7 @@ grep -c "read_table('scout_report_attribute_scores')\|write_table('scout_report_
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend. Attribute scores and view receipts are nested inside a single scout report's detail response — fetch a real report id from the `/scout_reports/all` response captured in Task 4, then:
+Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`). Attribute scores and view receipts are nested inside a single scout report's detail response — fetch a real report id from the `/scout_reports/all` response captured in Task 4, then:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/scout_reports/{report_id}" | head -c 800
@@ -349,7 +369,7 @@ done
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend.
+Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`).
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/agents/recommendations" | head -c 500
@@ -404,7 +424,7 @@ done
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend.
+Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`).
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/player-lists/flags" | head -c 500
@@ -431,10 +451,13 @@ git commit -m "Phase 6 sub-project 2: repoint player_list_flags + shared_report_
 
 - [ ] **Step 1: Capture the post-change state**
 
-Restart the backend (should already be running the final code from Task 8; restart to be sure).
+Restart the backend, pointed at the dev clone as in every prior task (should already be running the final code from Task 8; restart to be sure):
 
 ```bash
-cd backend && /opt/anaconda3/bin/python3.10 tools/cutover_compare/capture.py --label batch2-after --creds-file tools/cutover_compare/creds.json
+cd backend
+CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py &
+sleep 2
+/opt/anaconda3/bin/python3.10 tools/cutover_compare/capture.py --label batch2-after --creds-file tools/cutover_compare/creds.json
 ```
 
 - [ ] **Step 2: Diff**
