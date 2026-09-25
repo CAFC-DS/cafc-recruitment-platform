@@ -602,6 +602,16 @@ def write_table(table_name: str) -> str:
     return f"{WRITE_PREFIX}.{table_name}"
 
 
+def core_table(table_name: str) -> str:
+    """Fully-qualified CAFC_DB.CORE address for `table_name`. Use once a
+    table's READS (not just its writes) have been cut over off the
+    APP_COMPAT bridge — Phase 6. Always resolves the same as write_table()
+    resolves today (writes have been native since the Phase 3-5 cutover);
+    this helper exists so a grep for read_table('<table>')/write_table('<table>')
+    returning zero hits is a reliable signal that a table is fully migrated."""
+    return f"{CANONICAL_DB}.{CORE_DB_SCHEMA}.{table_name}"
+
+
 # True only in the full-cutover state (WRITE_DB=CAFC_DB, CORE_DB_SCHEMA=CORE).
 # Player/match creation can't use write_table(): canonical PLAYERS/FIXTURES
 # have a different shape from the legacy tables (identity model: mint a CAFC
