@@ -5945,12 +5945,12 @@ async def merge_players(
         # loser's row instead when the survivor already has one (last-write
         # on flags is an acceptable trade-off; a duplicate row is not).
         cursor.execute(
-            f"SELECT 1 FROM {read_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
+            f"SELECT 1 FROM {core_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
             (keep_universal_id,),
         )
         if cursor.fetchone():
             cursor.execute(
-                f"DELETE FROM {write_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
+                f"DELETE FROM {core_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
                 (remove_universal_id,),
             )
             results.append(
@@ -5958,7 +5958,7 @@ async def merge_players(
             )
         else:
             cursor.execute(
-                f"UPDATE {write_table('player_list_flags')} SET UNIVERSAL_ID = %s WHERE UNIVERSAL_ID = %s",
+                f"UPDATE {core_table('player_list_flags')} SET UNIVERSAL_ID = %s WHERE UNIVERSAL_ID = %s",
                 (keep_universal_id, remove_universal_id),
             )
             results.append(f"Updated {cursor.rowcount} rows in player_list_flags")
@@ -8819,7 +8819,7 @@ async def get_attributes_by_position(
         cursor.execute(
             f"""
             SELECT ATTRIBUTE_NAME
-            FROM {read_table('position_attributes')}
+            FROM {core_table('position_attributes')}
             WHERE POSITION = %s
             ORDER BY DISPLAY_ORDER
         """,
@@ -9873,7 +9873,7 @@ async def create_shareable_link(
         # Insert share link
         cursor.execute(
             f"""
-            INSERT INTO {write_table('shared_report_links')}
+            INSERT INTO {core_table('shared_report_links')}
             (REPORT_ID, SHARE_TOKEN, CREATED_BY, EXPIRES_AT, IS_ACTIVE)
             VALUES (%s, %s, %s, %s, %s)
             """,
@@ -9936,7 +9936,7 @@ async def get_public_report(token: str):
         cursor.execute(
             f"""
             SELECT REPORT_ID, EXPIRES_AT, IS_ACTIVE
-            FROM {read_table('shared_report_links')}
+            FROM {core_table('shared_report_links')}
             WHERE SHARE_TOKEN = %s
             """,
             (token,)
@@ -9959,7 +9959,7 @@ async def get_public_report(token: str):
         # Update access count and last accessed
         cursor.execute(
             f"""
-            UPDATE {write_table('shared_report_links')}
+            UPDATE {core_table('shared_report_links')}
             SET ACCESS_COUNT = ACCESS_COUNT + 1,
                 LAST_ACCESSED = CURRENT_TIMESTAMP
             WHERE SHARE_TOKEN = %s
@@ -10135,7 +10135,7 @@ async def get_report_share_links(
                 sl.LAST_ACCESSED,
                 sl.IS_ACTIVE,
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown') as CREATED_BY_NAME
-            FROM {read_table('shared_report_links')} sl
+            FROM {core_table('shared_report_links')} sl
             LEFT JOIN {read_table('users')} u ON sl.CREATED_BY = u.ID
             WHERE sl.REPORT_ID = %s
             ORDER BY sl.CREATED_AT DESC
@@ -10215,7 +10215,7 @@ async def revoke_share_link(
 
         # Check if link exists and get creator
         cursor.execute(
-            f"SELECT CREATED_BY FROM {read_table('shared_report_links')} WHERE SHARE_TOKEN = %s",
+            f"SELECT CREATED_BY FROM {core_table('shared_report_links')} WHERE SHARE_TOKEN = %s",
             (token,)
         )
         result = cursor.fetchone()
@@ -10234,7 +10234,7 @@ async def revoke_share_link(
 
         # Deactivate the link
         cursor.execute(
-            f"UPDATE {write_table('shared_report_links')} SET IS_ACTIVE = FALSE WHERE SHARE_TOKEN = %s",
+            f"UPDATE {core_table('shared_report_links')} SET IS_ACTIVE = FALSE WHERE SHARE_TOKEN = %s",
             (token,)
         )
         conn.commit()
@@ -11210,7 +11210,7 @@ async def get_player_attributes(
             cursor.execute(
                 f"""
                 SELECT pa.ATTRIBUTE_NAME, MIN(pa.DISPLAY_ORDER) as display_order, pa.ATTRIBUTE_GROUP
-                FROM {read_table('position_attributes')} pa
+                FROM {core_table('position_attributes')} pa
                 WHERE pa.ATTRIBUTE_NAME IN ({placeholders})
                 GROUP BY pa.ATTRIBUTE_NAME, pa.ATTRIBUTE_GROUP
                 ORDER BY pa.ATTRIBUTE_GROUP, display_order
@@ -11259,7 +11259,7 @@ async def get_player_attributes(
             cursor.execute(
                 f"""
                 SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP
-                FROM {read_table('position_attributes')}
+                FROM {core_table('position_attributes')}
                 WHERE ATTRIBUTE_NAME IN ({{}})
                 ORDER BY ATTRIBUTE_NAME
             """.format(
@@ -16058,7 +16058,7 @@ async def get_attributes_by_position(
                     ATTRIBUTE_NAME,
                     ATTRIBUTE_GROUP,
                     DISPLAY_ORDER
-                FROM {read_table('position_attributes')}
+                FROM {core_table('position_attributes')}
                 WHERE POSITION = %s
                 ORDER BY DISPLAY_ORDER, ATTRIBUTE_NAME
             """, (attribute_group,))
@@ -17429,7 +17429,7 @@ async def get_player_list_flags(current_user: User = Depends(get_current_user)):
         cursor.execute(
             f"""
             SELECT UNIVERSAL_ID, IS_FAVORITE, IS_DECISION
-            FROM {read_table('player_list_flags')}
+            FROM {core_table('player_list_flags')}
             WHERE IS_FAVORITE = TRUE OR IS_DECISION = TRUE
             """
         )
@@ -17477,7 +17477,7 @@ async def update_player_list_flag(
         # Ensure a row exists for this player (no-op if already present)
         cursor.execute(
             f"""
-            MERGE INTO {write_table('player_list_flags')} target
+            MERGE INTO {core_table('player_list_flags')} target
             USING (SELECT %s AS UNIVERSAL_ID) source
             ON target.UNIVERSAL_ID = source.UNIVERSAL_ID
             WHEN NOT MATCHED THEN INSERT (UNIVERSAL_ID, IS_FAVORITE, IS_DECISION)
@@ -17505,13 +17505,13 @@ async def update_player_list_flag(
 
         params.append(universal_id)
         cursor.execute(
-            f"UPDATE {write_table('player_list_flags')} SET {', '.join(set_clauses)} WHERE UNIVERSAL_ID = %s",
+            f"UPDATE {core_table('player_list_flags')} SET {', '.join(set_clauses)} WHERE UNIVERSAL_ID = %s",
             params,
         )
         conn.commit()
 
         cursor.execute(
-            f"SELECT IS_FAVORITE, IS_DECISION FROM {read_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
+            f"SELECT IS_FAVORITE, IS_DECISION FROM {core_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
             (universal_id,),
         )
         row = cursor.fetchone()
