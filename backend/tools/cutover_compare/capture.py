@@ -47,6 +47,10 @@ ENDPOINTS = [
     {"name": "intel_all", "path": "/intel_reports/all", "query": {"page": 1, "limit": 10}},
     {"name": "agents_recs", "path": "/agents/recommendations"},
     {"name": "internal_recs", "path": "/internal/recommendations"},
+    {"name": "scout_reports_all", "path": "/scout_reports/all", "query": {"page": 1, "limit": 20}},
+    {"name": "scout_reports_recent", "path": "/scout_reports/recent", "query": {"limit": 20}},
+    {"name": "player_lists_all", "path": "/player-lists", "query": {"category": "first_team"}},
+    {"name": "player_lists_details", "path": "/player-lists/all-with-details", "query": {"category": "first_team"}},
 ]
 
 # Keys whose values are generated at request time (not data) — blanked so they
