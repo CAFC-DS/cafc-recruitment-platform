@@ -23,19 +23,24 @@
 
 ## Local Dev Setup (do this once, before Task 1)
 
-Every "start/restart the backend" step in this plan means: run it with `CORE_DB_SCHEMA` pointed at the dev clone instead of prod `CORE`. `CANONICAL_DB` and `PLATFORM_DB_SCHEMA` stay at their defaults (`CAFC_DB`/`APP_COMPAT`) — reads for tables not yet migrated in this batch (`matches`, `players`, etc.) still come from prod `APP_COMPAT`, read-only, unaffected. Only `CORE_DB_SCHEMA` changes, which redirects every write plus every `core_table()`/`write_table()` read into the isolated clone.
+**Corrected 2026-09-25 (Task 3 ruling):** the original version of this section wrongly claimed `CANONICAL_DB`/`PLATFORM_DB_SCHEMA` default to `CAFC_DB`/`APP_COMPAT` locally. They don't — `backend/main.py:570-571` defaults them to `RECRUITMENT_TEST`/`PUBLIC` when unset, and `backend/.env` doesn't set them, so a local run with only `CORE_DB_SCHEMA` overridden silently targets the legacy `RECRUITMENT_TEST` database for reads, not `CAFC_DB.APP_COMPAT`. All three vars must be set explicitly every time.
+
+Every "start/restart the backend" step in this plan means: run it with all three vars set — `CANONICAL_DB=CAFC_DB`, `PLATFORM_DB_SCHEMA=APP_COMPAT` (reads for tables not yet migrated in this batch, e.g. `matches`/`players`, come from prod `APP_COMPAT`, read-only, unaffected), and `CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT` (redirects every write plus every `core_table()`/`write_table()` read into the isolated clone).
+
+**Port note (Task 3 finding):** port 8000 may already be in use by an unrelated app on the dev machine (it was, during Task 3 — an app called `CharltonTracking`). Check first; use 8001 if 8000 is taken, and use the same port consistently for that task's `capture.py --base-url`/`curl` calls. Do not kill an unrelated process occupying 8000 to free it.
 
 ```bash
 cd backend
-export CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT
-/opt/anaconda3/bin/python3.10 main.py
+CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py
 ```
 
-Confirm the startup log reads `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`. Every task below that says "restart the backend" means: kill it (Ctrl+C) and re-run `CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/` — spelled out as one line each time since each task may run in a fresh shell (e.g. under subagent-driven execution) where a prior `export` won't have persisted.
+Confirm the startup log shows exactly `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`. If it shows `RECRUITMENT_TEST` anywhere, one of the three vars is missing — stop and fix the command rather than proceeding. Every task below that says "restart the backend" means: kill the running process and re-run the full three-variable line above from `backend/` — spelled out as one line each time since each task may run in a fresh shell (e.g. under subagent-driven execution) where a prior `export` won't have persisted.
 
-`cutover_compare`'s `capture.py`/`diff.py` need no changes for this — they hit whatever backend is running at `--base-url` (default `http://localhost:8000`), so they automatically read the dev-clone-backed responses as long as the backend was started with `CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT`.
+`cutover_compare`'s `capture.py`/`diff.py` need no changes for this — they hit whatever backend is running at `--base-url` (default `http://localhost:8000`; override to `8001` per the port note above if needed), so they automatically read the dev-clone-backed responses as long as the backend was started with the three vars above.
 
 If the clone drifts too far from prod during testing (e.g. after a lot of manual QA writes) and you want a fresh baseline, re-clone it: `CREATE OR REPLACE SCHEMA CAFC_DB.CORE_DEV_RECRUITMENT CLONE CAFC_DB.CORE;` — instant, zero-copy, safe to do anytime since nothing reads or writes this schema except your local backend.
+
+**Known pre-existing issue (Task 3 finding, unrelated to this plan):** the `senior_manager` role gets an HTTP 500 (`000604 (57014): SQL execution canceled`) on `/scout_reports/all` and `/scout_reports/recent` today, on unmodified code, against prod data shape. This is a pre-existing bug, not something this plan's changes cause or need to fix — Task 9's diff should show the *same* error reproduced identically before and after (an unchanged 500 is not a regression); if the error text or status *changes* between the before/after capture, that would be a real regression to investigate.
 
 ---
 
@@ -167,9 +172,9 @@ Nothing in Tasks 1-2 changed any table's read/write behavior (`core_table()` exi
 Per "Local Dev Setup" above:
 ```bash
 cd backend
-CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py
+CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py
 ```
-Confirm the startup log shows `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`.
+Confirm the startup log shows `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`. Check port 8000 is free first (see "Local Dev Setup" port note) — use 8001 if not.
 
 - [ ] **Step 2: Capture the baseline**
 
@@ -215,7 +220,7 @@ grep -c "core_table('scout_reports')" main.py                                  #
 
 - [ ] **Step 4: Manual spot-check against the running app**
 
-Restart the local backend so the code change takes effect (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/` — see "Local Dev Setup"). With a valid bearer token (from `/token`, same credentials as `creds.json`):
+Restart the local backend so the code change takes effect (`CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/` — see "Local Dev Setup"). With a valid bearer token (from `/token`, same credentials as `creds.json`):
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/scout_reports/all?page=1&limit=5" | head -c 500
@@ -268,7 +273,7 @@ grep -c "read_table('player_lists')\|write_table('player_lists')\|read_table('pl
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`). With a bearer token for an admin/senior-manager user:
+Restart the backend (`CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`). With a bearer token for an admin/senior-manager user:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/player-lists?category=first_team" | head -c 500
@@ -316,7 +321,7 @@ grep -c "read_table('scout_report_attribute_scores')\|write_table('scout_report_
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`). Attribute scores and view receipts are nested inside a single scout report's detail response — fetch a real report id from the `/scout_reports/all` response captured in Task 4, then:
+Restart the backend (`CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`). Attribute scores and view receipts are nested inside a single scout report's detail response — fetch a real report id from the `/scout_reports/all` response captured in Task 4, then:
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/scout_reports/{report_id}" | head -c 800
@@ -369,7 +374,7 @@ done
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`).
+Restart the backend (`CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`).
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/agents/recommendations" | head -c 500
@@ -424,7 +429,7 @@ done
 
 - [ ] **Step 4: Manual spot-check**
 
-Restart the backend (`CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`).
+Restart the backend (`CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py` from `backend/`).
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8000/player-lists/flags" | head -c 500
@@ -455,7 +460,7 @@ Restart the backend, pointed at the dev clone as in every prior task (should alr
 
 ```bash
 cd backend
-CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py &
+CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py &
 sleep 2
 /opt/anaconda3/bin/python3.10 tools/cutover_compare/capture.py --label batch2-after --creds-file tools/cutover_compare/creds.json
 ```
