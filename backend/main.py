@@ -7750,7 +7750,7 @@ async def create_scout_report(
 
             # Use executemany for batch insert
             cursor.executemany(
-                f"""INSERT INTO {write_table('scout_report_attribute_scores')} (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE) VALUES (%s, %s, %s)""",
+                f"""INSERT INTO {core_table('scout_report_attribute_scores')} (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE) VALUES (%s, %s, %s)""",
                 attribute_data,
             )
 
@@ -7962,7 +7962,7 @@ async def create_scout_reports_batch(
                     for attribute_name, score_value in report.attributeScores.items():
                         cursor.execute(
                             f"""
-                            INSERT INTO {write_table('scout_report_attribute_scores')}
+                            INSERT INTO {core_table('scout_report_attribute_scores')}
                             (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE)
                             VALUES (%s, %s, %s)
                             """,
@@ -8150,7 +8150,7 @@ async def update_scout_report(
 
         # Delete existing attribute scores and insert new ones
         cursor.execute(
-            f"DELETE FROM {write_table('scout_report_attribute_scores')} WHERE SCOUT_REPORT_ID = %s",
+            f"DELETE FROM {core_table('scout_report_attribute_scores')} WHERE SCOUT_REPORT_ID = %s",
             (report_id,),
         )
 
@@ -8160,7 +8160,7 @@ async def update_scout_report(
                 for attribute, score in report.attributeScores.items()
             ]
             cursor.executemany(
-                f"""INSERT INTO {write_table('scout_report_attribute_scores')} (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE) VALUES (%s, %s, %s)""",
+                f"""INSERT INTO {core_table('scout_report_attribute_scores')} (SCOUT_REPORT_ID, ATTRIBUTE_NAME, ATTRIBUTE_SCORE) VALUES (%s, %s, %s)""",
                 attribute_data,
             )
 
@@ -8208,7 +8208,7 @@ async def delete_scout_report(
 
         # Delete attribute scores first (foreign key constraint)
         cursor.execute(
-            f"DELETE FROM {write_table('scout_report_attribute_scores')} WHERE SCOUT_REPORT_ID = %s",
+            f"DELETE FROM {core_table('scout_report_attribute_scores')} WHERE SCOUT_REPORT_ID = %s",
             (report_id,),
         )
 
@@ -8273,7 +8273,7 @@ async def get_scout_report(
         cursor.execute(
             f"""
             SELECT ATTRIBUTE_NAME, ATTRIBUTE_SCORE 
-            FROM {read_table('scout_report_attribute_scores')} 
+            FROM {core_table('scout_report_attribute_scores')} 
             WHERE SCOUT_REPORT_ID = %s
         """,
             (report_id,),
@@ -9060,7 +9060,7 @@ async def get_all_scout_reports(
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
-            LEFT JOIN {read_table('scout_report_views')} srv ON (
+            LEFT JOIN {core_table('scout_report_views')} srv ON (
                 sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
             )
         """
@@ -9371,7 +9371,7 @@ async def get_recent_scout_reports(
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
-            LEFT JOIN {read_table('scout_report_views')} srv ON (
+            LEFT JOIN {core_table('scout_report_views')} srv ON (
                 sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
             )
         """
@@ -9772,7 +9772,7 @@ async def get_single_scout_report(
         cursor.execute(
             f"""
             SELECT ATTRIBUTE_NAME, ATTRIBUTE_SCORE
-            FROM {read_table('scout_report_attribute_scores')}
+            FROM {core_table('scout_report_attribute_scores')}
             WHERE SCOUT_REPORT_ID = %s
             """,
             (report_id,),
@@ -10033,7 +10033,7 @@ async def get_public_report(token: str):
         cursor.execute(
             f"""
             SELECT ATTRIBUTE_NAME, ATTRIBUTE_SCORE
-            FROM {read_table('scout_report_attribute_scores')}
+            FROM {core_table('scout_report_attribute_scores')}
             WHERE SCOUT_REPORT_ID = %s
             """,
             (report_id,),
@@ -10275,7 +10275,7 @@ async def mark_report_viewed(
         # Use MERGE to insert if not exists, or update if already exists
         cursor.execute(
             f"""
-            MERGE INTO {write_table('scout_report_views')} AS target
+            MERGE INTO {core_table('scout_report_views')} AS target
             USING (SELECT %s AS SCOUT_REPORT_ID, %s AS USER_ID) AS source
             ON target.SCOUT_REPORT_ID = source.SCOUT_REPORT_ID
                AND target.USER_ID = source.USER_ID
@@ -10360,7 +10360,7 @@ async def mark_all_reports_viewed(current_user: User = Depends(get_current_user)
         # Use MERGE to bulk insert/update viewed status for all reports
         # Build dynamic SQL for bulk MERGE operation
         merge_sql = f"""
-            MERGE INTO {write_table('scout_report_views')} AS target
+            MERGE INTO {core_table('scout_report_views')} AS target
             USING (
                 SELECT sr.ID AS SCOUT_REPORT_ID, %s AS USER_ID
                 FROM {core_table('scout_reports')} sr
@@ -11129,7 +11129,7 @@ async def get_player_attributes(
                 sras.ATTRIBUTE_NAME,
                 AVG(CAST(sras.ATTRIBUTE_SCORE AS FLOAT)) as avg_score,
                 COUNT(sras.ATTRIBUTE_SCORE) as report_count
-            FROM {read_table('scout_report_attribute_scores')} sras
+            FROM {core_table('scout_report_attribute_scores')} sras
             JOIN {core_table('scout_reports')} sr ON sras.SCOUT_REPORT_ID = sr.ID
             WHERE {where_clause} AND sras.ATTRIBUTE_SCORE > 0
         """
@@ -11759,7 +11759,7 @@ async def get_player_scout_reports(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('scout_report_attribute_scores')} sras ON sr.ID = sras.SCOUT_REPORT_ID
+            LEFT JOIN {core_table('scout_report_attribute_scores')} sras ON sr.ID = sras.SCOUT_REPORT_ID
             WHERE {where_clause}
         """
 
@@ -14457,7 +14457,7 @@ async def get_my_analytics(
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
-            LEFT JOIN {read_table('scout_report_views')} srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
+            LEFT JOIN {core_table('scout_report_views')} srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
             WHERE {where_sql}
             ORDER BY sr.CREATED_AT DESC, sr.ID DESC
             LIMIT %s OFFSET %s
@@ -14645,7 +14645,7 @@ async def get_my_reports(
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
             LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
-            LEFT JOIN {read_table('scout_report_views')} srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
+            LEFT JOIN {core_table('scout_report_views')} srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
             WHERE {where_sql}
             ORDER BY {sort_columns[resolved_sort_by]} {sort_direction.upper()}, sr.ID DESC
             LIMIT %s OFFSET %s
@@ -16077,7 +16077,7 @@ async def get_attributes_by_position(
                 cursor.execute(f"""
                     SELECT DISTINCT sras.ATTRIBUTE_NAME
                     FROM {core_table('scout_reports')} sr
-                    JOIN {read_table('scout_report_attribute_scores')} sras
+                    JOIN {core_table('scout_report_attribute_scores')} sras
                         ON sras.SCOUT_REPORT_ID = sr.ID
                     WHERE sr.POSITION = %s
                     AND sr.REPORT_TYPE = 'Player Assessment'
@@ -16091,7 +16091,7 @@ async def get_attributes_by_position(
             cursor.execute(f"""
                 SELECT DISTINCT
                     ATTRIBUTE_NAME
-                FROM {read_table('scout_report_attribute_scores')}
+                FROM {core_table('scout_report_attribute_scores')}
                 ORDER BY ATTRIBUTE_NAME
             """)
             attributes = cursor.fetchall()
@@ -16198,7 +16198,7 @@ async def get_players_by_attributes(
                 subquery = f"""
                     EXISTS (
                         SELECT 1
-                        FROM {read_table('scout_report_attribute_scores')} sras
+                        FROM {core_table('scout_report_attribute_scores')} sras
                         WHERE sras.SCOUT_REPORT_ID = sr.ID
                         AND sras.ATTRIBUTE_NAME = %s
                 """
@@ -16245,7 +16245,7 @@ async def get_players_by_attributes(
                         SELECT
                             ATTRIBUTE_NAME,
                             ATTRIBUTE_SCORE
-                        FROM {read_table('scout_report_attribute_scores')}
+                        FROM {core_table('scout_report_attribute_scores')}
                         WHERE SCOUT_REPORT_ID = %s
                         AND ATTRIBUTE_NAME IN ({placeholders})
                         ORDER BY ATTRIBUTE_NAME
