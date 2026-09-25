@@ -1157,7 +1157,7 @@ def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_a
             u.FIRSTNAME,
             u.LASTNAME,
             u.USERNAME
-        FROM {read_table('recommendation_notes_history')} rnh
+        FROM {core_table('recommendation_notes_history')} rnh
         LEFT JOIN {read_table('users')} u ON rnh.CREATED_BY = u.ID
         WHERE rnh.RECOMMENDATION_ID = %s
         ORDER BY rnh.CREATED_AT DESC
@@ -1201,7 +1201,7 @@ def insert_recommendation_note_history_if_changed(
     ensure_recommendation_notes_history_table(cursor)
     cursor.execute(
         f"""
-        INSERT INTO {write_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+        INSERT INTO {core_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
         VALUES (%s, %s, %s, %s)
     """,
         (recommendation_id, new_notes, changed_by, changed_at or datetime.utcnow()),
@@ -2449,7 +2449,7 @@ def get_agent_profile_row(cursor, user_id: int):
     cursor.execute(
         f"""
         SELECT USER_ID, AGENT_NAME, AGENCY, AGENT_EMAIL, AGENT_NUMBER, CREATED_AT, UPDATED_AT
-        FROM {read_table('agent_profiles')}
+        FROM {core_table('agent_profiles')}
         WHERE USER_ID = %s
     """,
         (user_id,),
@@ -2481,7 +2481,7 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
             u.FIRSTNAME,
             u.LASTNAME,
             u.USERNAME
-        FROM {read_table('status_history')} sh
+        FROM {core_table('status_history')} sh
         LEFT JOIN {read_table('users')} u ON sh.CHANGED_BY = u.ID
         WHERE sh.RECOMMENDATION_ID = %s
         ORDER BY sh.CHANGED_AT DESC
@@ -3092,7 +3092,7 @@ def build_recommendation_select():
         LEFT JOIN {users_table} u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
-        player_recommendations_table=read_table('player_recommendations'),
+        player_recommendations_table=core_table('player_recommendations'),
         users_table=read_table('users'),
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
@@ -3414,7 +3414,7 @@ async def register_agent(payload: AgentRegisterRequest):
 
         cursor.execute(
             f"""
-            MERGE INTO {write_table('agent_profiles')} target
+            MERGE INTO {core_table('agent_profiles')} target
             USING (
                 SELECT %s AS USER_ID, %s AS AGENT_NAME, %s AS AGENCY, %s AS AGENT_EMAIL, %s AS AGENT_NUMBER
             ) source
@@ -3487,7 +3487,7 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
         cursor.execute(
             f"""
             SELECT ID, USER_ID, EXPIRES_AT, USED_AT, IS_ACTIVE
-            FROM {read_table('password_reset_tokens')}
+            FROM {core_table('password_reset_tokens')}
             WHERE TOKEN_HASH = %s
             """,
             (token_hash,),
@@ -3514,7 +3514,7 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
             (new_hashed_password, token_user_id),
         )
         cursor.execute(
-            f"UPDATE {write_table('password_reset_tokens')} SET USED_AT = CURRENT_TIMESTAMP, IS_ACTIVE = FALSE WHERE ID = %s",
+            f"UPDATE {core_table('password_reset_tokens')} SET USED_AT = CURRENT_TIMESTAMP, IS_ACTIVE = FALSE WHERE ID = %s",
             (token_id,),
         )
         conn.commit()
@@ -3969,7 +3969,7 @@ async def create_agent_recommendation(
         placeholders = ", ".join(["%s"] * len(insert_columns))
         cursor.execute(
             f"""
-            INSERT INTO {write_table('player_recommendations')} (
+            INSERT INTO {core_table('player_recommendations')} (
                 {", ".join(insert_columns)}
             ) VALUES ({placeholders})
         """,
@@ -3979,7 +3979,7 @@ async def create_agent_recommendation(
         cursor.execute(
             f"""
             SELECT ID
-            FROM {read_table('player_recommendations')}
+            FROM {core_table('player_recommendations')}
             WHERE SUBMITTED_BY_USER_ID = %s
             ORDER BY CREATED_AT DESC, ID DESC
             LIMIT 1
@@ -4166,7 +4166,7 @@ async def update_agent_recommendation(
         params = list(update_values.values()) + [recommendation_id]
         cursor.execute(
             f"""
-            UPDATE {write_table('player_recommendations')}
+            UPDATE {core_table('player_recommendations')}
             SET {assignments}
             WHERE ID = %s
         """,
@@ -4271,7 +4271,7 @@ async def update_agent_recommendation_status(
         changed_at = datetime.utcnow()
         cursor.execute(
             f"""
-            UPDATE {write_table('player_recommendations')}
+            UPDATE {core_table('player_recommendations')}
             SET AGENT_STATUS = %s, AGENT_STATUS_UPDATED_AT = %s, UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -4440,9 +4440,9 @@ async def get_internal_recommendation_filters_meta(current_user: User = Depends(
         cursor.execute(
             f"""
             SELECT DISTINCT pr.SUBMITTED_BY_USER_ID, COALESCE(ap.AGENT_NAME, u.FIRSTNAME || ' ' || u.LASTNAME, u.USERNAME)
-            FROM {read_table('player_recommendations')} pr
+            FROM {core_table('player_recommendations')} pr
             LEFT JOIN {read_table('users')} u ON pr.SUBMITTED_BY_USER_ID = u.ID
-            LEFT JOIN {read_table('agent_profiles')} ap ON pr.SUBMITTED_BY_USER_ID = ap.USER_ID
+            LEFT JOIN {core_table('agent_profiles')} ap ON pr.SUBMITTED_BY_USER_ID = ap.USER_ID
             WHERE pr.SUBMITTED_BY_USER_ID IS NOT NULL
             ORDER BY 2
         """
@@ -4464,7 +4464,7 @@ async def export_internal_recommendations_csv(current_user: User = Depends(requi
         cursor.execute(
             f"""
             SELECT PLAYER_NAME, AGENT_NAME, AGENCY, AGENT_EMAIL, STATUS, CREATED_AT, STATUS_UPDATED_AT
-            FROM {read_table('player_recommendations')}
+            FROM {core_table('player_recommendations')}
             ORDER BY CREATED_AT DESC, ID DESC
         """
         )
@@ -4536,7 +4536,7 @@ async def update_internal_recommendation_status(
         if previous_status != payload.new_status:
             cursor.execute(
                 f"""
-                INSERT INTO {write_table('status_history')} (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
+                INSERT INTO {core_table('status_history')} (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
                 VALUES (%s, %s, %s, %s, %s)
             """,
                 (recommendation_id, previous_status, payload.new_status, current_user.id, changed_at),
@@ -4549,7 +4549,7 @@ async def update_internal_recommendation_status(
 
             cursor.execute(
                 f"""
-                UPDATE {write_table('player_recommendations')}
+                UPDATE {core_table('player_recommendations')}
                 SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s,
                     INTERNAL_NOTES = COALESCE(%s, INTERNAL_NOTES), UPDATED_AT = %s
                 WHERE ID = %s
@@ -4562,7 +4562,7 @@ async def update_internal_recommendation_status(
             )
             cursor.execute(
                 f"""
-                UPDATE {write_table('player_recommendations')}
+                UPDATE {core_table('player_recommendations')}
                 SET INTERNAL_NOTES = %s, UPDATED_AT = %s
                 WHERE ID = %s
             """,
@@ -4627,7 +4627,7 @@ async def bulk_update_internal_recommendation_status(
             if previous_status != update.new_status:
                 cursor.execute(
                     f"""
-                    INSERT INTO {write_table('status_history')} (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
+                    INSERT INTO {core_table('status_history')} (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
                     VALUES (%s, %s, %s, %s, %s)
                 """,
                     (recommendation_id, previous_status, update.new_status, current_user.id, changed_at),
@@ -4635,7 +4635,7 @@ async def bulk_update_internal_recommendation_status(
 
                 cursor.execute(
                     f"""
-                    UPDATE {write_table('player_recommendations')}
+                    UPDATE {core_table('player_recommendations')}
                     SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, UPDATED_AT = %s
                     WHERE ID = %s
                 """,
@@ -4683,7 +4683,7 @@ async def update_internal_recommendation_notes(
         )
         cursor.execute(
             f"""
-            UPDATE {write_table('player_recommendations')}
+            UPDATE {core_table('player_recommendations')}
             SET INTERNAL_NOTES = %s, UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -4791,7 +4791,7 @@ async def flag_internal_recommendation_duplicate(
         flagged_at = datetime.utcnow()
         cursor.execute(
             f"""
-            INSERT INTO {write_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
+            INSERT INTO {core_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
             VALUES (%s, %s, %s, %s)
         """,
             (recommendation_id, note_text, current_user.id, flagged_at),
@@ -5488,7 +5488,7 @@ async def admin_generate_reset_link(
 
         # Invalidate any prior unused links for this user
         cursor.execute(
-            f"UPDATE {write_table('password_reset_tokens')} SET IS_ACTIVE = FALSE WHERE USER_ID = %s AND USED_AT IS NULL",
+            f"UPDATE {core_table('password_reset_tokens')} SET IS_ACTIVE = FALSE WHERE USER_ID = %s AND USED_AT IS NULL",
             (user_id,),
         )
 
@@ -5498,7 +5498,7 @@ async def admin_generate_reset_link(
 
         cursor.execute(
             f"""
-            INSERT INTO {write_table('password_reset_tokens')}
+            INSERT INTO {core_table('password_reset_tokens')}
             (USER_ID, TOKEN_HASH, EXPIRES_AT, IS_ACTIVE, CREATED_BY)
             VALUES (%s, %s, %s, %s, %s)
             """,
@@ -5974,7 +5974,7 @@ async def merge_players(
         # file.
         if recommendation_column_exists("player_recommendations", "LINKED_UNIVERSAL_ID"):
             cursor.execute(
-                f"UPDATE {write_table('player_recommendations')} SET LINKED_UNIVERSAL_ID = %s WHERE LINKED_UNIVERSAL_ID = %s",
+                f"UPDATE {core_table('player_recommendations')} SET LINKED_UNIVERSAL_ID = %s WHERE LINKED_UNIVERSAL_ID = %s",
                 (keep_universal_id, remove_universal_id),
             )
             results.append(f"Updated {cursor.rowcount} rows in player_recommendations")
@@ -17217,7 +17217,7 @@ async def get_all_lists_with_details(
                             cursor.execute(
                                 f"""
                                 SELECT LINKED_UNIVERSAL_ID, COUNT(*) as rec_count
-                                FROM {read_table('player_recommendations')}
+                                FROM {core_table('player_recommendations')}
                                 WHERE LINKED_UNIVERSAL_ID IN ({placeholders})
                                 GROUP BY LINKED_UNIVERSAL_ID
                                 """,
