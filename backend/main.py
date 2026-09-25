@@ -5896,10 +5896,10 @@ async def merge_players(
 
         cursor.execute(
             f"""
-            DELETE FROM {write_table('player_list_items')}
+            DELETE FROM {core_table('player_list_items')}
             WHERE {remove_list_col} = %s
               AND LIST_ID IN (
-                  SELECT LIST_ID FROM {read_table('player_list_items')} WHERE {keep_list_col} = %s
+                  SELECT LIST_ID FROM {core_table('player_list_items')} WHERE {keep_list_col} = %s
               )
             """,
             (remove_list_id, keep_list_id),
@@ -5911,7 +5911,7 @@ async def merge_players(
         if remove_source == "external" and keep_source == "internal":
             cursor.execute(
                 f"""
-                UPDATE {write_table('player_list_items')}
+                UPDATE {core_table('player_list_items')}
                 SET CAFC_PLAYER_ID = %s, PLAYER_ID = NULL
                 WHERE PLAYER_ID = %s AND (CAFC_PLAYER_ID IS NULL OR CAFC_PLAYER_ID = %s)
                 """,
@@ -5920,7 +5920,7 @@ async def merge_players(
         elif remove_source == "internal" and keep_source == "external":
             cursor.execute(
                 f"""
-                UPDATE {write_table('player_list_items')}
+                UPDATE {core_table('player_list_items')}
                 SET PLAYER_ID = %s, CAFC_PLAYER_ID = NULL
                 WHERE CAFC_PLAYER_ID = %s AND (PLAYER_ID IS NULL OR PLAYER_ID = %s)
                 """,
@@ -5928,12 +5928,12 @@ async def merge_players(
             )
         elif remove_source == "internal" and keep_source == "internal":
             cursor.execute(
-                f"UPDATE {write_table('player_list_items')} SET CAFC_PLAYER_ID = %s WHERE CAFC_PLAYER_ID = %s",
+                f"UPDATE {core_table('player_list_items')} SET CAFC_PLAYER_ID = %s WHERE CAFC_PLAYER_ID = %s",
                 (keep_cafc_id, remove_cafc_id),
             )
         else:
             cursor.execute(
-                f"UPDATE {write_table('player_list_items')} SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
+                f"UPDATE {core_table('player_list_items')} SET PLAYER_ID = %s WHERE PLAYER_ID = %s",
                 (keep_player_id, remove_player_id),
             )
         results.append(f"Updated {cursor.rowcount} rows in player_list_items")
@@ -10485,8 +10485,8 @@ async def get_player_flow_history(
                         u.FIRSTNAME,
                         u.LASTNAME,
                         u.USERNAME
-                    FROM {read_table('player_list_items')} pli
-                    LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
+                    FROM {core_table('player_list_items')} pli
+                    LEFT JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
                     LEFT JOIN {read_table('users')} u ON pli.ADDED_BY = u.ID
                     WHERE pli.PLAYER_ID = %s OR pli.CAFC_PLAYER_ID = %s
                     ORDER BY pli.CREATED_AT DESC
@@ -10526,7 +10526,7 @@ async def get_player_flow_history(
                         u.LASTNAME,
                         u.USERNAME
                     FROM {read_table('player_stage_history')} psh
-                    LEFT JOIN {read_table('player_lists')} pl ON psh.LIST_ID = pl.ID
+                    LEFT JOIN {core_table('player_lists')} pl ON psh.LIST_ID = pl.ID
                     LEFT JOIN {read_table('users')} u ON psh.CHANGED_BY = u.ID
                     WHERE psh.PLAYER_ID = %s
                     ORDER BY psh.CHANGED_AT DESC
@@ -15121,8 +15121,8 @@ async def get_player_analytics(
             cursor.execute(f"""
                 SELECT COUNT(DISTINCT COALESCE(pli.CAFC_PLAYER_ID, pli.PLAYER_ID)) as data_players
                 FROM {read_table('player_stage_history')} psh
-                JOIN {read_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID
-                LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
+                JOIN {core_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID
+                LEFT JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
                 WHERE {data_players_where}
             """, data_players_params)
             total_data_players = (cursor.fetchone() or {}).get('DATA_PLAYERS', 0)
@@ -15717,8 +15717,8 @@ async def get_stage_movement_analytics(
     #                     (fresh LIST_ITEM_IDs for the same player) aren't counted
     #                     more than once.
     list_join = (
-        f" LEFT JOIN {read_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID"
-        f" LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID"
+        f" LEFT JOIN {core_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID"
+        f" LEFT JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID"
     )
     EFFECTIVE_START = "COALESCE(psh.CHANGED_AT, pli.CREATED_AT)"
     PLAYER_KEY = (
@@ -15774,8 +15774,8 @@ async def get_stage_movement_analytics(
                 f"""
                 SELECT pli.STAGE AS stage,
                        COUNT(DISTINCT {LIVE_PLAYER_KEY}) AS player_count
-                FROM {read_table('player_list_items')} pli
-                LEFT JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
+                FROM {core_table('player_list_items')} pli
+                LEFT JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
                 WHERE pli.STAGE IS NOT NULL
                   {position_clause}{FIRST_TEAM_ONLY}
                 GROUP BY pli.STAGE
@@ -16740,7 +16740,7 @@ async def create_player_list(
         # Insert new list
         cursor.execute(
             f"""
-            INSERT INTO {write_table('player_lists')} (LIST_NAME, DESCRIPTION, USER_ID, LIST_CATEGORY)
+            INSERT INTO {core_table('player_lists')} (LIST_NAME, DESCRIPTION, USER_ID, LIST_CATEGORY)
             VALUES (%s, %s, %s, %s)
         """,
             (list_data.list_name, list_data.description, current_user.id, list_category),
@@ -16749,7 +16749,7 @@ async def create_player_list(
         # Get the ID of the newly created list (Snowflake-compatible approach)
         cursor.execute(
             f"""
-            SELECT ID FROM {read_table('player_lists')}
+            SELECT ID FROM {core_table('player_lists')}
             WHERE USER_ID = %s AND LIST_NAME = %s
             ORDER BY CREATED_AT DESC LIMIT 1
         """,
@@ -16818,9 +16818,9 @@ async def get_all_player_lists(
                     u.LASTNAME,
                     COUNT(DISTINCT pli.ID) as PLAYER_COUNT,
                     AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as AVG_SCORE
-                FROM {read_table('player_lists')} pl
+                FROM {core_table('player_lists')} pl
                 LEFT JOIN {read_table('users')} u ON pl.USER_ID = u.ID
-                LEFT JOIN {read_table('player_list_items')} pli ON pl.ID = pli.LIST_ID
+                LEFT JOIN {core_table('player_list_items')} pli ON pl.ID = pli.LIST_ID
                 LEFT JOIN {core_table('scout_reports')} sr ON (
                     (pli.PLAYER_ID IS NOT NULL AND sr.PLAYER_ID = pli.PLAYER_ID) OR
                     (pli.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = pli.CAFC_PLAYER_ID)
@@ -16925,7 +16925,7 @@ async def get_all_lists_with_details(
                 u.USERNAME,
                 u.FIRSTNAME,
                 u.LASTNAME
-            FROM {read_table('player_lists')} pl
+            FROM {core_table('player_lists')} pl
             LEFT JOIN {read_table('users')} u ON pl.USER_ID = u.ID
             WHERE pl.LIST_CATEGORY = %s
             ORDER BY
@@ -17090,7 +17090,7 @@ async def get_all_lists_with_details(
                 {exact_age_expr} as AGE,
                 u.USERNAME as ADDED_BY_USERNAME,
                 p.DATA_SOURCE
-            FROM {read_table('player_list_items')} pli
+            FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN {read_table('players')} ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
             LEFT JOIN {read_table('users')} u ON pli.ADDED_BY = u.ID
@@ -17571,7 +17571,7 @@ async def get_player_list_detail(
         cursor.execute(
             f"""
             SELECT ID, LIST_NAME, DESCRIPTION, USER_ID, CREATED_AT, UPDATED_AT
-            FROM {read_table('player_lists')}
+            FROM {core_table('player_lists')}
             WHERE ID = %s
         """,
             (list_id,),
@@ -17610,7 +17610,7 @@ async def get_player_list_detail(
                 p.BIRTHDATE,
                 u.USERNAME,
                 pli.STAGE
-            FROM {read_table('player_list_items')} pli
+            FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON (
                 pli.PLAYER_ID = p.PLAYERID OR
                 pli.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID
@@ -17770,7 +17770,7 @@ async def update_player_list(
         cursor = conn.cursor()
 
         # Check if list exists
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
@@ -17796,7 +17796,7 @@ async def update_player_list(
 
         cursor.execute(
             f"""
-            UPDATE {write_table('player_lists')}
+            UPDATE {core_table('player_lists')}
             SET {', '.join(update_fields)}
             WHERE ID = %s
         """,
@@ -17838,15 +17838,15 @@ async def delete_player_list(
         cursor = conn.cursor()
 
         # Check if list exists
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
         # Delete all items in the list first
-        cursor.execute(f"DELETE FROM {write_table('player_list_items')} WHERE LIST_ID = %s", (list_id,))
+        cursor.execute(f"DELETE FROM {core_table('player_list_items')} WHERE LIST_ID = %s", (list_id,))
 
         # Delete the list
-        cursor.execute(f"DELETE FROM {write_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"DELETE FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
 
         conn.commit()
 
@@ -17903,7 +17903,7 @@ async def add_player_to_list(
         ensure_player_stage_history_table(cursor)
 
         # Check if list exists
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
@@ -17911,7 +17911,7 @@ async def add_player_to_list(
         if player_data.player_id:
             cursor.execute(
                 f"""
-                SELECT ID FROM {read_table('player_list_items')}
+                SELECT ID FROM {core_table('player_list_items')}
                 WHERE LIST_ID = %s AND PLAYER_ID = %s
             """,
                 (list_id, player_data.player_id),
@@ -17919,7 +17919,7 @@ async def add_player_to_list(
         else:
             cursor.execute(
                 f"""
-                SELECT ID FROM {read_table('player_list_items')}
+                SELECT ID FROM {core_table('player_list_items')}
                 WHERE LIST_ID = %s AND CAFC_PLAYER_ID = %s
             """,
                 (list_id, player_data.cafc_player_id),
@@ -17934,7 +17934,7 @@ async def add_player_to_list(
         cursor.execute(
             f"""
             SELECT COALESCE(MAX(DISPLAY_ORDER), 0)
-            FROM {read_table('player_list_items')}
+            FROM {core_table('player_list_items')}
             WHERE LIST_ID = %s
         """,
             (list_id,),
@@ -17944,7 +17944,7 @@ async def add_player_to_list(
         # Add player to list
         cursor.execute(
             f"""
-            INSERT INTO {write_table('player_list_items')}
+            INSERT INTO {core_table('player_list_items')}
             (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY, STAGE)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
@@ -17962,7 +17962,7 @@ async def add_player_to_list(
         # Get the ID of the newly created list item
         cursor.execute(
             f"""
-            SELECT ID FROM {read_table('player_list_items')}
+            SELECT ID FROM {core_table('player_list_items')}
             WHERE LIST_ID = %s
             ORDER BY CREATED_AT DESC LIMIT 1
         """,
@@ -17986,7 +17986,7 @@ async def add_player_to_list(
         # Update list timestamp
         cursor.execute(
             f"""
-            UPDATE {write_table('player_lists')}
+            UPDATE {core_table('player_lists')}
             SET UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -18031,7 +18031,7 @@ async def remove_player_from_list(
         # Check if item exists
         cursor.execute(
             f"""
-            SELECT ID FROM {read_table('player_list_items')}
+            SELECT ID FROM {core_table('player_list_items')}
             WHERE ID = %s AND LIST_ID = %s
         """,
             (item_id, list_id),
@@ -18040,12 +18040,12 @@ async def remove_player_from_list(
             raise HTTPException(status_code=404, detail="Player not found in list")
 
         # Delete the item
-        cursor.execute(f"DELETE FROM {write_table('player_list_items')} WHERE ID = %s", (item_id,))
+        cursor.execute(f"DELETE FROM {core_table('player_list_items')} WHERE ID = %s", (item_id,))
 
         # Update list timestamp
         cursor.execute(
             f"""
-            UPDATE {write_table('player_lists')}
+            UPDATE {core_table('player_lists')}
             SET UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -18098,8 +18098,8 @@ async def move_player_between_lists(
             f"""
             SELECT pli.PLAYER_ID, pli.CAFC_PLAYER_ID, pli.STAGE, pli.NOTES, pl.LIST_NAME,
                    COALESCE(pl.LIST_CATEGORY, 'first_team')
-            FROM {read_table('player_list_items')} pli
-            JOIN {read_table('player_lists')} pl ON pl.ID = pli.LIST_ID
+            FROM {core_table('player_list_items')} pli
+            JOIN {core_table('player_lists')} pl ON pl.ID = pli.LIST_ID
             WHERE pli.ID = %s AND pli.LIST_ID = %s
             """,
             (item_id, list_id),
@@ -18112,7 +18112,7 @@ async def move_player_between_lists(
         cursor.execute(
             f"""
             SELECT LIST_NAME, COALESCE(LIST_CATEGORY, 'first_team')
-            FROM {read_table('player_lists')} WHERE ID = %s
+            FROM {core_table('player_lists')} WHERE ID = %s
             """,
             (move_data.destination_list_id,),
         )
@@ -18128,7 +18128,7 @@ async def move_player_between_lists(
 
         cursor.execute(
             f"""
-            SELECT ID FROM {read_table('player_list_items')}
+            SELECT ID FROM {core_table('player_list_items')}
             WHERE LIST_ID = %s
               AND ((PLAYER_ID IS NOT NULL AND PLAYER_ID = %s)
                    OR (CAFC_PLAYER_ID IS NOT NULL AND CAFC_PLAYER_ID = %s))
@@ -18139,13 +18139,13 @@ async def move_player_between_lists(
             raise HTTPException(status_code=409, detail="Player is already in the destination list")
 
         cursor.execute(
-            f"SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM {read_table('player_list_items')} WHERE LIST_ID = %s",
+            f"SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM {core_table('player_list_items')} WHERE LIST_ID = %s",
             (move_data.destination_list_id,),
         )
         destination_order = cursor.fetchone()[0]
         cursor.execute(
             f"""
-            INSERT INTO {write_table('player_list_items')}
+            INSERT INTO {core_table('player_list_items')}
                 (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, NOTES, ADDED_BY, STAGE, CREATED_AT)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
@@ -18164,7 +18164,7 @@ async def move_player_between_lists(
         # newly inserted membership using its unique player/list combination.
         cursor.execute(
             f"""
-            SELECT ID FROM {read_table('player_list_items')}
+            SELECT ID FROM {core_table('player_list_items')}
             WHERE LIST_ID = %s
               AND ((PLAYER_ID IS NOT NULL AND PLAYER_ID = %s)
                    OR (CAFC_PLAYER_ID IS NOT NULL AND CAFC_PLAYER_ID = %s))
@@ -18184,9 +18184,9 @@ async def move_player_between_lists(
             description=f"Moved from {source_name} to {destination_name}",
             changed_by=current_user.id,
         )
-        cursor.execute(f"DELETE FROM {write_table('player_list_items')} WHERE ID = %s AND LIST_ID = %s", (item_id, list_id))
+        cursor.execute(f"DELETE FROM {core_table('player_list_items')} WHERE ID = %s AND LIST_ID = %s", (item_id, list_id))
         timestamp = datetime.utcnow()
-        cursor.execute(f"UPDATE {write_table('player_lists')} SET UPDATED_AT = %s WHERE ID IN (%s, %s)", (timestamp, list_id, move_data.destination_list_id))
+        cursor.execute(f"UPDATE {core_table('player_lists')} SET UPDATED_AT = %s WHERE ID IN (%s, %s)", (timestamp, list_id, move_data.destination_list_id))
         conn.commit()
         invalidate_cache("player_lists_all")
         return {
@@ -18226,7 +18226,7 @@ async def reorder_players_in_list(
         cursor = conn.cursor()
 
         # Check if list exists
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
@@ -18234,7 +18234,7 @@ async def reorder_players_in_list(
         for item in reorder_data.item_orders:
             cursor.execute(
                 f"""
-                UPDATE {write_table('player_list_items')}
+                UPDATE {core_table('player_list_items')}
                 SET DISPLAY_ORDER = %s
                 WHERE ID = %s AND LIST_ID = %s
             """,
@@ -18244,7 +18244,7 @@ async def reorder_players_in_list(
         # Update list timestamp
         cursor.execute(
             f"""
-            UPDATE {write_table('player_lists')}
+            UPDATE {core_table('player_lists')}
             SET UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -18323,7 +18323,7 @@ async def update_player_stage(
         # Check if item exists and get current stage and player_id
         cursor.execute(
             f"""
-            SELECT STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM {read_table('player_list_items')}
+            SELECT STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM {core_table('player_list_items')}
             WHERE ID = %s AND LIST_ID = %s
         """,
             (item_id, list_id),
@@ -18338,7 +18338,7 @@ async def update_player_stage(
         # Update the stage
         cursor.execute(
             f"""
-            UPDATE {write_table('player_list_items')}
+            UPDATE {core_table('player_list_items')}
             SET STAGE = %s
             WHERE ID = %s AND LIST_ID = %s
         """,
@@ -18361,7 +18361,7 @@ async def update_player_stage(
         # Update list timestamp
         cursor.execute(
             f"""
-            UPDATE {write_table('player_lists')}
+            UPDATE {core_table('player_lists')}
             SET UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -18413,7 +18413,7 @@ async def bulk_update_player_stages(
         cursor = conn.cursor()
 
         # Check if list exists once
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
@@ -18476,7 +18476,7 @@ async def bulk_update_player_stages(
             if requested_player_id is not None or requested_cafc_player_id is not None:
                 cursor.execute(
                     f"""
-                    SELECT ID, STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM {read_table('player_list_items')}
+                    SELECT ID, STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM {core_table('player_list_items')}
                     WHERE LIST_ID = %s
                       AND (
                             (%s IS NOT NULL AND PLAYER_ID = %s)
@@ -18508,7 +18508,7 @@ async def bulk_update_player_stages(
             if item_row is None and requested_item_id is not None:
                 cursor.execute(
                     f"""
-                    SELECT ID, STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM {read_table('player_list_items')}
+                    SELECT ID, STAGE, PLAYER_ID, CAFC_PLAYER_ID FROM {core_table('player_list_items')}
                     WHERE ID = %s AND LIST_ID = %s
                 """,
                     (requested_item_id, list_id),
@@ -18526,7 +18526,7 @@ async def bulk_update_player_stages(
             # Update stage
             cursor.execute(
                 f"""
-                UPDATE {write_table('player_list_items')}
+                UPDATE {core_table('player_list_items')}
                 SET STAGE = %s
                 WHERE ID = %s AND LIST_ID = %s
             """,
@@ -18551,7 +18551,7 @@ async def bulk_update_player_stages(
         # Update list timestamp once for batch
         cursor.execute(
             f"""
-            UPDATE {write_table('player_lists')}
+            UPDATE {core_table('player_lists')}
             SET UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -18653,7 +18653,7 @@ async def update_stage_history_reason(
         cursor.execute(
             f"""
             SELECT COALESCE(PLAYER_ID, CAFC_PLAYER_ID)
-            FROM {read_table('player_list_items')}
+            FROM {core_table('player_list_items')}
             WHERE ID = %s AND LIST_ID = %s
         """,
             (item_id, list_id),
@@ -18743,7 +18743,7 @@ async def get_player_stage_history(
         cursor.execute(
             f"""
             SELECT COALESCE(PLAYER_ID, CAFC_PLAYER_ID)
-            FROM {read_table('player_list_items')}
+            FROM {core_table('player_list_items')}
             WHERE ID = %s AND LIST_ID = %s
         """,
             (item_id, list_id),
@@ -18835,8 +18835,8 @@ async def get_player_list_memberships(
                 pli.ID as ITEM_ID,
                 pli.STAGE,
                 pli.CREATED_AT as ADDED_AT
-            FROM {read_table('player_list_items')} pli
-            JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
+            FROM {core_table('player_list_items')} pli
+            JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
             WHERE
                 (pli.PLAYER_ID = %s OR pli.CAFC_PLAYER_ID = %s)
             ORDER BY pl.LIST_NAME ASC
@@ -18943,8 +18943,8 @@ async def get_batch_player_list_memberships(
                 pli.CREATED_AT as ADDED_AT,
                 pli.PLAYER_ID,
                 pli.CAFC_PLAYER_ID
-            FROM {read_table('player_list_items')} pli
-            JOIN {read_table('player_lists')} pl ON pli.LIST_ID = pl.ID
+            FROM {core_table('player_list_items')} pli
+            JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
             WHERE ({" OR ".join(conditions)})
               AND pl.LIST_CATEGORY = %s
             ORDER BY pl.LIST_NAME ASC
@@ -19017,7 +19017,7 @@ async def bulk_add_players_to_list(
         ensure_player_stage_history_table(cursor)
 
         # Verify list exists
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
@@ -19061,7 +19061,7 @@ async def bulk_add_players_to_list(
             # Check if player already in list
             cursor.execute(
                 f"""
-                SELECT ID FROM {read_table('player_list_items')}
+                SELECT ID FROM {core_table('player_list_items')}
                 WHERE LIST_ID = %s AND (PLAYER_ID = %s OR CAFC_PLAYER_ID = %s)
                 """,
                 (list_id, player_id, cafc_player_id),
@@ -19073,7 +19073,7 @@ async def bulk_add_players_to_list(
 
             # Get max display order
             cursor.execute(
-                f"SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM {read_table('player_list_items')} WHERE LIST_ID = %s",
+                f"SELECT COALESCE(MAX(DISPLAY_ORDER), 0) FROM {core_table('player_list_items')} WHERE LIST_ID = %s",
                 (list_id,),
             )
             max_order = cursor.fetchone()[0]
@@ -19081,7 +19081,7 @@ async def bulk_add_players_to_list(
             # Add player to list
             cursor.execute(
                 f"""
-                INSERT INTO {write_table('player_list_items')}
+                INSERT INTO {core_table('player_list_items')}
                 (LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, DISPLAY_ORDER, ADDED_BY, STAGE, CREATED_AT)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
@@ -19090,7 +19090,7 @@ async def bulk_add_players_to_list(
 
             cursor.execute(
                 f"""
-                SELECT ID FROM {read_table('player_list_items')}
+                SELECT ID FROM {core_table('player_list_items')}
                 WHERE LIST_ID = %s
                 ORDER BY CREATED_AT DESC LIMIT 1
                 """,
@@ -19114,7 +19114,7 @@ async def bulk_add_players_to_list(
 
         # Update list timestamp
         cursor.execute(
-            f"UPDATE {write_table('player_lists')} SET UPDATED_AT = %s WHERE ID = %s",
+            f"UPDATE {core_table('player_lists')} SET UPDATED_AT = %s WHERE ID = %s",
             (datetime.utcnow(), list_id),
         )
 
@@ -19168,14 +19168,14 @@ async def bulk_remove_players_from_list(
         cursor = conn.cursor()
 
         # Verify list exists
-        cursor.execute(f"SELECT ID FROM {read_table('player_lists')} WHERE ID = %s", (list_id,))
+        cursor.execute(f"SELECT ID FROM {core_table('player_lists')} WHERE ID = %s", (list_id,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="List not found")
 
         # Build DELETE query for multiple IDs
         placeholders = ", ".join(["%s"] * len(bulk_request.item_ids))
         query = f"""
-            DELETE FROM {write_table('player_list_items')}
+            DELETE FROM {core_table('player_list_items')}
             WHERE LIST_ID = %s AND ID IN ({placeholders})
         """
 
@@ -19186,7 +19186,7 @@ async def bulk_remove_players_from_list(
 
         # Update list timestamp
         cursor.execute(
-            f"UPDATE {write_table('player_lists')} SET UPDATED_AT = %s WHERE ID = %s",
+            f"UPDATE {core_table('player_lists')} SET UPDATED_AT = %s WHERE ID = %s",
             (datetime.utcnow(), list_id),
         )
 
