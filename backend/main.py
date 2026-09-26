@@ -344,7 +344,7 @@ def load_user_cache():
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
-        cursor.execute(f"SELECT ID, USERNAME FROM {read_table('users')}")
+        cursor.execute(f"SELECT ID, USERNAME FROM {core_table('users')}")
         users = cursor.fetchall()
 
         USER_CACHE = {user[0]: user[1] for user in users}
@@ -1163,7 +1163,7 @@ def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_a
             u.LASTNAME,
             u.USERNAME
         FROM {core_table('recommendation_notes_history')} rnh
-        LEFT JOIN {read_table('users')} u ON rnh.CREATED_BY = u.ID
+        LEFT JOIN {core_table('users')} u ON rnh.CREATED_BY = u.ID
         WHERE rnh.RECOMMENDATION_ID = %s
         ORDER BY rnh.CREATED_AT DESC
     """,
@@ -1627,7 +1627,7 @@ async def get_user(username: str):
             base_columns += ", LASTNAME"
 
         cursor.execute(
-            f"SELECT {base_columns} FROM {read_table('users')} WHERE USERNAME = %s", (username,)
+            f"SELECT {base_columns} FROM {core_table('users')} WHERE USERNAME = %s", (username,)
         )
         user_data = cursor.fetchone()
         if user_data:
@@ -1678,7 +1678,7 @@ async def get_user_by_email(email: str):
             return None  # Can't find by email if column doesn't exist
 
         cursor.execute(
-            f"SELECT ID, USERNAME, HASHED_PASSWORD, ROLE, EMAIL FROM {read_table('users')} WHERE EMAIL = %s",
+            f"SELECT ID, USERNAME, HASHED_PASSWORD, ROLE, EMAIL FROM {core_table('users')} WHERE EMAIL = %s",
             (email,),
         )
         user_data = cursor.fetchone()
@@ -1724,7 +1724,7 @@ async def get_user_by_id(user_id: int):
         if has_lastname:
             base_columns += ", LASTNAME"
 
-        cursor.execute(f"SELECT {base_columns} FROM {read_table('users')} WHERE ID = %s", (user_id,))
+        cursor.execute(f"SELECT {base_columns} FROM {core_table('users')} WHERE ID = %s", (user_id,))
         user_data = cursor.fetchone()
         if user_data:
             result = {
@@ -2487,7 +2487,7 @@ def fetch_recommendation_status_history(cursor, recommendation_id: int, include_
             u.LASTNAME,
             u.USERNAME
         FROM {core_table('status_history')} sh
-        LEFT JOIN {read_table('users')} u ON sh.CHANGED_BY = u.ID
+        LEFT JOIN {core_table('users')} u ON sh.CHANGED_BY = u.ID
         WHERE sh.RECOMMENDATION_ID = %s
         ORDER BY sh.CHANGED_AT DESC
     """,
@@ -3098,7 +3098,7 @@ def build_recommendation_select():
         LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
         player_recommendations_table=core_table('player_recommendations'),
-        users_table=read_table('users'),
+        users_table=core_table('users'),
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
         transfer_fee_min_expr=transfer_fee_min_expr,
@@ -3398,7 +3398,7 @@ async def register_agent(payload: AgentRegisterRequest):
 
         cursor.execute(
             f"""
-            INSERT INTO {write_table('users')} (USERNAME, EMAIL, HASHED_PASSWORD, ROLE, FIRSTNAME, LASTNAME)
+            INSERT INTO {core_table('users')} (USERNAME, EMAIL, HASHED_PASSWORD, ROLE, FIRSTNAME, LASTNAME)
             VALUES (%s, %s, %s, %s, %s, %s)
         """,
             (
@@ -3412,7 +3412,7 @@ async def register_agent(payload: AgentRegisterRequest):
         )
 
         cursor.execute(
-            f"SELECT ID FROM {read_table('users')} WHERE USERNAME = %s ORDER BY ID DESC LIMIT 1",
+            f"SELECT ID FROM {core_table('users')} WHERE USERNAME = %s ORDER BY ID DESC LIMIT 1",
             (normalized_email,),
         )
         user_id = cursor.fetchone()[0]
@@ -3515,7 +3515,7 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
 
         new_hashed_password = get_password_hash(request.new_password)
         cursor.execute(
-            f"UPDATE {write_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
+            f"UPDATE {core_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
             (new_hashed_password, token_user_id),
         )
         cursor.execute(
@@ -4446,7 +4446,7 @@ async def get_internal_recommendation_filters_meta(current_user: User = Depends(
             f"""
             SELECT DISTINCT pr.SUBMITTED_BY_USER_ID, COALESCE(ap.AGENT_NAME, u.FIRSTNAME || ' ' || u.LASTNAME, u.USERNAME)
             FROM {core_table('player_recommendations')} pr
-            LEFT JOIN {read_table('users')} u ON pr.SUBMITTED_BY_USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON pr.SUBMITTED_BY_USER_ID = u.ID
             LEFT JOIN {core_table('agent_profiles')} ap ON pr.SUBMITTED_BY_USER_ID = ap.USER_ID
             WHERE pr.SUBMITTED_BY_USER_ID IS NOT NULL
             ORDER BY 2
@@ -4865,7 +4865,7 @@ async def get_analytics_timeline(
                 COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             {date_filter}
             GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM'), sr.SCOUTING_TYPE, u.USERNAME
             ORDER BY month ASC, scout_name ASC
@@ -4965,7 +4965,7 @@ async def get_analytics_timeline_daily(
                 COALESCE(u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.CREATED_AT >= DATEADD(day, -%s, CURRENT_DATE())
             GROUP BY TO_CHAR(sr.CREATED_AT, 'YYYY-MM-DD'), sr.SCOUTING_TYPE, u.USERNAME
             ORDER BY day ASC, scout_name ASC
@@ -5078,7 +5078,7 @@ async def debug_scout_reports(current_user: User = Depends(get_current_user)):
             sample_user_ids = [row[0] for row in cursor.fetchall()]
 
             # Check users table for comparison
-            cursor.execute(f"SELECT ID, USERNAME, ROLE FROM {read_table('users')} ORDER BY ID")
+            cursor.execute(f"SELECT ID, USERNAME, ROLE FROM {core_table('users')} ORDER BY ID")
             all_users = [
                 {"id": row[0], "username": row[1], "role": row[2]}
                 for row in cursor.fetchall()
@@ -5129,7 +5129,7 @@ async def reset_password(request: PasswordResetRequest):
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         cursor.execute(
-            f"UPDATE {write_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
+            f"UPDATE {core_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
             (new_hashed_password, user.id),
         )
         conn.commit()
@@ -5164,7 +5164,7 @@ async def change_password(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         cursor.execute(
-            f"UPDATE {write_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
+            f"UPDATE {core_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
             (new_hashed_password, current_user.id),
         )
         conn.commit()
@@ -5218,7 +5218,7 @@ async def get_all_users(current_user: User = Depends(get_current_user)):
         if has_lastname:
             base_columns += ", LASTNAME"
 
-        cursor.execute(f"SELECT {base_columns} FROM {read_table('users')} ORDER BY USERNAME")
+        cursor.execute(f"SELECT {base_columns} FROM {core_table('users')} ORDER BY USERNAME")
         users = cursor.fetchall()
 
         user_list = []
@@ -5302,7 +5302,7 @@ async def create_user_as_admin(
         except Exception as e:
             logging.warning(f"Could not add columns: {e}")
 
-        sql = f"INSERT INTO {write_table('users')} (USERNAME, EMAIL, HASHED_PASSWORD, ROLE, FIRSTNAME, LASTNAME) VALUES (%s, %s, %s, %s, %s, %s)"
+        sql = f"INSERT INTO {core_table('users')} (USERNAME, EMAIL, HASHED_PASSWORD, ROLE, FIRSTNAME, LASTNAME) VALUES (%s, %s, %s, %s, %s, %s)"
         cursor.execute(
             sql,
             (
@@ -5356,7 +5356,7 @@ async def delete_user(user_id: int, current_user: User = Depends(get_current_use
         cursor = conn.cursor()
 
         # Check if user exists
-        cursor.execute(f"SELECT USERNAME FROM {read_table('users')} WHERE ID = %s", (user_id,))
+        cursor.execute(f"SELECT USERNAME FROM {core_table('users')} WHERE ID = %s", (user_id,))
         user_data = cursor.fetchone()
         if not user_data:
             raise HTTPException(status_code=404, detail="User not found")
@@ -5364,7 +5364,7 @@ async def delete_user(user_id: int, current_user: User = Depends(get_current_use
         username = user_data[0]
 
         # Delete the user
-        cursor.execute(f"DELETE FROM {write_table('users')} WHERE ID = %s", (user_id,))
+        cursor.execute(f"DELETE FROM {core_table('users')} WHERE ID = %s", (user_id,))
         conn.commit()
 
         return {"message": f"User '{username}' deleted successfully"}
@@ -5400,7 +5400,7 @@ async def update_user_role(
         cursor = conn.cursor()
 
         # Check if user exists
-        cursor.execute(f"SELECT USERNAME FROM {read_table('users')} WHERE ID = %s", (user_id,))
+        cursor.execute(f"SELECT USERNAME FROM {core_table('users')} WHERE ID = %s", (user_id,))
         user_data = cursor.fetchone()
         if not user_data:
             raise HTTPException(status_code=404, detail="User not found")
@@ -5408,7 +5408,7 @@ async def update_user_role(
         username = user_data[0]
 
         # Update role
-        cursor.execute(f"UPDATE {write_table('users')} SET ROLE = %s WHERE ID = %s", (new_role, user_id))
+        cursor.execute(f"UPDATE {core_table('users')} SET ROLE = %s WHERE ID = %s", (new_role, user_id))
         conn.commit()
 
         return {"message": f"User '{username}' role updated to '{new_role}'"}
@@ -5436,7 +5436,7 @@ async def admin_reset_user_password(
         cursor = conn.cursor()
 
         # Check if user exists
-        cursor.execute(f"SELECT USERNAME FROM {read_table('users')} WHERE ID = %s", (user_id,))
+        cursor.execute(f"SELECT USERNAME FROM {core_table('users')} WHERE ID = %s", (user_id,))
         user_data = cursor.fetchone()
         if not user_data:
             raise HTTPException(status_code=404, detail="User not found")
@@ -5446,7 +5446,7 @@ async def admin_reset_user_password(
         # Update password
         hashed_password = get_password_hash(new_password)
         cursor.execute(
-            f"UPDATE {write_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
+            f"UPDATE {core_table('users')} SET HASHED_PASSWORD = %s WHERE ID = %s",
             (hashed_password, user_id),
         )
         conn.commit()
@@ -5482,7 +5482,7 @@ async def admin_generate_reset_link(
 
         # Verify user exists and grab email/name for the optional email delivery
         cursor.execute(
-            f"SELECT ID, USERNAME, EMAIL, FIRSTNAME, LASTNAME FROM {read_table('users')} WHERE ID = %s",
+            f"SELECT ID, USERNAME, EMAIL, FIRSTNAME, LASTNAME FROM {core_table('users')} WHERE ID = %s",
             (user_id,),
         )
         row = cursor.fetchone()
@@ -8407,7 +8407,7 @@ async def create_scout_user(current_user: User = Depends(get_current_user)):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        sql = f"INSERT INTO {write_table('users')} (USERNAME, HASHED_PASSWORD, ROLE) VALUES (%s, %s, %s)"
+        sql = f"INSERT INTO {core_table('users')} (USERNAME, HASHED_PASSWORD, ROLE) VALUES (%s, %s, %s)"
         cursor.execute(sql, (scout_user.username, hashed_password, scout_user.role))
         conn.commit()
         return {"message": "Scout user 'testscout' created with password 'testpass'"}
@@ -9064,7 +9064,7 @@ async def get_all_scout_reports(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {core_table('scout_report_views')} srv ON (
                 sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
             )
@@ -9375,7 +9375,7 @@ async def get_recent_scout_reports(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {core_table('scout_report_views')} srv ON (
                 sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = {current_user.id}
             )
@@ -9578,7 +9578,7 @@ async def get_top_attribute_reports(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
         """
 
         where_clauses = []
@@ -9748,7 +9748,7 @@ async def get_single_scout_report(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.ID = %s
         """
         values = (report_id,)
@@ -10011,7 +10011,7 @@ async def get_public_report(token: str):
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.ID = %s
         """
         cursor.execute(sql, (report_id,))
@@ -10141,7 +10141,7 @@ async def get_report_share_links(
                 sl.IS_ACTIVE,
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown') as CREATED_BY_NAME
             FROM {core_table('shared_report_links')} sl
-            LEFT JOIN {read_table('users')} u ON sl.CREATED_BY = u.ID
+            LEFT JOIN {core_table('users')} u ON sl.CREATED_BY = u.ID
             WHERE sl.REPORT_ID = %s
             ORDER BY sl.CREATED_AT DESC
             """,
@@ -10492,7 +10492,7 @@ async def get_player_flow_history(
                         u.USERNAME
                     FROM {core_table('player_list_items')} pli
                     LEFT JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
-                    LEFT JOIN {read_table('users')} u ON pli.ADDED_BY = u.ID
+                    LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
                     WHERE pli.PLAYER_ID = %s OR pli.CAFC_PLAYER_ID = %s
                     ORDER BY pli.CREATED_AT DESC
                 """,
@@ -10532,7 +10532,7 @@ async def get_player_flow_history(
                         u.USERNAME
                     FROM {read_table('player_stage_history')} psh
                     LEFT JOIN {core_table('player_lists')} pl ON psh.LIST_ID = pl.ID
-                    LEFT JOIN {read_table('users')} u ON psh.CHANGED_BY = u.ID
+                    LEFT JOIN {core_table('users')} u ON psh.CHANGED_BY = u.ID
                     WHERE psh.PLAYER_ID = %s
                     ORDER BY psh.CHANGED_AT DESC
                 """,
@@ -10800,7 +10800,7 @@ async def get_player_profile(
                    sr.PERFORMANCE_SCORE, sr.ATTRIBUTE_SCORE, sr.SUMMARY,
                    u.USERNAME, sr.IS_POTENTIAL
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE {player_id_column} = %s
             ORDER BY sr.CREATED_AT DESC
         """
@@ -10857,7 +10857,7 @@ async def get_player_profile(
                    {"pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL"},
                    {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")}
             FROM {read_table('player_information')} pi
-            LEFT JOIN {read_table('users')} u ON pi.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON pi.USER_ID = u.ID
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
         """
@@ -10968,7 +10968,7 @@ async def get_player_profile(
                 f"""
                 SELECT pn.ID, pn.NOTE_CONTENT, pn.IS_PRIVATE, pn.CREATED_AT, u.USERNAME
                 FROM {read_table('player_notes')} pn
-                LEFT JOIN {read_table('users')} u ON pn.USER_ID = u.ID
+                LEFT JOIN {core_table('users')} u ON pn.USER_ID = u.ID
                 WHERE pn.PLAYER_ID = %s
                 ORDER BY pn.CREATED_AT DESC
             """,
@@ -11759,7 +11759,7 @@ async def get_player_scout_reports(
                 sr.IS_POTENTIAL as is_potential,
                 sr.USER_ID as user_id
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {read_table('matches')} m ON (
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
@@ -12191,7 +12191,7 @@ async def export_player_pdf(
                    sr.STRENGTHS, sr.WEAKNESSES, sr.JUSTIFICATION,
                    u.USERNAME, m.HOMESQUADNAME, m.AWAYSQUADNAME, m.SCHEDULEDDATE
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {read_table('matches')} m ON (
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
@@ -12911,7 +12911,7 @@ async def get_all_intel_reports(
                    {"pi.REFERENCE_RATING" if has_reference_rating else "NULL"}
             FROM {read_table('player_information')} pi
             {join_clause}
-            LEFT JOIN {read_table('users')} u ON pi.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON pi.USER_ID = u.ID
         """
 
         where_clauses = []
@@ -13717,14 +13717,14 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
 
         # Check current role distribution
         cursor.execute(
-            f"SELECT ROLE, COUNT(*) FROM {read_table('users')} GROUP BY ROLE ORDER BY ROLE"
+            f"SELECT ROLE, COUNT(*) FROM {core_table('users')} GROUP BY ROLE ORDER BY ROLE"
         )
         current_roles = cursor.fetchall()
         results.append(f"Current role distribution: {dict(current_roles)}")
 
         # Migrate 'loan' to 'loan_manager'
         cursor.execute(
-            f"UPDATE {write_table('users')} SET ROLE = %s WHERE ROLE = %s",
+            f"UPDATE {core_table('users')} SET ROLE = %s WHERE ROLE = %s",
             (ROLE_LOAN_MANAGER, "loan")
         )
         loan_updates = cursor.rowcount
@@ -13734,7 +13734,7 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
 
         # Normalize historical capitalized scout rows.
         cursor.execute(
-            f"UPDATE {write_table('users')} SET ROLE = %s WHERE ROLE = %s",
+            f"UPDATE {core_table('users')} SET ROLE = %s WHERE ROLE = %s",
             (ROLE_SCOUT, "Scout")
         )
         scout_updates = cursor.rowcount
@@ -13746,7 +13746,7 @@ async def migrate_user_roles(current_user: User = Depends(get_current_user)):
 
         # Verify updates
         cursor.execute(
-            f"SELECT ROLE, COUNT(*) FROM {read_table('users')} GROUP BY ROLE ORDER BY ROLE"
+            f"SELECT ROLE, COUNT(*) FROM {core_table('users')} GROUP BY ROLE ORDER BY ROLE"
         )
         updated_roles = cursor.fetchall()
         results.append(f"Updated role distribution: {dict(updated_roles)}")
@@ -13828,7 +13828,7 @@ async def create_test_users(current_user: User = Depends(get_current_user)):
         for user_data in test_users:
             # Check if user already exists
             cursor.execute(
-                f"SELECT ID, USERNAME, ROLE FROM {read_table('users')} WHERE USERNAME = %s",
+                f"SELECT ID, USERNAME, ROLE FROM {core_table('users')} WHERE USERNAME = %s",
                 (user_data["username"],)
             )
             existing_user = cursor.fetchone()
@@ -13845,7 +13845,7 @@ async def create_test_users(current_user: User = Depends(get_current_user)):
 
             cursor.execute(
                 f"""
-                INSERT INTO {write_table('users')} (USERNAME, HASHED_PASSWORD, ROLE, EMAIL, FIRSTNAME, LASTNAME)
+                INSERT INTO {core_table('users')} (USERNAME, HASHED_PASSWORD, ROLE, EMAIL, FIRSTNAME, LASTNAME)
                 VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                 (
@@ -14461,7 +14461,7 @@ async def get_my_analytics(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {core_table('scout_report_views')} srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
             WHERE {where_sql}
             ORDER BY sr.CREATED_AT DESC, sr.ID DESC
@@ -14649,7 +14649,7 @@ async def get_my_reports(
                 (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                 (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {core_table('scout_report_views')} srv ON sr.ID = srv.SCOUT_REPORT_ID AND srv.USER_ID = %s
             WHERE {where_sql}
             ORDER BY {sort_columns[resolved_sort_by]} {sort_direction.upper()}, sr.ID DESC
@@ -15388,7 +15388,7 @@ async def get_match_team_analytics(
                     (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
                     (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
                 )
-                LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+                LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
                 WHERE (m.DATA_SOURCE = 'external' OR
                        (m.DATA_SOURCE = 'internal' AND (m.HOMESQUADID IS NOT NULL OR m.AWAYSQUADID IS NOT NULL)))
                   {date_filter}
@@ -15544,7 +15544,7 @@ async def get_scout_analytics(
                 COUNT(DISTINCT COALESCE(sr.CAFC_PLAYER_ID, sr.PLAYER_ID)) as unique_players_reported_on,
                 COUNT(DISTINCT sr.MATCH_ID) as games_fixtures_covered
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.USER_ID IS NOT NULL
             {date_filter}
             {position_filter}
@@ -15583,7 +15583,7 @@ async def get_scout_analytics(
                 COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name,
                 COUNT(sr.ID) as report_count
             FROM {core_table('scout_reports')} sr
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE sr.USER_ID IS NOT NULL
             {date_filter}
             {position_filter}
@@ -15969,7 +15969,7 @@ async def get_players_by_score(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             WHERE {where_clause}
             AND sr.REPORT_TYPE = 'Player Assessment'
             GROUP BY COALESCE(p.PLAYERNAME, 'Unknown'), sr.POSITION, COALESCE(sr.PLAYER_ID, sr.CAFC_PLAYER_ID), p.DATA_SOURCE, u.FIRSTNAME, u.LASTNAME, u.USERNAME
@@ -16175,7 +16175,7 @@ async def get_players_by_attributes(
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
                 (sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID AND p.DATA_SOURCE = 'internal')
             )
-            LEFT JOIN {read_table('users')} u ON sr.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
             LEFT JOIN {read_table('matches')} m ON sr.MATCH_ID = m.ID
             WHERE sr.REPORT_TYPE = 'Player Assessment'
             {archived_filter}
@@ -16824,7 +16824,7 @@ async def get_all_player_lists(
                     COUNT(DISTINCT pli.ID) as PLAYER_COUNT,
                     AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE ELSE NULL END) as AVG_SCORE
                 FROM {core_table('player_lists')} pl
-                LEFT JOIN {read_table('users')} u ON pl.USER_ID = u.ID
+                LEFT JOIN {core_table('users')} u ON pl.USER_ID = u.ID
                 LEFT JOIN {core_table('player_list_items')} pli ON pl.ID = pli.LIST_ID
                 LEFT JOIN {core_table('scout_reports')} sr ON (
                     (pli.PLAYER_ID IS NOT NULL AND sr.PLAYER_ID = pli.PLAYER_ID) OR
@@ -16931,7 +16931,7 @@ async def get_all_lists_with_details(
                 u.FIRSTNAME,
                 u.LASTNAME
             FROM {core_table('player_lists')} pl
-            LEFT JOIN {read_table('users')} u ON pl.USER_ID = u.ID
+            LEFT JOIN {core_table('users')} u ON pl.USER_ID = u.ID
             WHERE pl.LIST_CATEGORY = %s
             ORDER BY
                 CASE
@@ -17098,7 +17098,7 @@ async def get_all_lists_with_details(
             FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN {read_table('players')} ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
-            LEFT JOIN {read_table('users')} u ON pli.ADDED_BY = u.ID
+            LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
             """,
@@ -17620,7 +17620,7 @@ async def get_player_list_detail(
                 pli.PLAYER_ID = p.PLAYERID OR
                 pli.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID
             )
-            LEFT JOIN {read_table('users')} u ON pli.ADDED_BY = u.ID
+            LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             WHERE pli.LIST_ID = %s
             ORDER BY pli.DISPLAY_ORDER ASC, pli.CREATED_AT DESC
         """,
@@ -18774,7 +18774,7 @@ async def get_player_stage_history(
                     u.USERNAME
                 ) as CHANGED_BY_NAME
             FROM {read_table('player_stage_history')} psh
-            LEFT JOIN {read_table('users')} u ON psh.CHANGED_BY = u.ID
+            LEFT JOIN {core_table('users')} u ON psh.CHANGED_BY = u.ID
             WHERE psh.LIST_ID = %s AND psh.PLAYER_ID = %s
             ORDER BY psh.CHANGED_AT DESC NULLS LAST, psh.ID DESC
         """,
