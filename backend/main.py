@@ -5681,7 +5681,7 @@ async def check_player_deletion_safety(
         # Intel reports
         try:
             cursor.execute(
-                f"SELECT COUNT(*) FROM {read_table('player_information')} WHERE CAFC_PLAYER_ID = %s OR PLAYER_ID = %s",
+                f"SELECT COUNT(*) FROM {core_table('player_information')} WHERE CAFC_PLAYER_ID = %s OR PLAYER_ID = %s",
                 (cafc_player_id, player_id),
             )
             dependencies["intel_reports"] = cursor.fetchone()[0]
@@ -10861,7 +10861,7 @@ async def get_player_profile(
                    {"pi.EXPECTED_WAGES_MIN" if has_expected_wages_min else "NULL"},
                    {"pi.EXPECTED_WAGES_MAX" if has_expected_wages_max else "NULL"},
                    {("pi.INTEL_TYPE" if has_intel_type else "'player_information'")}
-            FROM {read_table('player_information')} pi
+            FROM {core_table('player_information')} pi
             LEFT JOIN {core_table('users')} u ON pi.USER_ID = u.ID
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
@@ -12091,7 +12091,7 @@ async def get_all_players(
                 GREATEST(MAX(sr.CREATED_AT), MAX(pi.CREATED_AT)) as last_report_date
             FROM {read_table('players')} p
             LEFT JOIN {core_table('scout_reports')} sr ON p.PLAYERID = sr.PLAYER_ID
-            LEFT JOIN {read_table('player_information')} pi ON p.PLAYERID = pi.PLAYER_ID
+            LEFT JOIN {core_table('player_information')} pi ON p.PLAYERID = pi.PLAYER_ID
             WHERE {where_clause}
             GROUP BY p.PLAYERID, p.PLAYERNAME, p.FIRSTNAME, p.LASTNAME, p.BIRTHDATE, p.SQUADNAME, p.POSITION
             ORDER BY p.PLAYERNAME
@@ -12215,7 +12215,7 @@ async def export_player_pdf(
                    pi.ACTION_REQUIRED, pi.CONVERSATION_NOTES, pi.TRANSFER_FEE,
                    pi.CURRENT_WAGES, pi.EXPECTED_WAGES, pi.CONTRACT_EXPIRY,
                    pi.POTENTIAL_DEAL_TYPE
-            FROM {read_table('player_information')} pi
+            FROM {core_table('player_information')} pi
             WHERE pi.PLAYER_ID = %s
             ORDER BY pi.CREATED_AT DESC
         """,
@@ -12556,7 +12556,7 @@ async def create_intel_report(
 
         # Construct the final SQL query
         sql = f"""
-            INSERT INTO {write_table('player_information')} ({', '.join(sql_columns)})
+            INSERT INTO {core_table('player_information')} ({', '.join(sql_columns)})
             VALUES ({', '.join(sql_values)})
         """
 
@@ -12604,7 +12604,7 @@ async def update_intel_report(
 
         # Check if the report exists
         cursor.execute(
-            f"SELECT ID, USER_ID FROM {read_table('player_information')} WHERE ID = %s",
+            f"SELECT ID, USER_ID FROM {core_table('player_information')} WHERE ID = %s",
             (report_id,)
         )
         existing_report = cursor.fetchone()
@@ -12772,7 +12772,7 @@ async def update_intel_report(
 
         # Construct the final UPDATE SQL query
         sql = f"""
-            UPDATE {write_table('player_information')}
+            UPDATE {core_table('player_information')}
             SET {', '.join(update_fields)}
             WHERE ID = %s
         """
@@ -12814,7 +12814,7 @@ async def delete_intel_report(
 
         # Check if report exists
         cursor.execute(
-            f"SELECT ID FROM {read_table('player_information')} WHERE ID = %s",
+            f"SELECT ID FROM {core_table('player_information')} WHERE ID = %s",
             (report_id,)
         )
         existing_report = cursor.fetchone()
@@ -12823,7 +12823,7 @@ async def delete_intel_report(
             raise HTTPException(status_code=404, detail="Intel report not found")
 
         # Delete the intel report
-        cursor.execute(f"DELETE FROM {write_table('player_information')} WHERE ID = %s", (report_id,))
+        cursor.execute(f"DELETE FROM {core_table('player_information')} WHERE ID = %s", (report_id,))
 
         conn.commit()
         return {"message": "Intel report deleted successfully"}
@@ -12914,7 +12914,7 @@ async def get_all_intel_reports(
                    {"pi.LENGTH_OF_RELATIONSHIP" if has_length_of_relationship else "NULL"},
                    {"pi.RELEVANCE_OF_RELATIONSHIP" if has_relevance_of_relationship else "NULL"},
                    {"pi.REFERENCE_RATING" if has_reference_rating else "NULL"}
-            FROM {read_table('player_information')} pi
+            FROM {core_table('player_information')} pi
             {join_clause}
             LEFT JOIN {core_table('users')} u ON pi.USER_ID = u.ID
         """
@@ -12961,7 +12961,7 @@ async def get_all_intel_reports(
 
         # Get total count - need to modify base_sql for counting
         count_base_sql = f"""
-            FROM {read_table('player_information')} pi
+            FROM {core_table('player_information')} pi
             {join_clause}
         """
         if where_clauses:
@@ -13108,7 +13108,7 @@ async def get_single_intel_report(
                     {{length_of_relationship_expr}},
                     {{relevance_of_relationship_expr}},
                     {{reference_rating_expr}}
-                FROM {read_table('player_information')} pi
+                FROM {core_table('player_information')} pi
                 LEFT JOIN {read_table('players')} p ON (pi.PLAYER_ID = p.PLAYERID OR pi.PLAYER_ID = p.CAFC_PLAYER_ID)
                 WHERE pi.ID = %s
             """.format(
@@ -13147,7 +13147,7 @@ async def get_single_intel_report(
                     {{length_of_relationship_expr}},
                     {{relevance_of_relationship_expr}},
                     {{reference_rating_expr}}
-                FROM {read_table('player_information')} pi
+                FROM {core_table('player_information')} pi
                 WHERE pi.ID = %s
             """.format(
                 current_wages_min_expr="pi.CURRENT_WAGES_MIN" if has_current_wages_min else "NULL",
@@ -17201,7 +17201,7 @@ async def get_all_lists_with_details(
                         PLAYER_ID,
                         {cafc_player_id_select},
                         COUNT(*) as intel_reports_count
-                    FROM {read_table('player_information')}
+                    FROM {core_table('player_information')}
                     WHERE {" OR ".join(intel_conditions)}
                     GROUP BY PLAYER_ID{cafc_player_id_group}
                     """,
