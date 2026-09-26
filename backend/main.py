@@ -1227,7 +1227,7 @@ def insert_player_stage_history_record(
 ):
     cursor.execute(
         f"""
-        INSERT INTO {write_table('player_stage_history')}
+        INSERT INTO {core_table('player_stage_history')}
         (LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE, REASON, DESCRIPTION, CHANGED_BY, CHANGED_AT)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP))
     """,
@@ -10530,7 +10530,7 @@ async def get_player_flow_history(
                         u.FIRSTNAME,
                         u.LASTNAME,
                         u.USERNAME
-                    FROM {read_table('player_stage_history')} psh
+                    FROM {core_table('player_stage_history')} psh
                     LEFT JOIN {core_table('player_lists')} pl ON psh.LIST_ID = pl.ID
                     LEFT JOIN {core_table('users')} u ON psh.CHANGED_BY = u.ID
                     WHERE psh.PLAYER_ID = %s
@@ -15125,7 +15125,7 @@ async def get_player_analytics(
             data_players_where = " AND ".join(data_players_clauses)
             cursor.execute(f"""
                 SELECT COUNT(DISTINCT COALESCE(pli.CAFC_PLAYER_ID, pli.PLAYER_ID)) as data_players
-                FROM {read_table('player_stage_history')} psh
+                FROM {core_table('player_stage_history')} psh
                 JOIN {core_table('player_list_items')} pli ON psh.LIST_ITEM_ID = pli.ID
                 LEFT JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
                 WHERE {data_players_where}
@@ -15759,7 +15759,7 @@ async def get_stage_movement_analytics(
                 COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Stage 3') AS moved_stage_2_to_3,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_2,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3
-            FROM {read_table('player_stage_history')} psh
+            FROM {core_table('player_stage_history')} psh
             {list_join}
             WHERE {EFFECTIVE_START} >= %s
               AND {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
@@ -15798,7 +15798,7 @@ async def get_stage_movement_analytics(
                             PARTITION BY psh.LIST_ITEM_ID
                             ORDER BY {EFFECTIVE_START} DESC, psh.ID DESC
                         ) AS rn
-                    FROM {read_table('player_stage_history')} psh
+                    FROM {core_table('player_stage_history')} psh
                     {list_join}
                     WHERE {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
                       {position_clause}{FIRST_TEAM_ONLY}
@@ -15837,7 +15837,7 @@ async def get_stage_movement_analytics(
                     psh.NEW_STAGE,
                     {EFFECTIVE_START} AS stage_start,
                     psh.ID AS seq
-                FROM {read_table('player_stage_history')} psh
+                FROM {core_table('player_stage_history')} psh
                 {list_join}
                 WHERE 1 = 1
                   {position_clause}{FIRST_TEAM_ONLY}
@@ -17010,7 +17010,7 @@ async def get_all_lists_with_details(
                         SELECT LIST_ITEM_ID FROM (
                             SELECT LIST_ITEM_ID, REASON,
                                    ROW_NUMBER() OVER (PARTITION BY LIST_ITEM_ID ORDER BY CHANGED_AT DESC) AS rn
-                            FROM {read_table('player_stage_history')}
+                            FROM {core_table('player_stage_history')}
                             WHERE NEW_STAGE = 'Archived'
                         )
                         WHERE rn = 1 AND REASON IN ({placeholders})
@@ -17028,7 +17028,7 @@ async def get_all_lists_with_details(
                         SELECT LIST_ITEM_ID FROM (
                             SELECT LIST_ITEM_ID, REASON,
                                    ROW_NUMBER() OVER (PARTITION BY LIST_ITEM_ID ORDER BY CHANGED_AT ASC) AS rn
-                            FROM {read_table('player_stage_history')}
+                            FROM {core_table('player_stage_history')}
                             WHERE OLD_STAGE IS NULL
                         )
                         WHERE rn = 1 AND REASON IN ({placeholders})
@@ -18673,7 +18673,7 @@ async def update_stage_history_reason(
         cursor.execute(
             f"""
             SELECT ID, NEW_STAGE
-            FROM {read_table('player_stage_history')}
+            FROM {core_table('player_stage_history')}
             WHERE ID = %s AND LIST_ID = %s AND PLAYER_ID = %s
         """,
             (history_id, list_id, player_id),
@@ -18704,7 +18704,7 @@ async def update_stage_history_reason(
         # Update the history record
         cursor.execute(
             f"""
-            UPDATE {write_table('player_stage_history')}
+            UPDATE {core_table('player_stage_history')}
             SET REASON = %s, DESCRIPTION = %s
             WHERE ID = %s
         """,
@@ -18773,7 +18773,7 @@ async def get_player_stage_history(
                     CONCAT(u.FIRSTNAME, ' ', u.LASTNAME),
                     u.USERNAME
                 ) as CHANGED_BY_NAME
-            FROM {read_table('player_stage_history')} psh
+            FROM {core_table('player_stage_history')} psh
             LEFT JOIN {core_table('users')} u ON psh.CHANGED_BY = u.ID
             WHERE psh.LIST_ID = %s AND psh.PLAYER_ID = %s
             ORDER BY psh.CHANGED_AT DESC NULLS LAST, psh.ID DESC
