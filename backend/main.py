@@ -5690,7 +5690,8 @@ async def check_player_deletion_safety(
                 (cafc_player_id, player_id),
             )
             dependencies["intel_reports"] = cursor.fetchone()[0]
-        except:
+        except Exception as e:
+            logging.warning(f"Could not count intel reports for player {player_id}: {e}")
             dependencies["intel_reports"] = 0
 
         # Player notes
@@ -5705,7 +5706,8 @@ async def check_player_deletion_safety(
                 (cafc_player_id, player_id),
             )
             dependencies["player_notes"] = cursor.fetchone()[0]
-        except:
+        except Exception as e:
+            logging.warning(f"Could not count player notes for player {player_id}: {e}")
             dependencies["player_notes"] = 0
 
         total_dependencies = sum(dependencies.values())
