@@ -5681,7 +5681,12 @@ async def check_player_deletion_safety(
         # Intel reports
         try:
             cursor.execute(
-                f"SELECT COUNT(*) FROM {core_table('player_information')} WHERE CAFC_PLAYER_ID = %s OR PLAYER_ID = %s",
+                f"""
+                SELECT COUNT(*) FROM {core_table('player_information')} pi
+                LEFT JOIN {core_table('core_player_id_resolutions')} r
+                  ON r.source_system = 'IMPECT' AND r.source_player_id = pi.PLAYER_ID::varchar
+                WHERE r.cafc_player_id = %s OR pi.PLAYER_ID = %s
+                """,
                 (cafc_player_id, player_id),
             )
             dependencies["intel_reports"] = cursor.fetchone()[0]
@@ -17176,34 +17181,34 @@ async def get_all_lists_with_details(
         if all_player_ids or all_cafc_ids:
             intel_conditions = []
             intel_params = []
-            has_intel_cafc_player_id = has_column("player_information", "CAFC_PLAYER_ID")
 
             if all_player_ids:
                 external_ids = list(all_player_ids)
                 placeholders = ", ".join(["%s"] * len(external_ids))
-                intel_conditions.append(f"PLAYER_ID IN ({placeholders})")
+                intel_conditions.append(f"pi.PLAYER_ID IN ({placeholders})")
                 intel_params.extend(external_ids)
 
-            if all_cafc_ids and has_intel_cafc_player_id:
+            if all_cafc_ids:
                 internal_ids = list(all_cafc_ids)
                 placeholders = ", ".join(["%s"] * len(internal_ids))
-                intel_conditions.append(f"CAFC_PLAYER_ID IN ({placeholders})")
+                intel_conditions.append(f"r.cafc_player_id IN ({placeholders})")
                 intel_params.extend(internal_ids)
 
             if intel_conditions:
-                cafc_player_id_select = "CAFC_PLAYER_ID" if has_intel_cafc_player_id else "NULL as CAFC_PLAYER_ID"
-                cafc_player_id_group = ", CAFC_PLAYER_ID" if has_intel_cafc_player_id else ""
-
-                # Count intel reports from player_information table
+                # Count intel reports from player_information table, joined to the
+                # identity-resolution view for CAFC_PLAYER_ID (CORE.PLAYER_INFORMATION
+                # has no such column of its own).
                 cursor.execute(
                     f"""
                     SELECT
-                        PLAYER_ID,
-                        {cafc_player_id_select},
+                        pi.PLAYER_ID,
+                        r.cafc_player_id AS CAFC_PLAYER_ID,
                         COUNT(*) as intel_reports_count
-                    FROM {core_table('player_information')}
+                    FROM {core_table('player_information')} pi
+                    LEFT JOIN {core_table('core_player_id_resolutions')} r
+                      ON r.source_system = 'IMPECT' AND r.source_player_id = pi.PLAYER_ID::varchar
                     WHERE {" OR ".join(intel_conditions)}
-                    GROUP BY PLAYER_ID{cafc_player_id_group}
+                    GROUP BY pi.PLAYER_ID, r.cafc_player_id
                     """,
                     intel_params,
                 )
