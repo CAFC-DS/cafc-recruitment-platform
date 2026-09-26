@@ -51,6 +51,8 @@ ENDPOINTS = [
     {"name": "scout_reports_recent", "path": "/scout_reports/recent", "query": {"limit": 20}},
     {"name": "player_lists_all", "path": "/player-lists", "query": {"category": "first_team"}},
     {"name": "player_lists_details", "path": "/player-lists/all-with-details", "query": {"category": "first_team"}},
+    {"name": "player_flow_history", "path": "/players/{player_id}/flow-history", "needs_player_id": True},
+    {"name": "players_all", "path": "/players/all"},
 ]
 
 # Keys whose values are generated at request time (not data) — blanked so they
