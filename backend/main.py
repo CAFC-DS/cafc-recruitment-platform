@@ -5691,7 +5691,12 @@ async def check_player_deletion_safety(
         # Player notes
         try:
             cursor.execute(
-                f"SELECT COUNT(*) FROM {read_table('player_notes')} WHERE CAFC_PLAYER_ID = %s OR PLAYER_ID = %s",
+                f"""
+                SELECT COUNT(*) FROM {core_table('player_notes')} pn
+                LEFT JOIN {core_table('core_player_id_resolutions')} r
+                  ON r.source_system = 'IMPECT' AND r.source_player_id = pn.PLAYER_ID::varchar
+                WHERE r.cafc_player_id = %s OR pn.PLAYER_ID = %s
+                """,
                 (cafc_player_id, player_id),
             )
             dependencies["player_notes"] = cursor.fetchone()[0]
@@ -10967,7 +10972,7 @@ async def get_player_profile(
             cursor.execute(
                 f"""
                 SELECT pn.ID, pn.NOTE_CONTENT, pn.IS_PRIVATE, pn.CREATED_AT, u.USERNAME
-                FROM {read_table('player_notes')} pn
+                FROM {core_table('player_notes')} pn
                 LEFT JOIN {core_table('users')} u ON pn.USER_ID = u.ID
                 WHERE pn.PLAYER_ID = %s
                 ORDER BY pn.CREATED_AT DESC
@@ -11996,7 +12001,7 @@ async def add_player_note(
 
         cursor.execute(
             f"""
-            INSERT INTO {write_table('player_notes')} (PLAYER_ID, USER_ID, NOTE_CONTENT, IS_PRIVATE)
+            INSERT INTO {core_table('player_notes')} (PLAYER_ID, USER_ID, NOTE_CONTENT, IS_PRIVATE)
             VALUES (%s, %s, %s, %s)
         """,
             (player_id, current_user.id, note.note_content, note.is_private),
