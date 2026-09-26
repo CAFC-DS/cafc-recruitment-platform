@@ -33,7 +33,13 @@ cd backend
 CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py
 ```
 
-Confirm the startup log shows exactly `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`. Check port 8000 is free first (`lsof -i :8000`); use 8001 if not, consistently for that task's `curl`/`capture.py --base-url` calls.
+Confirm the startup log shows exactly `READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE_DEV_RECRUITMENT`. Check port 8000 is free first (`lsof -i :8000`).
+
+**Port note, corrected 2026-09-26 (Task 1 finding):** `main.py`'s `if __name__ == "__main__":` block hardcodes `uvicorn.run(app, host="0.0.0.0", port=8000)` — `python main.py` cannot be redirected to another port via an env var or flag. If port 8000 is taken (it was during sub-project 2 and Task 1 of this plan — an unrelated app, `CharltonTracking`), run uvicorn directly instead, bypassing the hardcoded block:
+```bash
+CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 -m uvicorn main:app --port 8001
+```
+Use whichever port you actually started on consistently for that task's `curl`/`capture.py --base-url` calls.
 
 ---
 
@@ -541,7 +547,7 @@ git commit -m "Phase 6 sub-project 3: add identity join to player_information's 
 
 - [ ] **Step 1: Capture the post-change state**
 
-Restart the backend (all 3 env vars, per "Local Dev Setup"):
+Restart the backend (all 3 env vars, per "Local Dev Setup" — use the `uvicorn` form from the Port Note if port 8000 is taken, e.g. `... -m uvicorn main:app --port 8001 &`, and adjust `capture.py --base-url` to match):
 ```bash
 cd backend
 CANONICAL_DB=CAFC_DB PLATFORM_DB_SCHEMA=APP_COMPAT CORE_DB_SCHEMA=CORE_DEV_RECRUITMENT /opt/anaconda3/bin/python3.10 main.py &
