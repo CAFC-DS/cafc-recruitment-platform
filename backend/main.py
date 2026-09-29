@@ -17077,11 +17077,39 @@ async def get_all_lists_with_details(
         if competition:
             competition_list = [c.strip() for c in competition.split(",") if c.strip()]
             if competition_list:
+                # players.COMPETITIONNAME is a single value per player and can be
+                # a cup (e.g. Copa Libertadores) rather than the domestic league,
+                # so also match any competition the player has minutes in during
+                # their most recent season.
                 competition_placeholders = " OR ".join(
                     ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
                     * len(competition_list)
                 )
-                filter_conditions.append(f"({competition_placeholders})")
+                kpi_placeholders = " OR ".join(
+                    ["NORMALIZE_TEXT_UDF(kc.COMPETITION_NAME) = NORMALIZE_TEXT_UDF(%s)"]
+                    * len(competition_list)
+                )
+                filter_conditions.append(
+                    f"""(
+                    ({competition_placeholders})
+                    OR EXISTS (
+                        SELECT 1
+                        FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS kk
+                        JOIN CAFC_DB.CORE.CORE_COMPETITIONS kc
+                          ON kc.CAFC_COMPETITION_ID = kk.CAFC_COMPETITION_ID
+                        WHERE kk.SOURCE_PLAYER_ID = COALESCE(p.PLAYERID, ip.PLAYERID)
+                          AND kk.PLAY_DURATION_SECONDS > 0
+                          AND kk.SEASON = (
+                              SELECT MAX(k2.SEASON)
+                              FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k2
+                              WHERE k2.SOURCE_PLAYER_ID = kk.SOURCE_PLAYER_ID
+                                AND k2.PLAY_DURATION_SECONDS > 0
+                          )
+                          AND ({kpi_placeholders})
+                    )
+                )"""
+                )
+                filter_params.extend(competition_list)
                 filter_params.extend(competition_list)
 
         # Age filter
