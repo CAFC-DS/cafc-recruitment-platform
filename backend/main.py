@@ -17001,6 +17001,7 @@ async def get_all_lists_with_details(
         # Build filter conditions with parameterized queries to prevent SQL injection
         filter_conditions = []
         filter_params = []
+        squad_league_join = ""
         exact_age_expr = """
             COALESCE(
                 IFF(
@@ -17077,40 +17078,37 @@ async def get_all_lists_with_details(
         if competition:
             competition_list = [c.strip() for c in competition.split(",") if c.strip()]
             if competition_list:
-                # players.COMPETITIONNAME is a single value per player and can be
-                # a cup (e.g. Copa Libertadores) rather than the domestic league,
-                # so also match any competition the player has minutes in during
-                # their most recent season.
+                # players.COMPETITIONNAME comes from an arbitrary iteration (often a
+                # cup or a loan spell), so resolve the competition from the player's
+                # current squad instead: squad_league_join gives each squad its
+                # league in its latest season. Fall back to players.COMPETITIONNAME
+                # when the squad has no league data.
                 competition_placeholders = " OR ".join(
-                    ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
+                    ["NORMALIZE_TEXT_UDF(COALESCE(sl.COMPETITION_NAME, p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
                     * len(competition_list)
                 )
-                kpi_placeholders = " OR ".join(
-                    ["NORMALIZE_TEXT_UDF(kc.COMPETITION_NAME) = NORMALIZE_TEXT_UDF(%s)"]
-                    * len(competition_list)
-                )
-                filter_conditions.append(
-                    f"""(
-                    ({competition_placeholders})
-                    OR EXISTS (
-                        SELECT 1
-                        FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS kk
-                        JOIN CAFC_DB.CORE.CORE_COMPETITIONS kc
-                          ON kc.CAFC_COMPETITION_ID = kk.CAFC_COMPETITION_ID
-                        WHERE kk.SOURCE_PLAYER_ID = COALESCE(p.PLAYERID, ip.PLAYERID)
-                          AND kk.PLAY_DURATION_SECONDS > 0
-                          AND kk.SEASON = (
-                              SELECT MAX(k2.SEASON)
-                              FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k2
-                              WHERE k2.SOURCE_PLAYER_ID = kk.SOURCE_PLAYER_ID
-                                AND k2.PLAY_DURATION_SECONDS > 0
-                          )
-                          AND ({kpi_placeholders})
-                    )
-                )"""
-                )
+                filter_conditions.append(f"({competition_placeholders})")
                 filter_params.extend(competition_list)
-                filter_params.extend(competition_list)
+                squad_league_join = f"""
+            LEFT JOIN (
+                SELECT SQUAD_NAME, COMPETITION_NAME FROM (
+                    SELECT s.SQUAD_NAME, it.COMPETITIONNAME AS COMPETITION_NAME,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY s.SQUAD_NAME
+                               ORDER BY it.SEASON DESC, MAX(i.MATCHES_PLAYED) DESC
+                           ) AS rn
+                    FROM {core_table('core_squad_iteration_kpis')} i
+                    JOIN {core_table('core_squads')} s ON s.CAFC_SQUAD_ID = i.CAFC_SQUAD_ID
+                    JOIN (
+                        SELECT DISTINCT ITERATIONID, COMPETITIONNAME, SEASON
+                        FROM {read_table('players_base')}
+                        WHERE ITERATIONID IS NOT NULL AND COMPETITIONTYPE = 'League'
+                    ) it ON it.ITERATIONID = i.SOURCE_ITERATION_ID
+                    GROUP BY s.SQUAD_NAME, it.COMPETITIONNAME, it.SEASON
+                )
+                WHERE rn = 1
+            ) sl ON NORMALIZE_TEXT_UDF(sl.SQUAD_NAME) = NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME))
+"""
 
         # Age filter
         if min_age is not None:
@@ -17153,6 +17151,7 @@ async def get_all_lists_with_details(
             FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN {read_table('players')} ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
+            {squad_league_join}
             LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
