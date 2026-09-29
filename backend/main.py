@@ -9232,28 +9232,40 @@ async def get_all_scout_reports(
             where_clauses.append("sr.MATCH_ID = %s")
             sql_params.append(match_id)
 
-        # Date range filter (report creation date)
-        if date_from:
-            where_clauses.append("sr.CREATED_AT >= %s")
-            sql_params.append(date_from)
-        if date_to:
-            where_clauses.append("sr.CREATED_AT <= %s")
-            sql_params.append(date_to)
+        # Date range filters. Both ends are inclusive of the whole calendar day:
+        # the upper bound is "< day after date_to", because CREATED_AT /
+        # SCHEDULEDDATE carry a time and "<= 'YYYY-MM-DD'" would drop that day.
+        def _parse_day(value: str, name: str) -> str:
+            try:
+                return date.fromisoformat(value).isoformat()
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail=f"{name} must be YYYY-MM-DD"
+                )
 
-        # Fixture date range filter (match/fixture date)
+        if date_from:
+            where_clauses.append("sr.CREATED_AT >= TO_DATE(%s)")
+            sql_params.append(_parse_day(date_from, "date_from"))
+        if date_to:
+            where_clauses.append("sr.CREATED_AT < DATEADD(day, 1, TO_DATE(%s))")
+            sql_params.append(_parse_day(date_to, "date_to"))
+
         if fixture_date_from:
-            where_clauses.append("m.SCHEDULEDDATE >= %s")
-            sql_params.append(fixture_date_from)
+            where_clauses.append("m.SCHEDULEDDATE >= TO_DATE(%s)")
+            sql_params.append(_parse_day(fixture_date_from, "fixture_date_from"))
         if fixture_date_to:
-            where_clauses.append("m.SCHEDULEDDATE <= %s")
-            sql_params.append(fixture_date_to)
+            where_clauses.append("m.SCHEDULEDDATE < DATEADD(day, 1, TO_DATE(%s))")
+            sql_params.append(_parse_day(fixture_date_to, "fixture_date_to"))
 
         # Construct WHERE clause
         if where_clauses:
             base_sql += " WHERE " + " AND ".join(where_clauses)
 
-        # Get total count
-        count_sql = f"SELECT COUNT(*) {base_sql}"
+        # Get total count. DISTINCT on the report id so it matches the QUALIFY
+        # de-duplication in the select below (the players/matches joins can
+        # fan a report out into several rows, which inflated the total and
+        # produced phantom/short pages, worst on "All Time").
+        count_sql = f"SELECT COUNT(DISTINCT sr.ID) {base_sql}"
 
         # Debug logging for fixture date filter
         if fixture_date_from or fixture_date_to:
@@ -9384,6 +9396,8 @@ async def get_all_scout_reports(
             "limit": limit,
             "reports": report_list,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logging.exception(e)
         raise HTTPException(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Container,
   Form,
@@ -135,8 +135,21 @@ const ScoutingPage: React.FC = () => {
   // Mark all as read functionality
   const [markingAllAsRead, setMarkingAllAsRead] = useState(false);
 
+  // A report-creation date range replaces the recency preset (the two are
+  // mutually exclusive), so the dropdown shows "Custom range" while one is set.
+  const dateRangeActive = Boolean(dateFromFilter || dateToFilter);
+  const recencyDisplay = dateRangeActive ? "custom" : recencyFilter;
+
+  // Only the most recent request may update the page: an older, slower request
+  // (typically "All Time") must never overwrite the results of a newer filter.
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchScoutReports = useCallback(
     async (page: number = 1) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setLoading(true);
       setErrorReports(null);
       try {
@@ -145,8 +158,8 @@ const ScoutingPage: React.FC = () => {
           limit: itemsPerPage, // Server-side pagination with 20 items per page
         };
 
-        // Add recency filter
-        if (recencyFilter !== "all") {
+        // Recency preset; skipped for "All Time" and when a custom range is set
+        if (recencyFilter !== "all" && !dateFromFilter && !dateToFilter) {
           params.recency_days = parseInt(recencyFilter);
         }
 
@@ -193,18 +206,24 @@ const ScoutingPage: React.FC = () => {
 
         const response = await axiosInstance.get("/scout_reports/all", {
           params,
+          signal: controller.signal,
         });
 
         // Role-based filtering is now handled by the backend
         setScoutReports(response.data.reports || []);
         setTotalReports(response.data.total_reports || 0);
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return; // superseded by a newer request
+        }
         console.error("Error fetching scout reports:", error);
         setErrorReports("Failed to load scout reports. Please try again.");
         setScoutReports([]);
         setTotalReports(0);
       } finally {
-        setLoading(false);
+        if (abortRef.current === controller) {
+          setLoading(false);
+        }
       }
     },
     [
@@ -373,25 +392,10 @@ const ScoutingPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [fixtureQuery]);
 
-  // Debounced fetch when filters change
-  useEffect(() => {
-    if (!token) return;
-
-    // Reset to page 1 when filters change
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // Let the page useEffect handle the fetch
-    }
-
-    // Debounce text filters (500ms delay)
-    const timer = setTimeout(() => {
-      fetchScoutReports(1);
-    }, 500);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    token,
+  // Single fetch effect for filters and pagination. Changing any filter returns
+  // to page 1 (fetch happens on the resulting re-run); typing is debounced,
+  // page changes and dropdown/date changes fetch immediately.
+  const filterKey = JSON.stringify([
     recencyFilter,
     performanceScores,
     minAge,
@@ -407,14 +411,34 @@ const ScoutingPage: React.FC = () => {
     fixtureDateFromFilter,
     fixtureDateToFilter,
   ]);
+  const textKey = JSON.stringify([minAge, maxAge, scoutNameFilter, playerNameFilter]);
+  const prevFilterKeyRef = useRef<string | null>(null);
+  const prevTextKeyRef = useRef<string>(textKey);
 
-  // Fetch when page changes (no debounce for pagination)
   useEffect(() => {
-    if (token) {
-      fetchScoutReports(currentPage);
+    if (!token) return;
+
+    const filtersChanged =
+      prevFilterKeyRef.current !== null && prevFilterKeyRef.current !== filterKey;
+    const textChanged = prevTextKeyRef.current !== textKey;
+    prevFilterKeyRef.current = filterKey;
+    prevTextKeyRef.current = textKey;
+
+    if (filtersChanged && currentPage !== 1) {
+      setCurrentPage(1); // re-runs this effect with page 1
+      return;
     }
+
+    const timer = setTimeout(
+      () => fetchScoutReports(currentPage),
+      textChanged ? 400 : 0,
+    );
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, token]);
+  }, [token, filterKey, currentPage]);
+
+  // Cancel any in-flight request when leaving the page
+  useEffect(() => () => abortRef.current?.abort(), []);
 
 
   const handleOpenReportModal = async (report_id: number) => {
@@ -669,10 +693,12 @@ const ScoutingPage: React.FC = () => {
         <Col md={4}>
           <Form.Select
             size="sm"
-            value={recencyFilter}
+            value={recencyDisplay}
             onChange={(e) => {
+              // Picking a preset replaces any custom report-date range
+              setDateFromFilter("");
+              setDateToFilter("");
               setRecencyFilter(e.target.value);
-              setCurrentPage(1);
             }}
             style={{ maxWidth: "150px" }}
           >
@@ -680,6 +706,7 @@ const ScoutingPage: React.FC = () => {
             <option value="30">Last 30 Days</option>
             <option value="90">Last 90 Days</option>
             <option value="all">All Time</option>
+            {dateRangeActive && <option value="custom">Custom range</option>}
           </Form.Select>
 
           {/* Mark All as Read button - only show if there are unread reports */}
@@ -743,11 +770,11 @@ const ScoutingPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {Math.min(scoutReports.length, itemsPerPage)} of{" "}
-            {scoutReports.length} filtered results
-            {scoutReports.length !== totalReports && (
-              <span> ({totalReports} total)</span>
-            )}
+            {totalReports === 0
+              ? "No matching reports"
+              : `Showing ${(currentPage - 1) * itemsPerPage + 1}–${
+                  (currentPage - 1) * itemsPerPage + scoutReports.length
+                } of ${totalReports} reports`}
           </small>
           {scoutReports.filter((r) => !r.has_been_viewed).length > 0 && (
             <div>
@@ -1040,6 +1067,7 @@ const ScoutingPage: React.FC = () => {
                       size="sm"
                       type="date"
                       value={dateFromFilter}
+                      max={dateToFilter || undefined}
                       onChange={(e) => setDateFromFilter(e.target.value)}
                     />
                     <span className="range-separator">to</span>
@@ -1047,11 +1075,12 @@ const ScoutingPage: React.FC = () => {
                       size="sm"
                       type="date"
                       value={dateToFilter}
+                      min={dateFromFilter || undefined}
                       onChange={(e) => setDateToFilter(e.target.value)}
                     />
                   </div>
                   <Form.Text className="text-muted">
-                    Filter by report creation date
+                    Report creation date (replaces the Last 7/30/90 Days preset)
                   </Form.Text>
                 </Form.Group>
               </Col>
