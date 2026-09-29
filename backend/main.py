@@ -9195,10 +9195,17 @@ async def get_all_scout_reports(
             sql_params.append(max_age)
 
         # Scout name filter (case-insensitive partial match)
+        # Each word must match first name, last name, full name or username, so
+        # a full name like "Phil Chapple" matches across FIRSTNAME + LASTNAME.
         if scout_name:
-            where_clauses.append("(UPPER(u.FIRSTNAME) LIKE UPPER(%s) OR UPPER(u.LASTNAME) LIKE UPPER(%s) OR UPPER(u.USERNAME) LIKE UPPER(%s))")
-            search_pattern = f"%{scout_name}%"
-            sql_params.extend([search_pattern, search_pattern, search_pattern])
+            for token in scout_name.split():
+                where_clauses.append(
+                    "(UPPER(u.FIRSTNAME) LIKE UPPER(%s) OR UPPER(u.LASTNAME) LIKE UPPER(%s) "
+                    "OR UPPER(u.USERNAME) LIKE UPPER(%s) "
+                    "OR UPPER(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)) LIKE UPPER(%s))"
+                )
+                search_pattern = f"%{token}%"
+                sql_params.extend([search_pattern] * 4)
 
         # Player name filter (case-insensitive and accent-insensitive partial match)
         if player_name:
