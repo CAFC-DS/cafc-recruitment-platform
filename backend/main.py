@@ -9750,7 +9750,11 @@ async def get_single_scout_report(
                 sr.OPPOSITION_DETAILS,
                 sr.IS_ARCHIVED,
                 sr.IS_POTENTIAL,
-                sr.CLIP_CATEGORY
+                sr.CLIP_CATEGORY,
+                p.SQUADNAME,
+                p.DATA_SOURCE,
+                sr.PLAYER_ID,
+                sr.CAFC_PLAYER_ID
             FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -9805,10 +9809,21 @@ async def get_single_scout_report(
             sum(non_zero_scores) / len(non_zero_scores) if non_zero_scores else 0
         )
 
+        # Universal ID of the report's actual player, so the frontend never has
+        # to re-resolve the player by (non-unique) name.
+        if report_data[26] == "internal" and report_data[28]:
+            universal_player_id = f"internal_{report_data[28]}"
+        elif report_data[26] == "external" and report_data[27]:
+            universal_player_id = f"external_{report_data[27]}"
+        else:
+            universal_player_id = None
+
         report = {
             "report_id": report_id,
             "created_at": str(report_data[0]),
             "player_name": report_data[1],
+            "player_id": universal_player_id,
+            "squad_name": report_data[25],
             "age": age,
             "home_squad_name": report_data[3],
             "away_squad_name": report_data[4],

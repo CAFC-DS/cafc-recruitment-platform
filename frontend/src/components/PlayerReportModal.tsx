@@ -65,52 +65,24 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
   // Fetch player data when modal opens
   useEffect(() => {
     const fetchPlayerData = async () => {
-      if (show && report && (report.player_id || report.player_name)) {
+      // Never carry a previous report's player over to this one
+      setPlayerData(null);
+
+      // The report endpoint already returns the player's squad and birth date,
+      // so the (slow) full profile lookup is only a fallback.
+      if (report?.squad_name) {
+        return;
+      }
+
+      // Resolve strictly by ID. Looking a player up by name and taking the
+      // first hit can land on a different player who shares the name.
+      if (show && report?.player_id) {
         setLoadingPlayerData(true);
         try {
-          let playerResponse = null;
-
-          // First try to get player by ID if available
-          if (report.player_id) {
-            try {
-              playerResponse = await axiosInstance.get(
-                `/players/${report.player_id}/profile`,
-              );
-            } catch (error) {
-              console.warn("Could not fetch player by ID:", error);
-            }
-          }
-
-          // If ID fetch failed, try search by name as fallback
-          if (!playerResponse && report.player_name) {
-            const searchResponse = await axiosInstance.get(
-              `/players/search?query=${encodeURIComponent(report.player_name)}`,
-            );
-            // Handle both old format (plain array) and new paginated format ({players, has_more})
-            const searchData = Array.isArray(searchResponse.data)
-              ? searchResponse.data
-              : searchResponse.data?.players || [];
-            if (searchData.length > 0) {
-              // Try to get profile for the first search result
-              const searchResult = searchData[0];
-              if (searchResult.player_id) {
-                try {
-                  playerResponse = await axiosInstance.get(
-                    `/players/${searchResult.player_id}/profile`,
-                  );
-                } catch (error) {
-                  // Use search result data if profile fetch fails
-                  setPlayerData(searchResult);
-                }
-              } else {
-                setPlayerData(searchResult);
-              }
-            }
-          }
-
-          if (playerResponse) {
-            setPlayerData(playerResponse.data);
-          }
+          const playerResponse = await axiosInstance.get(
+            `/players/${report.player_id}/profile`,
+          );
+          setPlayerData(playerResponse.data);
         } catch (error) {
           console.warn("Could not fetch player data:", error);
         } finally {
@@ -789,7 +761,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                     </p>
                     <p className="mb-1">
                       <strong>Team:</strong>{" "}
-                      {playerData?.squad_name ||
+                      {report.squad_name ||
+                        playerData?.squad_name ||
                         report.home_squad_name ||
                         report.away_squad_name ||
                         "N/A"}
@@ -932,7 +905,8 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
                         </p>
                         <p className="mb-1">
                           <strong>Team:</strong>{" "}
-                          {playerData?.squad_name ||
+                          {report.squad_name ||
+                            playerData?.squad_name ||
                             report.home_squad_name ||
                             report.away_squad_name ||
                             "N/A"}
