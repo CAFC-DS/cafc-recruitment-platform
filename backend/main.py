@@ -9315,7 +9315,7 @@ async def get_all_scout_reports(
                 sr.IS_POTENTIAL
             {base_sql}
             QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
-            ORDER BY sr.CREATED_AT DESC
+            ORDER BY sr.CREATED_AT DESC, sr.ID DESC
             LIMIT %s OFFSET %s
         """
         sql_params.extend([limit, offset])
@@ -9521,7 +9521,7 @@ async def get_recent_scout_reports(
                 sr.SUMMARY
             {base_sql}
             QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
-            ORDER BY sr.CREATED_AT DESC
+            ORDER BY sr.CREATED_AT DESC, sr.ID DESC
             LIMIT %s OFFSET %s
         """
         sql_params.extend([limit, offset])
@@ -13032,13 +13032,23 @@ async def get_all_intel_reports(
             where_clauses.append("UPPER(COALESCE(p.PLAYERNAME, '')) LIKE UPPER(%s)")
             sql_params.append(f"%{player_name}%")
 
+        # Date range: inclusive of the whole calendar day at both ends (the
+        # upper bound is "< day after date_to" because CREATED_AT has a time)
+        def _parse_day(value: str, name: str) -> str:
+            try:
+                return date.fromisoformat(value).isoformat()
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail=f"{name} must be YYYY-MM-DD"
+                )
+
         if date_from:
-            where_clauses.append("pi.CREATED_AT >= %s")
-            sql_params.append(date_from)
+            where_clauses.append("pi.CREATED_AT >= TO_DATE(%s)")
+            sql_params.append(_parse_day(date_from, "date_from"))
 
         if date_to:
-            where_clauses.append("pi.CREATED_AT <= %s")
-            sql_params.append(date_to)
+            where_clauses.append("pi.CREATED_AT < DATEADD(day, 1, TO_DATE(%s))")
+            sql_params.append(_parse_day(date_to, "date_to"))
 
         # Construct WHERE clause
         if where_clauses:
@@ -13052,14 +13062,16 @@ async def get_all_intel_reports(
         if where_clauses:
             count_base_sql += " WHERE " + " AND ".join(where_clauses)
 
-        count_sql = f"SELECT COUNT(*) {count_base_sql}"
+        # DISTINCT on the report id so the total matches the de-duplicated rows
+        count_sql = f"SELECT COUNT(DISTINCT pi.ID) {count_base_sql}"
         cursor.execute(count_sql, sql_params)
         total_intel_reports = cursor.fetchone()[0]
 
         # Get paginated reports - properly construct the query
         final_query = f"""
             {base_sql}
-            ORDER BY pi.CREATED_AT DESC
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY pi.ID ORDER BY pi.CREATED_AT DESC) = 1
+            ORDER BY pi.CREATED_AT DESC, pi.ID DESC
             LIMIT %s OFFSET %s
         """
 
@@ -13127,6 +13139,8 @@ async def get_all_intel_reports(
             "limit": limit,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.exception(e)
         raise HTTPException(

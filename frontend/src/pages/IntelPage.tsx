@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Container,
   Form,
@@ -99,8 +99,21 @@ const IntelPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [toastVariant, setToastVariant] = useState<"success" | "danger">("success");
 
+  // A date range replaces the recency preset (the two are mutually
+  // exclusive), so the dropdown shows "Custom range" while one is set.
+  const dateRangeActive = Boolean(dateFromFilter || dateToFilter);
+  const recencyDisplay = dateRangeActive ? "custom" : recencyFilter;
+
+  // Only the most recent request may update the page: an older, slower request
+  // (typically "All Time") must never overwrite the results of a newer filter.
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchIntelReports = useCallback(
     async (page: number = 1) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setLoading(true);
       setErrorReports(null);
       try {
@@ -109,8 +122,8 @@ const IntelPage: React.FC = () => {
           limit: itemsPerPage,
         };
 
-        // Add recency filter
-        if (recencyFilter !== "all") {
+        // Recency preset; skipped for "All Time" and when a custom range is set
+        if (recencyFilter !== "all" && !dateFromFilter && !dateToFilter) {
           params.recency_days = parseInt(recencyFilter);
         }
 
@@ -133,17 +146,23 @@ const IntelPage: React.FC = () => {
 
         const response = await axiosInstance.get("/intel_reports/all", {
           params,
+          signal: controller.signal,
         });
 
         setIntelReports(response.data.reports || []);
         setTotalReports(response.data.total_intel_reports || 0);
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return; // superseded by a newer request
+        }
         console.error("Error fetching intel reports:", error);
         setErrorReports("Failed to load intel reports. Please try again.");
         setIntelReports([]);
         setTotalReports(0);
       } finally {
-        setLoading(false);
+        if (abortRef.current === controller) {
+          setLoading(false);
+        }
       }
     },
     [
@@ -233,25 +252,10 @@ const IntelPage: React.FC = () => {
     }
   }, [token, fetchUserInfo]);
 
-  // Debounced fetch when filters change
-  useEffect(() => {
-    if (!token) return;
-
-    // Reset to page 1 when filters change
-    if (currentPage !== 1) {
-      setCurrentPage(1);
-      return; // Let the page useEffect handle the fetch
-    }
-
-    // Debounce text filters (500ms delay)
-    const timer = setTimeout(() => {
-      fetchIntelReports(1);
-    }, 500);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    token,
+  // Single fetch effect for filters and pagination. Changing any filter returns
+  // to page 1 (the fetch happens on the resulting re-run); typing is
+  // debounced, page and dropdown/date changes fetch immediately.
+  const filterKey = JSON.stringify([
     recencyFilter,
     recommendationFilter,
     contactNameFilter,
@@ -259,14 +263,34 @@ const IntelPage: React.FC = () => {
     dateFromFilter,
     dateToFilter,
   ]);
+  const textKey = JSON.stringify([contactNameFilter, playerNameFilter]);
+  const prevFilterKeyRef = useRef<string | null>(null);
+  const prevTextKeyRef = useRef<string>(textKey);
 
-  // Fetch when page changes (no debounce for pagination)
   useEffect(() => {
-    if (token) {
-      fetchIntelReports(currentPage);
+    if (!token) return;
+
+    const filtersChanged =
+      prevFilterKeyRef.current !== null && prevFilterKeyRef.current !== filterKey;
+    const textChanged = prevTextKeyRef.current !== textKey;
+    prevFilterKeyRef.current = filterKey;
+    prevTextKeyRef.current = textKey;
+
+    if (filtersChanged && currentPage !== 1) {
+      setCurrentPage(1); // re-runs this effect with page 1
+      return;
     }
+
+    const timer = setTimeout(
+      () => fetchIntelReports(currentPage),
+      textChanged ? 400 : 0,
+    );
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, token]);
+  }, [token, filterKey, currentPage]);
+
+  // Cancel any in-flight request when leaving the page
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Listen for intel report changes from other components (navbar, etc.)
   useEffect(() => {
@@ -461,10 +485,12 @@ const IntelPage: React.FC = () => {
         <Col md={4}>
           <Form.Select
             size="sm"
-            value={recencyFilter}
+            value={recencyDisplay}
             onChange={(e) => {
+              // Picking a preset replaces any custom date range
+              setDateFromFilter("");
+              setDateToFilter("");
               setRecencyFilter(e.target.value);
-              setCurrentPage(1);
             }}
             style={{ maxWidth: "150px" }}
           >
@@ -472,6 +498,7 @@ const IntelPage: React.FC = () => {
             <option value="7">Last 7 Days</option>
             <option value="30">Last 30 Days</option>
             <option value="90">Last 90 Days</option>
+            {dateRangeActive && <option value="custom">Custom range</option>}
           </Form.Select>
         </Col>
         <Col md={4} className="text-center">
@@ -502,7 +529,11 @@ const IntelPage: React.FC = () => {
         </Col>
         <Col md={4} className="text-end">
           <small className="text-muted">
-            Showing {filteredIntelReports.length} on this page ({totalReports} total results)
+            {totalReports === 0
+              ? "No matching reports"
+              : `Showing ${(currentPage - 1) * itemsPerPage + 1}–${
+                  (currentPage - 1) * itemsPerPage + intelReports.length
+                } of ${totalReports} reports`}
           </small>
         </Col>
       </Row>
@@ -581,6 +612,7 @@ const IntelPage: React.FC = () => {
                       size="sm"
                       type="date"
                       value={dateFromFilter}
+                      max={dateToFilter || undefined}
                       onChange={(e) => setDateFromFilter(e.target.value)}
                     />
                     <span className="range-separator">to</span>
@@ -588,9 +620,13 @@ const IntelPage: React.FC = () => {
                       size="sm"
                       type="date"
                       value={dateToFilter}
+                      min={dateFromFilter || undefined}
                       onChange={(e) => setDateToFilter(e.target.value)}
                     />
                   </div>
+                  <Form.Text className="text-muted">
+                    Replaces the Last 7/30/90 Days preset
+                  </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={4}>
