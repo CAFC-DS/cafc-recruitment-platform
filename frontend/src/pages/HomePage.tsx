@@ -73,79 +73,101 @@ const HomePage: React.FC = () => {
   const [loadingMoreFlagReports, setLoadingMoreFlagReports] = useState(false);
   const flagReportsObserver = useRef<IntersectionObserver | null>(null);
 
-  // Reset state and fetch initial data when token or recency filter changes
+  // Bumped on every filter change / unmount. Any response that arrives for an
+  // older generation (initial load or infinite-scroll page) is discarded, so a
+  // slow "All Time" request can never overwrite or extend a newer filter.
+  const generationRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const recentUrl = (reportType: string, offset: number) => {
+    const base = `/scout_reports/recent?report_type=${encodeURIComponent(reportType)}&limit=20&offset=${offset}`;
+    return recencyFilter === "all" ? base : `${base}&recency_days=${recencyFilter}`;
+  };
+
+  // User info and database metadata don't depend on the recency filter
   useEffect(() => {
-    if (token) {
-      // Reset reports and offsets
-      setRecentScoutReports([]);
-      setRecentFlagReports([]);
-      setScoutReportsOffset(0);
-      setFlagReportsOffset(0);
-      setHasMoreScoutReports(true);
-      setHasMoreFlagReports(true);
-      fetchDashboardData();
-    }
-  }, [token, recencyFilter]);
+    if (!token) return;
+    axiosInstance
+      .get("/users/me")
+      .then((res) => setUserRole(res.data.role || "scout"))
+      .catch((error) => console.error("Error fetching user info:", error));
+    axiosInstance
+      .get("/database/metadata")
+      .then((res) => setDatabaseMetadata(res.data))
+      .catch((error) =>
+        console.error("Error fetching database metadata:", error), // non-critical
+      );
+  }, [token]);
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
+  // Reset state and fetch the dashboard reports when token or recency filter changes
+  useEffect(() => {
+    if (!token) return;
+    const generation = ++generationRef.current;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      // Fetch user info
-      const userResponse = await axiosInstance.get("/users/me");
-      setUserRole(userResponse.data.role || "scout");
+    setRecentScoutReports([]);
+    setRecentFlagReports([]);
+    setScoutReportsOffset(0);
+    setFlagReportsOffset(0);
+    setHasMoreScoutReports(true);
+    setHasMoreFlagReports(true);
+    setLoadingMoreScoutReports(false);
+    setLoadingMoreFlagReports(false);
+    setError("");
+    setLoading(true);
 
-      // Fetch initial scout reports using new endpoint with infinite scroll support
-      const scoutUrl = recencyFilter === "all"
-        ? `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=0`
-        : `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=0&recency_days=${recencyFilter}`;
-      const scoutResponse = await axiosInstance.get(scoutUrl);
-      const scoutReports = scoutResponse.data.reports || [];
-      setRecentScoutReports(scoutReports);
-      setHasMoreScoutReports(scoutResponse.data.has_more || false);
-      setScoutReportsOffset(20); // Set offset for next load
-
-      // Fetch initial flag reports using new endpoint
-      const flagUrl = recencyFilter === "all"
-        ? `/scout_reports/recent?report_type=Flag&limit=20&offset=0`
-        : `/scout_reports/recent?report_type=Flag&limit=20&offset=0&recency_days=${recencyFilter}`;
-      const flagResponse = await axiosInstance.get(flagUrl);
-      const flagReports = flagResponse.data.reports || [];
-      setRecentFlagReports(flagReports);
-      setHasMoreFlagReports(flagResponse.data.has_more || false);
-      setFlagReportsOffset(20); // Set offset for next load
-
-      // Fetch top attribute reports using dedicated endpoint (sorted by attribute score, not recency)
-      // This ensures we get the ACTUAL top 10 highest attribute scores in the selected time period
-      const topAttributesUrl = recencyFilter === "all"
+    const signal = controller.signal;
+    const topAttributesUrl =
+      recencyFilter === "all"
         ? `/scout_reports/top-attributes?limit=10`
         : `/scout_reports/top-attributes?limit=10&recency_days=${recencyFilter}`;
-      const topAttributesResponse = await axiosInstance.get(topAttributesUrl);
-      const topReports = topAttributesResponse.data.reports || [];
-      setTopAttributeReports(Array.isArray(topReports) ? topReports : []);
 
-      // Fetch database metadata
-      try {
-        const metadataResponse = await axiosInstance.get("/database/metadata");
-        setDatabaseMetadata(metadataResponse.data);
-      } catch (metadataError) {
-        console.error("Error fetching database metadata:", metadataError);
-        // Non-critical, don't fail the whole dashboard
-      }
-    } catch (error: any) {
-      console.error("Error fetching dashboard data:", error);
+    Promise.all([
+      axiosInstance.get(recentUrl("Player Assessment", 0), { signal }),
+      axiosInstance.get(recentUrl("Flag", 0), { signal }),
+      // Top attribute scores use a dedicated endpoint (sorted by attribute
+      // score, not recency) so it's the real top 10 in the selected period
+      axiosInstance.get(topAttributesUrl, { signal }),
+    ])
+      .then(([scoutResponse, flagResponse, topResponse]) => {
+        if (generation !== generationRef.current) return;
+        setRecentScoutReports(scoutResponse.data.reports || []);
+        setHasMoreScoutReports(scoutResponse.data.has_more || false);
+        setScoutReportsOffset(20);
+        setRecentFlagReports(flagResponse.data.reports || []);
+        setHasMoreFlagReports(flagResponse.data.has_more || false);
+        setFlagReportsOffset(20);
+        const topReports = topResponse.data.reports || [];
+        setTopAttributeReports(Array.isArray(topReports) ? topReports : []);
+      })
+      .catch((error: any) => {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+        if (generation !== generationRef.current) return;
+        console.error("Error fetching dashboard data:", error);
+        // Handle authentication errors specifically
+        if (error.response?.status === 401 || error.response?.status === 422) {
+          setError("Authentication failed. Please log in again.");
+          // Clear token and redirect will be handled by axios interceptor
+        } else {
+          setError("Failed to load dashboard data");
+        }
+      })
+      .finally(() => {
+        if (generation === generationRef.current) setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, recencyFilter]);
 
-      // Handle authentication errors specifically
-      if (error.response?.status === 401 || error.response?.status === 422) {
-        setError("Authentication failed. Please log in again.");
-        // Clear token and redirect will be handled by axios interceptor
-      } else {
-        setError("Failed to load dashboard data");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Cancel in-flight requests when leaving the page
+  useEffect(
+    () => () => {
+      generationRef.current++;
+      abortRef.current?.abort();
+    },
+    [],
+  );
 
   const handleOpenReportModal = async (reportId: number) => {
     try {
@@ -168,14 +190,14 @@ const HomePage: React.FC = () => {
   // Load more scout reports (infinite scroll)
   const loadMoreScoutReports = useCallback(async () => {
     if (loadingMoreScoutReports || !hasMoreScoutReports) return;
+    const generation = generationRef.current;
 
     try {
       setLoadingMoreScoutReports(true);
-      const url = recencyFilter === "all"
-        ? `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=${scoutReportsOffset}`
-        : `/scout_reports/recent?report_type=Player Assessment&limit=20&offset=${scoutReportsOffset}&recency_days=${recencyFilter}`;
-
-      const response = await axiosInstance.get(url);
+      const response = await axiosInstance.get(
+        recentUrl("Player Assessment", scoutReportsOffset),
+      );
+      if (generation !== generationRef.current) return; // filter changed meanwhile
       const newReports = response.data.reports || [];
 
       setRecentScoutReports((prev) => [...prev, ...newReports]);
@@ -184,21 +206,22 @@ const HomePage: React.FC = () => {
     } catch (error) {
       console.error("Error loading more scout reports:", error);
     } finally {
-      setLoadingMoreScoutReports(false);
+      if (generation === generationRef.current) setLoadingMoreScoutReports(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingMoreScoutReports, hasMoreScoutReports, scoutReportsOffset, recencyFilter]);
 
   // Load more flag reports (infinite scroll)
   const loadMoreFlagReports = useCallback(async () => {
     if (loadingMoreFlagReports || !hasMoreFlagReports) return;
+    const generation = generationRef.current;
 
     try {
       setLoadingMoreFlagReports(true);
-      const url = recencyFilter === "all"
-        ? `/scout_reports/recent?report_type=Flag&limit=20&offset=${flagReportsOffset}`
-        : `/scout_reports/recent?report_type=Flag&limit=20&offset=${flagReportsOffset}&recency_days=${recencyFilter}`;
-
-      const response = await axiosInstance.get(url);
+      const response = await axiosInstance.get(
+        recentUrl("Flag", flagReportsOffset),
+      );
+      if (generation !== generationRef.current) return; // filter changed meanwhile
       const newReports = response.data.reports || [];
 
       setRecentFlagReports((prev) => [...prev, ...newReports]);
@@ -207,8 +230,9 @@ const HomePage: React.FC = () => {
     } catch (error) {
       console.error("Error loading more flag reports:", error);
     } finally {
-      setLoadingMoreFlagReports(false);
+      if (generation === generationRef.current) setLoadingMoreFlagReports(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingMoreFlagReports, hasMoreFlagReports, flagReportsOffset, recencyFilter]);
 
   // Intersection Observer callback for scout reports (detect scroll to bottom)

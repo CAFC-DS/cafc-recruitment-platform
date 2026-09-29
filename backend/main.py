@@ -18,6 +18,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Union
+import calendar
 import datetime
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -9421,7 +9422,9 @@ async def get_recent_scout_reports(
     Optimized endpoint with caching for faster homepage loads.
     """
     # Generate cache key
-    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
+    # Keyed per user: each row carries that user's own read/unread state, so a
+    # role-wide key would show one user's viewed flags to another.
+    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id}"
 
     # Check cache
     cached_result = get_cache(cache_key)
@@ -9485,8 +9488,9 @@ async def get_recent_scout_reports(
         if where_clauses:
             base_sql += " WHERE " + " AND ".join(where_clauses)
 
-        # Get total count
-        count_sql = f"SELECT COUNT(*) {base_sql}"
+        # Get total count (DISTINCT: the players/matches joins can fan a report
+        # out into several rows, which inflated the total and has_more)
+        count_sql = f"SELECT COUNT(DISTINCT sr.ID) {base_sql}"
         cursor.execute(count_sql, sql_params)
         total_reports = cursor.fetchone()[0]
 
@@ -9516,6 +9520,7 @@ async def get_recent_scout_reports(
                 sr.IS_POTENTIAL,
                 sr.SUMMARY
             {base_sql}
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
             ORDER BY sr.CREATED_AT DESC
             LIMIT %s OFFSET %s
         """
@@ -9708,6 +9713,7 @@ async def get_top_attribute_reports(
                 sr.CAFC_PLAYER_ID,
                 p.DATA_SOURCE
             {base_sql}
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
             ORDER BY sr.ATTRIBUTE_SCORE DESC
             LIMIT %s
         """
@@ -16979,6 +16985,7 @@ async def get_all_lists_with_details(
     max_age: Optional[int] = None,
     min_score: Optional[int] = None,
     max_score: Optional[int] = None,
+    performance_scores: Optional[str] = None,  # Comma-separated whole scores: "5,9" (matches the rounded average)
     min_reports: Optional[int] = None,
     max_reports: Optional[int] = None,
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
@@ -17419,6 +17426,21 @@ async def get_all_lists_with_details(
             except Exception as squad_change_error:
                 logging.warning(f"Could not enrich lists with recent squad changes: {squad_change_error}")
 
+        score_set = None
+        if performance_scores:
+            score_set = {
+                int(x) for x in performance_scores.split(",") if x.strip().isdigit()
+            }
+
+        recency_cutoff = None
+        if recency_months is not None:
+            today = date.today()
+            month_index = today.year * 12 + (today.month - 1) - recency_months
+            year, month = divmod(month_index, 12)
+            month += 1
+            day = min(today.day, calendar.monthrange(year, month)[1])
+            recency_cutoff = datetime(year, month, day)
+
         # Build player data and attach to lists
         for row in player_rows:
             list_id = row[0]
@@ -17445,6 +17467,12 @@ async def get_all_lists_with_details(
                 continue
             if max_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] > max_score):
                 continue
+            # Specific scores (can be non-contiguous, e.g. 5 and 9): a player
+            # matches when their average rounds to one of the selected scores
+            if score_set is not None:
+                avg = stats["avg_performance_score"]
+                if avg is None or int(avg + 0.5) not in score_set:
+                    continue
 
             # Report count filter
             if min_reports is not None and stats["report_count"] < min_reports:
@@ -17452,13 +17480,14 @@ async def get_all_lists_with_details(
             if max_reports is not None and stats["report_count"] > max_reports:
                 continue
 
-            # Recency filter
+            # Recency filter (calendar months back from today)
             if recency_months is not None:
-                if stats["last_report_date"] is None:
+                last_report = stats["last_report_date"]
+                if last_report is None:
                     continue
-                from datetime import datetime, timedelta
-                cutoff_date = datetime.now() - timedelta(days=recency_months * 30)
-                if stats["last_report_date"] < cutoff_date:
+                if last_report.tzinfo is not None:
+                    last_report = last_report.replace(tzinfo=None)
+                if last_report < recency_cutoff:
                     continue
 
             # Determine universal_id

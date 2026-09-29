@@ -405,9 +405,25 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     }
   }, [fetchError]);
 
-  // Debounce filters (800ms delay to reduce frequent reloads)
+  // Turn the UI filter state into API filters. Typing (names, club, age/report
+  // ranges) is debounced; dropdowns, score/stage/competition selections and
+  // toggles apply immediately.
+  const textKey = JSON.stringify([
+    filters.playerName,
+    filters.club,
+    filters.minAge,
+    filters.maxAge,
+    filters.minReports,
+    filters.maxReports,
+  ]);
+  const prevTextKeyRef = useRef(textKey);
+  const appliedKeyRef = useRef<string>("");
+
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const textChanged = prevTextKeyRef.current !== textKey;
+    prevTextKeyRef.current = textKey;
+
+    const apply = () => {
       const apiFilters: PlayerListFilters = {};
 
       if (filters.playerName) apiFilters.playerName = filters.playerName;
@@ -420,11 +436,11 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
       if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
 
-      // Handle performance scores array
+      // Specific scores (copy before sorting: never mutate state in place)
       if (filters.performanceScores.length > 0) {
-        const scores = filters.performanceScores.sort((a, b) => a - b);
-        apiFilters.minScore = scores[0];
-        apiFilters.maxScore = scores[scores.length - 1];
+        apiFilters.performanceScores = [...filters.performanceScores]
+          .sort((a, b) => a - b)
+          .join(",");
       }
 
       // Handle stages array
@@ -449,11 +465,20 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       // Which shortlist to fetch (first team vs emerging talent U21/U18)
       apiFilters.category = category;
 
+      // Skip no-op updates so identical filters don't trigger a refetch
+      const key = JSON.stringify(apiFilters);
+      if (key === appliedKeyRef.current) return;
+      appliedKeyRef.current = key;
       setDebouncedFilters(apiFilters);
-    }, 800);
+    };
 
+    if (!textChanged) {
+      apply();
+      return;
+    }
+    const timer = setTimeout(apply, 500);
     return () => clearTimeout(timer);
-  }, [filters, includeArchivedReports, includeFlagReports, category]);
+  }, [filters, textKey, includeArchivedReports, includeFlagReports, category]);
 
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
