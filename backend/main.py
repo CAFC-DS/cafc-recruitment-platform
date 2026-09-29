@@ -617,6 +617,49 @@ def core_table(table_name: str) -> str:
     return f"{CANONICAL_DB}.{CORE_DB_SCHEMA}.{table_name}"
 
 
+def squad_current_competition_sql() -> str:
+    """Derived table of (SQUAD_NAME, COMPETITION_NAME): each squad's current competition.
+
+    players.COMPETITIONNAME comes from an arbitrary iteration (cups, loan spells,
+    friendlies), so it can't be trusted as "the league a player is in". Resolve it
+    from the squad instead. Preference order per squad: a League iteration within
+    a season of the squad's latest data, otherwise the best other non-friendly
+    iteration (covers state leagues typed "Cup", clubs only seen in cups); then
+    latest season, then most matches played."""
+    season_key = (
+        "IFF(it.SEASON LIKE '%%/%%', 2000 + TRY_TO_NUMBER(LEFT(it.SEASON, 2)), TRY_TO_NUMBER(it.SEASON))"
+    )
+    return f"""(
+        SELECT SQUAD_NAME, COMPETITION_NAME FROM (
+            SELECT SQUAD_NAME, COMPETITION_NAME,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY SQUAD_NAME
+                       ORDER BY
+                           IFF(COMPETITION_TYPE = 'League' AND SEASON_KEY >= MAX_SEASON_KEY - 1, 0, 1),
+                           SEASON_KEY DESC NULLS LAST,
+                           MATCHES DESC NULLS LAST
+                   ) AS rn
+            FROM (
+                SELECT s.SQUAD_NAME, it.COMPETITIONNAME AS COMPETITION_NAME,
+                       it.COMPETITIONTYPE AS COMPETITION_TYPE,
+                       {season_key} AS SEASON_KEY,
+                       MAX({season_key}) OVER (PARTITION BY s.SQUAD_NAME) AS MAX_SEASON_KEY,
+                       MAX(i.MATCHES_PLAYED) AS MATCHES
+                FROM {core_table('core_squad_iteration_kpis')} i
+                JOIN {core_table('core_squads')} s ON s.CAFC_SQUAD_ID = i.CAFC_SQUAD_ID
+                JOIN (
+                    SELECT DISTINCT ITERATIONID, COMPETITIONNAME, COMPETITIONTYPE, SEASON
+                    FROM {read_table('players_base')}
+                    WHERE ITERATIONID IS NOT NULL
+                      AND COALESCE(COMPETITIONTYPE, '') <> 'Friendly'
+                ) it ON it.ITERATIONID = i.SOURCE_ITERATION_ID
+                GROUP BY s.SQUAD_NAME, it.COMPETITIONNAME, it.COMPETITIONTYPE, it.SEASON
+            )
+        )
+        WHERE rn = 1
+    )"""
+
+
 # True only in the full-cutover state (WRITE_DB=CAFC_DB, CORE_DB_SCHEMA=CORE).
 # Player/match creation can't use write_table(): canonical PLAYERS/FIXTURES
 # have a different shape from the legacy tables (identity model: mint a CAFC
@@ -13278,7 +13321,7 @@ async def get_single_intel_report(
 @app.get("/leagues")
 async def get_leagues(current_user: User = Depends(get_current_user)):
     """Get all available leagues/competitions with caching"""
-    cache_key = "leagues_list_competitionname"
+    cache_key = "leagues_list_squad_competition_v2"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -13292,9 +13335,13 @@ async def get_leagues(current_user: User = Depends(get_current_user)):
 
         cursor.execute(
             f"""
-            SELECT DISTINCT NULLIF(TRIM(COMPETITIONNAME), '') AS LEAGUE
-            FROM {read_table('players')}
-            WHERE COMPETITIONNAME IS NOT NULL
+            SELECT DISTINCT NULLIF(TRIM(sl.COMPETITION_NAME), '') AS LEAGUE
+            FROM {squad_current_competition_sql()} sl
+            WHERE sl.COMPETITION_NAME IS NOT NULL
+              AND EXISTS (
+                  SELECT 1 FROM {read_table('players')} p
+                  WHERE p.SQUADNAME = sl.SQUAD_NAME
+              )
             ORDER BY LEAGUE
             """
         )
@@ -13360,7 +13407,7 @@ async def get_clubs(
     league: Optional[str] = None, current_user: User = Depends(get_current_user)
 ):
     """Get all clubs, optionally filtered by league with caching"""
-    cache_key = f"clubs_{league or 'all'}"
+    cache_key = f"clubs_v2_{league or 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -13376,10 +13423,12 @@ async def get_clubs(
             # Get clubs from specific league - use prepared statement
             cursor.execute(
                 f"""
-                SELECT DISTINCT SQUADNAME 
-                FROM {read_table('players')} 
-                WHERE COMPETITIONNAME = %s AND SQUADNAME IS NOT NULL 
-                ORDER BY SQUADNAME
+                SELECT DISTINCT p.SQUADNAME
+                FROM {read_table('players')} p
+                JOIN {squad_current_competition_sql()} sl
+                  ON sl.SQUAD_NAME = p.SQUADNAME
+                WHERE sl.COMPETITION_NAME = %s AND p.SQUADNAME IS NOT NULL
+                ORDER BY p.SQUADNAME
             """,
                 (league,),
             )
@@ -17001,6 +17050,7 @@ async def get_all_lists_with_details(
         # Build filter conditions with parameterized queries to prevent SQL injection
         filter_conditions = []
         filter_params = []
+        squad_league_join = ""
         exact_age_expr = """
             COALESCE(
                 IFF(
@@ -17077,12 +17127,21 @@ async def get_all_lists_with_details(
         if competition:
             competition_list = [c.strip() for c in competition.split(",") if c.strip()]
             if competition_list:
+                # players.COMPETITIONNAME comes from an arbitrary iteration (often a
+                # cup or a loan spell), so resolve the competition from the player's
+                # current squad instead: squad_league_join gives each squad its
+                # league in its latest season. Fall back to players.COMPETITIONNAME
+                # when the squad has no league data.
                 competition_placeholders = " OR ".join(
-                    ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
+                    ["NORMALIZE_TEXT_UDF(COALESCE(sl.COMPETITION_NAME, p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
                     * len(competition_list)
                 )
                 filter_conditions.append(f"({competition_placeholders})")
                 filter_params.extend(competition_list)
+                squad_league_join = f"""
+            LEFT JOIN {squad_current_competition_sql()} sl
+              ON NORMALIZE_TEXT_UDF(sl.SQUAD_NAME) = NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME))
+"""
 
         # Age filter
         if min_age is not None:
@@ -17125,6 +17184,7 @@ async def get_all_lists_with_details(
             FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN {read_table('players')} ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
+            {squad_league_join}
             LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
