@@ -195,7 +195,7 @@ Found by scanning every view definition in `CAFC_DB` and the `cafc-data-platform
 ### 8.4 Findings to act on outside this plan
 
 * `CAFC_DB.APP` is a stale September snapshot owned by the production role. Decide whether to retire it so nobody reads it by mistake.
-* `SQUAD_CHANGE_LOG` is `DESCRIBE`d at request time but is not in `CORE`; that call can only be failing or hitting a search-path default. Worth confirming in the app logs.
+* `SQUAD_CHANGE_LOG` is `DESCRIBE`d at request time by an unqualified name, but the table exists only in `CAFC_DB.APP` and `RECRUITMENT_TEST.PUBLIC`, not `CORE`. Which one it resolves to depends on the production connection's default database/schema (an env var I could not read), and it may be failing. Unverified; check the production config and app logs.
 * `PLAYER_NOTES.PLAYER_ID` and `PLAYER_STAGE_HISTORY.PLAYER_ID` have the same overloaded-id problem as the migrated tables; they were reviewed and left for a later phase (`PLAYER_STAGE_HISTORY.PLAYER_ID` is referenced by a dbt view).
 
 ## 7. Known risks / open questions
