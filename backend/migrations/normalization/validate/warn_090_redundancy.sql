@@ -35,3 +35,14 @@ SELECT 'scout_report_attribute_scores orphan', s.SCOUT_REPORT_ID, COUNT(*)
 FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES s
 WHERE s.SCOUT_REPORT_ID NOT IN (SELECT ID FROM ${CORE}.SCOUT_REPORTS)
 GROUP BY s.SCOUT_REPORT_ID;
+
+-- Precondition for dropping the agent columns from PLAYER_RECOMMENDATIONS (contract): each must equal
+-- the submitter's AGENT_PROFILES row. 0 of 596 differed on 2026-09-30. If this ever returns rows, the
+-- recommendation holds a snapshot that would be lost by the drop.
+SELECT 'recommendation agent facts differ from submitter profile' AS CHECK_NAME, TO_VARCHAR(r.ID) AS ROW_ID, NULL AS A, NULL AS B
+FROM ${CORE}.PLAYER_RECOMMENDATIONS r
+JOIN ${CORE}.AGENT_PROFILES p ON p.USER_ID = r.SUBMITTED_BY_USER_ID
+WHERE LOWER(TRIM(r.AGENT_NAME))  IS DISTINCT FROM LOWER(TRIM(p.AGENT_NAME))
+   OR LOWER(TRIM(r.AGENCY))      IS DISTINCT FROM LOWER(TRIM(p.AGENCY))
+   OR LOWER(TRIM(r.AGENT_EMAIL)) IS DISTINCT FROM LOWER(TRIM(p.AGENT_EMAIL))
+   OR TRIM(r.AGENT_NUMBER)       IS DISTINCT FROM TRIM(p.AGENT_NUMBER);

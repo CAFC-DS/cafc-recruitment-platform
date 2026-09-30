@@ -6,12 +6,12 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 | File | What it does | Re-run safe? |
 |---|---|---|
 | `000_snapshot.sql` | Zero-copy clones of every table touched, into `<core>_PRE_NORMALIZATION` | yes (never overwrites) |
-| `010_lookups.sql` | 12 lookup tables, seeded from code constants + distinct data values | yes (insert-only MERGE) |
+| `010_lookups.sql` | 15 lookup tables, seeded from code constants + distinct data values | yes (insert-only MERGE) |
 | `020_keys_reports_lists.sql` | `CANONICAL_PLAYER_ID` / `CANONICAL_FIXTURE_ID` on reports, list items, flags + `V_*_KEYS` views | yes; **full recompute** until reports/lists cut over |
 | `021_keys_recommendations.sql` | `LINKED_CANONICAL_PLAYER_ID` | yes; full recompute until recommendations cut over |
 | `022_keys_intel.sql` | `CANONICAL_PLAYER_ID` on intel | yes; full recompute until intel cuts over |
-| `030_agents.sql` | `AGENCIES`, `AGENTS`, `AGENT_ID` on recommendations and agent profiles | yes; identities insert-only, links recomputed until recommendations cut over |
-| `040_recommendation_terms.sql` | `RECOMMENDATION_TERMS`, `RECOMMENDATION_DEAL_TYPES` | yes until recommendations cut over (`@sync-until-cutover`) |
+| `030_agencies.sql` | `AGENCIES`, `AGENT_PROFILES.AGENCY_ID` (agent facts on recommendations are a verified copy of the profile, so no `AGENTS` table) | yes; agencies insert-only, link recomputed until recommendations cut over |
+| `040_recommendation_terms.sql` | `RECOMMENDATION_TERMS` + junctions for deal types, positions, agreement types, contract options | yes until recommendations cut over (`@sync-until-cutover`) |
 | `050_intel.sql` | `CONTACTS`, `INTEL_TERMS`, `INTEL_DEAL_TYPES`, `INTEL_RELATIONSHIPS`, `INTEL_REFERENCE_DETAILS` | yes until intel cuts over |
 | `090_grants.sql` | grants on the new objects | yes |
 | `validate/*.sql` | hard checks (zero rows = pass); `warn_*` are informational, failures under `--strict` | read-only |

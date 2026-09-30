@@ -241,3 +241,61 @@ WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.COD
 -- change is needed. References from legacy tables to these lookups are enforced by
 -- validate/010_lookups.sql, not by declared FKs: Snowflake only accepts an FK to a
 -- declared PK/UNIQUE, which the cloned legacy tables may not have.
+
+-- ---- Multi-valued recommendation columns (comma-joined today; see 040) --------------------
+-- Live data 2026-09-30: RECOMMENDED_POSITION is comma-joined on 270 of 596 rows, AGREEMENT_TYPE on 17,
+-- CONTRACT_OPTIONS on 13. AGREEMENT_TYPE also holds two legacy values that are no longer in the UI or
+-- ALLOWED_AGREEMENT_TYPES ('Player Agreement/Mandate' on 136 uses, 'Club Mandate' on 1); they seed as
+-- ORIGIN='DATA' (inactive) so a human decides whether to keep or remap them.
+CREATE TABLE IF NOT EXISTS ${CORE}.AGREEMENT_TYPES (
+    CODE VARCHAR(100) NOT NULL, SORT_ORDER NUMBER(5,0), IS_ACTIVE BOOLEAN NOT NULL, ORIGIN VARCHAR(10) NOT NULL,
+    CONSTRAINT PK_AGREEMENT_TYPES PRIMARY KEY (CODE)
+);
+MERGE INTO ${CORE}.AGREEMENT_TYPES t
+USING (
+    SELECT CODE, MIN(SORT_ORDER) AS SORT_ORDER, MIN(ORIGIN) AS ORIGIN FROM (
+        SELECT column1 AS CODE, column2 AS SORT_ORDER, 'CODE' AS ORIGIN FROM VALUES
+            ('Exclusive/Registered Player Agreement', 1), ('Mandate (Player)', 2), ('Mandate (Selling Club)', 3), ('None', 4)
+        UNION ALL
+        SELECT DISTINCT TRIM(s.VALUE), 99, 'DATA'
+        FROM ${CORE}.PLAYER_RECOMMENDATIONS r, LATERAL SPLIT_TO_TABLE(r.AGREEMENT_TYPE, ',') s
+        WHERE TRIM(s.VALUE) <> ''
+    ) GROUP BY CODE
+) s ON t.CODE = s.CODE
+WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.CODE, s.SORT_ORDER, s.ORIGIN = 'CODE', s.ORIGIN);
+
+CREATE TABLE IF NOT EXISTS ${CORE}.CONTRACT_OPTIONS (
+    CODE VARCHAR(100) NOT NULL, SORT_ORDER NUMBER(5,0), IS_ACTIVE BOOLEAN NOT NULL, ORIGIN VARCHAR(10) NOT NULL,
+    CONSTRAINT PK_CONTRACT_OPTIONS PRIMARY KEY (CODE)
+);
+MERGE INTO ${CORE}.CONTRACT_OPTIONS t
+USING (
+    SELECT CODE, MIN(SORT_ORDER) AS SORT_ORDER, MIN(ORIGIN) AS ORIGIN FROM (
+        SELECT column1 AS CODE, column2 AS SORT_ORDER, 'CODE' AS ORIGIN FROM VALUES
+            ('None', 1), ('+1 Club', 2), ('+1 Player', 3), ('+1 Mutual', 4), ('+2 Club', 5), ('+2 Player', 6), ('+2 Mutual', 7), ('Other', 8)
+        UNION ALL
+        SELECT DISTINCT TRIM(s.VALUE), 99, 'DATA'
+        FROM ${CORE}.PLAYER_RECOMMENDATIONS r, LATERAL SPLIT_TO_TABLE(r.CONTRACT_OPTIONS, ',') s
+        WHERE TRIM(s.VALUE) <> ''
+    ) GROUP BY CODE
+) s ON t.CODE = s.CODE
+WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.CODE, s.SORT_ORDER, s.ORIGIN = 'CODE', s.ORIGIN);
+
+CREATE TABLE IF NOT EXISTS ${CORE}.RECOMMENDED_POSITIONS (
+    CODE VARCHAR(100) NOT NULL, SORT_ORDER NUMBER(5,0), IS_ACTIVE BOOLEAN NOT NULL, ORIGIN VARCHAR(10) NOT NULL,
+    CONSTRAINT PK_RECOMMENDED_POSITIONS PRIMARY KEY (CODE)
+);
+MERGE INTO ${CORE}.RECOMMENDED_POSITIONS t
+USING (
+    SELECT CODE, MIN(SORT_ORDER) AS SORT_ORDER, MIN(ORIGIN) AS ORIGIN FROM (
+        SELECT column1 AS CODE, column2 AS SORT_ORDER, 'CODE' AS ORIGIN FROM VALUES
+            ('GK', 1), ('RB', 2), ('RWB', 3), ('RCB(3)', 4), ('RCB(2)', 5), ('CCB(3)', 6), ('LCB(2)', 7), ('LCB(3)', 8),
+            ('LWB', 9), ('LB', 10), ('DM', 11), ('CM', 12), ('RAM', 13), ('AM', 14), ('LAM', 15), ('RW', 16), ('LW', 17),
+            ('Target Man CF', 18), ('In Behind CF', 19)
+        UNION ALL
+        SELECT DISTINCT TRIM(s.VALUE), 99, 'DATA'
+        FROM ${CORE}.PLAYER_RECOMMENDATIONS r, LATERAL SPLIT_TO_TABLE(r.RECOMMENDED_POSITION, ',') s
+        WHERE TRIM(s.VALUE) <> ''
+    ) GROUP BY CODE
+) s ON t.CODE = s.CODE
+WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.CODE, s.SORT_ORDER, s.ORIGIN = 'CODE', s.ORIGIN);

@@ -34,6 +34,7 @@ Gross/Net, `REFERENCE_RATING`) already satisfy 3NF; they stay as validated text.
 | # | Where | Violation | Fix |
 |---|---|---|---|
 | 1NF-1 | `PLAYER_RECOMMENDATIONS.POTENTIAL_DEAL_TYPE`, `PLAYER_INFORMATION.POTENTIAL_DEAL_TYPE` | Comma-joined list (`",".join(deal_types)`, `main.py:12512`) | Junction tables `RECOMMENDATION_DEAL_TYPES`, `INTEL_DEAL_TYPES` → `DEAL_TYPES` |
+| 1NF-1b | `PLAYER_RECOMMENDATIONS.RECOMMENDED_POSITION` (**270 of 596 rows**), `AGREEMENT_TYPE` (17), `CONTRACT_OPTIONS` (13) | Comma-joined lists (found by live profiling; missed in the first draft) | Junctions `RECOMMENDATION_POSITIONS`, `RECOMMENDATION_AGREEMENT_TYPES`, `RECOMMENDATION_CONTRACT_OPTIONS` |
 | 1NF-2 | `PLAYER_INFORMATION.RELATIONSHIP_TO_PLAYER` | Comma-joined list (`main.py:12517`) | Junction `INTEL_RELATIONSHIPS` → `RELATIONSHIP_TYPES` |
 | 1NF-3 | `PLAYER_RECOMMENDATIONS` | Repeating column groups `TRANSFER_FEE_*`, `CURRENT_WAGES_*`, `EXPECTED_WAGES_*` (amount/min/max/currency) plus legacy free-text `TRANSFER_FEE`/`CURRENT_WAGES`/`EXPECTED_WAGES` carrying the same fact | Child table `RECOMMENDATION_TERMS` (one row per term type) |
 | 1NF-4 | `PLAYER_INFORMATION` | Same wage/fee repeating group | `INTEL_TERMS` |
@@ -55,7 +56,7 @@ vacuously. The composite-keyed/child tables were checked individually:
 
 | # | Where | Violation | Fix |
 |---|---|---|---|
-| 3NF-1 | `PLAYER_RECOMMENDATIONS.AGENT_NAME/AGENCY/AGENT_EMAIL/AGENT_NUMBER` | Agent facts repeated on every recommendation; agency facts depend on the agent, not the recommendation. **Not** derivable from `SUBMITTED_BY_USER_ID`: staff also enter recommendations on an agent's behalf (`test_recommendation_manual_entry_signal`). | `AGENCIES` ← `AGENTS` ← `PLAYER_RECOMMENDATIONS.AGENT_ID`. `AGENT_PROFILES` (login users) gets `AGENT_ID`. |
+| 3NF-1 | `PLAYER_RECOMMENDATIONS.AGENT_NAME/AGENCY/AGENT_EMAIL/AGENT_NUMBER` | **Pure transitive dependency, verified live:** identical to the submitter's `AGENT_PROFILES` row in 596 of 596 rows (0 differ); every recommendation is submitted by an agent user; each submitter has one agent identity. (An earlier draft added an `AGENTS` table on the wrong premise that staff enter recommendations for agents; it would have duplicated `AGENT_PROFILES` 1:1.) Agency is free text repeated across profiles (196 agencies, 224 profiles) | Contract phase drops the agent columns from the recommendation and reads them by joining `AGENT_PROFILES` on `SUBMITTED_BY_USER_ID`. `AGENCIES` <- `AGENT_PROFILES.AGENCY_ID` normalises the agency |
 | 3NF-2 | `PLAYER_INFORMATION.CONTACT_NAME/CONTACT_ORGANISATION` | Organisation depends on the contact | `CONTACTS` ← `PLAYER_INFORMATION.CONTACT_ID` |
 | 3NF-3 | `PLAYER_INFORMATION` reference-form columns (`RELATIONSHIP_*`, `LENGTH_*`, `RELEVANCE_*`, `REFERENCE_RATING`) | Only meaningful when `INTEL_TYPE = 'reference_form'`: attributes depend on the subtype discriminator, NULL for other rows | 1:1 subtype table `INTEL_REFERENCE_DETAILS` |
 | 3NF-4 | `USERS.ROLE`, `SCOUT_REPORTS.REPORT_TYPE/PURPOSE/SCOUTING_TYPE/FLAG_CATEGORY/CLIP_CATEGORY`, `PLAYER_LIST_ITEMS.STAGE`, `PLAYER_LISTS.LIST_CATEGORY`, `PLAYER_RECOMMENDATIONS.STATUS`, `PLAYER_INFORMATION.INTEL_TYPE` | Free-text codes whose meaning/ordering/permissions live in Python constants (`VALID_ROLES`, `RECOMMENDATION_STATUSES`, stage strings in SQL). CLAUDE.md lists 5 roles, the code has 7 — the drift this causes | Lookup tables `ROLES` (with `SEES_ALL_REPORTS`), `LIST_STAGES` (order, terminal flag), `RECOMMENDATION_STATUSES`, `REPORT_TYPES`, `REPORT_PURPOSES`, `SCOUTING_TYPES`, `FLAG_CATEGORIES`, `CLIP_CATEGORIES`, `LIST_CATEGORIES`, `INTEL_TYPES` |
@@ -110,10 +111,10 @@ vacuously. The composite-keyed/child tables were checked individually:
 
 ```
 ROLES ─────────────< USERS.ROLE            (lookup, SEES_ALL_REPORTS drives RBAC)
-AGENCIES ─< AGENTS ─< PLAYER_RECOMMENDATIONS >─ RECOMMENDATION_STATUSES
-              └──── AGENT_PROFILES.AGENT_ID        │
+AGENCIES ─< AGENT_PROFILES ─< PLAYER_RECOMMENDATIONS >─ RECOMMENDATION_STATUSES   (agent facts read via SUBMITTED_BY_USER_ID)
                                                    ├─< RECOMMENDATION_TERMS   (TRANSFER_FEE | CURRENT_WAGES | EXPECTED_WAGES)
                                                    ├─< RECOMMENDATION_DEAL_TYPES >─ DEAL_TYPES
+                                                   ├─< RECOMMENDATION_POSITIONS / _AGREEMENT_TYPES / _CONTRACT_OPTIONS
                                                    └── LINKED_CANONICAL_PLAYER_ID ──┐
 CONTACTS ─< PLAYER_INFORMATION (intel) >─ INTEL_TYPES                          │
               ├─< INTEL_TERMS / INTEL_DEAL_TYPES / INTEL_RELATIONSHIPS         │
@@ -131,7 +132,7 @@ PLAYER_LIST_ITEMS.STAGE ─> LIST_STAGES      PLAYER_LISTS.LIST_CATEGORY ─> LI
 | **0 Snapshot & ledger** | `CORE_PRE_NORMALIZATION` clones; `SCHEMA_MIGRATIONS` ledger; dry-run-by-default runner that refuses live schemas | implemented, rehearsed | none |
 | **1 Lookups** | 12 lookup tables, seeded from code constants ∪ distinct existing values (`ORIGIN='DATA'` rows are inactive and need a human decision) | implemented | low |
 | **2 Canonical keys** | `CANONICAL_PLAYER_ID`/`CANONICAL_FIXTURE_ID` on reports; same for list items/flags/intel; `LINKED_CANONICAL_PLAYER_ID` on recommendations. **Recomputed** (not filled once) because merges rewrite the legacy columns in place. Ambiguous/unresolvable rows stay NULL and are listed by validation | implemented, rehearsed | medium (data quality) |
-| **3 Decomposition** | agents/agencies, recommendation terms/deal types, contacts, intel terms/deal types/relationships/reference details | implemented | medium |
+| **3 Decomposition** | agencies, recommendation terms + the four comma-joined lists (deal types, positions, agreement types, contract options), contacts, intel terms/deal types/relationships/reference details | implemented | medium |
 | **4 App cutover** (one PR per domain, reads first then writes; all-or-nothing per domain). Each domain's PR must also update `/admin/merge-players`, `/admin/merge-duplicate-match` and the platform remap scripts to maintain the canonical columns, and the dbt `app_compat` model for that table. | (a) recommendations + agent portal, (b) intel, (c) scout reports + lists. Replace name-matching subqueries with the key join; fix writes to be transactional; role filter unconditional | **not started** | highest |
 | **5 Contract** | `contract/*.sql`: drop `LINKED_UNIVERSAL_ID`, dual-ID columns, repeated column groups, `SHARE_URL`, `DATA_SOURCE`, redundant stage-history columns | scripts written, **never auto-run** | irreversible → gated on Phase 4 soak |
 | **6 Analytical layer & hardening** | One-row-per-report fact view / dynamic table (already in `REFACTOR_BACKLOG.md`), Snowflake row access policy as defense-in-depth for the role filter, secure views + read-only role for the chatbot, hybrid-table decision | plan only | — |
@@ -189,7 +190,6 @@ Found by scanning every view definition in `CAFC_DB` and the `cafc-data-platform
 | dbt `app_compat.*` views (13 over the altered tables) | `select *` passthroughs; `PLAYER_INFORMATION` = `pi.*, r.cafc_player_id AS CAFC_PLAYER_ID` joined on `pi.PLAYER_ID` | Added columns are harmless. **Contract must not drop `PLAYER_INFORMATION.PLAYER_ID`/`DATA_SOURCE` or `PLAYER_STAGE_HISTORY.PLAYER_ID`, nor rename `CANONICAL_PLAYER_ID` to `CAFC_PLAYER_ID`** (explicit references / duplicate column). Removed from the contract scripts and deferred until the dbt models change. |
 | `/admin/merge-players`, `/admin/merge-duplicate-match` | rewrite `PLAYER_ID`, `CAFC_PLAYER_ID`, `MATCH_ID`, `UNIVERSAL_ID`, `LINKED_UNIVERSAL_ID` in place | **Design flaw found and fixed:** the first draft only filled NULL keys, so canonical keys would go stale after any merge. Keys are now a full recompute (views + `IS DISTINCT FROM`), a `STALE` check exists, and Phase 4 must make these endpoints write the canonical columns. |
 | `cafc-data-platform` `snowflake/ddl/*remap*` and `python/identity/*` | remap ids in the same app tables; the merge plan (`docs/runbooks/duplicate-player-merge-plan.md`) retires players with `IS_ACTIVE = FALSE` and plans `MERGED_INTO_CAFC_PLAYER_ID` (not yet present) | Same staleness path. A check flags canonical keys that point at a retired player (0 today). Resolution goes through `CORE_PLAYER_ID_RESOLUTIONS`, so identity overrides are followed automatically. |
-| Tableau / other BI | not visible from Snowflake | **Unknown.** Anything reading `APP_COMPAT` or `CORE` app tables directly must be inventoried before Phase 5. |
 | `CAFC_DB.APP` copy, `RECRUITMENT_TEST` | stale copies | Not migrated; not affected. |
 
 ### 8.4 Findings to act on outside this plan

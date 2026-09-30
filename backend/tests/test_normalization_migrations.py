@@ -156,7 +156,8 @@ def test_lookup_seeds_match_backend_constants():
 
     roles = re.findall(r'^ROLE_\w+ = "(\w+)"', main_py, re.M)
     assert sorted(roles) == sorted(re.findall(r"\('(\w+)',\s+'[\w ]+',\s+(?:TRUE|FALSE),\s+(?:TRUE|FALSE)\)", lookups))
-    for name in ("RECOMMENDATION_STATUSES", "ALLOWED_POTENTIAL_DEAL_TYPES", "ALLOWED_RELATIONSHIP_TO_PLAYER"):
+    for name in ("RECOMMENDATION_STATUSES", "ALLOWED_POTENTIAL_DEAL_TYPES", "ALLOWED_RELATIONSHIP_TO_PLAYER",
+                 "ALLOWED_AGREEMENT_TYPES", "ALLOWED_CONTRACT_OPTIONS", "ALLOWED_RECOMMENDED_POSITIONS"):
         for value in constant(name):
             assert f"'{value}'" in lookups, f"{name} value {value!r} missing from 010_lookups.sql"
 
@@ -260,7 +261,7 @@ def test_failed_statement_rolls_back_and_stops(monkeypatch):
                 raise RuntimeError("boom")
 
     cur = Boom()
-    with pytest.raises(SystemExit, match="FAILED 030_agents.sql"):
+    with pytest.raises(SystemExit, match="FAILED 030_agencies.sql"):
         run_main(monkeypatch, cur, "--apply", "--only", "030")
     assert cur.executed[-1][0] == "ROLLBACK"
 
@@ -356,15 +357,15 @@ def test_key_sync_recomputes_instead_of_filling_nulls(path):
 
 
 def test_every_sync_until_cutover_update_recomputes():
-    """Same rule for agent/contact links: 030 and 050 UPDATEs must not be NULL-only."""
-    for name in ("030_agents.sql", "050_intel.sql"):
+    """Same rule for agency/contact links: 030 and 050 UPDATEs must not be NULL-only."""
+    for name in ("030_agencies.sql", "050_intel.sql"):
         for stmt in statements(runner.MIGRATIONS_DIR / name):
             if stmt.upper().startswith("UPDATE"):
-                assert not re.search(r"(?i)\b(AGENT_ID|CONTACT_ID)\s+IS\s+NULL\s+AND", stmt), stmt[:100]
+                assert not re.search(r"(?i)\b(AGENCY_ID|CONTACT_ID)\s+IS\s+NULL\s+AND", stmt), stmt[:100]
 
 
-def test_agents_file_is_tagged_for_the_recommendations_domain():
-    assert runner.sync_domain((runner.MIGRATIONS_DIR / "030_agents.sql").read_text()) == "recommendations"
+def test_agencies_file_is_tagged_for_the_recommendations_domain():
+    assert runner.sync_domain((runner.MIGRATIONS_DIR / "030_agencies.sql").read_text()) == "recommendations"
 
 
 def test_contract_scripts_do_not_break_known_dbt_dependents():
@@ -381,3 +382,27 @@ def test_contract_scripts_drop_the_key_views_before_the_columns_they_read():
     for name, view in (("reports_lists", "V_SCOUT_REPORT_KEYS"), ("recommendations", "V_RECOMMENDATION_KEYS")):
         sql = (runner.MIGRATIONS_DIR / "contract" / f"{name}.sql").read_text()
         assert sql.index(f"DROP VIEW IF EXISTS ${{CORE}}.{view}") < sql.index("DROP COLUMN")
+
+
+def test_no_separate_agents_table():
+    """Live data showed recommendation agent facts equal the submitter's AGENT_PROFILES row; AGENTS would duplicate it."""
+    for path in ALL_FILES:  # statements() strips comments, so the explanatory header may mention the old draft
+        sql = "\n".join(statements(path)).replace("AGENT_PROFILES", "")
+        assert not re.search(r"(?i)\bAGENTS\b|\bAGENT_KEY\b", sql), path.name
+
+
+def test_multi_valued_recommendation_columns_all_get_a_junction():
+    sql = (runner.MIGRATIONS_DIR / "040_recommendation_terms.sql").read_text()
+    for table in ("RECOMMENDATION_DEAL_TYPES", "RECOMMENDATION_AGREEMENT_TYPES",
+                  "RECOMMENDATION_CONTRACT_OPTIONS", "RECOMMENDATION_POSITIONS"):
+        assert f"CREATE TABLE IF NOT EXISTS ${{CORE}}.{table}" in sql
+        assert f"DELETE FROM ${{CORE}}.{table}" in sql
+    contract = (runner.MIGRATIONS_DIR / "contract" / "recommendations.sql").read_text()
+    for col in ("AGREEMENT_TYPE", "CONTRACT_OPTIONS", "RECOMMENDED_POSITION", "POTENTIAL_DEAL_TYPE"):
+        assert col in contract
+
+
+def test_contract_keeps_agent_profiles_as_source_of_truth():
+    contract = (runner.MIGRATIONS_DIR / "contract" / "recommendations.sql").read_text()
+    assert "ALTER TABLE ${CORE}.AGENT_PROFILES DROP COLUMN AGENCY;" in contract
+    assert not re.search(r"(?i)AGENT_PROFILES DROP COLUMN[^;]*AGENT_(NAME|EMAIL|NUMBER)", contract)
