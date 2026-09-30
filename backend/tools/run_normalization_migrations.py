@@ -8,6 +8,9 @@ Default is a DRY RUN: it prints the rendered statements and touches nothing.
     python tools/run_normalization_migrations.py --validate           # run validate/ only
     python tools/run_normalization_migrations.py --validate --strict  # warnings become failures
     python tools/run_normalization_migrations.py --mark-cutover recommendations
+    python tools/run_normalization_migrations.py --parity                          # compat view == legacy table?
+    python tools/run_normalization_migrations.py --swap recommendations --apply    # legacy name becomes a view
+    python tools/run_normalization_migrations.py --swap-rollback recommendations --apply
     python tools/run_normalization_migrations.py --contract recommendations --apply
 
 Rehearse in a dev schema first:  --core CAFC_DB.CORE_DEV_<you>
@@ -18,6 +21,11 @@ Safety rules enforced here:
     `--mark-cutover <domain>` is recorded they are refused (the app owns that data now);
   * contract/ scripts run only with --contract <domain>, only after that domain is marked
     cut over, and only if validation (strict) passes first;
+  * --swap renames the legacy table to <name>_LEGACY and creates a view with the legacy NAME over the
+    normalized tables. It runs only if the domain is marked cut over (the app already writes the normalized
+    tables) AND parity (parity/*.sql: the view equals the legacy table exactly) is clean;
+  * --swap-rollback copies the normalized data back into the legacy table, restores the name, and un-marks
+    the cutover so the derived tables can be re-synced;
   * a failed statement triggers ROLLBACK and stops the run.
 
 Connection settings mirror backend/tools/backfill_stage_history_changed_at.py.
@@ -75,6 +83,35 @@ def assert_writable(core: str, allow_production: bool) -> None:
             f"  python tools/run_normalization_migrations.py --core {DEFAULT_SANDBOX} --apply\n"
             f"(override only for a reviewed production run: --allow-production)"
         )
+
+
+def make_tokens(core: str, snapshot: str, legacy_suffix: str = "") -> Dict[str, str]:
+    """Tokens available to every SQL file. CORE is DATABASE.SCHEMA; CORE_DB / CORE_SCHEMA are its parts."""
+    parts = core.split(".")
+    if len(parts) != 2:
+        raise ValueError(f"--core must be DATABASE.SCHEMA, got {core!r}")
+    if legacy_suffix and not re.match(r"^_[A-Z0-9_]+$", legacy_suffix):
+        raise ValueError(f"--legacy-suffix must look like _LEGACY, got {legacy_suffix!r}")
+    return {"CORE": core, "SNAPSHOT": snapshot, "CORE_DB": parts[0], "CORE_SCHEMA": parts[1].upper(),
+            "LEGACY_SUFFIX": legacy_suffix}
+
+
+RECOVERY_TAG = re.compile(r"^--\s*@recovery:\s*(.+)$", re.MULTILINE)
+
+
+def recovery_statement(raw_sql: str, tokens: Dict[str, str]) -> Optional[str]:
+    """The `-- @recovery: <sql>` line of a swap script, rendered, or None."""
+    match = RECOVERY_TAG.search(raw_sql)
+    return render(match.group(1).strip(), tokens) if match else None
+
+
+def swap_file(domain: str, rollback: bool = False, directory: Path = MIGRATIONS_DIR) -> Path:
+    name = f"{domain}_rollback" if rollback else domain
+    path = directory / "swap" / f"{name}.sql"
+    if not re.match(r"^[a-z_]+$", domain) or not path.exists():
+        available = sorted(p.stem for p in (directory / "swap").glob("*.sql") if not p.stem.endswith("_rollback"))
+        raise SystemExit(f"unknown swap domain {domain!r}; available: {available}")
+    return path
 
 
 def default_snapshot(core: str) -> str:
@@ -238,11 +275,39 @@ def record(cur, core: str, version: str, kind: str, digest: Optional[str]) -> No
     )
 
 
-def is_cut_over(cur, core: str, domain: str) -> bool:
+def _latest_kind(cur, core: str, domain: str, kinds: Tuple[str, str]) -> Optional[str]:
     cur.execute(
-        f"SELECT COUNT(*) FROM {core}.{LEDGER} WHERE KIND = 'CUTOVER' AND VERSION = %s", (domain,)
+        f"SELECT KIND FROM {core}.{LEDGER} WHERE VERSION = %s AND KIND IN ('{kinds[0]}', '{kinds[1]}') "
+        f"ORDER BY APPLIED_AT DESC LIMIT 1",
+        (domain,),
     )
-    return cur.fetchone()[0] > 0
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def is_cut_over(cur, core: str, domain: str) -> bool:
+    """Latest of CUTOVER / UNCUTOVER for the domain (a rollback un-marks it)."""
+    return _latest_kind(cur, core, domain, ("CUTOVER", "UNCUTOVER")) == "CUTOVER"
+
+
+def is_swapped(cur, core: str, domain: str) -> bool:
+    """Latest of SWAP / SWAPBACK for the domain."""
+    return _latest_kind(cur, core, domain, ("SWAP", "SWAPBACK")) == "SWAP"
+
+
+def run_parity(cur, tokens: Dict[str, str]) -> int:
+    """Run parity/*.sql; every statement must return zero rows. Returns the number of failing statements."""
+    failures = 0
+    for path in sorted((MIGRATIONS_DIR / "parity").glob("*.sql")):
+        for stmt in split_statements(render(path.read_text(), tokens)):
+            cur.execute(stmt)
+            rows = cur.fetchall()
+            if rows:
+                failures += 1
+                print(f"[PARITY FAIL] {path.name}: {len(rows)} row(s)")
+                for row in rows[:10]:
+                    print("        ", tuple(row))
+    return failures
 
 
 def run_statements(cur, statements: List[str], label: str) -> None:
@@ -297,6 +362,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--strict", action="store_true", help="treat warn_* validation rows as failures")
     parser.add_argument("--mark-cutover", metavar="DOMAIN", help="record that the app now owns DOMAIN's new tables")
     parser.add_argument("--contract", metavar="DOMAIN", help="run contract/<DOMAIN>.sql (destructive)")
+    parser.add_argument("--parity", action="store_true", help="read-only: check the compat views equal the legacy tables")
+    parser.add_argument("--legacy-suffix", default="", help="suffix of the renamed legacy table for --parity after a swap (e.g. _LEGACY)")
+    parser.add_argument("--swap", metavar="DOMAIN", help="rename the legacy table to *_LEGACY and put the compat view under the legacy name")
+    parser.add_argument("--swap-rollback", metavar="DOMAIN", help="undo --swap: copy data back into the legacy table and restore the name")
     args = parser.parse_args(argv)
 
     if args.create_sandbox:
@@ -329,10 +398,74 @@ def main(argv: Optional[List[str]] = None) -> int:
     if writes:
         assert_writable(core, args.allow_production)
     snapshot = validate_qualified_name(args.snapshot or default_snapshot(core), "--snapshot")
-    tokens = {"CORE": core, "SNAPSHOT": snapshot}
+    try:
+        tokens = make_tokens(core, snapshot, args.legacy_suffix)
+    except ValueError as exc:
+        parser.error(str(exc))
 
-    if args.mark_cutover and (args.contract or args.validate):
-        parser.error("--mark-cutover cannot be combined with --contract/--validate")
+    exclusive = [bool(args.mark_cutover), bool(args.contract), args.validate, args.parity,
+                 bool(args.swap), bool(args.swap_rollback)]
+    if sum(exclusive) > 1:
+        parser.error("--mark-cutover, --contract, --validate, --parity, --swap and --swap-rollback are mutually exclusive")
+
+    # ---- swap / swap-rollback: rendered up front so a dry run shows exactly what would run ----
+    swap_domain = args.swap or args.swap_rollback
+    if swap_domain:
+        rollback = bool(args.swap_rollback)
+        swap_sql = render(swap_file(swap_domain, rollback).read_text(), tokens)
+        if not args.apply:
+            print(f"-- DRY RUN: {'ROLLBACK of ' if rollback else ''}SWAP {swap_domain}, core={core}")
+            for stmt in split_statements(swap_sql):
+                print(stmt + ";\n")
+            return 0
+        conn = connect()  # pragma: no cover
+        cur = conn.cursor()
+        try:
+            ensure_ledger(cur, core)
+            if rollback:
+                if not is_swapped(cur, core, swap_domain):
+                    raise SystemExit(f"refusing rollback: {swap_domain!r} is not currently swapped")
+            else:
+                if is_swapped(cur, core, swap_domain):
+                    raise SystemExit(f"refusing swap: {swap_domain!r} is already swapped")
+                if not is_cut_over(cur, core, swap_domain):
+                    raise SystemExit(f"refusing swap: {swap_domain!r} is not marked cut over "
+                                     f"(the app must already write the normalized tables; use --mark-cutover)")
+                print("checking parity before the swap ...")
+                if run_parity(cur, tokens):
+                    raise SystemExit("refusing swap: the compat view does not equal the legacy table (see above)")
+            statements = split_statements(swap_sql)
+            print(f"applying {'rollback' if rollback else 'swap'} {swap_domain} ({len(statements)} statements) ...")
+            try:
+                run_statements(cur, statements, f"swap/{swap_domain}{'_rollback' if rollback else ''}")
+            except SystemExit:
+                hint = recovery_statement(swap_file(swap_domain, rollback).read_text(), tokens)
+                if hint:
+                    print("DDL cannot be rolled back. If the original table name no longer exists, restore it with:\n  " + hint)
+                print("Inspect the objects (SHOW TABLES / SHOW VIEWS LIKE ...) before retrying.")
+                raise
+            if rollback:
+                record(cur, core, swap_domain, "SWAPBACK", checksum(swap_sql))
+                record(cur, core, swap_domain, "UNCUTOVER", None)
+                print("rolled back; cutover un-marked so the derived tables can be re-synced from the legacy table")
+            else:
+                record(cur, core, swap_domain, "SWAP", checksum(swap_sql))
+                print(f"swapped: the legacy name now resolves to the compat view over the normalized tables")
+            return 0
+        finally:
+            cur.close()
+            conn.close()
+
+    if args.parity:
+        conn = connect()  # pragma: no cover
+        cur = conn.cursor()
+        try:
+            failures = run_parity(cur, tokens)
+            print("parity:", "PASS (compat views equal the legacy tables)" if failures == 0 else f"{failures} failing statement(s)")
+            return 0 if failures == 0 else 1
+        finally:
+            cur.close()
+            conn.close()
 
     # ---- selection -----------------------------------------------------------------
     plan: List[Tuple[str, str, str, Optional[str]]] = []  # (version, kind, rendered sql, sync domain)

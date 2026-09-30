@@ -13,8 +13,12 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 | `030_agencies.sql` | `AGENCIES`, `AGENT_PROFILES.AGENCY_ID` (agent facts on recommendations are a verified copy of the profile, so no `AGENTS` table) | yes; agencies insert-only, link recomputed until recommendations cut over |
 | `040_recommendation_terms.sql` | `RECOMMENDATION_TERMS` + junctions for deal types, positions, agreement types, contract options | yes until recommendations cut over (`@sync-until-cutover`) |
 | `050_intel.sql` | `CONTACTS`, `INTEL_TERMS`, `INTEL_DEAL_TYPES`, `INTEL_RELATIONSHIPS`, `INTEL_REFERENCE_DETAILS` | yes until intel cuts over |
+| `060_normalized_recommendations.sql` | `RECOMMENDATIONS`: the normalized base table (two deprecated columns kept so the view is byte-exact) | yes; rebuilt until recommendations cut over |
+| `061_compat_recommendations.sql` | `V_COMPAT_PLAYER_RECOMMENDATIONS`: the legacy-shaped view (41 columns, order and **types** identical) | yes (view only) |
 | `090_grants.sql` | grants on the new objects | yes |
 | `validate/*.sql` | hard checks (zero rows = pass); `warn_*` are informational, failures under `--strict` | read-only |
+| `parity/*.sql` | the compat view must equal the legacy table exactly: counts, column names/order, column types, `EXCEPT` both ways (`--parity`) | read-only |
+| `swap/*.sql` | `--swap <domain>`: legacy name becomes the view; `--swap-rollback` undoes it without losing later writes | guarded; see `docs/MIGRATION_PLAN.md` |
 | `contract/*.sql` | **destructive** column drops; only via `--contract <domain>` after cutover + clean strict validation | one-way |
 
 Nothing in `000`–`090` drops or rewrites an existing column, so the running app is unaffected.
@@ -116,3 +120,17 @@ Known gaps: `PLAYER_NOTES.PLAYER_ID` is overloaded the same way as intel's but w
 sqlglot Snowflake-dialect parse of every file, and lint rules (re-runnable DDL, no destructive DDL outside
 `contract/`, transactional rebuild files, snapshot coverage, grants, lookup seeds vs `main.py` constants).
 These do **not** prove the SQL is correct against real data — only a rehearsal in a dev schema does.
+
+
+## Cutover tooling (per domain)
+
+```bash
+python tools/run_normalization_migrations.py --core <target> --parity                        # view == legacy table?
+python tools/run_normalization_migrations.py --core <target> --mark-cutover recommendations   # app now writes the normalized tables
+python tools/run_normalization_migrations.py --core <target> --swap recommendations           # dry run: prints exactly what runs
+python tools/run_normalization_migrations.py --core <target> --swap recommendations --apply   # refuses unless cut over AND parity clean
+python tools/run_normalization_migrations.py --core <target> --swap-rollback recommendations --apply
+python tools/run_normalization_migrations.py --core <target> --parity --legacy-suffix _LEGACY   # after the swap
+CORE_DB_SCHEMA=<schema> python tools/verify_read_compat.py out.json    # the app's real endpoints, diffed with --diff a.json b.json
+```
+The full procedure, gates and rollback are in `docs/MIGRATION_PLAN.md`.

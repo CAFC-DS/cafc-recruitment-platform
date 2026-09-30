@@ -164,9 +164,11 @@ def test_lookup_seeds_match_backend_constants():
 
 # ---- runner guards with a fake cursor --------------------------------------------------
 class FakeCursor:
-    def __init__(self, cutover_domains=()):
+    def __init__(self, cutover_domains=(), swapped_domains=(), parity_rows=()):
         self.executed = []
         self.cutover = set(cutover_domains)
+        self.swapped = set(swapped_domains)
+        self.parity_rows = list(parity_rows)  # rows returned by parity queries (non-empty = parity failure)
         self._last = None
 
     def execute(self, sql, params=None):
@@ -175,11 +177,16 @@ class FakeCursor:
 
     def fetchone(self):
         sql, params = self._last
-        if "KIND = 'CUTOVER'" in sql:
-            return (1 if params[0] in self.cutover else 0,)
+        if "'CUTOVER', 'UNCUTOVER'" in sql or "'CUTOVER','UNCUTOVER'" in sql:
+            return ("CUTOVER",) if params[0] in self.cutover else None
+        if "'SWAP', 'SWAPBACK'" in sql:
+            return ("SWAP",) if params[0] in self.swapped else None
         return (0,)
 
     def fetchall(self):
+        sql = (self._last or ("", None))[0]
+        if "EXCEPT" in sql or "row counts differ" in sql or "columns differ" in sql:
+            return list(self.parity_rows)
         return []
 
     def close(self):
@@ -406,3 +413,154 @@ def test_contract_keeps_agent_profiles_as_source_of_truth():
     contract = (runner.MIGRATIONS_DIR / "contract" / "recommendations.sql").read_text()
     assert "ALTER TABLE ${CORE}.AGENT_PROFILES DROP COLUMN AGENCY;" in contract
     assert not re.search(r"(?i)AGENT_PROFILES DROP COLUMN[^;]*AGENT_(NAME|EMAIL|NUMBER)", contract)
+
+
+# ---- swap / rollback / parity -----------------------------------------------------------------
+def test_swap_files_come_in_apply_and_rollback_pairs():
+    swaps = sorted(p.stem for p in (runner.MIGRATIONS_DIR / "swap").glob("*.sql"))
+    domains = {n for n in swaps if not n.endswith("_rollback")}
+    assert domains and all(f"{d}_rollback" in swaps for d in domains)
+
+
+@pytest.mark.parametrize("path", sorted((runner.MIGRATIONS_DIR / "swap").glob("*.sql")), ids=lambda p: p.name)
+def test_swap_scripts_render_and_parse(path):
+    sqlglot = pytest.importorskip("sqlglot")
+    stmts = statements(path)
+    assert stmts
+    for stmt in stmts:
+        if re.match(r"(?is)^ALTER TABLE .*(DROP|ADD) FOREIGN KEY", stmt):
+            continue  # Snowflake syntax that sqlglot does not model
+        sqlglot.parse_one(stmt, read="snowflake")
+
+
+def test_swap_renames_legacy_and_puts_the_view_under_the_legacy_name():
+    sql = "\n".join(statements(runner.MIGRATIONS_DIR / "swap" / "recommendations.sql"))
+    build = sql.index("CREATE OR REPLACE VIEW CAFC_DB.CORE.PLAYER_RECOMMENDATIONS_SWAPVIEW")
+    rename_table = sql.index("PLAYER_RECOMMENDATIONS RENAME TO CAFC_DB.CORE.PLAYER_RECOMMENDATIONS_LEGACY")
+    rename_view = sql.index("ALTER VIEW CAFC_DB.CORE.PLAYER_RECOMMENDATIONS_SWAPVIEW RENAME TO CAFC_DB.CORE.PLAYER_RECOMMENDATIONS")
+    assert build < rename_table < rename_view          # the view is compiled BEFORE anything is renamed
+    between = sql[rename_table:rename_view]
+    assert between.count(";") <= 1 and "ALTER TABLE CAFC_DB.CORE.RECOMMENDATION_NOTES_HISTORY" not in between  # renames are back to back
+    assert "DROP TABLE" not in sql.upper()  # the legacy table is kept for rollback
+
+
+def test_swap_scripts_declare_a_recovery_statement():
+    raw = (runner.MIGRATIONS_DIR / "swap" / "recommendations.sql").read_text()
+    hint = runner.recovery_statement(raw, TOKENS)
+    assert hint == "ALTER TABLE CAFC_DB.CORE.PLAYER_RECOMMENDATIONS_LEGACY RENAME TO CAFC_DB.CORE.PLAYER_RECOMMENDATIONS;"
+
+
+def test_failed_swap_prints_the_recovery_statement(monkeypatch, capsys):
+    class Boom(FakeCursor):
+        def execute(self, sql, params=None):
+            super().execute(sql, params)
+            if sql.lstrip().upper().startswith("ALTER VIEW"):
+                raise RuntimeError("boom")
+
+    cur = Boom(cutover_domains={"recommendations"})
+    with pytest.raises(SystemExit, match="FAILED swap/recommendations"):
+        run_main(monkeypatch, cur, "--swap", "recommendations", "--apply")
+    out = capsys.readouterr().out
+    assert "PLAYER_RECOMMENDATIONS_LEGACY RENAME TO" in out and "cannot be rolled back" in out
+    assert not any(p and len(p) == 3 and p[1] == "SWAP" for _, p in cur.executed)  # a failed swap is not ledgered
+
+
+def test_rollback_copies_data_back_before_restoring_the_name():
+    sql = "\n".join(statements(runner.MIGRATIONS_DIR / "swap" / "recommendations_rollback.sql"))
+    restore = re.search(r"RENAME TO CAFC_DB\.CORE\.PLAYER_RECOMMENDATIONS\s*$", sql, re.M)
+    assert restore and sql.index("INSERT OVERWRITE") < sql.index("DROP VIEW") < restore.start()
+    assert "DROP TABLE" not in sql.upper()
+
+
+def test_compat_view_has_all_legacy_columns_in_legacy_order():
+    view = "\n".join(statements(runner.MIGRATIONS_DIR / "061_compat_recommendations.sql"))
+    body = view[view.upper().rindex("SELECT\n") if "SELECT\n" in view.upper() else view.upper().rindex("SELECT"):]
+    aliases = re.findall(r"(?:AS\s+(\w+)|\b\w+\.(\w+))\s*,?\s*$", body.split("FROM ${CORE}.RECOMMENDATIONS".replace("${CORE}", "CAFC_DB.CORE"))[0], re.M)
+    names = [a or b for a, b in aliases]
+    legacy = ["ID", "AGENT_NAME", "AGENCY", "AGENT_EMAIL", "AGENT_NUMBER", "DATE", "TRANSFERMARKT_LINK", "AGREEMENT_TYPE",
+              "CONTRACT_EXPIRY", "CONTRACT_OPTIONS", "POTENTIAL_DEAL_TYPE", "TRANSFER_FEE", "CURRENT_WAGES", "EXPECTED_WAGES",
+              "ADDITIONAL_INFO", "PLAYER_NAME", "SUBMITTED_BY_USER_ID", "STATUS", "STATUS_UPDATED_AT", "STATUS_UPDATED_BY",
+              "INTERNAL_NOTES", "UPDATED_AT", "CREATED_AT", "EXPECTED_WAGES_CURRENCY", "EXPECTED_WAGES_AMOUNT",
+              "CURRENT_WAGES_CURRENCY", "CURRENT_WAGES_AMOUNT", "TRANSFER_FEE_CURRENCY", "TRANSFER_FEE_AMOUNT",
+              "RECOMMENDED_POSITION", "PLAYER_DATE_OF_BIRTH", "AGENT_STATUS", "AGENT_STATUS_UPDATED_AT", "EXPECTED_WAGES_MAX",
+              "EXPECTED_WAGES_MIN", "CURRENT_WAGES_MAX", "CURRENT_WAGES_MIN", "WAGE_BASIS", "TRANSFER_FEE_MAX",
+              "TRANSFER_FEE_MIN", "LINKED_UNIVERSAL_ID"]
+    assert names == legacy  # captured live from DESCRIBE TABLE PLAYER_RECOMMENDATIONS, 2026-09-30
+
+
+def test_tokens_expose_db_schema_and_legacy_suffix():
+    t = runner.make_tokens("CAFC_DB.core_dev_x", "CAFC_DB.S", "_LEGACY")
+    assert (t["CORE_DB"], t["CORE_SCHEMA"], t["LEGACY_SUFFIX"]) == ("CAFC_DB", "CORE_DEV_X", "_LEGACY")
+    with pytest.raises(ValueError):
+        runner.make_tokens("ONLYONE", "S")
+    with pytest.raises(ValueError):
+        runner.make_tokens("A.B", "S", "; DROP")
+
+
+def test_swap_dry_run_prints_and_never_connects(monkeypatch, capsys):
+    monkeypatch.setattr(runner, "connect", lambda: pytest.fail("dry run must not connect"))
+    assert runner.main(["--swap", "recommendations", "--core", SANDBOX]) == 0
+    out = capsys.readouterr().out
+    assert "DRY RUN" in out and f"{SANDBOX}.PLAYER_RECOMMENDATIONS_LEGACY" in out
+
+
+def test_swap_refused_on_live_schema(monkeypatch):
+    with pytest.raises(SystemExit, match="protected target"):
+        run_main(monkeypatch, FakeCursor(), "--swap", "recommendations", "--apply", "--core", "CAFC_DB.CORE")
+
+
+def test_swap_refused_without_cutover_mark(monkeypatch):
+    cur = FakeCursor()
+    with pytest.raises(SystemExit, match="not marked cut over"):
+        run_main(monkeypatch, cur, "--swap", "recommendations", "--apply")
+    assert not any("RENAME" in s for s, _ in cur.executed)
+
+
+def test_swap_refused_when_parity_fails(monkeypatch):
+    cur = FakeCursor(cutover_domains={"recommendations"}, parity_rows=[("row differs",)])
+    with pytest.raises(SystemExit, match="does not equal the legacy table"):
+        run_main(monkeypatch, cur, "--swap", "recommendations", "--apply")
+    assert not any("RENAME" in s for s, _ in cur.executed)
+
+
+def test_swap_applies_when_cut_over_and_parity_clean(monkeypatch):
+    cur = FakeCursor(cutover_domains={"recommendations"})
+    assert run_main(monkeypatch, cur, "--swap", "recommendations", "--apply") == 0
+    sql = " ".join(s for s, _ in cur.executed)
+    assert "RENAME TO" in sql and "VIEW" in sql
+    assert any(p and len(p) == 3 and p[1] == "SWAP" for _, p in cur.executed)
+
+
+def test_swap_refused_when_already_swapped(monkeypatch):
+    cur = FakeCursor(cutover_domains={"recommendations"}, swapped_domains={"recommendations"})
+    with pytest.raises(SystemExit, match="already swapped"):
+        run_main(monkeypatch, cur, "--swap", "recommendations", "--apply")
+
+
+def test_rollback_refused_when_not_swapped(monkeypatch):
+    cur = FakeCursor(cutover_domains={"recommendations"})
+    with pytest.raises(SystemExit, match="not currently swapped"):
+        run_main(monkeypatch, cur, "--swap-rollback", "recommendations", "--apply")
+    assert not any("INSERT OVERWRITE" in s for s, _ in cur.executed)
+
+
+def test_rollback_restores_and_unmarks_cutover(monkeypatch):
+    cur = FakeCursor(cutover_domains={"recommendations"}, swapped_domains={"recommendations"})
+    assert run_main(monkeypatch, cur, "--swap-rollback", "recommendations", "--apply") == 0
+    kinds = [p[1] for _, p in cur.executed if p and len(p) == 3]
+    assert "SWAPBACK" in kinds and "UNCUTOVER" in kinds
+
+
+def test_parity_mode_is_read_only_and_reports_failure(monkeypatch):
+    ok = FakeCursor()
+    assert run_main(monkeypatch, ok, "--parity", "--core", "CAFC_DB.CORE") == 0  # read-only: allowed on live
+    bad = FakeCursor(parity_rows=[("x",)])
+    assert run_main(monkeypatch, bad, "--parity") == 1
+    assert all(s.lstrip().upper().startswith(("SELECT", "WITH")) for s, _ in ok.executed)
+
+
+def test_modes_are_mutually_exclusive():
+    for argv in (["--swap", "recommendations", "--parity"], ["--swap", "recommendations", "--swap-rollback", "recommendations"],
+                 ["--parity", "--validate"]):
+        with pytest.raises(SystemExit):
+            runner.main(argv + ["--core", SANDBOX])
