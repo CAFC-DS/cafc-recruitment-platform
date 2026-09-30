@@ -90,6 +90,13 @@ fix?* No → log it, move on.
       match-team semantics become available (reports by the team actually
       played for/against). Added 2026-06-11.
 
+## Data model normalization (added 2026-09-30)
+
+- [ ] Plan + expand-phase migrations: `docs/DATA_MODEL_NORMALIZATION_PLAN.md`,
+      `backend/migrations/normalization/`. App cutover (Phase 4) and contract (Phase 5)
+      are what actually retire the dual-ID machinery, `get_next_table_id`, and the
+      recommendation name-matching subqueries listed above.
+
 ## Conventions for this file
 
 Add entries as `file:line — what — why it waits`. Date entries when added.

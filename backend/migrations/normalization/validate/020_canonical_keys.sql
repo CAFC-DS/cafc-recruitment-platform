@@ -1,0 +1,42 @@
+-- Hard checks: a populated canonical key must point at a real canonical row.
+
+SELECT 'scout_reports.canonical_player_id orphan' AS CHECK_NAME, sr.ID AS ROW_ID, sr.CANONICAL_PLAYER_ID AS VALUE
+FROM ${CORE}.SCOUT_REPORTS sr
+WHERE sr.CANONICAL_PLAYER_ID IS NOT NULL
+  AND sr.CANONICAL_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
+
+SELECT 'scout_reports.canonical_fixture_id orphan', sr.ID, sr.CANONICAL_FIXTURE_ID
+FROM ${CORE}.SCOUT_REPORTS sr
+WHERE sr.CANONICAL_FIXTURE_ID IS NOT NULL
+  AND sr.CANONICAL_FIXTURE_ID NOT IN (SELECT CAFC_FIXTURE_ID FROM ${CORE}.FIXTURES);
+
+SELECT 'player_list_items.canonical_player_id orphan', li.ID, li.CANONICAL_PLAYER_ID
+FROM ${CORE}.PLAYER_LIST_ITEMS li
+WHERE li.CANONICAL_PLAYER_ID IS NOT NULL
+  AND li.CANONICAL_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
+
+SELECT 'player_information.canonical_player_id orphan', pi.ID, pi.CANONICAL_PLAYER_ID
+FROM ${CORE}.PLAYER_INFORMATION pi
+WHERE pi.CANONICAL_PLAYER_ID IS NOT NULL
+  AND pi.CANONICAL_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
+
+SELECT 'player_list_flags.cafc_player_id orphan', NULL, fl.CAFC_PLAYER_ID
+FROM ${CORE}.PLAYER_LIST_FLAGS fl
+WHERE fl.CAFC_PLAYER_ID IS NOT NULL
+  AND fl.CAFC_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
+
+SELECT 'player_recommendations.linked_cafc_player_id orphan', pr.ID, pr.LINKED_CAFC_PLAYER_ID
+FROM ${CORE}.PLAYER_RECOMMENDATIONS pr
+WHERE pr.LINKED_CAFC_PLAYER_ID IS NOT NULL
+  AND pr.LINKED_CAFC_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
+
+-- Unenforced uniqueness on the legacy composite key of the attribute-score child table.
+SELECT 'scout_report_attribute_scores duplicate (report, attribute)', SCOUT_REPORT_ID, COUNT(*)
+FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES
+GROUP BY SCOUT_REPORT_ID, ATTRIBUTE_NAME HAVING COUNT(*) > 1;
+
+-- Attribute-score rows whose report no longer exists.
+SELECT 'scout_report_attribute_scores orphan', s.SCOUT_REPORT_ID, COUNT(*)
+FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES s
+WHERE s.SCOUT_REPORT_ID NOT IN (SELECT ID FROM ${CORE}.SCOUT_REPORTS)
+GROUP BY s.SCOUT_REPORT_ID;
