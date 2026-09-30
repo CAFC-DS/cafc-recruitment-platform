@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS ${CORE}.FLAG_CATEGORIES (
 MERGE INTO ${CORE}.FLAG_CATEGORIES t
 USING (
     SELECT CODE, MIN(ORIGIN) AS ORIGIN FROM (
-        SELECT column1 AS CODE, 'CODE' AS ORIGIN FROM VALUES ('Positive')
+        SELECT column1 AS CODE, 'CODE' AS ORIGIN FROM VALUES ('Monitor'), ('No Action'), ('Target'), ('Scout'), ('Neutral'), ('Positive'), ('Negative'),
+            ('Future Scouting'), ('Outstanding/Above Level')
         UNION ALL
         SELECT DISTINCT TRIM(FLAG_CATEGORY), 'DATA' FROM ${CORE}.SCOUT_REPORTS WHERE TRIM(FLAG_CATEGORY) <> ''
     ) GROUP BY CODE
@@ -132,7 +133,7 @@ MERGE INTO ${CORE}.LIST_STAGES t
 USING (
     SELECT CODE, MIN(SORT_ORDER) AS SORT_ORDER, BOOLOR_AGG(IS_TERMINAL) AS IS_TERMINAL, MIN(ORIGIN) AS ORIGIN FROM (
         SELECT column1 AS CODE, column2 AS SORT_ORDER, column3 AS IS_TERMINAL, 'CODE' AS ORIGIN
-        FROM VALUES ('Stage 1', 1, FALSE), ('Stage 2', 2, FALSE), ('Stage 3', 3, FALSE), ('Archived', 4, TRUE)
+        FROM VALUES ('Stage 1', 1, FALSE), ('Stage 2', 2, FALSE), ('Stage 3', 3, FALSE), ('Stage 4', 4, FALSE), ('Archived', 5, TRUE)
         UNION ALL
         SELECT DISTINCT TRIM(STAGE), 99, FALSE, 'DATA' FROM ${CORE}.PLAYER_LIST_ITEMS WHERE TRIM(STAGE) <> ''
         UNION ALL
@@ -180,6 +181,23 @@ USING (
 WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.CODE, NULL, s.ORIGIN = 'CODE', s.ORIGIN);
 
 -- ---- DEAL_TYPES / RELATIONSHIP_TYPES (multi-valued today: comma-joined) ------
+-- Intel stores deal types as lowercase codes (permanent, free, loan, loan_with_option, na);
+-- recommendations store the display labels. One vocabulary: the labels. 'na' means "not
+-- applicable" and produces no row. Unknown values pass through trimmed (-> ORIGIN='DATA', inactive).
+CREATE OR REPLACE FUNCTION ${CORE}.CANONICAL_DEAL_TYPE(v VARCHAR)
+RETURNS VARCHAR
+AS $$
+    CASE LOWER(TRIM(v))
+        WHEN 'permanent'        THEN 'Permanent Transfer'
+        WHEN 'free'             THEN 'Free'
+        WHEN 'loan'             THEN 'Loan'
+        WHEN 'loan_with_option' THEN 'Loan with Option'
+        WHEN 'na'               THEN NULL
+        WHEN ''                 THEN NULL
+        ELSE TRIM(v)
+    END
+$$;
+
 CREATE TABLE IF NOT EXISTS ${CORE}.DEAL_TYPES (
     CODE VARCHAR(100) NOT NULL, SORT_ORDER NUMBER(5,0), IS_ACTIVE BOOLEAN NOT NULL, ORIGIN VARCHAR(10) NOT NULL,
     CONSTRAINT PK_DEAL_TYPES PRIMARY KEY (CODE)
@@ -190,13 +208,13 @@ USING (
         SELECT column1 AS CODE, column2 AS SORT_ORDER, 'CODE' AS ORIGIN FROM VALUES
             ('Free', 1), ('Permanent Transfer', 2), ('Loan', 3), ('Loan with Option', 4)
         UNION ALL
-        SELECT DISTINCT TRIM(s.VALUE), 99, 'DATA'
+        SELECT DISTINCT ${CORE}.CANONICAL_DEAL_TYPE(s.VALUE), 99, 'DATA'
         FROM ${CORE}.PLAYER_RECOMMENDATIONS r, LATERAL SPLIT_TO_TABLE(r.POTENTIAL_DEAL_TYPE, ',') s
-        WHERE TRIM(s.VALUE) <> ''
+        WHERE ${CORE}.CANONICAL_DEAL_TYPE(s.VALUE) IS NOT NULL
         UNION ALL
-        SELECT DISTINCT TRIM(s.VALUE), 99, 'DATA'
+        SELECT DISTINCT ${CORE}.CANONICAL_DEAL_TYPE(s.VALUE), 99, 'DATA'
         FROM ${CORE}.PLAYER_INFORMATION i, LATERAL SPLIT_TO_TABLE(i.POTENTIAL_DEAL_TYPE, ',') s
-        WHERE TRIM(s.VALUE) <> ''
+        WHERE ${CORE}.CANONICAL_DEAL_TYPE(s.VALUE) IS NOT NULL
     ) GROUP BY CODE
 ) s ON t.CODE = s.CODE
 WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.CODE, s.SORT_ORDER, s.ORIGIN = 'CODE', s.ORIGIN);

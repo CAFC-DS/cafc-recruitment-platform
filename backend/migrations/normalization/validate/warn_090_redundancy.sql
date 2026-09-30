@@ -17,11 +17,10 @@ FROM ${CORE}.PLAYER_STAGE_HISTORY psh
 JOIN ${CORE}.PLAYER_LIST_ITEMS li ON li.ID = psh.LIST_ITEM_ID
 WHERE psh.LIST_ID IS DISTINCT FROM li.LIST_ID;
 
--- 3NF-6: CREATED_BY is declared VARCHAR but the app writes an integer user id.
-SELECT 'shared link CREATED_BY is not a user id', SHARE_TOKEN, CREATED_BY, NULL
+-- Shared links must point at real users (CREATED_BY is a numeric user id).
+SELECT 'shared link CREATED_BY is not a known user', SHARE_TOKEN, TO_VARCHAR(CREATED_BY), NULL
 FROM ${CORE}.SHARED_REPORT_LINKS
-WHERE TRY_TO_NUMBER(TO_VARCHAR(CREATED_BY)) IS NULL
-   OR TRY_TO_NUMBER(TO_VARCHAR(CREATED_BY)) NOT IN (SELECT ID FROM ${CORE}.USERS);
+WHERE CREATED_BY NOT IN (SELECT ID FROM ${CORE}.USERS);
 
 -- Derived overall score vs sum of attribute rows (only reports that have attribute rows).
 SELECT 'ATTRIBUTE_SCORE <> sum of attribute rows', TO_VARCHAR(sr.ID), TO_VARCHAR(sr.ATTRIBUTE_SCORE), TO_VARCHAR(s.TOTAL)
@@ -29,3 +28,10 @@ FROM ${CORE}.SCOUT_REPORTS sr
 JOIN (SELECT SCOUT_REPORT_ID, SUM(ATTRIBUTE_SCORE) AS TOTAL
       FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES GROUP BY SCOUT_REPORT_ID) s ON s.SCOUT_REPORT_ID = sr.ID
 WHERE sr.ATTRIBUTE_SCORE IS DISTINCT FROM s.TOTAL;
+
+-- Pre-existing data defect (found on live data 2026-09-30, report 22801): child rows whose
+-- parent report no longer exists. Not caused by the migration; clean up separately.
+SELECT 'scout_report_attribute_scores orphan', s.SCOUT_REPORT_ID, COUNT(*)
+FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES s
+WHERE s.SCOUT_REPORT_ID NOT IN (SELECT ID FROM ${CORE}.SCOUT_REPORTS)
+GROUP BY s.SCOUT_REPORT_ID;

@@ -1,15 +1,14 @@
 # Data model normalization & Snowflake migration plan
 
-Status: **Phases 0–3 implemented as SQL on this branch (not yet applied to any Snowflake account). Phases 4–6 are plan only.**
+Status: **Phases 0–3 implemented and rehearsed on a zero-copy clone of live `CORE` (`CAFC_DB.CORE_DEV_NORMALIZATION`): applied, idempotent, hard validation passes. NOT applied to live `CORE`. Phases 4–6 are plan only.**
 Owner: recruitment platform · Branch: `claude/compassionate-carson-7g4wi1`
 
-> **How this was produced.** The Snowflake connector was unavailable, so nothing
-> here was checked against a live account. Table shapes were reconstructed from
-> `backend/main.py` INSERT/SELECT column lists, `backend/migrations/*.sql`, the
-> `cafc-data-platform` dbt models and `snowflake/ddl/*.sql`. Every migration is
-> therefore written to be **additive, re-runnable, rehearsed first in a dev
-> schema**, and gated by validation queries. Step 1 of rollout is a `DESCRIBE`
-> diff of the assumptions in `backend/migrations/normalization/README.md`.
+> **How this was produced.** The first draft was written from code because the Snowflake MCP
+> connector was down. A direct connector session (key-pair, `DEV_ROLE`) was then used to `DESCRIBE`
+> every table, profile the real values, and rehearse the migrations on a clone. That corrected the
+> draft (see the migrations README): `SHARE_URL` does not exist, intel deal types use a different
+> vocabulary from recommendations, intel `PLAYER_ID` is an IMPECT id even when `DATA_SOURCE` is NULL,
+> and `Stage 4` / the legacy flag grades are real values. Live `CORE` was only ever read.
 
 ---
 
@@ -38,7 +37,7 @@ Gross/Net, `REFERENCE_RATING`) already satisfy 3NF; they stay as validated text.
 | 1NF-2 | `PLAYER_INFORMATION.RELATIONSHIP_TO_PLAYER` | Comma-joined list (`main.py:12517`) | Junction `INTEL_RELATIONSHIPS` → `RELATIONSHIP_TYPES` |
 | 1NF-3 | `PLAYER_RECOMMENDATIONS` | Repeating column groups `TRANSFER_FEE_*`, `CURRENT_WAGES_*`, `EXPECTED_WAGES_*` (amount/min/max/currency) plus legacy free-text `TRANSFER_FEE`/`CURRENT_WAGES`/`EXPECTED_WAGES` carrying the same fact | Child table `RECOMMENDATION_TERMS` (one row per term type) |
 | 1NF-4 | `PLAYER_INFORMATION` | Same wage/fee repeating group | `INTEL_TERMS` |
-| 1NF-5 | `PLAYER_RECOMMENDATIONS.LINKED_UNIVERSAL_ID`, `PLAYER_LIST_FLAGS.UNIVERSAL_ID` | Composite value packed in a string (`internal_123` / `external_456` = source + id) | Numeric `LINKED_CAFC_PLAYER_ID` / `CAFC_PLAYER_ID` |
+| 1NF-5 | `PLAYER_RECOMMENDATIONS.LINKED_UNIVERSAL_ID`, `PLAYER_LIST_FLAGS.UNIVERSAL_ID` | Composite value packed in a string (`internal_123` / `external_456` = source + id) | Numeric `LINKED_CANONICAL_PLAYER_ID` / `CAFC_PLAYER_ID` |
 | 1NF-6 | `SCOUT_REPORTS.PLAYER_ID` / `CAFC_PLAYER_ID` (+ `MATCH_ID`) | One entity referenced by two mutually-exclusive columns, selected by `DATA_SOURCE` branching | Single `CANONICAL_PLAYER_ID` / `CANONICAL_FIXTURE_ID` |
 
 ### 2.2 Second normal form (no partial dependency on a composite key)
@@ -60,9 +59,9 @@ vacuously. The composite-keyed/child tables were checked individually:
 | 3NF-2 | `PLAYER_INFORMATION.CONTACT_NAME/CONTACT_ORGANISATION` | Organisation depends on the contact | `CONTACTS` ← `PLAYER_INFORMATION.CONTACT_ID` |
 | 3NF-3 | `PLAYER_INFORMATION` reference-form columns (`RELATIONSHIP_*`, `LENGTH_*`, `RELEVANCE_*`, `REFERENCE_RATING`) | Only meaningful when `INTEL_TYPE = 'reference_form'`: attributes depend on the subtype discriminator, NULL for other rows | 1:1 subtype table `INTEL_REFERENCE_DETAILS` |
 | 3NF-4 | `USERS.ROLE`, `SCOUT_REPORTS.REPORT_TYPE/PURPOSE/SCOUTING_TYPE/FLAG_CATEGORY/CLIP_CATEGORY`, `PLAYER_LIST_ITEMS.STAGE`, `PLAYER_LISTS.LIST_CATEGORY`, `PLAYER_RECOMMENDATIONS.STATUS`, `PLAYER_INFORMATION.INTEL_TYPE` | Free-text codes whose meaning/ordering/permissions live in Python constants (`VALID_ROLES`, `RECOMMENDATION_STATUSES`, stage strings in SQL). CLAUDE.md lists 5 roles, the code has 7 — the drift this causes | Lookup tables `ROLES` (with `SEES_ALL_REPORTS`), `LIST_STAGES` (order, terminal flag), `RECOMMENDATION_STATUSES`, `REPORT_TYPES`, `REPORT_PURPOSES`, `SCOUTING_TYPES`, `FLAG_CATEGORIES`, `CLIP_CATEGORIES`, `LIST_CATEGORIES`, `INTEL_TYPES` |
-| 3NF-5 | `PLAYER_STAGE_HISTORY.LIST_ID/PLAYER_ID` | Determined by `LIST_ITEM_ID` | Keep during expand (app reads them); validation asserts they agree with the item; dropped in contract phase |
-| 3NF-6 | `SHARED_REPORT_LINKS.SHARE_URL` | Derived from token + frontend host; `CREATED_BY` is VARCHAR in DDL but the app inserts an integer user id | Contract phase drops `SHARE_URL`; validation flags non-numeric `CREATED_BY` |
-| 3NF-7 | `PLAYER_RECOMMENDATIONS.STATUS/STATUS_UPDATED_AT/STATUS_UPDATED_BY` | Current state derivable from `STATUS_HISTORY` | Intentionally kept as a *cached current state* (hot filter column). Validation asserts it equals the latest history row. |
+| 3NF-5 | `PLAYER_STAGE_HISTORY.LIST_ID/PLAYER_ID` | Determined by `LIST_ITEM_ID`. **Confirmed on live data: 44 rows disagree with their list item.** | Keep during expand (app reads them); warn check lists the 44; must be reconciled before the contract phase drops the columns |
+| 3NF-6 | `SHARED_REPORT_LINKS` | **Not a violation.** Suspected a derived `SHARE_URL` and a type mismatch on `CREATED_BY`; `DESCRIBE` shows neither exists | none (validation only checks `CREATED_BY` is a known user) |
+| 3NF-7 | `PLAYER_RECOMMENDATIONS.STATUS/STATUS_UPDATED_AT/STATUS_UPDATED_BY` | Current state derivable from `STATUS_HISTORY` | Intentionally kept as a *cached current state* (hot filter column). Verified on live data: 0 rows disagree with the latest history row. |
 
 ### 2.4 Deliberately not changed
 
@@ -115,7 +114,7 @@ AGENCIES ─< AGENTS ─< PLAYER_RECOMMENDATIONS >─ RECOMMENDATION_STATUSES
               └──── AGENT_PROFILES.AGENT_ID        │
                                                    ├─< RECOMMENDATION_TERMS   (TRANSFER_FEE | CURRENT_WAGES | EXPECTED_WAGES)
                                                    ├─< RECOMMENDATION_DEAL_TYPES >─ DEAL_TYPES
-                                                   └── LINKED_CAFC_PLAYER_ID ──┐
+                                                   └── LINKED_CANONICAL_PLAYER_ID ──┐
 CONTACTS ─< PLAYER_INFORMATION (intel) >─ INTEL_TYPES                          │
               ├─< INTEL_TERMS / INTEL_DEAL_TYPES / INTEL_RELATIONSHIPS         │
               └─1 INTEL_REFERENCE_DETAILS                                      ▼
@@ -129,9 +128,9 @@ PLAYER_LIST_ITEMS.STAGE ─> LIST_STAGES      PLAYER_LISTS.LIST_CATEGORY ─> LI
 
 | Phase | Content | Status | Risk |
 |---|---|---|---|
-| **0 Snapshot & ledger** | `CORE_PRE_NORMALIZATION` clones; `SCHEMA_MIGRATIONS` ledger; dry-run-by-default runner | implemented | none |
+| **0 Snapshot & ledger** | `CORE_PRE_NORMALIZATION` clones; `SCHEMA_MIGRATIONS` ledger; dry-run-by-default runner that refuses live schemas | implemented, rehearsed | none |
 | **1 Lookups** | 12 lookup tables, seeded from code constants ∪ distinct existing values (`ORIGIN='DATA'` rows are inactive and need a human decision) | implemented | low |
-| **2 Canonical keys** | `CANONICAL_PLAYER_ID`/`CANONICAL_FIXTURE_ID` on reports; same for list items/flags; `LINKED_CAFC_PLAYER_ID` on recommendations. Ambiguous/unresolvable rows stay NULL and are listed by validation | implemented | medium (data quality) |
+| **2 Canonical keys** | `CANONICAL_PLAYER_ID`/`CANONICAL_FIXTURE_ID` on reports; same for list items/flags; `LINKED_CANONICAL_PLAYER_ID` on recommendations. Ambiguous/unresolvable rows stay NULL and are listed by validation | implemented | medium (data quality) |
 | **3 Decomposition** | agents/agencies, recommendation terms/deal types, contacts, intel terms/deal types/relationships/reference details | implemented | medium |
 | **4 App cutover** (one PR per domain, reads first then writes; all-or-nothing per domain) | (a) recommendations + agent portal, (b) intel, (c) scout reports + lists. Replace name-matching subqueries with the key join; fix writes to be transactional; role filter unconditional | **not started** | highest |
 | **5 Contract** | `contract/*.sql`: drop `LINKED_UNIVERSAL_ID`, dual-ID columns, repeated column groups, `SHARE_URL`, `DATA_SOURCE`, redundant stage-history columns | scripts written, **never auto-run** | irreversible → gated on Phase 4 soak |
@@ -143,7 +142,7 @@ feed, dual-ID OR-joins, report listings). Phases 0–3 alone change no app behav
 ## 6. Rollout procedure (per environment)
 
 1. `DESCRIBE TABLE` diff against the assumptions in the migrations README. Fix any mismatch in the SQL, not the data.
-2. Rehearse on a **duplicate database**, never `CAFC_DB`: `--create-sandbox --apply` (zero-copy clone `CAFC_DB_NORMALIZATION`), then `--core CAFC_DB_NORMALIZATION.CORE` (dry-run first, then `--apply`). The runner refuses writes to `CAFC_DB`/`RECRUITMENT_TEST` without `--allow-production`. Runner executes the `validate/` queries and exits non-zero on any violating row. `warn_*` checks (unresolved keys, probable duplicate agents, redundancy that contract will drop) are reported but only fail under `--strict`, which is the gate for cutover and for every `contract/` step.
+2. Rehearse on a **clone**, never live `CORE`: `--create-sandbox --apply` (zero-copy clone `CAFC_DB.CORE_DEV_NORMALIZATION`; a whole-database clone needs a role with `CREATE DATABASE`, which `DEV_ROLE` lacks), then `--core CAFC_DB.CORE_DEV_NORMALIZATION` (dry-run first, then `--apply`). The runner refuses writes to `CAFC_DB.CORE`/`APP`/`APP_COMPAT` and `RECRUITMENT_TEST` without `--allow-production`. Runner executes the `validate/` queries and exits non-zero on any violating row. `warn_*` checks (unresolved keys, probable duplicate agents, redundancy that contract will drop) are reported but only fail under `--strict`, which is the gate for cutover and for every `contract/` step.
 3. Review `ORIGIN='DATA'` lookup rows and validation output with the team; fix data or extend lookups via a follow-up migration.
 4. Only after a clean strict validation on the duplicate and team review, apply to prod (explicit `--allow-production`) with the owning role (app roles lack `MODIFY`/`CREATE`). Migrations are additive; the running app is unaffected.
 5. Keep re-running backfills (they are `MERGE`/`UPDATE … WHERE … IS NULL`) until app cutover of that domain so new legacy-shaped writes are picked up.
@@ -151,8 +150,9 @@ feed, dual-ID OR-joins, report listings). Phases 0–3 alone change no app behav
 
 ## 7. Known risks / open questions
 
-* **Column assumptions** (see README) are unverified against a live `DESCRIBE`.
-* **`SCOUT_REPORTS.MATCH_ID` is overloaded**: the app stores an IMPECT match id for external fixtures and `CAFC_MATCH_ID` for internal ones in the same column. Resolution prefers the IMPECT identity and only falls back to a `CAFC_FIXTURE_ID` that has *no* IMPECT identity; rows where both interpretations exist with different answers are left NULL and reported.
+* **Ownership**: in the clone `DEV_ROLE` owns every table, so `ALTER TABLE` always works there. In live `CORE` some app tables were noted as admin-owned (`backend/migrations/add_clip_category_to_scout_reports.sql`); the production apply must run as the owning role. The rehearsal does not prove that.
+* **Impact on the running app** (applying 000–090 to live `CORE`): additive only. Verified by reading the code: no `SELECT`/`INSERT` on an altered table uses `table.*` or an unlisted column set, the recommendation feed reads via explicit columns, and the `app_compat` dbt views that `select *` do not clash with the new column names. One near-miss was found and removed: the app already aliases a derived `LINKED_CAFC_PLAYER_ID`, so the new real column is named `LINKED_CANONICAL_PLAYER_ID`. New columns stay NULL for rows written by the legacy code until the backfills are re-run (see rollout step 5). The chatbot's table allowlist does not include the new tables.
+* **`SCOUT_REPORTS.MATCH_ID` is overloaded**: the app stores an IMPECT match id for external fixtures and `CAFC_MATCH_ID` for internal ones in the same column. Resolution prefers the IMPECT identity and only falls back to a `CAFC_FIXTURE_ID` that has *no* IMPECT identity; rows where both interpretations exist with different answers are left NULL and reported (live data: 0 ambiguous, 37 matching neither).
 * **Agent de-duplication** keys on normalized email, falling back to normalized name+agency. Expect some manual merges; the validation report lists near-duplicates.
 * **Loan Manager rule** (CLAUDE.md vs code) is unresolved and **out of scope** here; `ROLES.SEES_ALL_REPORTS` is the hook where it will be encoded once decided.
 * **Soak period**: dual-ID columns must not be dropped until the `cutover_compare` harness shows no diff on the migrated domains.

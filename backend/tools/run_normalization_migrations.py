@@ -35,14 +35,18 @@ QUALIFIED_NAME = re.compile(r"^[A-Za-z0-9_$]+(\.[A-Za-z0-9_$]+){1,2}$")
 TOKEN = re.compile(r"\$\{([A-Z_]+)\}")
 SYNC_TAG = re.compile(r"^--\s*@sync-until-cutover:\s*([a-z_]+)\s*$", re.MULTILINE)
 LEDGER = "SCHEMA_MIGRATIONS"
-# Databases the runner will never write to without --allow-production. Override with
-# NORMALIZATION_PROTECTED_DATABASES="A,B".
-PROTECTED_DATABASES = {
-    d.strip().upper()
-    for d in os.getenv("NORMALIZATION_PROTECTED_DATABASES", "CAFC_DB,RECRUITMENT_TEST").split(",")
-    if d.strip()
-}
-DEFAULT_SANDBOX_DB = "CAFC_DB_NORMALIZATION"
+# Targets the runner will never write to without --allow-production.
+#   PROTECTED_TARGETS   exact DATABASE.SCHEMA names (the live app schemas)
+#   PROTECTED_DATABASES whole databases
+# Override with NORMALIZATION_PROTECTED_TARGETS / NORMALIZATION_PROTECTED_DATABASES (comma lists).
+def _env_set(name: str, default: str) -> set:
+    return {d.strip().upper() for d in os.getenv(name, default).split(",") if d.strip()}
+
+
+PROTECTED_TARGETS = _env_set("NORMALIZATION_PROTECTED_TARGETS", "CAFC_DB.CORE,CAFC_DB.APP,CAFC_DB.APP_COMPAT")
+PROTECTED_DATABASES = _env_set("NORMALIZATION_PROTECTED_DATABASES", "RECRUITMENT_TEST")
+DEFAULT_SANDBOX = "CAFC_DB.CORE_DEV_NORMALIZATION"   # schema clone: DEV_ROLE cannot CREATE DATABASE
+DEFAULT_SANDBOX_SOURCE = "CAFC_DB.CORE"
 
 
 # --------------------------------------------------------------------------------------
@@ -54,18 +58,21 @@ def validate_qualified_name(value: str, what: str) -> str:
     return value
 
 
-def database_of(core: str) -> str:
-    return validate_qualified_name(core, "--core").split(".")[0].upper()
+def is_protected(target: str) -> bool:
+    """True for a live app schema (CAFC_DB.CORE ...) or anything inside a protected database."""
+    parts = validate_qualified_name(target, "target").upper().split(".")
+    if parts[0] in PROTECTED_DATABASES:
+        return True
+    return ".".join(parts[:2]) in PROTECTED_TARGETS
 
 
 def assert_writable(core: str, allow_production: bool) -> None:
-    """Refuse writes to a protected (production) database unless explicitly overridden."""
-    db = database_of(core)
-    if db in PROTECTED_DATABASES and not allow_production:
+    """Refuse writes to a live app schema unless explicitly overridden."""
+    if is_protected(core) and not allow_production:
         raise SystemExit(
-            f"refusing to write to protected database {db}. Create a duplicate and target it:\n"
-            f"  python tools/run_normalization_migrations.py --create-sandbox\n"
-            f"  python tools/run_normalization_migrations.py --core {DEFAULT_SANDBOX_DB}.CORE --apply\n"
+            f"refusing to write to protected target {core.upper()}. Clone it and target the clone:\n"
+            f"  python tools/run_normalization_migrations.py --create-sandbox --apply\n"
+            f"  python tools/run_normalization_migrations.py --core {DEFAULT_SANDBOX} --apply\n"
             f"(override only for a reviewed production run: --allow-production)"
         )
 
@@ -188,16 +195,21 @@ def connect():  # pragma: no cover - needs a live account
     from dotenv import load_dotenv
 
     load_dotenv()
-    key_path = os.getenv("SNOWFLAKE_DEV_PRIVATE_KEY_PATH") or os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
-    if not key_path:
-        raise SystemExit("set SNOWFLAKE_DEV_PRIVATE_KEY_PATH or SNOWFLAKE_PRIVATE_KEY_PATH")
-    with open(key_path, "rb") as fh:
-        key = serialization.load_pem_private_key(fh.read(), password=None, backend=default_backend())
+    inline_key = os.getenv("SNOWFLAKE_PRIVATE_KEY")  # inline PEM (CI / hosted sessions)
+    if inline_key and inline_key.strip().startswith("-----BEGIN"):
+        pem = inline_key.encode()
+    else:
+        key_path = os.getenv("SNOWFLAKE_DEV_PRIVATE_KEY_PATH") or os.getenv("SNOWFLAKE_PRIVATE_KEY_PATH")
+        if not key_path:
+            raise SystemExit("set SNOWFLAKE_PRIVATE_KEY (inline PEM) or SNOWFLAKE_[DEV_]PRIVATE_KEY_PATH")
+        with open(key_path, "rb") as fh:
+            pem = fh.read()
+    key = serialization.load_pem_private_key(pem, password=None, backend=default_backend())
     der = key.private_bytes(
         serialization.Encoding.DER, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
     )
     return snowflake.connector.connect(
-        user=os.getenv("SNOWFLAKE_DEV_USERNAME") or os.getenv("SNOWFLAKE_USERNAME"),
+        user=os.getenv("SNOWFLAKE_DEV_USERNAME") or os.getenv("SNOWFLAKE_USERNAME") or os.getenv("SNOWFLAKE_USER"),
         account=os.getenv("SNOWFLAKE_DEV_ACCOUNT") or os.getenv("SNOWFLAKE_ACCOUNT"),
         warehouse=os.getenv("SNOWFLAKE_DEV_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE"),
         database=os.getenv("SNOWFLAKE_DEV_DATABASE") or os.getenv("SNOWFLAKE_DATABASE"),
@@ -270,11 +282,14 @@ def run_validations(cur, tokens: Dict[str, str], strict: bool) -> int:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--core", default=os.getenv("NORMALIZATION_CORE", "CAFC_DB.CORE"),
-                        help="DATABASE.SCHEMA to operate on (writes to a protected database are refused)")
-    parser.add_argument("--create-sandbox", nargs="?", const=DEFAULT_SANDBOX_DB, metavar="DB_NAME",
-                        help=f"zero-copy clone CAFC_DB into a duplicate database (default {DEFAULT_SANDBOX_DB}); never replaces an existing one")
-    parser.add_argument("--source-db", default="CAFC_DB", help="database --create-sandbox clones from")
-    parser.add_argument("--allow-production", action="store_true", help="permit writes to a protected database")
+                        help="DATABASE.SCHEMA to operate on (writes to a live app schema are refused)")
+    parser.add_argument("--create-sandbox", nargs="?", const=DEFAULT_SANDBOX, metavar="NAME",
+                        help=f"zero-copy clone into a sandbox that is safe to migrate (default {DEFAULT_SANDBOX}). "
+                             "NAME is DATABASE.SCHEMA (schema clone) or DATABASE (database clone, needs CREATE DATABASE). "
+                             "Uses IF NOT EXISTS: never replaces an existing sandbox.")
+    parser.add_argument("--source", default=None,
+                        help=f"what --create-sandbox clones (default {DEFAULT_SANDBOX_SOURCE}, or CAFC_DB for a database clone)")
+    parser.add_argument("--allow-production", action="store_true", help="permit writes to a live app schema (reviewed production run only)")
     parser.add_argument("--snapshot", default=None, help="default: <core>_PRE_NORMALIZATION")
     parser.add_argument("--apply", action="store_true", help="execute (default is a dry run)")
     parser.add_argument("--only", default=None, help="run only the migration whose file name starts with this (e.g. 020)")
@@ -285,20 +300,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if args.create_sandbox:
-        name = validate_qualified_name(args.create_sandbox + ".X", "--create-sandbox").split(".")[0]
-        if name.upper() in PROTECTED_DATABASES:
-            parser.error(f"{name} is a protected database; choose another sandbox name")
-        source = validate_qualified_name(args.source_db + ".X", "--source-db").split(".")[0]
-        ddl = f"CREATE DATABASE IF NOT EXISTS {name} CLONE {source}"
+        name = args.create_sandbox.upper()
+        is_schema = "." in name
+        validate_qualified_name(name if is_schema else name + ".X", "--create-sandbox")
+        source = (args.source or (DEFAULT_SANDBOX_SOURCE if is_schema else "CAFC_DB")).upper()
+        validate_qualified_name(source if is_schema else source + ".X", "--source")
+        if is_protected(name if is_schema else name + ".X") or name == source:
+            parser.error(f"{name} is a live/protected target; choose a different sandbox name")
+        kind = "SCHEMA" if is_schema else "DATABASE"
+        ddl = f"CREATE {kind} IF NOT EXISTS {name} CLONE {source}"
         if not args.apply:
-            print(f"-- DRY RUN\n{ddl};\n-- Re-run with --apply. Then: --core {name}.CORE --apply")
+            print(f"-- DRY RUN\n{ddl};\n-- Re-run with --apply. Then: --core {name if is_schema else name + '.CORE'} --apply")
             return 0
         conn = connect()  # pragma: no cover
         cur = conn.cursor()
         try:
             cur.execute(ddl)
+            target = name if is_schema else name + ".CORE"
             print(f"sandbox ready: {name} (zero-copy clone of {source}). Next:\n"
-                  f"  python tools/run_normalization_migrations.py --core {name}.CORE --apply")
+                  f"  python tools/run_normalization_migrations.py --core {target} --apply")
             return 0
         finally:
             cur.close()

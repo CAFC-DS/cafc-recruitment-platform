@@ -7,7 +7,7 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 |---|---|---|
 | `000_snapshot.sql` | Zero-copy clones of every table touched, into `<core>_PRE_NORMALIZATION` | yes (never overwrites) |
 | `010_lookups.sql` | 12 lookup tables, seeded from code constants + distinct data values | yes (insert-only MERGE) |
-| `020_canonical_keys.sql` | `CANONICAL_PLAYER_ID` / `CANONICAL_FIXTURE_ID` / `LINKED_CAFC_PLAYER_ID` etc. | yes (fills NULLs only) |
+| `020_canonical_keys.sql` | `CANONICAL_PLAYER_ID` / `CANONICAL_FIXTURE_ID` / `LINKED_CANONICAL_PLAYER_ID` etc. | yes (fills NULLs only) |
 | `030_agents.sql` | `AGENCIES`, `AGENTS`, `AGENT_ID` on recommendations and agent profiles | yes (insert-only) |
 | `040_recommendation_terms.sql` | `RECOMMENDATION_TERMS`, `RECOMMENDATION_DEAL_TYPES` | yes until recommendations cut over (`@sync-until-cutover`) |
 | `050_intel.sql` | `CONTACTS`, `INTEL_TERMS`, `INTEL_DEAL_TYPES`, `INTEL_RELATIONSHIPS`, `INTEL_REFERENCE_DETAILS` | yes until intel cuts over |
@@ -17,42 +17,68 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 
 Nothing in `000`–`090` drops or rewrites an existing column, so the running app is unaffected.
 
-## Quick start — always on a duplicate database, never `CAFC_DB`
+## Quick start — always on a clone, never on the live schemas
 
-The runner refuses `--apply`, `--mark-cutover` and `--contract` against `CAFC_DB` or
-`RECRUITMENT_TEST` (override: `--allow-production`, for a reviewed production run only).
-Dry runs and `--validate` are read-only and allowed anywhere.
+The runner refuses `--apply`, `--mark-cutover` and `--contract` against the live app schemas
+(`CAFC_DB.CORE`, `CAFC_DB.APP`, `CAFC_DB.APP_COMPAT`) and anything in `RECRUITMENT_TEST`
+(override: `--allow-production`, for a reviewed production run only). Dry runs and `--validate`
+are read-only and allowed anywhere.
 
 ```bash
 cd backend
-# 1. Duplicate the database (zero-copy clone: instant, no extra storage until it diverges;
-#    IF NOT EXISTS, so it never replaces an existing sandbox)
-python tools/run_normalization_migrations.py --create-sandbox            # dry run: prints the DDL
-python tools/run_normalization_migrations.py --create-sandbox --apply    # CREATE DATABASE CAFC_DB_NORMALIZATION CLONE CAFC_DB
+# 1. Zero-copy clone of CORE (instant; no extra storage until it diverges; IF NOT EXISTS, never replaces).
+#    Default is a schema clone because DEV_ROLE has CREATE SCHEMA but not CREATE DATABASE.
+#    With a role that can CREATE DATABASE:  --create-sandbox CAFC_DB_COPY  (clones the whole database)
+python tools/run_normalization_migrations.py --create-sandbox --apply     # CAFC_DB.CORE_DEV_NORMALIZATION
 
-# 2. Rehearse the migrations inside the duplicate
-python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE            # dry run
-python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --apply    # apply + validate
-python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --validate --strict
+# 2. Migrate the clone (applies 000-090, then runs validate/)
+python tools/run_normalization_migrations.py --core CAFC_DB.CORE_DEV_NORMALIZATION --apply
+python tools/run_normalization_migrations.py --core CAFC_DB.CORE_DEV_NORMALIZATION --validate --strict   # cutover gate
 
-# Later, per domain (still in the duplicate until the app is pointed at it)
-python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --mark-cutover recommendations
-python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --contract recommendations --apply
+# 3. Later, per domain
+python tools/run_normalization_migrations.py --core <target> --mark-cutover recommendations
+python tools/run_normalization_migrations.py --core <target> --contract recommendations --apply         # destructive
 ```
 
-Notes on the clone: views are cloned as written, so the dbt views `CORE_PLAYER_ID_RESOLUTIONS` /
-`CORE_FIXTURE_ID_RESOLUTIONS` in the duplicate may still read the *original* `CAFC_DB` tables underneath
-(read-only, harmless for validation, but identity resolution then reflects production, not the duplicate).
-Grants are not copied to a cloned database's objects the same way; `090_grants.sql` re-applies them.
-Point a backend at the duplicate with `CANONICAL_DB=CAFC_DB_NORMALIZATION` (and `CORE_DB_SCHEMA=CORE`) to
-test the app against it.
+Connection: `SNOWFLAKE_PRIVATE_KEY` (inline PEM) or `SNOWFLAKE_[DEV_]PRIVATE_KEY_PATH`, plus
+`SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER[NAME]`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_ROLE`
+(override the role with `NORMALIZATION_ROLE`).
 
-Run as a role that owns the tables (the app role has DML only, no `ALTER`/`CREATE`); set
-`NORMALIZATION_ROLE` or `SNOWFLAKE_DEV_ROLE`. 
-## UNVERIFIED schema assumptions — check with `DESCRIBE TABLE` before the first apply
+A clone's views are cloned as written: `CORE_PLAYER_ID_RESOLUTIONS` / `CORE_FIXTURE_ID_RESOLUTIONS` in the
+sandbox read the live identity tables (read-only, so production is safe, but key resolution reflects
+production). `--validate` is safe to run against live `CORE` once the migrations have been applied there.
 
-These migrations were written without a live Snowflake connection (connector unavailable);
-column names come from `backend/main.py`, `backend/migrations/*.sql` and the dbt models.
+## Rehearsal result (2026-09-30, `CAFC_DB.CORE_DEV_NORMALIZATION`, clone of live CORE)
+
+All of 000-090 applied first time, re-ran clean (idempotent), hard validation **PASS**. Live `CORE`
+verified untouched (no new tables/columns/functions). Row counts reconciled against source:
+706/706 recommendation deal-type pairs, 510/510 transfer-fee terms, 596/596 recommendations and
+224/224 agent profiles linked to an agent (224 agents, 196 agencies), 168 contacts, 278/278 intel
+reports keyed. Reports: 11,680/11,684 got a canonical player and 10,466/10,503 a canonical fixture.
+
+Informational findings (warnings, all pre-existing data, decisions for the team):
+
+| Finding | Count |
+|---|---|
+| reports whose player cannot be resolved (incl. 1 `CAFC_PLAYER_ID` not in `PLAYERS`) | 4 |
+| reports whose `MATCH_ID` matches neither an IMPECT nor a manual fixture | 37 |
+| list items with no resolvable player | 5 |
+| recommendations linked to a player that cannot be resolved | 29 |
+| `FLAG_CATEGORY` case variant `'No action'` vs `'No Action'` (left inactive) | 9 rows |
+| probable duplicate agents (same name, different email) | 2 pairs |
+| `PLAYER_STAGE_HISTORY.LIST_ID` disagrees with its list item | 44 |
+| attribute-score rows whose report does not exist (report 22801) | 10 |
+| ambiguous `MATCH_ID` (matches both an IMPECT and a manual fixture) | 0 |
+
+## Schema assumptions — VERIFIED against the live schema on 2026-09-30
+
+The migrations were first written from code (the MCP connector was down), then checked with
+`DESCRIBE` over a direct connector session. One assumption was wrong and is fixed:
+`SHARED_REPORT_LINKS` has no `SHARE_URL` (and `CREATED_BY` is already numeric).
+Data-driven corrections from profiling live values: intel deal types use a different vocabulary
+(`permanent`, `loan_with_option`, `na`) than recommendations (`CANONICAL_DEAL_TYPE()` maps them);
+intel `PLAYER_ID` is an IMPECT id even where `DATA_SOURCE` is NULL; `Stage 4` and the legacy flag
+grades are real values.
 
 | Table | Columns the SQL relies on |
 |---|---|
@@ -62,7 +88,7 @@ column names come from `backend/main.py`, `backend/migrations/*.sql` and the dbt
 | `PLAYER_LIST_ITEMS` | `ID, LIST_ID, PLAYER_ID, CAFC_PLAYER_ID, STAGE` |
 | `PLAYER_LIST_FLAGS` | `UNIVERSAL_ID` |
 | `PLAYER_STAGE_HISTORY` | `ID, LIST_ITEM_ID, LIST_ID, PLAYER_ID, OLD_STAGE, NEW_STAGE` |
-| `SHARED_REPORT_LINKS` | `SHARE_TOKEN, SHARE_URL, CREATED_BY` |
+| `SHARED_REPORT_LINKS` | `SHARE_TOKEN, CREATED_BY` |
 | `PLAYER_RECOMMENDATIONS` | `ID, STATUS, AGENT_NAME, AGENCY, AGENT_EMAIL, AGENT_NUMBER, POTENTIAL_DEAL_TYPE, LINKED_UNIVERSAL_ID, CREATED_AT, UPDATED_AT`, `TRANSFER_FEE[_AMOUNT/_CURRENCY/_MIN/_MAX]`, `CURRENT_WAGES[_AMOUNT/_CURRENCY/_MIN/_MAX]`, `EXPECTED_WAGES[...]`, `WAGE_BASIS` |
 | `STATUS_HISTORY` | `ID, RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_AT` |
 | `AGENT_PROFILES` | `USER_ID, AGENT_NAME, AGENCY, AGENT_EMAIL, AGENT_NUMBER, CREATED_AT, UPDATED_AT` |

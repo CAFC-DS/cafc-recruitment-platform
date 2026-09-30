@@ -15,6 +15,6 @@ ALTER TABLE ${CORE}.PLAYER_LIST_ITEMS RENAME COLUMN CANONICAL_PLAYER_ID TO CAFC_
 -- Flags: packed 'internal_N' / 'external_N' string -> number.
 ALTER TABLE ${CORE}.PLAYER_LIST_FLAGS DROP COLUMN UNIVERSAL_ID;
 
--- 3NF: derivable / redundant columns.
-ALTER TABLE ${CORE}.SHARED_REPORT_LINKS   DROP COLUMN SHARE_URL;
+-- 3NF: redundant columns. (SHARED_REPORT_LINKS has no SHARE_URL and CREATED_BY is already a
+-- numeric user id - verified against the live schema - so nothing to drop there.)
 ALTER TABLE ${CORE}.PLAYER_STAGE_HISTORY  DROP COLUMN LIST_ID, PLAYER_ID;

@@ -195,7 +195,7 @@ class FakeConn:
         pass
 
 
-SANDBOX = "CAFC_DB_NORMALIZATION.CORE"
+SANDBOX = "CAFC_DB.CORE_DEV_NORMALIZATION"
 
 
 def run_main(monkeypatch, cursor, *argv):
@@ -270,25 +270,41 @@ def test_mark_cutover_is_recorded(monkeypatch):
     assert any(p and p[1] == "CUTOVER" and p[0] == "intel" for _, p in cur.executed)
 
 
-# ---- production-database guard ---------------------------------------------------------
-def test_apply_to_protected_database_is_refused(monkeypatch):
+# ---- live-schema guard ------------------------------------------------------------------
+def test_is_protected_covers_live_schemas_but_not_dev_clones():
+    for live in ("CAFC_DB.CORE", "cafc_db.core", "CAFC_DB.APP", "CAFC_DB.APP_COMPAT", "RECRUITMENT_TEST.PUBLIC", "RECRUITMENT_TEST.X"):
+        assert runner.is_protected(live), live
+    for dev in ("CAFC_DB.CORE_DEV_NORMALIZATION", "CAFC_DB.CORE_DEV_HUMARJI", "OTHER_DB.CORE"):
+        assert not runner.is_protected(dev), dev
+
+
+def test_apply_to_live_schema_is_refused(monkeypatch):
     cur = FakeCursor()
     for argv in (["--apply", "--core", "CAFC_DB.CORE"], ["--mark-cutover", "intel", "--core", "CAFC_DB.CORE"],
                  ["--apply", "--contract", "intel", "--core", "cafc_db.core"]):
-        with pytest.raises(SystemExit, match="protected database CAFC_DB"):
+        with pytest.raises(SystemExit, match="protected target CAFC_DB.CORE"):
             run_main(monkeypatch, cur, *argv)
     assert cur.executed == []
 
 
-def test_apply_to_duplicate_database_is_allowed(monkeypatch):
+def test_apply_to_dev_clone_is_allowed_and_only_touches_it(monkeypatch):
     cur = FakeCursor()
-    assert run_main(monkeypatch, cur, "--apply", "--core", "CAFC_DB_NORMALIZATION.CORE", "--only", "000") == 0
+    assert run_main(monkeypatch, cur, "--apply", "--only", "000") == 0
     sql = " ".join(s for s, _ in cur.executed)
-    assert "CAFC_DB_NORMALIZATION.CORE.USERS" in sql
-    assert "CAFC_DB.CORE" not in sql
+    assert f"{SANDBOX}.USERS" in sql
+    assert "CAFC_DB.CORE." not in sql and "CAFC_DB.CORE " not in sql
 
 
-def test_validate_and_dry_run_remain_allowed_on_production(monkeypatch, capsys):
+def test_every_rendered_statement_stays_inside_the_target_schema(monkeypatch):
+    """Whole-run guarantee: nothing in a sandbox run may reference the live CORE schema."""
+    cur = FakeCursor()
+    run_main(monkeypatch, cur, "--apply")
+    assert cur.executed
+    for sql, _ in cur.executed:
+        assert not re.search(r"CAFC_DB\.CORE\b(?!_)", sql), sql[:120]
+
+
+def test_validate_and_dry_run_remain_allowed_on_live_schema(monkeypatch):
     assert runner.main([]) == 0  # dry run renders, writes nothing
     cur = FakeCursor()
     assert run_main(monkeypatch, cur, "--validate", "--core", "CAFC_DB.CORE") == 0  # read-only
@@ -299,17 +315,20 @@ def test_allow_production_overrides_the_guard(monkeypatch):
     assert run_main(monkeypatch, cur, "--apply", "--allow-production", "--core", "CAFC_DB.CORE", "--only", "000") == 0
 
 
-def test_create_sandbox_clones_and_never_replaces(monkeypatch, capsys):
+def test_create_sandbox_defaults_to_schema_clone_and_never_replaces(monkeypatch):
     cur = FakeCursor()
     assert run_main(monkeypatch, cur, "--create-sandbox", "--apply") == 0
     sql = cur.executed[0][0]
-    assert sql == "CREATE DATABASE IF NOT EXISTS CAFC_DB_NORMALIZATION CLONE CAFC_DB"
+    assert sql == "CREATE SCHEMA IF NOT EXISTS CAFC_DB.CORE_DEV_NORMALIZATION CLONE CAFC_DB.CORE"
     assert "REPLACE" not in sql.upper()
 
 
-def test_create_sandbox_refuses_protected_name_and_dry_runs_by_default(monkeypatch, capsys):
+def test_create_sandbox_database_clone_and_refusals(monkeypatch, capsys):
     monkeypatch.setattr(runner, "connect", lambda: pytest.fail("must not connect"))
     assert runner.main(["--create-sandbox"]) == 0
     assert "DRY RUN" in capsys.readouterr().out
-    with pytest.raises(SystemExit):
-        runner.main(["--create-sandbox", "CAFC_DB", "--apply"])
+    assert runner.main(["--create-sandbox", "CAFC_DB_COPY"]) == 0
+    assert "CREATE DATABASE IF NOT EXISTS CAFC_DB_COPY CLONE CAFC_DB;" in capsys.readouterr().out
+    for bad in ("CAFC_DB.CORE", "RECRUITMENT_TEST", "CAFC_DB.APP"):
+        with pytest.raises(SystemExit):
+            runner.main(["--create-sandbox", bad, "--apply"])

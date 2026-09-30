@@ -29,6 +29,7 @@ FROM ${CORE}.INTEL_REFERENCE_DETAILS GROUP BY INTEL_REPORT_ID HAVING COUNT(*) > 
 SELECT 'intel with deal-type string but no junction rows', TO_VARCHAR(i.ID), 1
 FROM ${CORE}.PLAYER_INFORMATION i
 WHERE NULLIF(TRIM(i.POTENTIAL_DEAL_TYPE), '') IS NOT NULL
+  AND LOWER(TRIM(i.POTENTIAL_DEAL_TYPE)) <> 'na'   -- 'na' = not applicable, intentionally no row
   AND i.ID NOT IN (SELECT INTEL_REPORT_ID FROM ${CORE}.INTEL_DEAL_TYPES);
 
 SELECT 'intel with relationship string but no junction rows', TO_VARCHAR(i.ID), 1

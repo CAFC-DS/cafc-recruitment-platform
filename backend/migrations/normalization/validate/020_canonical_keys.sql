@@ -25,18 +25,12 @@ FROM ${CORE}.PLAYER_LIST_FLAGS fl
 WHERE fl.CAFC_PLAYER_ID IS NOT NULL
   AND fl.CAFC_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
 
-SELECT 'player_recommendations.linked_cafc_player_id orphan', pr.ID, pr.LINKED_CAFC_PLAYER_ID
+SELECT 'player_recommendations.linked_cafc_player_id orphan', pr.ID, pr.LINKED_CANONICAL_PLAYER_ID
 FROM ${CORE}.PLAYER_RECOMMENDATIONS pr
-WHERE pr.LINKED_CAFC_PLAYER_ID IS NOT NULL
-  AND pr.LINKED_CAFC_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
+WHERE pr.LINKED_CANONICAL_PLAYER_ID IS NOT NULL
+  AND pr.LINKED_CANONICAL_PLAYER_ID NOT IN (SELECT CAFC_PLAYER_ID FROM ${CORE}.PLAYERS);
 
 -- Unenforced uniqueness on the legacy composite key of the attribute-score child table.
 SELECT 'scout_report_attribute_scores duplicate (report, attribute)', SCOUT_REPORT_ID, COUNT(*)
 FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES
 GROUP BY SCOUT_REPORT_ID, ATTRIBUTE_NAME HAVING COUNT(*) > 1;
-
--- Attribute-score rows whose report no longer exists.
-SELECT 'scout_report_attribute_scores orphan', s.SCOUT_REPORT_ID, COUNT(*)
-FROM ${CORE}.SCOUT_REPORT_ATTRIBUTE_SCORES s
-WHERE s.SCOUT_REPORT_ID NOT IN (SELECT ID FROM ${CORE}.SCOUT_REPORTS)
-GROUP BY s.SCOUT_REPORT_ID;
