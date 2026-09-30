@@ -595,3 +595,41 @@ def test_swap_turns_the_flag_on_last_and_rollback_turns_it_off_first():
     back = statements(runner.MIGRATIONS_DIR / "swap" / "recommendations_rollback.sql")
     assert "NORMALIZED_WRITES = TRUE" in swap[-1] and "'recommendations'" in swap[-1]
     assert "NORMALIZED_WRITES = FALSE" in back[0] and "'recommendations'" in back[0]
+
+
+# ---- cleanup/ (delete-policy scripts) --------------------------------------------------------
+def test_cleanup_file_resolves_and_rejects_unknown_domains():
+    assert runner.cleanup_file("sharing").name == "sharing.sql"
+    with pytest.raises(SystemExit):
+        runner.cleanup_file("nope")
+    with pytest.raises(SystemExit):
+        runner.cleanup_file("../sharing")
+
+
+def test_cleanup_scripts_are_never_picked_up_as_migrations():
+    assert not any("cleanup" in str(p) for p in runner.discover_migrations())
+
+
+def test_cleanup_is_exclusive_with_the_other_modes(capsys):
+    with pytest.raises(SystemExit):
+        runner.main(["--core", "CAFC_DB.CORE_DEV_X", "--cleanup", "sharing", "--contract", "intel"])
+
+
+def test_cleanup_dry_run_prints_and_touches_nothing(capsys):
+    assert runner.main(["--core", "CAFC_DB.CORE_DEV_X", "--cleanup", "sharing"]) == 0
+    out = capsys.readouterr().out
+    assert "CLEANUP cleanup/sharing" in out and "DRY RUN" in out
+
+
+def test_cleanup_on_a_live_schema_is_refused_without_the_override():
+    with pytest.raises(SystemExit):
+        runner.main(["--core", "CAFC_DB.CORE", "--cleanup", "sharing", "--apply"])
+
+
+def test_every_cleanup_script_is_one_transaction_that_archives_before_it_removes_user_rows():
+    for path in (runner.MIGRATIONS_DIR / "cleanup").glob("*.sql"):
+        statements = runner.split_statements(path.read_text())
+        assert "BEGIN" in statements and statements[-1] == "COMMIT", path.name
+        text = path.read_text()
+        for archive in re.findall(r"INSERT INTO \$\{CORE\}\.(ARCHIVED_\w+)", text):
+            assert text.index(f"INSERT INTO ${{CORE}}.{archive}") < text.rindex("DELETE FROM"), (path.name, archive)

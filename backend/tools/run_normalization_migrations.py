@@ -12,6 +12,7 @@ Default is a DRY RUN: it prints the rendered statements and touches nothing.
     python tools/run_normalization_migrations.py --swap recommendations --apply    # legacy name becomes a view
     python tools/run_normalization_migrations.py --swap-rollback recommendations --apply
     python tools/run_normalization_migrations.py --contract recommendations --apply
+    python tools/run_normalization_migrations.py --cleanup sharing --apply         # delete-policy cleanup of orphans
 
 Rehearse in a dev schema first:  --core CAFC_DB.CORE_DEV_<you>
 (the snapshot schema defaults to <core schema>_PRE_NORMALIZATION in the same database).
@@ -21,6 +22,8 @@ Safety rules enforced here:
     `--mark-cutover <domain>` is recorded they are refused (the app owns that data now);
   * contract/ scripts run only with --contract <domain>, only after that domain is marked
     cut over, and only if validation (strict) passes first;
+  * cleanup/ scripts (orphan rows, per the delete policy: dependents of a deleted report are deleted, rows about a
+    deleted user are archived) run only with --cleanup <domain> --apply, and only when the snapshot schema exists;
   * --swap renames the legacy table to <name>_LEGACY and creates a view with the legacy NAME over the
     normalized tables. It runs only if the domain is marked cut over (the app already writes the normalized
     tables) AND parity (parity/*.sql: the view equals the legacy table exactly) is clean;
@@ -222,6 +225,14 @@ def contract_file(domain: str, directory: Path = MIGRATIONS_DIR) -> Path:
     return path
 
 
+def cleanup_file(domain: str, directory: Path = MIGRATIONS_DIR) -> Path:
+    path = directory / "cleanup" / f"{domain}.sql"
+    if not re.match(r"^[a-z_]+$", domain) or not path.exists():
+        available = sorted(p.stem for p in (directory / "cleanup").glob("*.sql"))
+        raise SystemExit(f"unknown cleanup domain {domain!r}; available: {available}")
+    return path
+
+
 # --------------------------------------------------------------------------------------
 # Snowflake-facing code
 # --------------------------------------------------------------------------------------
@@ -373,6 +384,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--strict", action="store_true", help="treat warn_* validation rows as failures")
     parser.add_argument("--mark-cutover", metavar="DOMAIN", help="record that the app now owns DOMAIN's new tables")
     parser.add_argument("--contract", metavar="DOMAIN", help="run contract/<DOMAIN>.sql (destructive)")
+    parser.add_argument("--cleanup", metavar="DOMAIN", help="run cleanup/<DOMAIN>.sql (deletes/archives orphan rows; needs the snapshot)")
     parser.add_argument("--parity", action="store_true", help="read-only: check the compat views equal the legacy tables")
     parser.add_argument("--legacy-suffix", default="", help="suffix of the renamed legacy table for --parity after a swap (e.g. _LEGACY)")
     parser.add_argument("--swap", metavar="DOMAIN", help="rename the legacy table to *_LEGACY and put the compat view under the legacy name")
@@ -414,10 +426,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     except ValueError as exc:
         parser.error(str(exc))
 
-    exclusive = [bool(args.mark_cutover), bool(args.contract), args.validate, args.parity,
+    exclusive = [bool(args.mark_cutover), bool(args.contract), bool(args.cleanup), args.validate, args.parity,
                  bool(args.swap), bool(args.swap_rollback)]
     if sum(exclusive) > 1:
-        parser.error("--mark-cutover, --contract, --validate, --parity, --swap and --swap-rollback are mutually exclusive")
+        parser.error("--mark-cutover, --contract, --cleanup, --validate, --parity, --swap and --swap-rollback "
+                     "are mutually exclusive")
 
     # ---- swap / swap-rollback: rendered up front so a dry run shows exactly what would run ----
     swap_domain = args.swap or args.swap_rollback
@@ -484,6 +497,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         path = contract_file(args.contract)
         raw = path.read_text()
         plan.append((f"contract/{args.contract}", "CONTRACT", render(raw, tokens), None))
+    elif args.cleanup:
+        raw = cleanup_file(args.cleanup).read_text()
+        plan.append((f"cleanup/{args.cleanup}", "CLEANUP", render(raw, tokens), None))
     elif not args.validate and not args.mark_cutover:
         for path in discover_migrations():
             if args.only and not path.name.startswith(args.only):
@@ -529,6 +545,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print("running strict validation before destructive contract step ...")
                 if run_validations(cur, tokens, strict=True):
                     raise SystemExit("refusing contract step: validation (strict) failed")
+            if kind == "CLEANUP":
+                snap_db, snap_schema = snapshot.split(".")[0], snapshot.split(".")[-1].upper()
+                cur.execute(f"SELECT COUNT(*) FROM {snap_db}.INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = %s", (snap_schema,))
+                if cur.fetchone()[0] == 0:
+                    raise SystemExit(f"refusing cleanup/{args.cleanup}: snapshot schema {snapshot} does not exist "
+                                     f"(a --apply of 000_snapshot.sql creates it)")
             if domain and is_cut_over(cur, core, domain):
                 print(f"SKIP {version}: domain {domain!r} is cut over (the app owns that data)")
                 continue
