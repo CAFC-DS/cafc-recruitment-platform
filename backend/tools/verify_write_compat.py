@@ -39,7 +39,7 @@ def scrub(value, id_map=None):
         for key, item in value.items():
             if TIME_KEYS.search(str(key)) and item is not None:
                 out[key] = "<ts>"
-            elif str(key).lower() in ("id", "recommendation_id", "report_id", "list_item_id", "item_id") and item is not None:
+            elif str(key).lower() in ("id", "recommendation_id", "report_id", "list_item_id", "item_id", "intel_id") and item is not None:
                 out[key] = id_map.setdefault(item, f"<id{len(id_map) + 1}>")
             else:
                 out[key] = scrub(item, id_map)

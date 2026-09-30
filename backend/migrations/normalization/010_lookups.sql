@@ -183,7 +183,9 @@ WHEN NOT MATCHED THEN INSERT (CODE, SORT_ORDER, IS_ACTIVE, ORIGIN) VALUES (s.COD
 -- ---- DEAL_TYPES / RELATIONSHIP_TYPES (multi-valued today: comma-joined) ------
 -- Intel stores deal types as lowercase codes (permanent, free, loan, loan_with_option, na);
 -- recommendations store the display labels. One vocabulary: the labels. 'na' means "not
--- applicable" and produces no row. Unknown values pass through trimmed (-> ORIGIN='DATA', inactive).
+-- applicable" and is kept as the label 'Not Applicable' so nothing the user saved is lost.
+-- Unknown values pass through trimmed (-> ORIGIN='DATA', inactive). INTEL_DEAL_TYPE_CODE is the inverse, used
+-- by the intel compat view to hand the app back the exact legacy code string.
 CREATE OR REPLACE FUNCTION ${CORE}.CANONICAL_DEAL_TYPE(v VARCHAR)
 RETURNS VARCHAR
 AS $$
@@ -192,9 +194,22 @@ AS $$
         WHEN 'free'             THEN 'Free'
         WHEN 'loan'             THEN 'Loan'
         WHEN 'loan_with_option' THEN 'Loan with Option'
-        WHEN 'na'               THEN NULL
+        WHEN 'na'               THEN 'Not Applicable'
         WHEN ''                 THEN NULL
         ELSE TRIM(v)
+    END
+$$;
+
+CREATE OR REPLACE FUNCTION ${CORE}.INTEL_DEAL_TYPE_CODE(v VARCHAR)
+RETURNS VARCHAR
+AS $$
+    CASE v
+        WHEN 'Permanent Transfer' THEN 'permanent'
+        WHEN 'Free'               THEN 'free'
+        WHEN 'Loan'               THEN 'loan'
+        WHEN 'Loan with Option'   THEN 'loan_with_option'
+        WHEN 'Not Applicable'     THEN 'na'
+        ELSE v
     END
 $$;
 
@@ -206,7 +221,7 @@ MERGE INTO ${CORE}.DEAL_TYPES t
 USING (
     SELECT CODE, MIN(SORT_ORDER) AS SORT_ORDER, MIN(ORIGIN) AS ORIGIN FROM (
         SELECT column1 AS CODE, column2 AS SORT_ORDER, 'CODE' AS ORIGIN FROM VALUES
-            ('Free', 1), ('Permanent Transfer', 2), ('Loan', 3), ('Loan with Option', 4)
+            ('Free', 1), ('Permanent Transfer', 2), ('Loan', 3), ('Loan with Option', 4), ('Not Applicable', 5)
         UNION ALL
         SELECT DISTINCT ${CORE}.CANONICAL_DEAL_TYPE(s.VALUE), 99, 'DATA'
         FROM ${CORE}.PLAYER_RECOMMENDATIONS r, LATERAL SPLIT_TO_TABLE(r.POTENTIAL_DEAL_TYPE, ',') s

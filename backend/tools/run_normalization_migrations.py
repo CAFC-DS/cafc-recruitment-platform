@@ -295,11 +295,22 @@ def is_swapped(cur, core: str, domain: str) -> bool:
     return _latest_kind(cur, core, domain, ("SWAP", "SWAPBACK")) == "SWAP"
 
 
-def run_parity(cur, tokens: Dict[str, str]) -> int:
-    """Run parity/*.sql; every statement must return zero rows. Returns the number of failing statements."""
+def run_parity(cur, tokens: Dict[str, str], core: Optional[str] = None) -> int:
+    """Run parity/*.sql; every statement must return zero rows. Returns the number of failing statements.
+
+    Domains swap one at a time, so each parity file (named for its domain) compares against the legacy table under
+    that domain's own name: '_LEGACY' once the ledger says the domain is swapped, the plain name before. An explicit
+    --legacy-suffix (tokens already non-empty) applies to every domain and skips the ledger lookup."""
     failures = 0
     for path in sorted((MIGRATIONS_DIR / "parity").glob("*.sql")):
-        for stmt in split_statements(render(path.read_text(), tokens)):
+        file_tokens = tokens
+        if core and not tokens.get("LEGACY_SUFFIX"):
+            try:
+                swapped = is_swapped(cur, core, path.stem)
+            except Exception:  # noqa: BLE001 - no ledger yet means nothing has been swapped
+                swapped = False
+            file_tokens = {**tokens, "LEGACY_SUFFIX": "_LEGACY" if swapped else ""}
+        for stmt in split_statements(render(path.read_text(), file_tokens)):
             cur.execute(stmt)
             rows = cur.fetchall()
             if rows:
@@ -432,7 +443,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     raise SystemExit(f"refusing swap: {swap_domain!r} is not marked cut over "
                                      f"(the app must already write the normalized tables; use --mark-cutover)")
                 print("checking parity before the swap ...")
-                if run_parity(cur, tokens):
+                if run_parity(cur, tokens, core):
                     raise SystemExit("refusing swap: the compat view does not equal the legacy table (see above)")
             statements = split_statements(swap_sql)
             print(f"applying {'rollback' if rollback else 'swap'} {swap_domain} ({len(statements)} statements) ...")
@@ -460,7 +471,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         conn = connect()  # pragma: no cover
         cur = conn.cursor()
         try:
-            failures = run_parity(cur, tokens)
+            failures = run_parity(cur, tokens, core)
             print("parity:", "PASS (compat views equal the legacy tables)" if failures == 0 else f"{failures} failing statement(s)")
             return 0 if failures == 0 else 1
         finally:

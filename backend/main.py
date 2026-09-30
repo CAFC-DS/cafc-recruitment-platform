@@ -635,6 +635,7 @@ def normalized_writes(domain: str) -> bool:
     return WRITE_FLAGS.enabled(domain)
 
 
+from normalized import intel as normalized_intel  # noqa: E402
 from normalized import recommendations as normalized_recommendations  # noqa: E402
 
 
@@ -5934,7 +5935,14 @@ async def merge_players(
             # actually has, mirroring the keep_list_id/remove_list_id pattern
             # used for player_list_items below.
             reassign_table = write_table(table_name)
-            if not has_column(table_name, "CAFC_PLAYER_ID"):
+            if table_name == "player_information" and normalized_writes("intel"):
+                # player_information is a view once intel is cut over: write the base table, keep the canonical key current
+                keep_overloaded_id = keep_cafc_id if keep_source == "internal" else keep_player_id
+                remove_overloaded_id = remove_cafc_id if remove_source == "internal" else remove_player_id
+                normalized_intel.reassign_player(
+                    cursor, core_table, keep_overloaded_id, remove_overloaded_id, keep_source
+                )
+            elif not has_column(table_name, "CAFC_PLAYER_ID"):
                 keep_overloaded_id = keep_cafc_id if keep_source == "internal" else keep_player_id
                 remove_overloaded_id = remove_cafc_id if remove_source == "internal" else remove_player_id
                 cursor.execute(
@@ -12582,6 +12590,21 @@ async def create_intel_report(
                 detail="Expected wages range support requires EXPECTED_WAGES_MIN and EXPECTED_WAGES_MAX columns",
             )
 
+        if normalized_writes("intel"):
+            # Normalized path: one transaction, id from a sequence. See normalized/intel.py.
+            intel_id = normalized_intel.create(
+                cursor,
+                core_table,
+                normalized_intel.build_payload(
+                    normalized_report, current_wages_min, current_wages_max, expected_wages_min, expected_wages_max
+                ),
+                current_user.id,
+                actual_player_id,
+                player_data_source if report.player_id else None,
+                datetime.utcnow(),
+            )
+            return {"message": "Intel report submitted successfully", "intel_id": intel_id}
+
         # Prepare dynamic SQL
         sql_columns = ["CREATED_AT"]
         sql_values = ["%s"]
@@ -12825,6 +12848,20 @@ async def update_intel_report(
                 detail="Expected wages range support requires EXPECTED_WAGES_MIN and EXPECTED_WAGES_MAX columns",
             )
 
+        if normalized_writes("intel"):
+            normalized_intel.update(
+                cursor,
+                core_table,
+                report_id,
+                normalized_intel.build_payload(
+                    normalized_report, current_wages_min, current_wages_max, expected_wages_min, expected_wages_max
+                ),
+                actual_player_id,
+                player_data_source if report.player_id else None,
+                bool(report.player_id),
+            )
+            return {"message": "Intel report updated successfully"}
+
         # Prepare dynamic SQL for UPDATE
         update_fields = []
         params = []
@@ -12959,8 +12996,12 @@ async def delete_intel_report(
         if not existing_report:
             raise HTTPException(status_code=404, detail="Intel report not found")
 
-        # Delete the intel report
-        cursor.execute(f"DELETE FROM {core_table('player_information')} WHERE ID = %s", (report_id,))
+        # Delete the intel report (normalized path: with its contact link, terms, deal types, relationships and
+        # reference details, in one transaction)
+        if normalized_writes("intel"):
+            normalized_intel.delete(cursor, core_table, report_id)
+        else:
+            cursor.execute(f"DELETE FROM {core_table('player_information')} WHERE ID = %s", (report_id,))
 
         conn.commit()
         return {"message": "Intel report deleted successfully"}
