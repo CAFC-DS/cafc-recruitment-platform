@@ -6279,108 +6279,131 @@ async def detect_data_clashes(
                             "clash_type": "player",
                         })
 
-        # Now check for similar names (70-99% matches) if we haven't hit limit
-        total_comparisons = 0
-        max_comparisons = 50000  # Safety limit
+        # Now check for similar names (70-99% matches) if we haven't hit limit.
+        #
+        # A naive all-pairs scan is O(n^2) and, with ~120k players sorted by
+        # name, a global comparison cap meant only the first few names were
+        # ever compared -- near-duplicates like "Daniel Urpen" /
+        # "Daniels Urpens" were never surfaced. Instead, block candidates by
+        # the first 4 characters of each normalised name token: any pair that
+        # could be a typo-level match shares at least one such prefix
+        # ("daniel"/"daniels" -> "dani"; "urpen"/"urpens" -> "urpe").
+        from itertools import combinations
 
-        for i, p1 in enumerate(all_players):
+        blocks = defaultdict(list)
+        for idx, p in enumerate(all_players):
+            tokens = (p["name"] or "").lower().split()
+            for prefix in {t[:4] for t in tokens if t}:
+                blocks[prefix].append(idx)
+
+        seen_pairs = set()
+        candidate_pairs = []
+        for members in blocks.values():
+            if len(members) < 2 or len(members) > 500:
+                # Skip degenerate blocks (e.g. "de l", "van ") that would
+                # reintroduce the quadratic blow-up.
+                continue
+            for a, b in combinations(members, 2):
+                if (a, b) in seen_pairs:
+                    continue
+                len_a = len(all_players[a]["name"] or "")
+                len_b = len(all_players[b]["name"] or "")
+                if abs(len_a - len_b) > 0.3 * max(len_a, len_b, 1):
+                    continue
+                seen_pairs.add((a, b))
+                candidate_pairs.append((a, b))
+        candidate_pairs.sort()
+
+        for a, b in candidate_pairs:
             if len(player_clashes) >= max_results:
                 break
+            p1, p2 = all_players[a], all_players[b]
+            # Skip if comparing same player
+            if (p1["cafc_player_id"] == p2["cafc_player_id"] and
+                p1["cafc_player_id"] is not None):
+                continue
 
-            for p2 in all_players[i + 1:]:
-                total_comparisons += 1
-                if total_comparisons > max_comparisons:
-                    break
+            if (p1["player_id"] == p2["player_id"] and
+                p1["player_id"] is not None):
+                continue
 
-                # Skip if comparing same player
-                if (p1["cafc_player_id"] == p2["cafc_player_id"] and
-                    p1["cafc_player_id"] is not None):
-                    continue
+            if p1["data_source"] != p2["data_source"]:
+                continue
 
-                if (p1["player_id"] == p2["player_id"] and
-                    p1["player_id"] is not None):
-                    continue
+            # Calculate Levenshtein distance
+            name1 = (p1["name"] or "").lower().strip()
+            name2 = (p2["name"] or "").lower().strip()
 
-                if p1["data_source"] != p2["data_source"]:
-                    continue
+            if not name1 or not name2:
+                continue
 
-                # Calculate Levenshtein distance
-                name1 = (p1["name"] or "").lower().strip()
-                name2 = (p2["name"] or "").lower().strip()
+            # Skip exact matches (already handled above)
+            if name1 == name2:
+                continue
 
-                if not name1 or not name2:
-                    continue
+            # Quick length check for early exit
+            len_diff = abs(len(name1) - len(name2))
+            max_len = max(len(name1), len(name2))
+            if len_diff / max_len > 0.3:  # If length difference > 30%, skip
+                continue
 
-                # Skip exact matches (already handled above)
-                if name1 == name2:
-                    continue
+            dist = levenshtein_module.distance(name1, name2)
+            similarity = (1 - (dist / max_len)) * 100 if max_len > 0 else 0
 
-                # Quick length check for early exit
-                len_diff = abs(len(name1) - len(name2))
-                max_len = max(len(name1), len(name2))
-                if len_diff / max_len > 0.3:  # If length difference > 30%, skip
-                    continue
+            # Flag if similarity > 70% AND < 100% (70-99% similar, not exact)
+            if similarity > 70 and similarity < 100:
+                scored = score_player_match(
+                    name_a=p1["name"], name_b=p2["name"],
+                    dob_a=p1["birthdate"], dob_b=p2["birthdate"],
+                    squad_a=p1["squad"], squad_b=p2["squad"],
+                    transfermarkt_a=p1["transfermarkt_link"],
+                    transfermarkt_b=p2["transfermarkt_link"],
+                )
+                if scored is None:
+                    # Below every confidence threshold (e.g. fuzzy name
+                    # 71-87% with no squad corroboration) — still surface
+                    # it as low, matching this endpoint's existing
+                    # behavior of showing all 70%+ matches.
+                    confidence = "low"
+                    evidence = [f"Fuzzy {round(similarity, 1)}%"]
+                else:
+                    confidence = scored["confidence"]
+                    evidence = scored["evidence"]
 
-                dist = levenshtein_module.distance(name1, name2)
-                similarity = (1 - (dist / max_len)) * 100 if max_len > 0 else 0
-
-                # Flag if similarity > 70% AND < 100% (70-99% similar, not exact)
-                if similarity > 70 and similarity < 100:
-                    scored = score_player_match(
-                        name_a=p1["name"], name_b=p2["name"],
-                        dob_a=p1["birthdate"], dob_b=p2["birthdate"],
-                        squad_a=p1["squad"], squad_b=p2["squad"],
-                        transfermarkt_a=p1["transfermarkt_link"],
-                        transfermarkt_b=p2["transfermarkt_link"],
-                    )
-                    if scored is None:
-                        # Below every confidence threshold (e.g. fuzzy name
-                        # 71-87% with no squad corroboration) — still surface
-                        # it as low, matching this endpoint's existing
-                        # behavior of showing all 70%+ matches.
-                        confidence = "low"
-                        evidence = [f"Fuzzy {round(similarity, 1)}%"]
-                    else:
-                        confidence = scored["confidence"]
-                        evidence = scored["evidence"]
-
-                    player_clashes.append({
-                        "player1": {
-                            "universal_id": get_player_universal_id({
-                                "CAFC_PLAYER_ID": p1["cafc_player_id"],
-                                "PLAYERID": p1["player_id"],
-                                "DATA_SOURCE": p1["data_source"],
-                            }),
-                            "cafc_player_id": p1["cafc_player_id"],
-                            "player_id": p1["player_id"],
-                            "name": p1["name"],
-                            "firstname": p1["firstname"],
-                            "lastname": p1["lastname"],
-                            "data_source": p1["data_source"],
-                        },
-                        "player2": {
-                            "universal_id": get_player_universal_id({
-                                "CAFC_PLAYER_ID": p2["cafc_player_id"],
-                                "PLAYERID": p2["player_id"],
-                                "DATA_SOURCE": p2["data_source"],
-                            }),
-                            "cafc_player_id": p2["cafc_player_id"],
-                            "player_id": p2["player_id"],
-                            "name": p2["name"],
-                            "firstname": p2["firstname"],
-                            "lastname": p2["lastname"],
-                            "data_source": p2["data_source"],
-                        },
-                        "squad1": p1["squad"],
-                        "squad2": p2["squad"],
-                        "similarity": round(similarity, 1),
-                        "confidence": confidence,
-                        "evidence": evidence,
-                        "clash_type": "player",
-                    })
-
-            if total_comparisons > max_comparisons:
-                break
+                player_clashes.append({
+                    "player1": {
+                        "universal_id": get_player_universal_id({
+                            "CAFC_PLAYER_ID": p1["cafc_player_id"],
+                            "PLAYERID": p1["player_id"],
+                            "DATA_SOURCE": p1["data_source"],
+                        }),
+                        "cafc_player_id": p1["cafc_player_id"],
+                        "player_id": p1["player_id"],
+                        "name": p1["name"],
+                        "firstname": p1["firstname"],
+                        "lastname": p1["lastname"],
+                        "data_source": p1["data_source"],
+                    },
+                    "player2": {
+                        "universal_id": get_player_universal_id({
+                            "CAFC_PLAYER_ID": p2["cafc_player_id"],
+                            "PLAYERID": p2["player_id"],
+                            "DATA_SOURCE": p2["data_source"],
+                        }),
+                        "cafc_player_id": p2["cafc_player_id"],
+                        "player_id": p2["player_id"],
+                        "name": p2["name"],
+                        "firstname": p2["firstname"],
+                        "lastname": p2["lastname"],
+                        "data_source": p2["data_source"],
+                    },
+                    "squad1": p1["squad"],
+                    "squad2": p2["squad"],
+                    "similarity": round(similarity, 1),
+                    "confidence": confidence,
+                    "evidence": evidence,
+                    "clash_type": "player",
+                })
 
         # Annotate each player clash with whether both sides already have
         # their own scout reports — a caution signal (not a confidence
@@ -6508,8 +6531,8 @@ async def detect_data_clashes(
             "total_clashes": len(player_clashes) + len(fixture_clashes),
             "debug_info": {
                 "total_players_checked": len(all_players),
-                "total_comparisons_made": total_comparisons,
-                "hit_comparison_limit": total_comparisons >= max_comparisons,
+                "total_comparisons_made": len(candidate_pairs),
+                "hit_comparison_limit": False,
                 "hit_result_limit": len(player_clashes) >= max_results,
             }
         }
