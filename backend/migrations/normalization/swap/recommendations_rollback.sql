@@ -5,6 +5,17 @@
 --
 -- After this, the app must be pointed back at the legacy write path (config flag / previous release).
 
+-- First stop the app writing the normalized tables (the flag is cached for a few seconds; the night freeze covers it).
+UPDATE ${CORE}.APP_WRITE_FLAGS
+SET NORMALIZED_WRITES = FALSE, UPDATED_AT = CURRENT_TIMESTAMP(), UPDATED_BY = CURRENT_USER()
+WHERE DOMAIN = 'recommendations';
+
+-- How many ids the normalized tables issued beyond the legacy table's highest id. Captured BEFORE the copy-back
+-- overwrites the legacy rows, and used afterwards to advance the legacy identity counter (see the pad step below).
+CREATE OR REPLACE TEMPORARY TABLE ${CORE}.ROLLBACK_PAD AS
+SELECT GREATEST(0, (SELECT COALESCE(MAX(ID), 0) FROM ${CORE}.RECOMMENDATIONS)
+                 - (SELECT COALESCE(MAX(ID), 0) FROM ${CORE}.PLAYER_RECOMMENDATIONS_LEGACY)) AS N;
+
 -- Explicit columns: the legacy table also carries LINKED_CANONICAL_PLAYER_ID (added by 021), which the view
 -- does not expose, so it is restored from the normalized table.
 INSERT OVERWRITE INTO ${CORE}.PLAYER_RECOMMENDATIONS_LEGACY (
@@ -31,6 +42,19 @@ SELECT
     r.LINKED_CANONICAL_PLAYER_ID
 FROM ${CORE}.V_COMPAT_PLAYER_RECOMMENDATIONS v
 JOIN ${CORE}.RECOMMENDATIONS r ON r.ID = v.ID;
+
+-- The legacy table keeps its own identity counter, which did not advance while the normalized tables were live. Ids
+-- issued there are now in the restored rows, so without this the legacy table could hand out an id that already
+-- exists (the primary key is not enforced, so it would silently duplicate). Inserting N placeholder rows moves the
+-- counter past every id in use (each insert advances it by at least one), then the placeholders are removed.
+INSERT INTO ${CORE}.PLAYER_RECOMMENDATIONS_LEGACY (SUBMITTED_BY_USER_ID, PLAYER_NAME)
+SELECT 0, '__ROLLBACK_PAD__'
+FROM TABLE(GENERATOR(ROWCOUNT => 1000000))
+QUALIFY ROW_NUMBER() OVER (ORDER BY SEQ4()) <= (SELECT N FROM ${CORE}.ROLLBACK_PAD);
+
+DELETE FROM ${CORE}.PLAYER_RECOMMENDATIONS_LEGACY WHERE PLAYER_NAME = '__ROLLBACK_PAD__';
+
+DROP TABLE IF EXISTS ${CORE}.ROLLBACK_PAD;
 
 ALTER TABLE ${CORE}.RECOMMENDATION_NOTES_HISTORY
     DROP FOREIGN KEY (RECOMMENDATION_ID);

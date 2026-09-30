@@ -618,6 +618,33 @@ def core_table(table_name: str) -> str:
     return f"{CANONICAL_DB}.{CORE_DB_SCHEMA}.{table_name}"
 
 
+# --- Normalized write paths (docs/MIGRATION_PLAN.md) --------------------------------------------
+# One flag per domain decides whether a write goes to the NORMALIZED tables or to the LEGACY table. Default is
+# legacy; a missing flag table, missing row or any error also means legacy, so this changes nothing until the
+# cutover tooling (`run_normalization_migrations.py --swap <domain>`) flips a flag in the same run that swaps the
+# legacy table for a view. `get_snowflake_connection` is defined further down; the lambda resolves it lazily.
+import write_path  # noqa: E402  (kept next to the helpers it complements)
+
+WRITE_FLAGS = write_path.WriteFlags(
+    table=core_table("app_write_flags"), connect=lambda: get_snowflake_connection()
+)
+
+
+def normalized_writes(domain: str) -> bool:
+    """True when `domain` (recommendations, intel, sharing, lists, reports, users) must write the normalized tables."""
+    return WRITE_FLAGS.enabled(domain)
+
+
+from normalized import recommendations as normalized_recommendations  # noqa: E402
+
+
+def recommendations_write_table() -> str:
+    """The table simple recommendation UPDATEs target: the normalized base table once the domain is cut over.
+
+    STATUS, STATUS_UPDATED_*, INTERNAL_NOTES, AGENT_STATUS* and UPDATED_AT exist with the same names on both."""
+    return core_table("recommendations" if normalized_writes("recommendations") else "player_recommendations")
+
+
 def squad_current_competition_sql() -> str:
     """Derived table of (SQUAD_NAME, COMPETITION_NAME): each squad's current competition.
 
@@ -4015,28 +4042,34 @@ async def create_agent_recommendation(
             insert_columns.append("LINKED_UNIVERSAL_ID")
             insert_values.append(resolved_universal_id)
 
-        placeholders = ", ".join(["%s"] * len(insert_columns))
-        cursor.execute(
-            f"""
-            INSERT INTO {core_table('player_recommendations')} (
-                {", ".join(insert_columns)}
-            ) VALUES ({placeholders})
-        """,
-            tuple(insert_values),
-        )
+        if normalized_writes("recommendations"):
+            # Normalized path: one transaction, id from a sequence (no read-back race). See normalized/recommendations.py.
+            recommendation_id = normalized_recommendations.create(
+                cursor, core_table, recommendation_payload, current_user.id, resolved_universal_id, datetime.utcnow()
+            )
+        else:
+            placeholders = ", ".join(["%s"] * len(insert_columns))
+            cursor.execute(
+                f"""
+                INSERT INTO {core_table('player_recommendations')} (
+                    {", ".join(insert_columns)}
+                ) VALUES ({placeholders})
+            """,
+                tuple(insert_values),
+            )
 
-        cursor.execute(
-            f"""
-            SELECT ID
-            FROM {core_table('player_recommendations')}
-            WHERE SUBMITTED_BY_USER_ID = %s
-            ORDER BY CREATED_AT DESC, ID DESC
-            LIMIT 1
-        """,
-            (current_user.id,),
-        )
-        recommendation_id = cursor.fetchone()[0]
-        conn.commit()
+            cursor.execute(
+                f"""
+                SELECT ID
+                FROM {core_table('player_recommendations')}
+                WHERE SUBMITTED_BY_USER_ID = %s
+                ORDER BY CREATED_AT DESC, ID DESC
+                LIMIT 1
+            """,
+                (current_user.id,),
+            )
+            recommendation_id = cursor.fetchone()[0]
+            conn.commit()
 
         detail_row = fetch_recommendation_detail(cursor, recommendation_id)
         return serialize_recommendation_row(detail_row)
@@ -4211,17 +4244,23 @@ async def update_agent_recommendation(
         if "LINKED_UNIVERSAL_ID" in recommendation_columns:
             update_values["LINKED_UNIVERSAL_ID"] = resolved_universal_id
 
-        assignments = ", ".join(f"{column_name} = %s" for column_name in update_values.keys())
-        params = list(update_values.values()) + [recommendation_id]
-        cursor.execute(
-            f"""
-            UPDATE {core_table('player_recommendations')}
-            SET {assignments}
-            WHERE ID = %s
-        """,
-            tuple(params),
-        )
-        conn.commit()
+        if normalized_writes("recommendations"):
+            normalized_recommendations.update(
+                cursor, core_table, recommendation_id, recommendation_payload, resolved_universal_id,
+                current_user.id, datetime.utcnow(),
+            )
+        else:
+            assignments = ", ".join(f"{column_name} = %s" for column_name in update_values.keys())
+            params = list(update_values.values()) + [recommendation_id]
+            cursor.execute(
+                f"""
+                UPDATE {core_table('player_recommendations')}
+                SET {assignments}
+                WHERE ID = %s
+            """,
+                tuple(params),
+            )
+            conn.commit()
 
         detail_row = fetch_recommendation_detail(cursor, recommendation_id)
         return serialize_recommendation_row(detail_row)
@@ -4320,7 +4359,7 @@ async def update_agent_recommendation_status(
         changed_at = datetime.utcnow()
         cursor.execute(
             f"""
-            UPDATE {core_table('player_recommendations')}
+            UPDATE {recommendations_write_table()}
             SET AGENT_STATUS = %s, AGENT_STATUS_UPDATED_AT = %s, UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -4598,7 +4637,7 @@ async def update_internal_recommendation_status(
 
             cursor.execute(
                 f"""
-                UPDATE {core_table('player_recommendations')}
+                UPDATE {recommendations_write_table()}
                 SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s,
                     INTERNAL_NOTES = COALESCE(%s, INTERNAL_NOTES), UPDATED_AT = %s
                 WHERE ID = %s
@@ -4611,7 +4650,7 @@ async def update_internal_recommendation_status(
             )
             cursor.execute(
                 f"""
-                UPDATE {core_table('player_recommendations')}
+                UPDATE {recommendations_write_table()}
                 SET INTERNAL_NOTES = %s, UPDATED_AT = %s
                 WHERE ID = %s
             """,
@@ -4684,7 +4723,7 @@ async def bulk_update_internal_recommendation_status(
 
                 cursor.execute(
                     f"""
-                    UPDATE {core_table('player_recommendations')}
+                    UPDATE {recommendations_write_table()}
                     SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, UPDATED_AT = %s
                     WHERE ID = %s
                 """,
@@ -4732,7 +4771,7 @@ async def update_internal_recommendation_notes(
         )
         cursor.execute(
             f"""
-            UPDATE {core_table('player_recommendations')}
+            UPDATE {recommendations_write_table()}
             SET INTERNAL_NOTES = %s, UPDATED_AT = %s
             WHERE ID = %s
         """,
@@ -6034,11 +6073,17 @@ async def merge_players(
         # when building the player_recommendations SELECT elsewhere in this
         # file.
         if recommendation_column_exists("player_recommendations", "LINKED_UNIVERSAL_ID"):
-            cursor.execute(
-                f"UPDATE {core_table('player_recommendations')} SET LINKED_UNIVERSAL_ID = %s WHERE LINKED_UNIVERSAL_ID = %s",
-                (keep_universal_id, remove_universal_id),
-            )
-            results.append(f"Updated {cursor.rowcount} rows in player_recommendations")
+            if normalized_writes("recommendations"):
+                relinked = normalized_recommendations.relink_player(
+                    cursor, core_table, remove_universal_id, keep_universal_id
+                )
+                results.append(f"Updated {relinked} rows in player_recommendations")
+            else:
+                cursor.execute(
+                    f"UPDATE {core_table('player_recommendations')} SET LINKED_UNIVERSAL_ID = %s WHERE LINKED_UNIVERSAL_ID = %s",
+                    (keep_universal_id, remove_universal_id),
+                )
+                results.append(f"Updated {cursor.rowcount} rows in player_recommendations")
 
         # Delete the losing player's row now that everything referencing it
         # has been reassigned.

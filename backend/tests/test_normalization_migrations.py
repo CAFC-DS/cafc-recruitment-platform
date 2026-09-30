@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import run_normalization_migrations as runner  # noqa: E402
 
 TOKENS = {"CORE": "CAFC_DB.CORE", "SNAPSHOT": "CAFC_DB.CORE_PRE_NORMALIZATION"}
@@ -137,11 +138,14 @@ def test_every_table_dropped_from_contract_is_snapshotted_first():
 
 def test_every_new_table_is_granted():
     created = set()
+    grants = []
     for path in MIGRATIONS:
-        created |= set(re.findall(r"(?i)CREATE TABLE IF NOT EXISTS \$\{CORE\}\.(\w+)", path.read_text()))
-    grants = (runner.MIGRATIONS_DIR / "090_grants.sql").read_text()
-    missing = [t for t in created if f"${{CORE}}.{t} " not in grants and f"${{CORE}}.{t}\n" not in grants]
-    assert not missing, f"no grant for {missing}"
+        text = path.read_text()
+        created |= set(re.findall(r"(?i)CREATE TABLE IF NOT EXISTS \$\{CORE\}\.(\w+)", text))
+        grants += [l for l in text.splitlines() if l.strip().upper().startswith("GRANT")]
+    granted = "\n".join(grants)
+    missing = [t for t in created if not re.search(rf"\$\{{CORE\}}\.{t}\s+TO ROLE APP_ROLE", granted)]
+    assert not missing, f"no APP_ROLE grant for {missing}"
     assert len(created) >= 20
 
 
@@ -469,7 +473,17 @@ def test_rollback_copies_data_back_before_restoring_the_name():
     sql = "\n".join(statements(runner.MIGRATIONS_DIR / "swap" / "recommendations_rollback.sql"))
     restore = re.search(r"RENAME TO CAFC_DB\.CORE\.PLAYER_RECOMMENDATIONS\s*$", sql, re.M)
     assert restore and sql.index("INSERT OVERWRITE") < sql.index("DROP VIEW") < restore.start()
-    assert "DROP TABLE" not in sql.upper()
+    assert not re.search(r"(?i)DROP TABLE\s+(IF EXISTS\s+)?\S*PLAYER_RECOMMENDATIONS", sql)  # legacy data is never dropped
+    # the legacy identity counter is advanced past every id issued while the normalized tables were live
+    assert sql.index("CREATE OR REPLACE TEMPORARY TABLE CAFC_DB.CORE.ROLLBACK_PAD") < sql.index("INSERT OVERWRITE")
+    assert sql.index("__ROLLBACK_PAD__") > sql.index("INSERT OVERWRITE")
+
+
+def test_swap_creates_the_id_sequence_above_every_existing_id():
+    sql = "\n".join(statements(runner.MIGRATIONS_DIR / "swap" / "recommendations.sql"))
+    assert "CREATE OR REPLACE SEQUENCE CAFC_DB.CORE.RECOMMENDATIONS_ID_SEQ START = " in sql
+    assert "MAX(ID)" in sql and "GREATEST" in sql
+    assert sql.index("RECOMMENDATIONS_ID_SEQ") < sql.index("RENAME TO")   # ready before anything is renamed
 
 
 def test_compat_view_has_all_legacy_columns_in_legacy_order():
@@ -564,3 +578,20 @@ def test_modes_are_mutually_exclusive():
                  ["--parity", "--validate"]):
         with pytest.raises(SystemExit):
             runner.main(argv + ["--core", SANDBOX])
+
+
+# ---- write flags wired into the swap scripts --------------------------------------------------
+def test_flag_table_is_insert_only_and_defaults_every_domain_off():
+    sql = "\n".join(statements(runner.MIGRATIONS_DIR / "070_write_flags.sql"))
+    assert "WHEN NOT MATCHED THEN INSERT" in sql and "WHEN MATCHED" not in sql   # a re-run can never flip a flag
+    assert "VALUES (s.DOMAIN, FALSE)" in sql
+    import write_path
+    for domain in write_path.DOMAINS:
+        assert f"('{domain}')" in sql
+
+
+def test_swap_turns_the_flag_on_last_and_rollback_turns_it_off_first():
+    swap = statements(runner.MIGRATIONS_DIR / "swap" / "recommendations.sql")
+    back = statements(runner.MIGRATIONS_DIR / "swap" / "recommendations_rollback.sql")
+    assert "NORMALIZED_WRITES = TRUE" in swap[-1] and "'recommendations'" in swap[-1]
+    assert "NORMALIZED_WRITES = FALSE" in back[0] and "'recommendations'" in back[0]
