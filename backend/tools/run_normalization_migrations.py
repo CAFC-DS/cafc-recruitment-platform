@@ -35,6 +35,14 @@ QUALIFIED_NAME = re.compile(r"^[A-Za-z0-9_$]+(\.[A-Za-z0-9_$]+){1,2}$")
 TOKEN = re.compile(r"\$\{([A-Z_]+)\}")
 SYNC_TAG = re.compile(r"^--\s*@sync-until-cutover:\s*([a-z_]+)\s*$", re.MULTILINE)
 LEDGER = "SCHEMA_MIGRATIONS"
+# Databases the runner will never write to without --allow-production. Override with
+# NORMALIZATION_PROTECTED_DATABASES="A,B".
+PROTECTED_DATABASES = {
+    d.strip().upper()
+    for d in os.getenv("NORMALIZATION_PROTECTED_DATABASES", "CAFC_DB,RECRUITMENT_TEST").split(",")
+    if d.strip()
+}
+DEFAULT_SANDBOX_DB = "CAFC_DB_NORMALIZATION"
 
 
 # --------------------------------------------------------------------------------------
@@ -44,6 +52,22 @@ def validate_qualified_name(value: str, what: str) -> str:
     if not QUALIFIED_NAME.match(value):
         raise ValueError(f"{what} must look like DATABASE.SCHEMA, got {value!r}")
     return value
+
+
+def database_of(core: str) -> str:
+    return validate_qualified_name(core, "--core").split(".")[0].upper()
+
+
+def assert_writable(core: str, allow_production: bool) -> None:
+    """Refuse writes to a protected (production) database unless explicitly overridden."""
+    db = database_of(core)
+    if db in PROTECTED_DATABASES and not allow_production:
+        raise SystemExit(
+            f"refusing to write to protected database {db}. Create a duplicate and target it:\n"
+            f"  python tools/run_normalization_migrations.py --create-sandbox\n"
+            f"  python tools/run_normalization_migrations.py --core {DEFAULT_SANDBOX_DB}.CORE --apply\n"
+            f"(override only for a reviewed production run: --allow-production)"
+        )
 
 
 def default_snapshot(core: str) -> str:
@@ -245,7 +269,12 @@ def run_validations(cur, tokens: Dict[str, str], strict: bool) -> int:
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--core", default=os.getenv("NORMALIZATION_CORE", "CAFC_DB.CORE"))
+    parser.add_argument("--core", default=os.getenv("NORMALIZATION_CORE", "CAFC_DB.CORE"),
+                        help="DATABASE.SCHEMA to operate on (writes to a protected database are refused)")
+    parser.add_argument("--create-sandbox", nargs="?", const=DEFAULT_SANDBOX_DB, metavar="DB_NAME",
+                        help=f"zero-copy clone CAFC_DB into a duplicate database (default {DEFAULT_SANDBOX_DB}); never replaces an existing one")
+    parser.add_argument("--source-db", default="CAFC_DB", help="database --create-sandbox clones from")
+    parser.add_argument("--allow-production", action="store_true", help="permit writes to a protected database")
     parser.add_argument("--snapshot", default=None, help="default: <core>_PRE_NORMALIZATION")
     parser.add_argument("--apply", action="store_true", help="execute (default is a dry run)")
     parser.add_argument("--only", default=None, help="run only the migration whose file name starts with this (e.g. 020)")
@@ -255,7 +284,30 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--contract", metavar="DOMAIN", help="run contract/<DOMAIN>.sql (destructive)")
     args = parser.parse_args(argv)
 
+    if args.create_sandbox:
+        name = validate_qualified_name(args.create_sandbox + ".X", "--create-sandbox").split(".")[0]
+        if name.upper() in PROTECTED_DATABASES:
+            parser.error(f"{name} is a protected database; choose another sandbox name")
+        source = validate_qualified_name(args.source_db + ".X", "--source-db").split(".")[0]
+        ddl = f"CREATE DATABASE IF NOT EXISTS {name} CLONE {source}"
+        if not args.apply:
+            print(f"-- DRY RUN\n{ddl};\n-- Re-run with --apply. Then: --core {name}.CORE --apply")
+            return 0
+        conn = connect()  # pragma: no cover
+        cur = conn.cursor()
+        try:
+            cur.execute(ddl)
+            print(f"sandbox ready: {name} (zero-copy clone of {source}). Next:\n"
+                  f"  python tools/run_normalization_migrations.py --core {name}.CORE --apply")
+            return 0
+        finally:
+            cur.close()
+            conn.close()
+
     core = validate_qualified_name(args.core, "--core")
+    writes = args.apply or bool(args.mark_cutover)
+    if writes:
+        assert_writable(core, args.allow_production)
     snapshot = validate_qualified_name(args.snapshot or default_snapshot(core), "--snapshot")
     tokens = {"CORE": core, "SNAPSHOT": snapshot}
 

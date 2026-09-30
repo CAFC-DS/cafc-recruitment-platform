@@ -143,9 +143,9 @@ feed, dual-ID OR-joins, report listings). Phases 0–3 alone change no app behav
 ## 6. Rollout procedure (per environment)
 
 1. `DESCRIBE TABLE` diff against the assumptions in the migrations README. Fix any mismatch in the SQL, not the data.
-2. Rehearse in a dev schema: `--core CAFC_DB.CORE_DEV_<you>` (dry-run first, then `--apply`). Runner executes the `validate/` queries and exits non-zero on any violating row. `warn_*` checks (unresolved keys, probable duplicate agents, redundancy that contract will drop) are reported but only fail under `--strict`, which is the gate for cutover and for every `contract/` step.
+2. Rehearse on a **duplicate database**, never `CAFC_DB`: `--create-sandbox --apply` (zero-copy clone `CAFC_DB_NORMALIZATION`), then `--core CAFC_DB_NORMALIZATION.CORE` (dry-run first, then `--apply`). The runner refuses writes to `CAFC_DB`/`RECRUITMENT_TEST` without `--allow-production`. Runner executes the `validate/` queries and exits non-zero on any violating row. `warn_*` checks (unresolved keys, probable duplicate agents, redundancy that contract will drop) are reported but only fail under `--strict`, which is the gate for cutover and for every `contract/` step.
 3. Review `ORIGIN='DATA'` lookup rows and validation output with the team; fix data or extend lookups via a follow-up migration.
-4. Apply to prod with the owning role (app roles lack `MODIFY`/`CREATE`). Migrations are additive; the running app is unaffected.
+4. Only after a clean strict validation on the duplicate and team review, apply to prod (explicit `--allow-production`) with the owning role (app roles lack `MODIFY`/`CREATE`). Migrations are additive; the running app is unaffected.
 5. Keep re-running backfills (they are `MERGE`/`UPDATE … WHERE … IS NULL`) until app cutover of that domain so new legacy-shaped writes are picked up.
 6. Rollback: `CREATE OR REPLACE TABLE … CLONE CAFC_DB.CORE_PRE_NORMALIZATION.<t>` for any table, or drop the new objects (nothing depends on them until Phase 4).
 

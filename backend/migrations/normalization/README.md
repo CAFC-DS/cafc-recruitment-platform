@@ -17,22 +17,38 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 
 Nothing in `000`–`090` drops or rewrites an existing column, so the running app is unaffected.
 
-## Quick start
+## Quick start — always on a duplicate database, never `CAFC_DB`
+
+The runner refuses `--apply`, `--mark-cutover` and `--contract` against `CAFC_DB` or
+`RECRUITMENT_TEST` (override: `--allow-production`, for a reviewed production run only).
+Dry runs and `--validate` are read-only and allowed anywhere.
 
 ```bash
 cd backend
-python tools/run_normalization_migrations.py --core CAFC_DB.CORE_DEV_<you>            # dry run
-python tools/run_normalization_migrations.py --core CAFC_DB.CORE_DEV_<you> --apply    # rehearse in a dev schema
-python tools/run_normalization_migrations.py --validate --strict                      # the cutover gate
-python tools/run_normalization_migrations.py --mark-cutover recommendations           # freeze that domain's rebuild files
-python tools/run_normalization_migrations.py --contract recommendations --apply       # drop legacy columns (destructive)
+# 1. Duplicate the database (zero-copy clone: instant, no extra storage until it diverges;
+#    IF NOT EXISTS, so it never replaces an existing sandbox)
+python tools/run_normalization_migrations.py --create-sandbox            # dry run: prints the DDL
+python tools/run_normalization_migrations.py --create-sandbox --apply    # CREATE DATABASE CAFC_DB_NORMALIZATION CLONE CAFC_DB
+
+# 2. Rehearse the migrations inside the duplicate
+python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE            # dry run
+python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --apply    # apply + validate
+python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --validate --strict
+
+# Later, per domain (still in the duplicate until the app is pointed at it)
+python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --mark-cutover recommendations
+python tools/run_normalization_migrations.py --core CAFC_DB_NORMALIZATION.CORE --contract recommendations --apply
 ```
 
-Run as a role that owns the tables (the app role has DML only, no `ALTER`/`CREATE`); set
-`NORMALIZATION_ROLE` or `SNOWFLAKE_DEV_ROLE`. A dev rehearsal needs the dev schema to hold copies of the
-tables and the dbt views `CORE_PLAYER_ID_RESOLUTIONS` / `CORE_FIXTURE_ID_RESOLUTIONS`
-(dbt `+schema: CORE` on a non-prod target produces `CORE_<target schema>`).
+Notes on the clone: views are cloned as written, so the dbt views `CORE_PLAYER_ID_RESOLUTIONS` /
+`CORE_FIXTURE_ID_RESOLUTIONS` in the duplicate may still read the *original* `CAFC_DB` tables underneath
+(read-only, harmless for validation, but identity resolution then reflects production, not the duplicate).
+Grants are not copied to a cloned database's objects the same way; `090_grants.sql` re-applies them.
+Point a backend at the duplicate with `CANONICAL_DB=CAFC_DB_NORMALIZATION` (and `CORE_DB_SCHEMA=CORE`) to
+test the app against it.
 
+Run as a role that owns the tables (the app role has DML only, no `ALTER`/`CREATE`); set
+`NORMALIZATION_ROLE` or `SNOWFLAKE_DEV_ROLE`. 
 ## UNVERIFIED schema assumptions — check with `DESCRIBE TABLE` before the first apply
 
 These migrations were written without a live Snowflake connection (connector unavailable);

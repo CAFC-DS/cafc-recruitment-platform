@@ -195,9 +195,15 @@ class FakeConn:
         pass
 
 
+SANDBOX = "CAFC_DB_NORMALIZATION.CORE"
+
+
 def run_main(monkeypatch, cursor, *argv):
     monkeypatch.setattr(runner, "connect", lambda: FakeConn(cursor))
-    return runner.main(list(argv))
+    args = list(argv)
+    if "--core" not in args:  # default target in tests is the duplicate, never production
+        args += ["--core", SANDBOX]
+    return runner.main(args)
 
 
 def test_dry_run_prints_and_never_connects(monkeypatch, capsys):
@@ -221,7 +227,7 @@ def test_apply_skips_sync_files_after_cutover(monkeypatch):
     run_main(monkeypatch, cur, "--apply", "--only", "040")
     sql = " ".join(s for s, _ in cur.executed)
     assert "DELETE FROM" not in sql
-    assert "CREATE TABLE IF NOT EXISTS CAFC_DB.CORE.RECOMMENDATION_TERMS" not in sql
+    assert f"CREATE TABLE IF NOT EXISTS {SANDBOX}.RECOMMENDATION_TERMS" not in sql
     assert not any(p and p[0] == "040_recommendation_terms.sql" for _, p in cur.executed)  # not ledgered
 
 
@@ -229,7 +235,7 @@ def test_apply_runs_sync_files_before_cutover(monkeypatch):
     cur = FakeCursor()
     run_main(monkeypatch, cur, "--apply", "--only", "040")
     sql = " ".join(s for s, _ in cur.executed)
-    assert "DELETE FROM CAFC_DB.CORE.RECOMMENDATION_TERMS" in sql
+    assert f"DELETE FROM {SANDBOX}.RECOMMENDATION_TERMS" in sql
 
 
 def test_contract_refused_without_cutover(monkeypatch):
@@ -262,3 +268,48 @@ def test_mark_cutover_is_recorded(monkeypatch):
     cur = FakeCursor()
     assert run_main(monkeypatch, cur, "--mark-cutover", "intel") == 0
     assert any(p and p[1] == "CUTOVER" and p[0] == "intel" for _, p in cur.executed)
+
+
+# ---- production-database guard ---------------------------------------------------------
+def test_apply_to_protected_database_is_refused(monkeypatch):
+    cur = FakeCursor()
+    for argv in (["--apply", "--core", "CAFC_DB.CORE"], ["--mark-cutover", "intel", "--core", "CAFC_DB.CORE"],
+                 ["--apply", "--contract", "intel", "--core", "cafc_db.core"]):
+        with pytest.raises(SystemExit, match="protected database CAFC_DB"):
+            run_main(monkeypatch, cur, *argv)
+    assert cur.executed == []
+
+
+def test_apply_to_duplicate_database_is_allowed(monkeypatch):
+    cur = FakeCursor()
+    assert run_main(monkeypatch, cur, "--apply", "--core", "CAFC_DB_NORMALIZATION.CORE", "--only", "000") == 0
+    sql = " ".join(s for s, _ in cur.executed)
+    assert "CAFC_DB_NORMALIZATION.CORE.USERS" in sql
+    assert "CAFC_DB.CORE" not in sql
+
+
+def test_validate_and_dry_run_remain_allowed_on_production(monkeypatch, capsys):
+    assert runner.main([]) == 0  # dry run renders, writes nothing
+    cur = FakeCursor()
+    assert run_main(monkeypatch, cur, "--validate", "--core", "CAFC_DB.CORE") == 0  # read-only
+
+
+def test_allow_production_overrides_the_guard(monkeypatch):
+    cur = FakeCursor()
+    assert run_main(monkeypatch, cur, "--apply", "--allow-production", "--core", "CAFC_DB.CORE", "--only", "000") == 0
+
+
+def test_create_sandbox_clones_and_never_replaces(monkeypatch, capsys):
+    cur = FakeCursor()
+    assert run_main(monkeypatch, cur, "--create-sandbox", "--apply") == 0
+    sql = cur.executed[0][0]
+    assert sql == "CREATE DATABASE IF NOT EXISTS CAFC_DB_NORMALIZATION CLONE CAFC_DB"
+    assert "REPLACE" not in sql.upper()
+
+
+def test_create_sandbox_refuses_protected_name_and_dry_runs_by_default(monkeypatch, capsys):
+    monkeypatch.setattr(runner, "connect", lambda: pytest.fail("must not connect"))
+    assert runner.main(["--create-sandbox"]) == 0
+    assert "DRY RUN" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        runner.main(["--create-sandbox", "CAFC_DB", "--apply"])
