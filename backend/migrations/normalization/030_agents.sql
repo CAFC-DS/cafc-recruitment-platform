@@ -1,3 +1,4 @@
+-- @sync-until-cutover: recommendations
 -- 030_agents.sql
 -- 3NF: agent facts (name/agency/email/phone) are copied onto every recommendation,
 -- and agency facts depend on the agent, not the recommendation. They are NOT
@@ -5,8 +6,10 @@
 -- an agent's behalf. Introduce AGENCIES <- AGENTS and point recommendations and
 -- login profiles at AGENTS.
 --
--- AGENTS/AGENCIES are identity tables (ids are referenced), so backfill is
--- insert-only: existing ids are never rewritten or deleted by a re-run.
+-- AGENTS/AGENCIES are identity tables (ids are referenced), so their backfill is
+-- insert-only: existing ids are never rewritten or deleted by a re-run. The AGENT_ID links on
+-- recommendations/profiles are a full recompute (agent details are edited in place through the
+-- agent portal), so this whole file is sync-until-cutover for the recommendations domain.
 
 -- Shared key functions: migration and (later) the app compute identical keys.
 CREATE OR REPLACE FUNCTION ${CORE}.NORMALIZE_NAME_KEY(v VARCHAR)
@@ -98,11 +101,11 @@ ALTER TABLE ${CORE}.AGENT_PROFILES         ADD COLUMN IF NOT EXISTS AGENT_ID NUM
 UPDATE ${CORE}.PLAYER_RECOMMENDATIONS pr
 SET AGENT_ID = a.AGENT_ID
 FROM ${CORE}.AGENTS a
-WHERE pr.AGENT_ID IS NULL
-  AND a.AGENT_KEY = ${CORE}.AGENT_KEY(pr.AGENT_NAME, pr.AGENCY, pr.AGENT_EMAIL);
+WHERE a.AGENT_KEY = ${CORE}.AGENT_KEY(pr.AGENT_NAME, pr.AGENCY, pr.AGENT_EMAIL)
+  AND pr.AGENT_ID IS DISTINCT FROM a.AGENT_ID;
 
 UPDATE ${CORE}.AGENT_PROFILES ap
 SET AGENT_ID = a.AGENT_ID
 FROM ${CORE}.AGENTS a
-WHERE ap.AGENT_ID IS NULL
-  AND a.AGENT_KEY = ${CORE}.AGENT_KEY(ap.AGENT_NAME, ap.AGENCY, ap.AGENT_EMAIL);
+WHERE a.AGENT_KEY = ${CORE}.AGENT_KEY(ap.AGENT_NAME, ap.AGENCY, ap.AGENT_EMAIL)
+  AND ap.AGENT_ID IS DISTINCT FROM a.AGENT_ID;

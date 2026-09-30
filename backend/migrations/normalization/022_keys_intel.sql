@@ -1,0 +1,21 @@
+-- @sync-until-cutover: intel
+-- 022_keys_intel.sql
+-- PLAYER_INFORMATION.PLAYER_ID is overloaded. Verified against live data: DATA_SOURCE is
+-- 'external' for almost every row and NULL for a few, and in both cases PLAYER_ID is an IMPECT
+-- id. Only rows explicitly marked 'internal' carry a CAFC id. Full recompute until intel cuts
+-- over (/admin/merge-players reassigns PLAYER_ID on this table).
+
+ALTER TABLE ${CORE}.PLAYER_INFORMATION ADD COLUMN IF NOT EXISTS CANONICAL_PLAYER_ID NUMBER(38,0);
+
+CREATE OR REPLACE VIEW ${CORE}.V_INTEL_KEYS AS
+SELECT s.ID,
+       CASE WHEN s.DATA_SOURCE = 'internal' THEN p.CAFC_PLAYER_ID ELSE r.CAFC_PLAYER_ID END AS EXPECTED_PLAYER_ID
+FROM ${CORE}.PLAYER_INFORMATION s
+LEFT JOIN ${CORE}.PLAYERS p ON p.CAFC_PLAYER_ID = s.PLAYER_ID
+LEFT JOIN ${CORE}.CORE_PLAYER_ID_RESOLUTIONS r
+       ON r.SOURCE_SYSTEM = 'IMPECT' AND r.SOURCE_PLAYER_ID = TO_VARCHAR(s.PLAYER_ID);
+
+UPDATE ${CORE}.PLAYER_INFORMATION t
+SET CANONICAL_PLAYER_ID = k.EXPECTED_PLAYER_ID
+FROM ${CORE}.V_INTEL_KEYS k
+WHERE t.ID = k.ID AND t.CANONICAL_PLAYER_ID IS DISTINCT FROM k.EXPECTED_PLAYER_ID;

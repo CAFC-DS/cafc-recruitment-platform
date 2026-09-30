@@ -7,8 +7,10 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 |---|---|---|
 | `000_snapshot.sql` | Zero-copy clones of every table touched, into `<core>_PRE_NORMALIZATION` | yes (never overwrites) |
 | `010_lookups.sql` | 12 lookup tables, seeded from code constants + distinct data values | yes (insert-only MERGE) |
-| `020_canonical_keys.sql` | `CANONICAL_PLAYER_ID` / `CANONICAL_FIXTURE_ID` / `LINKED_CANONICAL_PLAYER_ID` etc. | yes (fills NULLs only) |
-| `030_agents.sql` | `AGENCIES`, `AGENTS`, `AGENT_ID` on recommendations and agent profiles | yes (insert-only) |
+| `020_keys_reports_lists.sql` | `CANONICAL_PLAYER_ID` / `CANONICAL_FIXTURE_ID` on reports, list items, flags + `V_*_KEYS` views | yes; **full recompute** until reports/lists cut over |
+| `021_keys_recommendations.sql` | `LINKED_CANONICAL_PLAYER_ID` | yes; full recompute until recommendations cut over |
+| `022_keys_intel.sql` | `CANONICAL_PLAYER_ID` on intel | yes; full recompute until intel cuts over |
+| `030_agents.sql` | `AGENCIES`, `AGENTS`, `AGENT_ID` on recommendations and agent profiles | yes; identities insert-only, links recomputed until recommendations cut over |
 | `040_recommendation_terms.sql` | `RECOMMENDATION_TERMS`, `RECOMMENDATION_DEAL_TYPES` | yes until recommendations cut over (`@sync-until-cutover`) |
 | `050_intel.sql` | `CONTACTS`, `INTEL_TERMS`, `INTEL_DEAL_TYPES`, `INTEL_RELATIONSHIPS`, `INTEL_REFERENCE_DETAILS` | yes until intel cuts over |
 | `090_grants.sql` | grants on the new objects | yes |
@@ -16,6 +18,13 @@ Runner: `backend/tools/run_normalization_migrations.py` (dry run by default).
 | `contract/*.sql` | **destructive** column drops; only via `--contract <domain>` after cutover + clean strict validation | one-way |
 
 Nothing in `000`–`090` drops or rewrites an existing column, so the running app is unaffected.
+
+**Keep the sync running until cutover.** The legacy columns stay the source of truth, and they are
+rewritten in place by `/admin/merge-players`, `/admin/merge-duplicate-match`, the agent portal's edit
+endpoints, and the platform's `remap_*` scripts and identity overrides. So the canonical/link columns are
+*recomputed*, not filled once. After any of those runs, `--validate --strict` reports `STALE ...` until
+`--apply --only 02` (and `03`/`05`) is re-run. Verified on the sandbox by simulating a merge (report's
+`PLAYER_ID` rewritten -> `STALE` flagged -> re-sync -> canonical key followed it).
 
 ## Quick start — always on a clone, never on the live schemas
 

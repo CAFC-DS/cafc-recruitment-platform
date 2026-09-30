@@ -130,9 +130,9 @@ PLAYER_LIST_ITEMS.STAGE ─> LIST_STAGES      PLAYER_LISTS.LIST_CATEGORY ─> LI
 |---|---|---|---|
 | **0 Snapshot & ledger** | `CORE_PRE_NORMALIZATION` clones; `SCHEMA_MIGRATIONS` ledger; dry-run-by-default runner that refuses live schemas | implemented, rehearsed | none |
 | **1 Lookups** | 12 lookup tables, seeded from code constants ∪ distinct existing values (`ORIGIN='DATA'` rows are inactive and need a human decision) | implemented | low |
-| **2 Canonical keys** | `CANONICAL_PLAYER_ID`/`CANONICAL_FIXTURE_ID` on reports; same for list items/flags; `LINKED_CANONICAL_PLAYER_ID` on recommendations. Ambiguous/unresolvable rows stay NULL and are listed by validation | implemented | medium (data quality) |
+| **2 Canonical keys** | `CANONICAL_PLAYER_ID`/`CANONICAL_FIXTURE_ID` on reports; same for list items/flags/intel; `LINKED_CANONICAL_PLAYER_ID` on recommendations. **Recomputed** (not filled once) because merges rewrite the legacy columns in place. Ambiguous/unresolvable rows stay NULL and are listed by validation | implemented, rehearsed | medium (data quality) |
 | **3 Decomposition** | agents/agencies, recommendation terms/deal types, contacts, intel terms/deal types/relationships/reference details | implemented | medium |
-| **4 App cutover** (one PR per domain, reads first then writes; all-or-nothing per domain) | (a) recommendations + agent portal, (b) intel, (c) scout reports + lists. Replace name-matching subqueries with the key join; fix writes to be transactional; role filter unconditional | **not started** | highest |
+| **4 App cutover** (one PR per domain, reads first then writes; all-or-nothing per domain). Each domain's PR must also update `/admin/merge-players`, `/admin/merge-duplicate-match` and the platform remap scripts to maintain the canonical columns, and the dbt `app_compat` model for that table. | (a) recommendations + agent portal, (b) intel, (c) scout reports + lists. Replace name-matching subqueries with the key join; fix writes to be transactional; role filter unconditional | **not started** | highest |
 | **5 Contract** | `contract/*.sql`: drop `LINKED_UNIVERSAL_ID`, dual-ID columns, repeated column groups, `SHARE_URL`, `DATA_SOURCE`, redundant stage-history columns | scripts written, **never auto-run** | irreversible → gated on Phase 4 soak |
 | **6 Analytical layer & hardening** | One-row-per-report fact view / dynamic table (already in `REFACTOR_BACKLOG.md`), Snowflake row access policy as defense-in-depth for the role filter, secure views + read-only role for the chatbot, hybrid-table decision | plan only | — |
 
@@ -145,8 +145,58 @@ feed, dual-ID OR-joins, report listings). Phases 0–3 alone change no app behav
 2. Rehearse on a **clone**, never live `CORE`: `--create-sandbox --apply` (zero-copy clone `CAFC_DB.CORE_DEV_NORMALIZATION`; a whole-database clone needs a role with `CREATE DATABASE`, which `DEV_ROLE` lacks), then `--core CAFC_DB.CORE_DEV_NORMALIZATION` (dry-run first, then `--apply`). The runner refuses writes to `CAFC_DB.CORE`/`APP`/`APP_COMPAT` and `RECRUITMENT_TEST` without `--allow-production`. Runner executes the `validate/` queries and exits non-zero on any violating row. `warn_*` checks (unresolved keys, probable duplicate agents, redundancy that contract will drop) are reported but only fail under `--strict`, which is the gate for cutover and for every `contract/` step.
 3. Review `ORIGIN='DATA'` lookup rows and validation output with the team; fix data or extend lookups via a follow-up migration.
 4. Only after a clean strict validation on the duplicate and team review, apply to prod (explicit `--allow-production`) with the owning role (app roles lack `MODIFY`/`CREATE`). Migrations are additive; the running app is unaffected.
-5. Keep re-running backfills (they are `MERGE`/`UPDATE … WHERE … IS NULL`) until app cutover of that domain so new legacy-shaped writes are picked up.
+5. Keep re-running the sync files (`02x`, `030`, `040`, `050`: full recompute) until app cutover of that domain, so legacy-shaped writes **and in-place id rewrites from merges** are picked up. `--validate --strict` reports `STALE` when a re-run is due.
 6. Rollback: `CREATE OR REPLACE TABLE … CLONE CAFC_DB.CORE_PRE_NORMALIZATION.<t>` for any table, or drop the new objects (nothing depends on them until Phase 4).
+
+## 8. Whole-account scope: what exists, and what the platform actually reads and writes
+
+The first draft looked only at `CAFC_DB.CORE`. This section is the full inventory (read-only, 2026-09-30).
+Live traffic could not be observed (`SNOWFLAKE.ACCOUNT_USAGE` is not granted to `DEV_ROLE`, and
+`INFORMATION_SCHEMA.QUERY_HISTORY` shows only the caller), so "what the app touches" comes from the code
+plus object timestamps.
+
+### 8.1 Everything in the account
+
+| Database.schema | Contents | Relevance |
+|---|---|---|
+| `CAFC_DB.CORE` | 51 tables + 3 views: canonical players/fixtures/identities/KPIs **and** the app-owned tables | **Live.** Modified today (`SCOUT_REPORTS` 2026-09-30). This is what the app reads and writes. |
+| `CAFC_DB.APP` | 25 tables, owner `APP_ROLE`, all last altered **2026-09-03** | **Stale snapshot** of `RECRUITMENT_TEST.PUBLIC` (identical row counts, e.g. 11,161 reports vs 11,684 live). Not written since. Not referenced by any code path found. Candidate for retirement (team decision). |
+| `CAFC_DB.APP_COMPAT` | 19 views + 1 table, dbt-built | Passthrough views over `CORE` app tables (see 8.3) |
+| `CAFC_DB.IMPECT_RAW`, `IMPECT_RAW_STAGING`, `SKILLCORNER_RAW`, `DVMS_RAW*` | provider raw/staging | App reads `IMPECT_RAW.EVENTS` / `ITERATIONS` only. Untouched by this plan. |
+| `CAFC_DB.SCOUT_TOOL` | 10 tables + 31 views (Opta staging, snapshot, QA views) | App reads `SCOUT_TOOL.POSITION_PROFILE_MAP` only. Untouched. |
+| `CAFC_DB.MANUAL`, `MIGRATION` | manual players/matches/squads; id maps, overrides | Migration-era; `MIGRATION.*` overrides fed `CORE.PLAYER_IDENTITY_OVERRIDES`. Untouched. |
+| `CAFC_DB.CORE_DEV_*`, `APP_COMPAT_DEV_HUMARJI`, `DBT_TEST__AUDIT*` | dev copies / dbt test audit tables (264 tables) | Dev only. `CORE_DEV_RECRUITMENT` (47 tables) looks like a dev-app schema; the migrations do not touch it. |
+| `RECRUITMENT_TEST.PUBLIC` | 25 legacy tables (source of the Phase 3/4 clones) | Legacy; frozen at the cutover. Untouched. |
+| `CAFC_TEST_ANALYSIS.PUBLIC` | 14 IMPECT analysis tables | Unrelated to the app. Untouched. |
+
+### 8.2 Tables the backend touches (from `main.py`, `services/`, `tools/`)
+
+| Access | Tables | In this plan? |
+|---|---|---|
+| **Writes**, normalized | `SCOUT_REPORTS`, `SCOUT_REPORT_ATTRIBUTE_SCORES`, `PLAYER_LISTS`, `PLAYER_LIST_ITEMS`, `PLAYER_LIST_FLAGS`, `PLAYER_STAGE_HISTORY`, `SHARED_REPORT_LINKS`, `PLAYER_RECOMMENDATIONS`, `STATUS_HISTORY`, `AGENT_PROFILES`, `PLAYER_INFORMATION` | yes |
+| **Writes**, reviewed and left as-is (already 3NF) | `USERS` (also `ALTER`/`DELETE`), `PASSWORD_RESET_TOKENS`, `PLAYER_NOTES`, `SCOUT_REPORT_VIEWS` (`MERGE`), `RECOMMENDATION_NOTES_HISTORY` | not changed; `USERS.ROLE` gets a lookup that is only validated |
+| **Writes**, canonical entities | `CORE.PLAYERS`, `PLAYER_IDENTITIES`, `FIXTURES`, `FIXTURE_IDENTITIES`, sequences `CAFC_PLAYER_ID_SEQ` / `CAFC_FIXTURE_ID_SEQ`; legacy-path `PLAYERS`/`MATCHES` via `write_table()` (when `WRITES_TO_CORE` is off) | read only by the migrations; never modified |
+| **Reads**, other schemas | `CORE_PLAYER_FIXTURE_KPIS`, `CORE_COMPETITIONS`, `CORE_SQUADS`, `CORE_SQUAD_ITERATION_KPIS`, `CORE_PLAYER_ID_RESOLUTIONS`, `POSITION_ATTRIBUTES`, `APP_COMPAT.PLAYERS`/`MATCHES` (66 + 37 call sites), `IMPECT_RAW.EVENTS`/`ITERATIONS`, `SCOUT_TOOL.POSITION_PROFILE_MAP` | untouched |
+| Chatbot | `SCOUT_REPORTS`, `PLAYERS`, `MATCHES`, `USERS` (allowlist in `services/sql_generator.py`) | new tables are not on the allowlist |
+| Dead / legacy | `SQUAD_CHANGE_LOG` (`DESCRIBE`d at request time, exists only in `APP`/`RECRUITMENT_TEST`, **not in `CORE`**), `NOTIFICATIONS`, `SCOUT_ASSIGNMENT*` | see 8.4 |
+
+### 8.3 Dependents downstream of the tables being altered
+
+Found by scanning every view definition in `CAFC_DB` and the `cafc-data-platform` repo.
+
+| Dependent | What it does | Consequence for this plan |
+|---|---|---|
+| dbt `app_compat.*` views (13 over the altered tables) | `select *` passthroughs; `PLAYER_INFORMATION` = `pi.*, r.cafc_player_id AS CAFC_PLAYER_ID` joined on `pi.PLAYER_ID` | Added columns are harmless. **Contract must not drop `PLAYER_INFORMATION.PLAYER_ID`/`DATA_SOURCE` or `PLAYER_STAGE_HISTORY.PLAYER_ID`, nor rename `CANONICAL_PLAYER_ID` to `CAFC_PLAYER_ID`** (explicit references / duplicate column). Removed from the contract scripts and deferred until the dbt models change. |
+| `/admin/merge-players`, `/admin/merge-duplicate-match` | rewrite `PLAYER_ID`, `CAFC_PLAYER_ID`, `MATCH_ID`, `UNIVERSAL_ID`, `LINKED_UNIVERSAL_ID` in place | **Design flaw found and fixed:** the first draft only filled NULL keys, so canonical keys would go stale after any merge. Keys are now a full recompute (views + `IS DISTINCT FROM`), a `STALE` check exists, and Phase 4 must make these endpoints write the canonical columns. |
+| `cafc-data-platform` `snowflake/ddl/*remap*` and `python/identity/*` | remap ids in the same app tables; the merge plan (`docs/runbooks/duplicate-player-merge-plan.md`) retires players with `IS_ACTIVE = FALSE` and plans `MERGED_INTO_CAFC_PLAYER_ID` (not yet present) | Same staleness path. A check flags canonical keys that point at a retired player (0 today). Resolution goes through `CORE_PLAYER_ID_RESOLUTIONS`, so identity overrides are followed automatically. |
+| Tableau / other BI | not visible from Snowflake | **Unknown.** Anything reading `APP_COMPAT` or `CORE` app tables directly must be inventoried before Phase 5. |
+| `CAFC_DB.APP` copy, `RECRUITMENT_TEST` | stale copies | Not migrated; not affected. |
+
+### 8.4 Findings to act on outside this plan
+
+* `CAFC_DB.APP` is a stale September snapshot owned by the production role. Decide whether to retire it so nobody reads it by mistake.
+* `SQUAD_CHANGE_LOG` is `DESCRIBE`d at request time but is not in `CORE`; that call can only be failing or hitting a search-path default. Worth confirming in the app logs.
+* `PLAYER_NOTES.PLAYER_ID` and `PLAYER_STAGE_HISTORY.PLAYER_ID` have the same overloaded-id problem as the migrated tables; they were reviewed and left for a later phase (`PLAYER_STAGE_HISTORY.PLAYER_ID` is referenced by a dbt view).
 
 ## 7. Known risks / open questions
 

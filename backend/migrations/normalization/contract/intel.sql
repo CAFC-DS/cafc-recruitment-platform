@@ -11,5 +11,10 @@ ALTER TABLE ${CORE}.PLAYER_INFORMATION DROP COLUMN
     EXPECTED_WAGES, EXPECTED_WAGES_MIN, EXPECTED_WAGES_MAX;
 
 -- Dual player reference -> single key.
-ALTER TABLE ${CORE}.PLAYER_INFORMATION DROP COLUMN PLAYER_ID, DATA_SOURCE;
-ALTER TABLE ${CORE}.PLAYER_INFORMATION RENAME COLUMN CANONICAL_PLAYER_ID TO CAFC_PLAYER_ID;
+-- The rename CANONICAL_PLAYER_ID -> CAFC_PLAYER_ID is deliberately NOT done: the dbt view
+-- APP_COMPAT.PLAYER_INFORMATION is `select pi.*, r.cafc_player_id AS CAFC_PLAYER_ID ...`, so the
+-- rename would give it a duplicate column. Keep the CANONICAL_PLAYER_ID name.
+-- V_INTEL_KEYS is kept: it reads PLAYER_ID / DATA_SOURCE, which are not dropped here (deferred above).
+-- DEFERRED (not run here): dropping PLAYER_ID / DATA_SOURCE. The dbt view
+-- APP_COMPAT.PLAYER_INFORMATION joins on pi.PLAYER_ID explicitly and would fail. Do it in the
+-- release that rewrites that dbt model to use CANONICAL_PLAYER_ID (see docs plan 'Dependents').

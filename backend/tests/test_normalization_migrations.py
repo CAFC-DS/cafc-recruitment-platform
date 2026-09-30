@@ -90,7 +90,7 @@ def test_migrations_are_rerunnable(path):
     sql = "\n".join(statements(path))
     for m in re.finditer(r"(?i)\bCREATE\s+(?!OR\s+REPLACE|SCHEMA IF|TABLE IF|TEMPORARY)(TABLE|SCHEMA)\b", sql):
         pytest.fail(f"{path.name}: CREATE {m.group(1)} without IF NOT EXISTS")
-    for m in re.finditer(r"(?i)CREATE\s+OR\s+REPLACE\s+(?!TEMPORARY|FUNCTION)(\w+)", sql):
+    for m in re.finditer(r"(?i)CREATE\s+OR\s+REPLACE\s+(?!TEMPORARY|FUNCTION|VIEW)(\w+)", sql):
         pytest.fail(f"{path.name}: CREATE OR REPLACE {m.group(1)} would clobber existing data")
     for m in re.finditer(r"(?is)ADD\s+COLUMN\s+(?!IF NOT EXISTS)", sql):
         pytest.fail(f"{path.name}: ADD COLUMN without IF NOT EXISTS")
@@ -106,20 +106,21 @@ def test_only_contract_scripts_drop_columns():
 
 
 @pytest.mark.parametrize("path", MIGRATIONS, ids=lambda p: p.name)
-def test_rebuild_files_are_transactional_and_tagged(path):
+def test_files_that_overwrite_derived_data_are_tagged_and_deletes_are_transactional(path):
     raw = path.read_text()
-    uses_delete = re.search(r"(?im)^\s*DELETE FROM", raw)
+    stmts = statements(path)
+    upper = [s.strip().upper() for s in stmts]
+    rebuilds = any(s.startswith("DELETE FROM") for s in upper)
+    recomputes = any(s.startswith("UPDATE") and "IS DISTINCT FROM" in s for s in upper)
     tag = runner.sync_domain(raw)
-    if uses_delete:
-        assert tag, f"{path.name}: rebuilds derived tables but has no @sync-until-cutover tag"
-        stmts = [s.strip().upper() for s in statements(path)]
-        assert "BEGIN" in stmts and "COMMIT" in stmts
-        assert stmts.index("BEGIN") < stmts.index("COMMIT")
-        # no DELETE outside the transaction
-        begin, commit = stmts.index("BEGIN"), stmts.index("COMMIT")
-        assert all(begin < i < commit for i, s in enumerate(stmts) if s.startswith("DELETE FROM"))
+    if rebuilds or recomputes:
+        assert tag, f"{path.name}: overwrites derived data but has no @sync-until-cutover tag"
     else:
-        assert tag is None
+        assert tag is None, f"{path.name}: tagged sync-until-cutover but overwrites nothing"
+    if rebuilds:
+        assert "BEGIN" in upper and "COMMIT" in upper and upper.index("BEGIN") < upper.index("COMMIT")
+        begin, commit = upper.index("BEGIN"), upper.index("COMMIT")
+        assert all(begin < i < commit for i, s in enumerate(upper) if s.startswith("DELETE FROM"))
 
 
 def test_snapshot_never_overwrites_an_existing_snapshot():
@@ -332,3 +333,51 @@ def test_create_sandbox_database_clone_and_refusals(monkeypatch, capsys):
     for bad in ("CAFC_DB.CORE", "RECRUITMENT_TEST", "CAFC_DB.APP"):
         with pytest.raises(SystemExit):
             runner.main(["--create-sandbox", bad, "--apply"])
+
+
+# ---- sync files: full recompute, per-domain, never NULL-only ------------------------------
+KEY_SYNC = [p for p in MIGRATIONS if p.name.startswith("02")]
+
+
+def test_key_sync_is_split_per_domain_and_tagged():
+    assert [p.name for p in KEY_SYNC] == [
+        "020_keys_reports_lists.sql", "021_keys_recommendations.sql", "022_keys_intel.sql"]
+    assert [runner.sync_domain(p.read_text()) for p in KEY_SYNC] == ["reports_lists", "recommendations", "intel"]
+
+
+@pytest.mark.parametrize("path", KEY_SYNC, ids=lambda p: p.name)
+def test_key_sync_recomputes_instead_of_filling_nulls(path):
+    """The legacy columns are rewritten in place by merge endpoints, so a NULL-only backfill goes stale."""
+    updates = [s for s in statements(path) if s.upper().startswith("UPDATE")]
+    assert updates
+    for stmt in updates:
+        assert "IS DISTINCT FROM" in stmt, stmt[:100]
+        assert not re.search(r"(?i)CANONICAL\w*\s+IS\s+NULL|CAFC_PLAYER_ID\s+IS\s+NULL", stmt), stmt[:100]
+
+
+def test_every_sync_until_cutover_update_recomputes():
+    """Same rule for agent/contact links: 030 and 050 UPDATEs must not be NULL-only."""
+    for name in ("030_agents.sql", "050_intel.sql"):
+        for stmt in statements(runner.MIGRATIONS_DIR / name):
+            if stmt.upper().startswith("UPDATE"):
+                assert not re.search(r"(?i)\b(AGENT_ID|CONTACT_ID)\s+IS\s+NULL\s+AND", stmt), stmt[:100]
+
+
+def test_agents_file_is_tagged_for_the_recommendations_domain():
+    assert runner.sync_domain((runner.MIGRATIONS_DIR / "030_agents.sql").read_text()) == "recommendations"
+
+
+def test_contract_scripts_do_not_break_known_dbt_dependents():
+    """APP_COMPAT views reference these columns explicitly (checked live 2026-09-30)."""
+    intel = (runner.MIGRATIONS_DIR / "contract" / "intel.sql").read_text()
+    rl = (runner.MIGRATIONS_DIR / "contract" / "reports_lists.sql").read_text()
+    assert not re.search(r"(?i)DROP COLUMN\s+PLAYER_ID", intel)          # APP_COMPAT.PLAYER_INFORMATION joins pi.PLAYER_ID
+    assert not re.search(r"(?i)RENAME COLUMN CANONICAL_PLAYER_ID TO CAFC_PLAYER_ID", intel)  # duplicate-column clash
+    assert not re.search(r"(?i)PLAYER_STAGE_HISTORY\s+DROP COLUMN[^;]*PLAYER_ID", rl)   # APP_COMPAT.PLAYER_STAGE_HISTORY
+
+
+def test_contract_scripts_drop_the_key_views_before_the_columns_they_read():
+    # intel is excluded on purpose: its PLAYER_ID/DATA_SOURCE drop is deferred, so V_INTEL_KEYS stays valid.
+    for name, view in (("reports_lists", "V_SCOUT_REPORT_KEYS"), ("recommendations", "V_RECOMMENDATION_KEYS")):
+        sql = (runner.MIGRATIONS_DIR / "contract" / f"{name}.sql").read_text()
+        assert sql.index(f"DROP VIEW IF EXISTS ${{CORE}}.{view}") < sql.index("DROP COLUMN")
