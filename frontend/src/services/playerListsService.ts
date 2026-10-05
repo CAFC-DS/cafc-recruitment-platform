@@ -170,6 +170,7 @@ export interface PlayerListFilters {
   maxAge?: number;
   minScore?: number;
   maxScore?: number;
+  performanceScores?: string; // Comma-separated whole scores, e.g. "5,9"
   minReports?: number;
   maxReports?: number;
   stages?: string; // Comma-separated
@@ -187,7 +188,8 @@ export interface PlayerListFilters {
  * Get all player lists with complete player details (optimized single query)
  */
 export const getAllListsWithDetails = async (
-  filters?: PlayerListFilters
+  filters?: PlayerListFilters,
+  signal?: AbortSignal
 ): Promise<ListWithPlayers[]> => {
   const params = new URLSearchParams();
 
@@ -200,6 +202,7 @@ export const getAllListsWithDetails = async (
     if (filters.maxAge !== undefined) params.append("max_age", filters.maxAge.toString());
     if (filters.minScore !== undefined) params.append("min_score", filters.minScore.toString());
     if (filters.maxScore !== undefined) params.append("max_score", filters.maxScore.toString());
+    if (filters.performanceScores) params.append("performance_scores", filters.performanceScores);
     if (filters.minReports !== undefined) params.append("min_reports", filters.minReports.toString());
     if (filters.maxReports !== undefined) params.append("max_reports", filters.maxReports.toString());
     if (filters.stages) params.append("stages", filters.stages);
@@ -215,7 +218,7 @@ export const getAllListsWithDetails = async (
     ? `/player-lists/all-with-details?${params.toString()}`
     : "/player-lists/all-with-details";
 
-  const response = await axiosInstance.get(url);
+  const response = await axiosInstance.get(url, { signal });
   return response.data.lists;
 };
 

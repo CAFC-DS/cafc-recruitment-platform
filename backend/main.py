@@ -18,6 +18,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any, Union
+import calendar
 import datetime
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -616,6 +617,49 @@ def core_table(table_name: str) -> str:
     e.g. the schema-cache and player-merge loops, which won't show up in
     that grep."""
     return f"{CANONICAL_DB}.{CORE_DB_SCHEMA}.{table_name}"
+
+
+def squad_current_competition_sql() -> str:
+    """Derived table of (SQUAD_NAME, COMPETITION_NAME): each squad's current competition.
+
+    players.COMPETITIONNAME comes from an arbitrary iteration (cups, loan spells,
+    friendlies), so it can't be trusted as "the league a player is in". Resolve it
+    from the squad instead. Preference order per squad: a League iteration within
+    a season of the squad's latest data, otherwise the best other non-friendly
+    iteration (covers state leagues typed "Cup", clubs only seen in cups); then
+    latest season, then most matches played."""
+    season_key = (
+        "IFF(it.SEASON LIKE '%%/%%', 2000 + TRY_TO_NUMBER(LEFT(it.SEASON, 2)), TRY_TO_NUMBER(it.SEASON))"
+    )
+    return f"""(
+        SELECT SQUAD_NAME, COMPETITION_NAME FROM (
+            SELECT SQUAD_NAME, COMPETITION_NAME,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY SQUAD_NAME
+                       ORDER BY
+                           IFF(COMPETITION_TYPE = 'League' AND SEASON_KEY >= MAX_SEASON_KEY - 1, 0, 1),
+                           SEASON_KEY DESC NULLS LAST,
+                           MATCHES DESC NULLS LAST
+                   ) AS rn
+            FROM (
+                SELECT s.SQUAD_NAME, it.COMPETITIONNAME AS COMPETITION_NAME,
+                       it.COMPETITIONTYPE AS COMPETITION_TYPE,
+                       {season_key} AS SEASON_KEY,
+                       MAX({season_key}) OVER (PARTITION BY s.SQUAD_NAME) AS MAX_SEASON_KEY,
+                       MAX(i.MATCHES_PLAYED) AS MATCHES
+                FROM {core_table('core_squad_iteration_kpis')} i
+                JOIN {core_table('core_squads')} s ON s.CAFC_SQUAD_ID = i.CAFC_SQUAD_ID
+                JOIN (
+                    SELECT DISTINCT ITERATIONID, COMPETITIONNAME, COMPETITIONTYPE, SEASON
+                    FROM {read_table('players_base')}
+                    WHERE ITERATIONID IS NOT NULL
+                      AND COALESCE(COMPETITIONTYPE, '') <> 'Friendly'
+                ) it ON it.ITERATIONID = i.SOURCE_ITERATION_ID
+                GROUP BY s.SQUAD_NAME, it.COMPETITIONNAME, it.COMPETITIONTYPE, it.SEASON
+            )
+        )
+        WHERE rn = 1
+    )"""
 
 
 # True only in the full-cutover state (WRITE_DB=CAFC_DB, CORE_DB_SCHEMA=CORE).
@@ -9152,10 +9196,17 @@ async def get_all_scout_reports(
             sql_params.append(max_age)
 
         # Scout name filter (case-insensitive partial match)
+        # Each word must match first name, last name, full name or username, so
+        # a full name like "Phil Chapple" matches across FIRSTNAME + LASTNAME.
         if scout_name:
-            where_clauses.append("(UPPER(u.FIRSTNAME) LIKE UPPER(%s) OR UPPER(u.LASTNAME) LIKE UPPER(%s) OR UPPER(u.USERNAME) LIKE UPPER(%s))")
-            search_pattern = f"%{scout_name}%"
-            sql_params.extend([search_pattern, search_pattern, search_pattern])
+            for token in scout_name.split():
+                where_clauses.append(
+                    "(UPPER(u.FIRSTNAME) LIKE UPPER(%s) OR UPPER(u.LASTNAME) LIKE UPPER(%s) "
+                    "OR UPPER(u.USERNAME) LIKE UPPER(%s) "
+                    "OR UPPER(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)) LIKE UPPER(%s))"
+                )
+                search_pattern = f"%{token}%"
+                sql_params.extend([search_pattern] * 4)
 
         # Player name filter (case-insensitive and accent-insensitive partial match)
         if player_name:
@@ -9190,28 +9241,40 @@ async def get_all_scout_reports(
             where_clauses.append("sr.MATCH_ID = %s")
             sql_params.append(match_id)
 
-        # Date range filter (report creation date)
-        if date_from:
-            where_clauses.append("sr.CREATED_AT >= %s")
-            sql_params.append(date_from)
-        if date_to:
-            where_clauses.append("sr.CREATED_AT <= %s")
-            sql_params.append(date_to)
+        # Date range filters. Both ends are inclusive of the whole calendar day:
+        # the upper bound is "< day after date_to", because CREATED_AT /
+        # SCHEDULEDDATE carry a time and "<= 'YYYY-MM-DD'" would drop that day.
+        def _parse_day(value: str, name: str) -> str:
+            try:
+                return date.fromisoformat(value).isoformat()
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail=f"{name} must be YYYY-MM-DD"
+                )
 
-        # Fixture date range filter (match/fixture date)
+        if date_from:
+            where_clauses.append("sr.CREATED_AT >= TO_DATE(%s)")
+            sql_params.append(_parse_day(date_from, "date_from"))
+        if date_to:
+            where_clauses.append("sr.CREATED_AT < DATEADD(day, 1, TO_DATE(%s))")
+            sql_params.append(_parse_day(date_to, "date_to"))
+
         if fixture_date_from:
-            where_clauses.append("m.SCHEDULEDDATE >= %s")
-            sql_params.append(fixture_date_from)
+            where_clauses.append("m.SCHEDULEDDATE >= TO_DATE(%s)")
+            sql_params.append(_parse_day(fixture_date_from, "fixture_date_from"))
         if fixture_date_to:
-            where_clauses.append("m.SCHEDULEDDATE <= %s")
-            sql_params.append(fixture_date_to)
+            where_clauses.append("m.SCHEDULEDDATE < DATEADD(day, 1, TO_DATE(%s))")
+            sql_params.append(_parse_day(fixture_date_to, "fixture_date_to"))
 
         # Construct WHERE clause
         if where_clauses:
             base_sql += " WHERE " + " AND ".join(where_clauses)
 
-        # Get total count
-        count_sql = f"SELECT COUNT(*) {base_sql}"
+        # Get total count. DISTINCT on the report id so it matches the QUALIFY
+        # de-duplication in the select below (the players/matches joins can
+        # fan a report out into several rows, which inflated the total and
+        # produced phantom/short pages, worst on "All Time").
+        count_sql = f"SELECT COUNT(DISTINCT sr.ID) {base_sql}"
 
         # Debug logging for fixture date filter
         if fixture_date_from or fixture_date_to:
@@ -9260,7 +9323,7 @@ async def get_all_scout_reports(
                 sr.IS_POTENTIAL
             {base_sql}
             QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
-            ORDER BY sr.CREATED_AT DESC
+            ORDER BY sr.CREATED_AT DESC, sr.ID DESC
             LIMIT %s OFFSET %s
         """
         sql_params.extend([limit, offset])
@@ -9342,6 +9405,8 @@ async def get_all_scout_reports(
             "limit": limit,
             "reports": report_list,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logging.exception(e)
         raise HTTPException(
@@ -9365,7 +9430,9 @@ async def get_recent_scout_reports(
     Optimized endpoint with caching for faster homepage loads.
     """
     # Generate cache key
-    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id if current_user.role in [ROLE_SCOUT, ROLE_LOAN_MANAGER] else 'all'}"
+    # Keyed per user: each row carries that user's own read/unread state, so a
+    # role-wide key would show one user's viewed flags to another.
+    cache_key = f"recent_reports_{report_type}_{limit}_{offset}_{recency_days}_{current_user.role}_{current_user.id}"
 
     # Check cache
     cached_result = get_cache(cache_key)
@@ -9429,8 +9496,9 @@ async def get_recent_scout_reports(
         if where_clauses:
             base_sql += " WHERE " + " AND ".join(where_clauses)
 
-        # Get total count
-        count_sql = f"SELECT COUNT(*) {base_sql}"
+        # Get total count (DISTINCT: the players/matches joins can fan a report
+        # out into several rows, which inflated the total and has_more)
+        count_sql = f"SELECT COUNT(DISTINCT sr.ID) {base_sql}"
         cursor.execute(count_sql, sql_params)
         total_reports = cursor.fetchone()[0]
 
@@ -9460,7 +9528,8 @@ async def get_recent_scout_reports(
                 sr.IS_POTENTIAL,
                 sr.SUMMARY
             {base_sql}
-            ORDER BY sr.CREATED_AT DESC
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
+            ORDER BY sr.CREATED_AT DESC, sr.ID DESC
             LIMIT %s OFFSET %s
         """
         sql_params.extend([limit, offset])
@@ -9652,6 +9721,7 @@ async def get_top_attribute_reports(
                 sr.CAFC_PLAYER_ID,
                 p.DATA_SOURCE
             {base_sql}
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY sr.ID ORDER BY sr.CREATED_AT DESC) = 1
             ORDER BY sr.ATTRIBUTE_SCORE DESC
             LIMIT %s
         """
@@ -9751,7 +9821,11 @@ async def get_single_scout_report(
                 sr.OPPOSITION_DETAILS,
                 sr.IS_ARCHIVED,
                 sr.IS_POTENTIAL,
-                sr.CLIP_CATEGORY
+                sr.CLIP_CATEGORY,
+                p.SQUADNAME,
+                p.DATA_SOURCE,
+                sr.PLAYER_ID,
+                sr.CAFC_PLAYER_ID
             FROM {core_table('scout_reports')} sr
             LEFT JOIN {read_table('players')} p ON (
                 (sr.PLAYER_ID = p.PLAYERID AND p.DATA_SOURCE = 'external') OR
@@ -9806,10 +9880,21 @@ async def get_single_scout_report(
             sum(non_zero_scores) / len(non_zero_scores) if non_zero_scores else 0
         )
 
+        # Universal ID of the report's actual player, so the frontend never has
+        # to re-resolve the player by (non-unique) name.
+        if report_data[26] == "internal" and report_data[28]:
+            universal_player_id = f"internal_{report_data[28]}"
+        elif report_data[26] == "external" and report_data[27]:
+            universal_player_id = f"external_{report_data[27]}"
+        else:
+            universal_player_id = None
+
         report = {
             "report_id": report_id,
             "created_at": str(report_data[0]),
             "player_name": report_data[1],
+            "player_id": universal_player_id,
+            "squad_name": report_data[25],
             "age": age,
             "home_squad_name": report_data[3],
             "away_squad_name": report_data[4],
@@ -12955,13 +13040,23 @@ async def get_all_intel_reports(
             where_clauses.append("UPPER(COALESCE(p.PLAYERNAME, '')) LIKE UPPER(%s)")
             sql_params.append(f"%{player_name}%")
 
+        # Date range: inclusive of the whole calendar day at both ends (the
+        # upper bound is "< day after date_to" because CREATED_AT has a time)
+        def _parse_day(value: str, name: str) -> str:
+            try:
+                return date.fromisoformat(value).isoformat()
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail=f"{name} must be YYYY-MM-DD"
+                )
+
         if date_from:
-            where_clauses.append("pi.CREATED_AT >= %s")
-            sql_params.append(date_from)
+            where_clauses.append("pi.CREATED_AT >= TO_DATE(%s)")
+            sql_params.append(_parse_day(date_from, "date_from"))
 
         if date_to:
-            where_clauses.append("pi.CREATED_AT <= %s")
-            sql_params.append(date_to)
+            where_clauses.append("pi.CREATED_AT < DATEADD(day, 1, TO_DATE(%s))")
+            sql_params.append(_parse_day(date_to, "date_to"))
 
         # Construct WHERE clause
         if where_clauses:
@@ -12975,14 +13070,16 @@ async def get_all_intel_reports(
         if where_clauses:
             count_base_sql += " WHERE " + " AND ".join(where_clauses)
 
-        count_sql = f"SELECT COUNT(*) {count_base_sql}"
+        # DISTINCT on the report id so the total matches the de-duplicated rows
+        count_sql = f"SELECT COUNT(DISTINCT pi.ID) {count_base_sql}"
         cursor.execute(count_sql, sql_params)
         total_intel_reports = cursor.fetchone()[0]
 
         # Get paginated reports - properly construct the query
         final_query = f"""
             {base_sql}
-            ORDER BY pi.CREATED_AT DESC
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY pi.ID ORDER BY pi.CREATED_AT DESC) = 1
+            ORDER BY pi.CREATED_AT DESC, pi.ID DESC
             LIMIT %s OFFSET %s
         """
 
@@ -13050,6 +13147,8 @@ async def get_all_intel_reports(
             "limit": limit,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.exception(e)
         raise HTTPException(
@@ -13264,7 +13363,7 @@ async def get_single_intel_report(
 @app.get("/leagues")
 async def get_leagues(current_user: User = Depends(get_current_user)):
     """Get all available leagues/competitions with caching"""
-    cache_key = "leagues_list_competitionname"
+    cache_key = "leagues_list_squad_competition_v2"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -13278,9 +13377,13 @@ async def get_leagues(current_user: User = Depends(get_current_user)):
 
         cursor.execute(
             f"""
-            SELECT DISTINCT NULLIF(TRIM(COMPETITIONNAME), '') AS LEAGUE
-            FROM {read_table('players')}
-            WHERE COMPETITIONNAME IS NOT NULL
+            SELECT DISTINCT NULLIF(TRIM(sl.COMPETITION_NAME), '') AS LEAGUE
+            FROM {squad_current_competition_sql()} sl
+            WHERE sl.COMPETITION_NAME IS NOT NULL
+              AND EXISTS (
+                  SELECT 1 FROM {read_table('players')} p
+                  WHERE p.SQUADNAME = sl.SQUAD_NAME
+              )
             ORDER BY LEAGUE
             """
         )
@@ -13346,7 +13449,7 @@ async def get_clubs(
     league: Optional[str] = None, current_user: User = Depends(get_current_user)
 ):
     """Get all clubs, optionally filtered by league with caching"""
-    cache_key = f"clubs_{league or 'all'}"
+    cache_key = f"clubs_v2_{league or 'all'}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
@@ -13362,10 +13465,12 @@ async def get_clubs(
             # Get clubs from specific league - use prepared statement
             cursor.execute(
                 f"""
-                SELECT DISTINCT SQUADNAME 
-                FROM {read_table('players')} 
-                WHERE COMPETITIONNAME = %s AND SQUADNAME IS NOT NULL 
-                ORDER BY SQUADNAME
+                SELECT DISTINCT p.SQUADNAME
+                FROM {read_table('players')} p
+                JOIN {squad_current_competition_sql()} sl
+                  ON sl.SQUAD_NAME = p.SQUADNAME
+                WHERE sl.COMPETITION_NAME = %s AND p.SQUADNAME IS NOT NULL
+                ORDER BY p.SQUADNAME
             """,
                 (league,),
             )
@@ -16561,10 +16666,8 @@ async def submit_feedback(
         )
 
 
-# =====================================================
-# PLAYER LISTS ENDPOINTS
-# =====================================================
-
+# ==============================================# PLAYER LISTS ENDPOINTS
+# ==============================================
 
 # Pydantic models for player lists
 class PlayerListCreate(BaseModel):
@@ -16902,6 +17005,7 @@ async def get_all_lists_with_details(
     max_age: Optional[int] = None,
     min_score: Optional[int] = None,
     max_score: Optional[int] = None,
+    performance_scores: Optional[str] = None,  # Comma-separated whole scores: "5,9" (matches the rounded average)
     min_reports: Optional[int] = None,
     max_reports: Optional[int] = None,
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
@@ -16987,6 +17091,7 @@ async def get_all_lists_with_details(
         # Build filter conditions with parameterized queries to prevent SQL injection
         filter_conditions = []
         filter_params = []
+        squad_league_join = ""
         exact_age_expr = """
             COALESCE(
                 IFF(
@@ -17063,12 +17168,21 @@ async def get_all_lists_with_details(
         if competition:
             competition_list = [c.strip() for c in competition.split(",") if c.strip()]
             if competition_list:
+                # players.COMPETITIONNAME comes from an arbitrary iteration (often a
+                # cup or a loan spell), so resolve the competition from the player's
+                # current squad instead: squad_league_join gives each squad its
+                # league in its latest season. Fall back to players.COMPETITIONNAME
+                # when the squad has no league data.
                 competition_placeholders = " OR ".join(
-                    ["NORMALIZE_TEXT_UDF(COALESCE(p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
+                    ["NORMALIZE_TEXT_UDF(COALESCE(sl.COMPETITION_NAME, p.COMPETITIONNAME, ip.COMPETITIONNAME)) = NORMALIZE_TEXT_UDF(%s)"]
                     * len(competition_list)
                 )
                 filter_conditions.append(f"({competition_placeholders})")
                 filter_params.extend(competition_list)
+                squad_league_join = f"""
+            LEFT JOIN {squad_current_competition_sql()} sl
+              ON NORMALIZE_TEXT_UDF(sl.SQUAD_NAME) = NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME))
+"""
 
         # Age filter
         if min_age is not None:
@@ -17119,6 +17233,7 @@ async def get_all_lists_with_details(
                 GROUP BY cafc_player_id
                 HAVING COUNT(DISTINCT source_player_id) = 1
             ) club_identity ON club_identity.cafc_player_id = pli.CAFC_PLAYER_ID
+            {squad_league_join}
             LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
@@ -17339,6 +17454,21 @@ async def get_all_lists_with_details(
             except Exception as squad_change_error:
                 logging.warning(f"Could not enrich lists with recent squad changes: {squad_change_error}")
 
+        score_set = None
+        if performance_scores:
+            score_set = {
+                int(x) for x in performance_scores.split(",") if x.strip().isdigit()
+            }
+
+        recency_cutoff = None
+        if recency_months is not None:
+            today = date.today()
+            month_index = today.year * 12 + (today.month - 1) - recency_months
+            year, month = divmod(month_index, 12)
+            month += 1
+            day = min(today.day, calendar.monthrange(year, month)[1])
+            recency_cutoff = datetime(year, month, day)
+
         # Build player data and attach to lists
         for row in player_rows:
             list_id = row[0]
@@ -17365,6 +17495,12 @@ async def get_all_lists_with_details(
                 continue
             if max_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] > max_score):
                 continue
+            # Specific scores (can be non-contiguous, e.g. 5 and 9): a player
+            # matches when their average rounds to one of the selected scores
+            if score_set is not None:
+                avg = stats["avg_performance_score"]
+                if avg is None or int(avg + 0.5) not in score_set:
+                    continue
 
             # Report count filter
             if min_reports is not None and stats["report_count"] < min_reports:
@@ -17372,13 +17508,14 @@ async def get_all_lists_with_details(
             if max_reports is not None and stats["report_count"] > max_reports:
                 continue
 
-            # Recency filter
+            # Recency filter (calendar months back from today)
             if recency_months is not None:
-                if stats["last_report_date"] is None:
+                last_report = stats["last_report_date"]
+                if last_report is None:
                     continue
-                from datetime import datetime, timedelta
-                cutoff_date = datetime.now() - timedelta(days=recency_months * 30)
-                if stats["last_report_date"] < cutoff_date:
+                if last_report.tzinfo is not None:
+                    last_report = last_report.replace(tzinfo=None)
+                if last_report < recency_cutoff:
                     continue
 
             # Determine universal_id

@@ -5,7 +5,7 @@
  * Provides loading states, error handling, and optimized data fetching.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   getAllListsWithDetails,
   ListWithPlayers,
@@ -28,15 +28,27 @@ export const usePlayerLists = (filters?: PlayerListFilters): UsePlayerListsRetur
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Only the latest request may update state: a slower, older fetch (different
+  // filters) must never overwrite the results of a newer one.
+  const abortRef = useRef<AbortController | null>(null);
+
   const fetchLists = useCallback(async (): Promise<ListWithPlayers[] | null> => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       setLoading(true);
       setError(null);
 
-      const data = await getAllListsWithDetails(filters);
+      const data = await getAllListsWithDetails(filters, controller.signal);
+      if (abortRef.current !== controller) return null; // superseded
       setLists(data);
       return data;
     } catch (err: any) {
+      if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
+        return null; // superseded by a newer request
+      }
       console.error("Error fetching player lists:", err);
       setError(
         err.response?.data?.detail ||
@@ -44,7 +56,9 @@ export const usePlayerLists = (filters?: PlayerListFilters): UsePlayerListsRetur
       );
       return null;
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) {
+        setLoading(false);
+      }
     }
   }, [filters]); // Refetch when filters change
 
@@ -52,6 +66,9 @@ export const usePlayerLists = (filters?: PlayerListFilters): UsePlayerListsRetur
   useEffect(() => {
     fetchLists();
   }, [fetchLists]);
+
+  // Cancel any in-flight request when the page unmounts
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   return {
     lists,
