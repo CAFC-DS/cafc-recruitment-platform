@@ -23,6 +23,7 @@ import {
 import { extractVSSScore } from "../utils/reportUtils";
 import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
+import TransferNewsBulletin from "../components/TransferNewsBulletin";
 import { Users, Goal, Info, Flag, Trophy, Eye } from "lucide-react";
 import { IconBallFootball } from "@tabler/icons-react";
 
@@ -376,6 +377,8 @@ const HomePage: React.FC = () => {
             </Col>
           </Row>
         </div>
+
+        <TransferNewsBulletin />
 
         {/* 1x3 Grid Dashboard */}
         <Row className="g-4">
