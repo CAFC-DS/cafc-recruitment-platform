@@ -1,3 +1,5 @@
+import ClubMoveDot from "../PlayerLists/ClubMoveDot";
+import type { ClubMove } from "../../services/playerListsService";
 import React, { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -9,6 +11,7 @@ import { PlayerListMembership } from "../../services/playerListsService";
 import { getPlayerNotes } from "../../utils/playerListPreferences";
 
 export interface PlayerInList {
+  club_move?: ClubMove | null;
   item_id: number;
   player_id: number | null;
   cafc_player_id: number | null;
@@ -232,6 +235,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
             }}
           >
             {player.player_name}
+            <ClubMoveDot move={player.club_move} />
             {getPlayerNotes(player.universal_id) && (
               <span
                 style={{

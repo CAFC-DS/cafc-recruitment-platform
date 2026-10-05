@@ -29,6 +29,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePlayerLists } from "../hooks/usePlayerLists";
+import ClubMoveDot from "../components/PlayerLists/ClubMoveDot";
 import MultiListBadges from "../components/PlayerLists/MultiListBadges";
 import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
@@ -1818,6 +1819,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 <strong>
                                   {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
                                 </strong>
+                                <ClubMoveDot move={player.club_move} />
                                 {playerFavorites.has(player.universal_id) && (
                                   <span
                                     className="ms-2 d-inline-flex align-items-center"

@@ -23,7 +23,15 @@ export interface PlayerList {
   avg_performance_score: number | null;
 }
 
+export interface ClubMove {
+  from_club: string | null;
+  to_club: string | null;
+  last_old_club_appearance: string | null;
+  first_new_club_appearance: string | null;
+}
+
 export interface PlayerInList {
+  club_move?: ClubMove | null;
   item_id: number;
   player_id: number | null;
   cafc_player_id: number | null;

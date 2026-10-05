@@ -45,6 +45,7 @@ import io
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
 from services.schema_service import SchemaService
+from services.club_moves import get_club_move
 from services.ollama_service import ollama_service
 
 # Import iteration mapping
@@ -17106,10 +17107,18 @@ async def get_all_lists_with_details(
                 COALESCE(p.SQUADNAME, ip.SQUADNAME) as SQUADNAME,
                 {exact_age_expr} as AGE,
                 u.USERNAME as ADDED_BY_USERNAME,
-                p.DATA_SOURCE
+                p.DATA_SOURCE,
+                COALESCE(pli.PLAYER_ID, p.PLAYERID, ip.PLAYERID, club_identity.external_player_id) AS CLUB_MOVE_PLAYER_ID
             FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON pli.PLAYER_ID = p.PLAYERID
             LEFT JOIN {read_table('players')} ip ON pli.CAFC_PLAYER_ID = ip.CAFC_PLAYER_ID
+            LEFT JOIN (
+                SELECT cafc_player_id, MIN(TRY_TO_NUMBER(source_player_id)) AS external_player_id
+                FROM {core_table('core_player_id_resolutions')}
+                WHERE source_system = 'IMPECT'
+                GROUP BY cafc_player_id
+                HAVING COUNT(DISTINCT source_player_id) = 1
+            ) club_identity ON club_identity.cafc_player_id = pli.CAFC_PLAYER_ID
             LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             {where_clause}
             ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER, pli.CREATED_AT DESC
@@ -17401,6 +17410,7 @@ async def get_all_lists_with_details(
                 "video_reports": stats["video_reports"],
                 "last_report_date": stats["last_report_date"].isoformat() if stats["last_report_date"] else None,
                 "intel_reports_count": intel_reports_count,
+                "club_move": get_club_move(row[17], category),
                 "recent_squad_change": squad_change_lookup.get((player_id, cafc_player_id))
                 or squad_change_name_lookup.get(str(row[9] or "").strip().casefold()),
             }
@@ -17567,6 +17577,8 @@ async def get_player_list_detail(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
 
+        ensure_player_lists_category_column(cursor)
+
         # Add STAGE column if it doesn't exist (migration)
         try:
             cursor.execute("DESCRIBE TABLE player_list_items")
@@ -17587,7 +17599,7 @@ async def get_player_list_detail(
         # Get list metadata
         cursor.execute(
             f"""
-            SELECT ID, LIST_NAME, DESCRIPTION, USER_ID, CREATED_AT, UPDATED_AT
+            SELECT ID, LIST_NAME, DESCRIPTION, USER_ID, CREATED_AT, UPDATED_AT, LIST_CATEGORY
             FROM {core_table('player_lists')}
             WHERE ID = %s
         """,
@@ -17626,12 +17638,20 @@ async def get_player_list_detail(
                 p.SQUADNAME,
                 p.BIRTHDATE,
                 u.USERNAME,
-                pli.STAGE
+                pli.STAGE,
+                COALESCE(pli.PLAYER_ID, p.PLAYERID, club_identity.external_player_id) AS CLUB_MOVE_PLAYER_ID
             FROM {core_table('player_list_items')} pli
             LEFT JOIN {read_table('players')} p ON (
                 pli.PLAYER_ID = p.PLAYERID OR
                 pli.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID
             )
+            LEFT JOIN (
+                SELECT cafc_player_id, MIN(TRY_TO_NUMBER(source_player_id)) AS external_player_id
+                FROM {core_table('core_player_id_resolutions')}
+                WHERE source_system = 'IMPECT'
+                GROUP BY cafc_player_id
+                HAVING COUNT(DISTINCT source_player_id) = 1
+            ) club_identity ON club_identity.cafc_player_id = pli.CAFC_PLAYER_ID
             LEFT JOIN {core_table('users')} u ON pli.ADDED_BY = u.ID
             WHERE pli.LIST_ID = %s
             ORDER BY pli.DISPLAY_ORDER ASC, pli.CREATED_AT DESC
@@ -17748,6 +17768,7 @@ async def get_player_list_detail(
                     "age": age,
                     "added_by_username": row[13],
                     "stage": row[14] or "Stage 1",
+                    "club_move": get_club_move(row[15], list_row[6] or "first_team"),
                     "report_count": stats['report_count'],
                     "avg_performance_score": stats['avg_score'],
                     "live_reports": stats['live_reports'],

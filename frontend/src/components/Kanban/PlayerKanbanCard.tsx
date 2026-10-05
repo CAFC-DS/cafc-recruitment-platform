@@ -1,3 +1,5 @@
+import ClubMoveDot from "../PlayerLists/ClubMoveDot";
+import type { ClubMove } from "../../services/playerListsService";
 import React, { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -8,6 +10,7 @@ import MultiListBadges from "../PlayerLists/MultiListBadges";
 import { PlayerListMembership } from "../../services/playerListsService";
 
 export interface PlayerInList {
+  club_move?: ClubMove | null;
   item_id: number;
   player_id: number | null;
   cafc_player_id: number | null;
@@ -176,6 +179,7 @@ const PlayerKanbanCard: React.FC<PlayerKanbanCardProps> = React.memo(({
             <Col>
               <div className="fw-bold" style={{ fontSize: "0.9rem" }}>
                 {player.player_name}
+            <ClubMoveDot move={player.club_move} />
               </div>
               <small className="text-muted d-block">
                 {player.squad_name || "Unknown Club"}
