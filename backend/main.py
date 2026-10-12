@@ -11889,7 +11889,10 @@ async def get_player_scout_reports(
 
         base_query += """
             GROUP BY sr.ID, sr.CREATED_AT, u.FIRSTNAME, u.LASTNAME, u.USERNAME, sr.PERFORMANCE_SCORE, m.SCHEDULEDDATE, m.HOMESQUADNAME, m.AWAYSQUADNAME, sr.REPORT_TYPE, sr.POSITION, sr.FLAG_CATEGORY, sr.CLIP_CATEGORY, sr.SCOUTING_TYPE, sr.IS_ARCHIVED, sr.SUMMARY, sr.IS_POTENTIAL, sr.USER_ID
-            ORDER BY sr.CREATED_AT DESC
+            -- Compare calendar report dates so import times do not override fixture order.
+            ORDER BY DATE(sr.CREATED_AT) DESC NULLS LAST,
+                     DATE(m.SCHEDULEDDATE) DESC NULLS LAST,
+                     sr.CREATED_AT DESC NULLS LAST, sr.ID DESC
         """
 
         cursor.execute(base_query, query_params)
