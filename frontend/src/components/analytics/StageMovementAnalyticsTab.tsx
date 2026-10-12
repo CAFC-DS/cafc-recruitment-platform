@@ -13,8 +13,11 @@ interface StageMovementAnalytics {
     moved_into_stage_1: number;
     moved_stage_1_to_2: number;
     moved_stage_2_to_3: number;
+    moved_stage_3_to_4: number;
+    archived_from_stage_1: number;
     archived_from_stage_2: number;
     archived_from_stage_3: number;
+    archived_from_stage_4: number;
   };
   stage_counts: Record<string, number>;
   stage_ever_counts: Record<string, number>;
@@ -52,6 +55,16 @@ const metricCards = [
     subtitle: "Players moved into final shortlist review",
   },
   {
+    key: "moved_stage_3_to_4",
+    title: "Moved Stage 3 to 4",
+    subtitle: "Players progressed into Stage 4",
+  },
+  {
+    key: "archived_from_stage_1",
+    title: "Archived from Stage 1",
+    subtitle: "Players removed after Stage 1 review",
+  },
+  {
     key: "archived_from_stage_2",
     title: "Archived from Stage 2",
     subtitle: "Players removed after Stage 2 review",
@@ -60,6 +73,11 @@ const metricCards = [
     key: "archived_from_stage_3",
     title: "Archived from Stage 3",
     subtitle: "Players removed after Stage 3 review",
+  },
+  {
+    key: "archived_from_stage_4",
+    title: "Archived from Stage 4",
+    subtitle: "Players removed after Stage 4 review",
   },
 ] as const;
 

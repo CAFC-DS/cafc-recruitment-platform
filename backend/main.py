@@ -15875,8 +15875,11 @@ async def get_stage_movement_analytics(
                 COUNT_IF(psh.OLD_STAGE IS NULL AND psh.NEW_STAGE = 'Stage 1') AS moved_into_stage_1,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 1' AND psh.NEW_STAGE = 'Stage 2') AS moved_stage_1_to_2,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Stage 3') AS moved_stage_2_to_3,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Stage 4') AS moved_stage_3_to_4,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 1' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_1,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_2,
-                COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3
+                COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 4' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_4
             FROM {core_table('player_stage_history')} psh
             {list_join}
             WHERE {EFFECTIVE_START} >= %s
@@ -16001,8 +16004,11 @@ async def get_stage_movement_analytics(
                 "moved_into_stage_1": int(row.get("MOVED_INTO_STAGE_1") or 0),
                 "moved_stage_1_to_2": int(row.get("MOVED_STAGE_1_TO_2") or 0),
                 "moved_stage_2_to_3": int(row.get("MOVED_STAGE_2_TO_3") or 0),
+                "moved_stage_3_to_4": int(row.get("MOVED_STAGE_3_TO_4") or 0),
+                "archived_from_stage_1": int(row.get("ARCHIVED_FROM_STAGE_1") or 0),
                 "archived_from_stage_2": int(row.get("ARCHIVED_FROM_STAGE_2") or 0),
                 "archived_from_stage_3": int(row.get("ARCHIVED_FROM_STAGE_3") or 0),
+                "archived_from_stage_4": int(row.get("ARCHIVED_FROM_STAGE_4") or 0),
             },
             "stage_counts": stage_counts,
             "stage_ever_counts": stage_ever_counts,
