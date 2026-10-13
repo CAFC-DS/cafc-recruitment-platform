@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, Collapse, Button, Row, Col, Form, Dropdown } from "react-bootstrap";
 
 export interface PlayerListFilters {
@@ -40,20 +40,45 @@ const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
 export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   showFilters,
   setShowFilters,
-  filters,
-  onFilterChange,
-  onClearFilters,
-  showArchived,
-  onShowArchivedChange,
-  includeArchivedReports,
-  onIncludeArchivedReportsChange,
-  includeFlagReports,
-  onIncludeFlagReportsChange,
+  filters: appliedFilters,
+  onFilterChange: appliedOnFilterChange,
+  showArchived: appliedShowArchived,
+  onShowArchivedChange: appliedOnShowArchivedChange,
+  includeArchivedReports: appliedIncludeArchivedReports,
+  onIncludeArchivedReportsChange: appliedOnIncludeArchivedReportsChange,
+  includeFlagReports: appliedIncludeFlagReports,
+  onIncludeFlagReportsChange: appliedOnIncludeFlagReportsChange,
   competitionOptions,
   archivedReasonOptions,
   initialReasonOptions,
   stageCounts = {},
 }) => {
+  // Keep edits local until all filter selections are ready to apply.
+  const [filters, setDraftFilters] = useState(appliedFilters);
+  const [showArchived, onShowArchivedChange] = useState(appliedShowArchived);
+  const [includeArchivedReports, onIncludeArchivedReportsChange] = useState(appliedIncludeArchivedReports);
+  const [includeFlagReports, onIncludeFlagReportsChange] = useState(appliedIncludeFlagReports);
+  const onFilterChange = (changes: Partial<PlayerListFilters>) => {
+    setDraftFilters((previous) => ({ ...previous, ...changes }));
+  };
+  const onClearFilters = () => {
+    setDraftFilters({
+      playerName: "", position: "", club: "", competition: [],
+      performanceScores: [], minAge: "", maxAge: "", minReports: "",
+      maxReports: "", stages: [], archivedReasons: [], initialReasons: [],
+      recencyMonths: "",
+    });
+    onShowArchivedChange(false);
+    onIncludeArchivedReportsChange(false);
+    onIncludeFlagReportsChange(false);
+  };
+  const applyAllFilters = () => {
+    appliedOnFilterChange({ ...filters, performanceScores: [...filters.performanceScores] });
+    appliedOnShowArchivedChange(showArchived);
+    appliedOnIncludeArchivedReportsChange(includeArchivedReports);
+    appliedOnIncludeFlagReportsChange(includeFlagReports);
+  };
+
   return (
     <Card className="mb-3">
       <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
@@ -112,7 +137,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <Col md={5}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Competition</Form.Label>
-                <Dropdown>
+                <Dropdown autoClose="outside">
                   <Dropdown.Toggle
                     variant="outline-secondary"
                     size="sm"
@@ -160,7 +185,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                 <Form.Label className="small fw-bold">
                   Performance Score
                 </Form.Label>
-                <Dropdown>
+                <Dropdown autoClose="outside">
                   <Dropdown.Toggle
                     variant="outline-secondary"
                     size="sm"
@@ -250,7 +275,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Stage Filter</Form.Label>
-                <Dropdown>
+                <Dropdown autoClose="outside">
                   <Dropdown.Toggle
                     variant="outline-secondary"
                     size="sm"
@@ -318,7 +343,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Include Options</Form.Label>
-                <Dropdown>
+                <Dropdown autoClose="outside">
                   <Dropdown.Toggle
                     variant="outline-secondary"
                     size="sm"
@@ -370,7 +395,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Initial Reason</Form.Label>
-                <Dropdown>
+                <Dropdown autoClose="outside">
                   <Dropdown.Toggle
                     variant="outline-secondary"
                     size="sm"
@@ -412,7 +437,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <Col md={4}>
               <Form.Group>
                 <Form.Label className="small fw-bold">Archived Reason</Form.Label>
-                <Dropdown>
+                <Dropdown autoClose="outside">
                   <Dropdown.Toggle
                     variant="outline-secondary"
                     size="sm"
@@ -453,8 +478,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             </Col>
           </Row>
 
-          {/* Row 5: Clear Filters */}
+          {/* Apply or reset pending filter selections */}
           <Row className="mb-3">
+            <Col md={4} className="d-flex align-items-end">
+              <Button variant="primary" size="sm" className="w-100" onClick={applyAllFilters}>
+                Apply All
+              </Button>
+            </Col>
             <Col md={4}>
               <Form.Group>
                 <Form.Label
