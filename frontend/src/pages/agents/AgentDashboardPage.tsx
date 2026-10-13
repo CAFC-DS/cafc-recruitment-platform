@@ -6,6 +6,7 @@ import { agentRecommendationsService } from '../../services/agentRecommendations
 import { Recommendation } from '../../types/recommendations';
 import {
   getRecommendationStatusConfig,
+  normalizeRecommendationStatus,
   REVIEW_STATUS_ORDER,
 } from '../../utils/agentRecommendationStatus';
 
@@ -183,6 +184,9 @@ const AgentDashboardPage: React.FC = () => {
                                   <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
                                     View
                                   </Link>
+                                  {normalizeRecommendationStatus(item.status) === 'Not Currently under Consideration' && !item.resubmitted_as_id && !!item.linked_universal_id ? (
+                                    <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-outline-primary btn-sm">Resubmit</Link>
+                                  ) : null}
                                   {item.status === 'Submitted' ? (
                                     <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
                                       Edit
@@ -233,7 +237,10 @@ const AgentDashboardPage: React.FC = () => {
                             <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
                               View
                             </Link>
-                            {item.status === 'Submitted' ? (
+                            {normalizeRecommendationStatus(item.status) === 'Not Currently under Consideration' && !item.resubmitted_as_id && !!item.linked_universal_id ? (
+                                    <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-outline-primary btn-sm">Resubmit</Link>
+                                  ) : null}
+                                  {item.status === 'Submitted' ? (
                               <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
                                 Edit
                               </Link>

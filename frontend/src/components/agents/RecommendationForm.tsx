@@ -18,7 +18,7 @@ interface RecommendationFormProps {
   onSubmit: (event: React.FormEvent) => void;
   loading: boolean;
   error?: string | null;
-  mode?: 'create' | 'edit';
+  mode?: 'create' | 'edit' | 'resubmit';
   initialManualPlayerEntry?: boolean;
   initialSelectedPlayerLabel?: string;
   // Populated by the parent page when a manual-entry submit/update is
@@ -342,6 +342,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
   const hasSelectedPlayer = !isManualPlayerEntry && !!selectedPlayerLabel;
   const wageBasis = values.wage_basis || values.expected_wages_basis || values.current_wages_basis || 'Gross';
   const isEditMode = mode === 'edit';
+  const isResubmitMode = mode === 'resubmit';
   const updateWageBasis = (nextBasis: WageBasis) => {
     onChange('wage_basis', nextBasis);
     onChange('current_wages_basis', nextBasis);
@@ -468,7 +469,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
           <div>
             <div className="agent-portal-section-title">Recommendation Intake</div>
             <div className="agent-portal-section-copy">
-              {isEditMode
+              {isResubmitMode ? 'Update the player’s details for a new review and explain what has changed.' : isEditMode
                 ? 'Update your submitted player and deal information while it is still awaiting review.'
                 : 'Submit structured player and deal information into the Charlton workflow. Edits stay available while the submission status remains Submitted.'}
             </div>
@@ -528,7 +529,9 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
             {/* Manual entry is rehydration-only: edits of recommendations
                 submitted before player creation was restricted to staff.
                 New submissions must link a player from the search. */}
-            {isManualPlayerEntry ? (
+            {isResubmitMode ? (
+              <div className="agent-player-selected-card"><div><strong>{values.player_name}</strong><div>{formatDob(values.player_date_of_birth)}</div><small>Player identity is fixed for this resubmission.</small></div></div>
+            ) : isManualPlayerEntry ? (
               <div className="agent-portal-form-grid">
                 <div>
                   <label className="agent-portal-label">Player Name *</label>
@@ -816,7 +819,7 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
             File uploads and automated email notifications are disabled in this test release.
           </div>
           <button type="submit" disabled={loading} className="agent-auth-button" style={{ minWidth: 220 }}>
-            {loading ? (isEditMode ? 'Saving...' : 'Submitting...') : (isEditMode ? 'Save Changes' : 'Submit Recommendation')}
+            {loading ? (isEditMode ? 'Saving...' : 'Submitting...') : (isResubmitMode ? 'Resubmit with new details' : isEditMode ? 'Save Changes' : 'Submit Recommendation')}
           </button>
         </div>
       </div>

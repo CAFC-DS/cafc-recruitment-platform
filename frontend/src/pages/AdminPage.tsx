@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -318,6 +318,7 @@ const AdminPage: React.FC = () => {
     <Container className="mt-4 admin-console">
       <div className="admin-console-header mb-4">
         <h2 className="mb-1">Admin Operations Console</h2>
+        <Link to="/admin/email">Recruitment email and agent NCUC batches</Link>
         <p className="text-muted mb-0">
           Manage users, audit internal duplicates, and run controlled system operations.
         </p>

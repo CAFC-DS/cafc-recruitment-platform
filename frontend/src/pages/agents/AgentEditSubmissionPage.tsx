@@ -13,7 +13,8 @@ import {
   validateRecommendationFormValues,
 } from '../../utils/agentRecommendationForm';
 
-const AgentEditSubmissionPage: React.FC = () => {
+const AgentEditSubmissionPage: React.FC<{ resubmit?: boolean }> = ({ resubmit = false }) => {
+  const [changes, setChanges] = useState('');
   const navigate = useNavigate();
   const { id } = useParams();
   const [profile, setProfile] = useState<AgentProfile | null>(null);
@@ -29,6 +30,10 @@ const AgentEditSubmissionPage: React.FC = () => {
       try {
         if (!id) return;
         setBootstrapLoading(true);
+        setValues(null);
+        setItem(null);
+        setChanges('');
+        setDuplicateCandidates(null);
         setError(null);
         const recommendationId = Number(id);
         const [me, detail] = await Promise.all([
@@ -37,11 +42,15 @@ const AgentEditSubmissionPage: React.FC = () => {
         ]);
         setProfile(me);
         setItem(detail);
-        if (detail.status !== 'Submitted') {
-          setError('This submission is no longer editable because it has moved beyond Submitted.');
+        if (resubmit ? detail.status !== 'Not Currently under Consideration' || !!detail.resubmitted_as_id : detail.status !== 'Submitted') {
+          setError(resubmit ? 'Only the latest NCUC submission can be resubmitted.' : 'This submission is no longer editable because it has moved beyond Submitted.');
           return;
         }
-        setValues(mapRecommendationToFormValues(detail));
+        if (resubmit && !detail.linked_universal_id) {
+          setError('The club needs to link this submission to a player record before you can resubmit it. Please contact the recruitment team.');
+          return;
+        }
+        setValues({ ...mapRecommendationToFormValues(detail), ...(resubmit ? { submission_date: new Date().toLocaleDateString('en-CA') } : {}) });
       } catch (err) {
         console.error(err);
         setError('Failed to load submission for editing');
@@ -50,12 +59,13 @@ const AgentEditSubmissionPage: React.FC = () => {
       }
     };
     load();
-  }, [id]);
+  }, [id, resubmit]);
 
   const handleChange = (
     field: keyof RecommendationFormValues,
     value: string | string[] | boolean | null,
   ) => {
+    if (resubmit && ['player_name', 'player_date_of_birth', 'linked_universal_id', 'player_manual_entry'].includes(field)) return;
     setValues((current) => (current ? { ...current, [field]: value as never } : current));
     // A stale interstitial pointed at a name/DOB the agent has since edited
     // would let them link to a candidate matched against the old value.
@@ -69,10 +79,12 @@ const AgentEditSubmissionPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const updated = await agentRecommendationsService.update(Number(id), valuesToSubmit, { confirmNewPlayer });
+      const updated = resubmit
+        ? await agentRecommendationsService.resubmit(Number(id), valuesToSubmit, changes)
+        : await agentRecommendationsService.update(Number(id), valuesToSubmit, { confirmNewPlayer });
       navigate(`/agents/submissions/${updated.id}`, {
         replace: true,
-        state: { successMessage: 'Submission updated successfully.' },
+        state: { successMessage: resubmit ? 'New submission created successfully.' : 'Submission updated successfully.' },
       });
     } catch (err: any) {
       console.error(err);
@@ -91,6 +103,7 @@ const AgentEditSubmissionPage: React.FC = () => {
     event.preventDefault();
     if (!id || !values) return;
 
+    if (resubmit && !changes.trim()) { setError("Explain what's changed before resubmitting."); return; }
     const validationError = validateRecommendationFormValues(values);
     if (validationError) {
       setError(validationError);
@@ -121,8 +134,8 @@ const AgentEditSubmissionPage: React.FC = () => {
 
   return (
     <AgentPortalShell
-      title="Edit Submission"
-      subtitle="Update your recommendation while it is still awaiting club review."
+      title={resubmit ? "Resubmit with new details" : "Edit Submission"}
+      subtitle={resubmit ? "Create a new recommendation for the same player. Your previous submission stays available." : "Update your recommendation while it is still awaiting club review."}
       actions={
         <Link to={id ? `/agents/submissions/${id}` : '/agents/dashboard'} className="agent-portal-button-secondary">
           Back to submission
@@ -146,6 +159,11 @@ const AgentEditSubmissionPage: React.FC = () => {
       ) : null}
 
       {!bootstrapLoading && values ? (
+        <>
+        {resubmit && <div className="agent-portal-card agent-portal-card-body" style={{ marginBottom: '1rem' }}>
+          <label className="agent-portal-label" htmlFor="resubmission-changes">What's changed? *</label>
+          <textarea id="resubmission-changes" className="agent-portal-input" value={changes} onChange={e => setChanges(e.target.value)} maxLength={10000} required />
+        </div>}
         <RecommendationForm
           values={values}
           profile={profile}
@@ -153,13 +171,14 @@ const AgentEditSubmissionPage: React.FC = () => {
           onSubmit={handleSubmit}
           loading={loading}
           error={error}
-          mode="edit"
-          initialManualPlayerEntry={item ? shouldUseManualPlayerEntry(item) : false}
+          mode={resubmit ? "resubmit" : "edit"}
+          initialManualPlayerEntry={!resubmit && item ? shouldUseManualPlayerEntry(item) : false}
           initialSelectedPlayerLabel={item ? getRecommendationSelectedPlayerLabel(item) : ''}
           duplicateCandidates={duplicateCandidates}
           onLinkDuplicateCandidate={handleLinkDuplicateCandidate}
           onConfirmNewPlayer={handleConfirmNewPlayer}
         />
+        </>
       ) : null}
     </AgentPortalShell>
   );

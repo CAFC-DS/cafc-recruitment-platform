@@ -44,27 +44,35 @@ const AgentSubmissionDetailPage: React.FC = () => {
   const location = useLocation();
   const { theme } = useTheme();
   const [item, setItem] = useState<Recommendation | null>(null);
+  const [versions, setVersions] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showNotesHistory, setShowNotesHistory] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const load = async () => {
       try {
         if (!id) return;
         setLoading(true);
+        setVersions([]);
         setError(null);
         const recommendationId = Number(id);
         const detail = await agentRecommendationsService.getDetail(recommendationId);
+        if (!active) return;
         setItem(detail);
+        const versionIds = [detail.previous_recommendation_id, detail.resubmitted_as_id].filter((value): value is number => !!value);
+        const related = await Promise.all(versionIds.map(versionId => agentRecommendationsService.getDetail(versionId).catch(() => null)));
+        if (active) setVersions(related.filter((value): value is Recommendation => value !== null));
       } catch (err) {
         console.error(err);
-        setError('Failed to load submission');
+        if (active) setError('Failed to load submission');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
     load();
+    return () => { active = false; };
   }, [id]);
 
   const currentStatusConfig = useMemo(
@@ -108,6 +116,9 @@ const AgentSubmissionDetailPage: React.FC = () => {
                   A simplified view of the current review status, your submitted details and any notes shared by the club.
                 </div>
                 </div>
+                {item.status === 'Not Currently under Consideration' && !item.resubmitted_as_id && !!item.linked_universal_id ? (
+                  <Link to={`/agents/submissions/${item.id}/resubmit`} className="agent-auth-button">Resubmit with new details</Link>
+                ) : null}
                 {item.status === 'Submitted' ? (
                   <Link to={`/agents/submissions/${item.id}/edit`} className="agent-auth-button" style={{ minWidth: 180, textAlign: 'center' }}>
                     Edit submission
@@ -116,6 +127,16 @@ const AgentSubmissionDetailPage: React.FC = () => {
               </div>
             </div>
 
+            {versions.map(version => (
+              <p key={version.id}>
+                {version.id === item.previous_recommendation_id ? (
+                  <>This is a resubmission of <Link to={`/agents/submissions/${version.id}`}>{version.player_name}</Link>, originally submitted on {formatDate(version.submission_date || version.created_at)}.</>
+                ) : (
+                  <><Link to={`/agents/submissions/${version.id}`}>{version.player_name}</Link> was resubmitted on {formatDate(version.submission_date || version.created_at)}.</>
+                )}
+              </p>
+            ))}
+            {item.resubmission_changes && <p><strong>What's changed:</strong> {item.resubmission_changes}</p>}
             <div
               className="agent-portal-current-status-card"
               style={{

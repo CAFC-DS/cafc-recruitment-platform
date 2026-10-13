@@ -132,7 +132,8 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
 };
 
 const ExternalRecommendationsListPage: React.FC = () => {
-  const { isIntelReviewer } = useCurrentUser();
+  const { isIntelReviewer, user } = useCurrentUser();
+  const [ncucSelected, setNcucSelected] = useState<number[]>([]);
   const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
@@ -481,6 +482,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
         </div>
       </div>
 
+      {user?.role === 'admin' && <div className="mb-3"><Link to={`/admin/email${ncucSelected.length ? '?ids=' + ncucSelected.join(',') : ''}`}>Email users / mark {ncucSelected.length || 'selected'} recommendations NCUC</Link></div>}
       {banner ? <div className="alert alert-success alert-dismissible fade show"><i className="bi bi-check-circle me-2"></i>{banner}<button type="button" className="btn-close" onClick={() => setBanner(null)}></button></div> : null}
       {error ? <div className="alert alert-danger alert-dismissible fade show"><i className="bi bi-exclamation-triangle me-2"></i>{error}<button type="button" className="btn-close" onClick={() => setError(null)}></button></div> : null}
 
@@ -790,6 +792,9 @@ const ExternalRecommendationsListPage: React.FC = () => {
                       className={hasPendingStatusChange ? 'external-recommendations-row-pending' : undefined}
                     >
                       <td className="cell-name">
+                        {user?.role === 'admin' && <Form.Check aria-label={`Select ${item.player_name} for NCUC`} checked={ncucSelected.includes(item.id)} onChange={e => setNcucSelected(e.target.checked ? [...ncucSelected, item.id] : ncucSelected.filter(id => id !== item.id))} />}
+                        {item.previous_recommendation_id && <div><span className="badge bg-info text-dark">Resubmission</span>{' '}<Button variant="link" size="sm" onClick={() => internalRecommendationsService.getDetail(item.previous_recommendation_id!).then(openReviewModal).catch(() => setError('Could not load previous submission'))}>Previous #{item.previous_recommendation_id}</Button></div>}
+                        {item.resubmission_changes && <div className="small">What's changed: {item.resubmission_changes}</div>}
                         <div className="external-recommendations-player-cell">
                           {getPlayerProfilePath(item) ? (
                             <Link className="fw-bold text-truncate" to={getPlayerProfilePath(item) || '#'} title="Open player profile">
