@@ -54,6 +54,7 @@ from iteration_mapping import ITERATION_MAPPING
 
 # Import shared duplicate-player scoring (pure, DB-free)
 from duplicate_detection import score_player_match, score_intake_match, normalize_text as dd_normalize_text
+from lifecycle_db import acquire_mutex, update_recommendation_status
 
 # Load environment variables from .env file
 load_dotenv()
@@ -281,6 +282,7 @@ def load_table_schemas():
             "player_recommendations",
             "agent_profiles",
             "status_history",
+            "lifecycle_mutex",
         ]
 
         for table_name in tables_to_cache:
@@ -289,7 +291,9 @@ def load_table_schemas():
                 # APP_COMPAT view in the canonical world), not the bare name,
                 # which resolves to CAFC_DB.CORE where players/matches have the
                 # canonical column shape, not the legacy one the app expects.
-                cursor.execute(f"DESCRIBE TABLE {read_table(table_name)}")
+                cursor.execute(
+                    f"DESCRIBE TABLE {core_table(table_name) if table_name in {'player_recommendations', 'lifecycle_mutex'} else read_table(table_name)}"
+                )
                 columns = cursor.fetchall()
                 TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in columns]
                 print(f"✅ Cached schema for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
@@ -327,7 +331,9 @@ def refresh_table_schema(table_name: str):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        cursor.execute(f"DESCRIBE TABLE {read_table(table_name)}")
+        cursor.execute(
+            f"DESCRIBE TABLE {core_table(table_name) if table_name in {'player_recommendations', 'lifecycle_mutex'} else read_table(table_name)}"
+        )
         TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in cursor.fetchall()]
         print(f"✅ Refreshed schema cache for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
         print(f"DEBUG: Columns for {table_name}: {TABLE_SCHEMA_CACHE[table_name]}")
@@ -1232,7 +1238,13 @@ def fetch_recommendation_notes_history(cursor, recommendation_id: int, include_a
 
 
 def insert_recommendation_note_history_if_changed(
-    cursor, recommendation_id: int, new_notes, current_notes, changed_by: int, changed_at: Optional[datetime] = None
+    cursor,
+    recommendation_id: int,
+    new_notes,
+    current_notes,
+    changed_by: int,
+    changed_at: Optional[datetime] = None,
+    schema_ready: bool = False,
 ):
     """Insert a recommendation_notes_history row only if the note text actually
     changed (trimmed comparison) and isn't just being cleared, so no-op resaves
@@ -1248,7 +1260,8 @@ def insert_recommendation_note_history_if_changed(
     current_text = (current_notes or "").strip()
     if new_text == current_text or not new_text:
         return
-    ensure_recommendation_notes_history_table(cursor)
+    if not schema_ready:
+        ensure_recommendation_notes_history_table(cursor)
     cursor.execute(
         f"""
         INSERT INTO {core_table('recommendation_notes_history')} (RECOMMENDATION_ID, NOTE_CONTENT, CREATED_BY, CREATED_AT)
@@ -1457,6 +1470,9 @@ class RecommendationResponse(BaseModel):
     # See build_recommendation_select()/serialize_recommendation_row() for
     # the derivation.
     player_manual_entry: bool = False
+    previous_recommendation_id: Optional[int] = None
+    resubmitted_as_id: Optional[int] = None
+    resubmission_changes: Optional[str] = None
 
 
 class RecommendationStatusHistoryResponse(BaseModel):
@@ -3137,13 +3153,31 @@ def build_recommendation_select():
             {matched_data_source_expr} AS LINKED_PLAYER_DATA_SOURCE,
             {wage_basis_expr} AS WAGE_BASIS,
             {linked_universal_id_expr} AS LINKED_UNIVERSAL_ID,
-            {linked_player_transfermarkt_link_expr} AS LINKED_PLAYER_TRANSFERMARKT_LINK
+            {linked_player_transfermarkt_link_expr} AS LINKED_PLAYER_TRANSFERMARKT_LINK,
+            {previous_expr} AS PREVIOUS_RECOMMENDATION_ID,
+            {changes_expr} AS RESUBMISSION_CHANGES,
+            {child_expr} AS RESUBMITTED_AS_ID
         FROM {player_recommendations_table} pr
         LEFT JOIN {users_table} u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
     """.format(
-        player_recommendations_table=core_table('player_recommendations'),
-        users_table=core_table('users'),
+        previous_expr="pr.PREVIOUS_RECOMMENDATION_ID"
+        if recommendation_column_exists(
+            "player_recommendations", "PREVIOUS_RECOMMENDATION_ID"
+        )
+        else "NULL",
+        changes_expr="pr.RESUBMISSION_CHANGES"
+        if recommendation_column_exists(
+            "player_recommendations", "RESUBMISSION_CHANGES"
+        )
+        else "NULL",
+        child_expr=f"(SELECT MAX(child.ID) FROM {core_table('player_recommendations')} child WHERE child.PREVIOUS_RECOMMENDATION_ID=pr.ID)"
+        if recommendation_column_exists(
+            "player_recommendations", "PREVIOUS_RECOMMENDATION_ID"
+        )
+        else "NULL",
+        player_recommendations_table=core_table("player_recommendations"),
+        users_table=core_table("users"),
         transfer_fee_amount_expr=transfer_fee_amount_expr,
         transfer_fee_currency_expr=transfer_fee_currency_expr,
         transfer_fee_min_expr=transfer_fee_min_expr,
@@ -3284,6 +3318,9 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "shared_notes": row[28],
         "linked_universal_id": linked_universal_id,
         "player_manual_entry": player_manual_entry,
+        "previous_recommendation_id": row[52] if len(row) > 52 else None,
+        "resubmission_changes": row[53] if len(row) > 53 else None,
+        "resubmitted_as_id": row[54] if len(row) > 54 else None,
     }
 
     if not include_internal:
@@ -3889,16 +3926,75 @@ async def create_agent_recommendation(
     player_manual_entry: Optional[bool] = Form(False),
     confirm_new_player: Optional[bool] = Form(False),
     supporting_file: Optional[UploadFile] = File(None),
+    previous_recommendation_id: Optional[int] = Form(None),
+    resubmission_changes: Optional[str] = Form(None),
     current_user: User = Depends(require_agent_user),
 ):
     validate_recommendation_schema_ready()
     if supporting_file:
         raise HTTPException(status_code=400, detail="Supporting file uploads are disabled for testing")
 
+    # Direct Python callers also use this function; unwrap FastAPI defaults.
+    previous_recommendation_id = (
+        previous_recommendation_id
+        if isinstance(previous_recommendation_id, int)
+        else None
+    )
+    resubmission_changes = (
+        resubmission_changes if isinstance(resubmission_changes, str) else None
+    )
     conn = None
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        original = None
+        if previous_recommendation_id is not None:
+            if not all(
+                recommendation_column_exists("player_recommendations", col)
+                for col in ("PREVIOUS_RECOMMENDATION_ID", "RESUBMISSION_CHANGES")
+            ):
+                raise HTTPException(503, "Resubmission migration is required")
+            acquire_mutex(cursor, core_table)
+            original = fetch_recommendation_detail(cursor, previous_recommendation_id)
+            if not original or original[24] != current_user.id:
+                raise HTTPException(404, "Recommendation not found")
+            if original[25] != "Not Currently under Consideration":
+                raise HTTPException(409, "Only NCUC recommendations can be resubmitted")
+            if (
+                not resubmission_changes
+                or not resubmission_changes.strip()
+                or len(resubmission_changes) > 10000
+            ):
+                raise HTTPException(
+                    400, "Explain what's changed (maximum 10,000 characters)"
+                )
+            cursor.execute(
+                f'SELECT ID FROM {core_table("player_recommendations")} WHERE PREVIOUS_RECOMMENDATION_ID=%s',
+                (previous_recommendation_id,),
+            )
+            if cursor.fetchone():
+                raise HTTPException(
+                    409,
+                    "This submission already has a newer version; open the latest submission",
+                )
+            original_dob = serialize_datetime(original[43])
+            if (
+                player_name.strip() != (original[6] or "").strip()
+                or (player_date_of_birth or "")[:10] != (original_dob or "")[:10]
+            ):
+                raise HTTPException(
+                    400, "Player identity cannot change during resubmission"
+                )
+            linked_universal_id = original[50] if len(original) > 50 else None
+            if not linked_universal_id:
+                raise HTTPException(
+                    409,
+                    "The original player must be linked by staff before resubmission",
+                )
+            if not find_player_by_universal_or_legacy_id(linked_universal_id, cursor)[
+                0
+            ]:
+                raise HTTPException(409, "The original player link needs staff review")
         recommendation_payload = prepare_agent_recommendation_payload(
             cursor=cursor,
             current_user=current_user,
@@ -3928,10 +4024,14 @@ async def create_agent_recommendation(
             additional_information=additional_information,
         )
 
-        resolved_universal_id = resolve_agent_intake_player_link(
-            cursor,
-            linked_universal_id=linked_universal_id,
-            player_manual_entry=bool(player_manual_entry),
+        resolved_universal_id = (
+            linked_universal_id
+            if original
+            else resolve_agent_intake_player_link(
+                cursor,
+                linked_universal_id=linked_universal_id,
+                player_manual_entry=bool(player_manual_entry),
+            )
         )
 
         recommendation_columns = get_table_columns("player_recommendations")
@@ -4016,6 +4116,14 @@ async def create_agent_recommendation(
             insert_columns.append("LINKED_UNIVERSAL_ID")
             insert_values.append(resolved_universal_id)
 
+        if original:
+            insert_columns.extend(
+                ["PREVIOUS_RECOMMENDATION_ID", "RESUBMISSION_CHANGES"]
+            )
+            insert_values.extend(
+                [previous_recommendation_id, resubmission_changes.strip()]
+            )
+
         placeholders = ", ".join(["%s"] * len(insert_columns))
         cursor.execute(
             f"""
@@ -4026,17 +4134,28 @@ async def create_agent_recommendation(
             tuple(insert_values),
         )
 
-        cursor.execute(
-            f"""
-            SELECT ID
-            FROM {core_table('player_recommendations')}
-            WHERE SUBMITTED_BY_USER_ID = %s
-            ORDER BY CREATED_AT DESC, ID DESC
-            LIMIT 1
-        """,
-            (current_user.id,),
-        )
+        if original:
+            cursor.execute(
+                f'SELECT ID FROM {core_table("player_recommendations")} WHERE PREVIOUS_RECOMMENDATION_ID=%s',
+                (previous_recommendation_id,),
+            )
+        else:
+            cursor.execute(
+                f'SELECT ID FROM {core_table("player_recommendations")} WHERE SUBMITTED_BY_USER_ID=%s ORDER BY CREATED_AT DESC, ID DESC LIMIT 1',
+                (current_user.id,),
+            )
         recommendation_id = cursor.fetchone()[0]
+        if original:
+            cursor.execute(
+                f'INSERT INTO {core_table("status_history")} (RECOMMENDATION_ID,OLD_STATUS,NEW_STATUS,CHANGED_BY,CHANGED_AT) VALUES (%s,%s,%s,%s,%s)',
+                (
+                    recommendation_id,
+                    None,
+                    "Submitted",
+                    current_user.id,
+                    datetime.utcnow(),
+                ),
+            )
         conn.commit()
 
         detail_row = fetch_recommendation_detail(cursor, recommendation_id)
@@ -4058,6 +4177,78 @@ async def create_agent_recommendation(
     finally:
         if conn:
             conn.close()
+
+
+@app.post(
+    "/agents/recommendations/{recommendation_id}/resubmit",
+    response_model=RecommendationResponse,
+)
+async def resubmit_agent_recommendation(
+    recommendation_id: int,
+    agent_name: str = Form(...),
+    agency: Optional[str] = Form(None),
+    agent_email: str = Form(...),
+    agent_number: Optional[str] = Form(None),
+    submission_date: str = Form(...),
+    player_name: str = Form(...),
+    player_date_of_birth: Optional[str] = Form(None),
+    recommended_position: Optional[str] = Form(None),
+    transfermarkt_link: Optional[str] = Form(None),
+    player_manual_squad: Optional[str] = Form(None),
+    agreement_type: Optional[str] = Form(None),
+    confirmed_contract_expiry: Optional[str] = Form(None),
+    contract_options: Optional[str] = Form(None),
+    potential_deal_type: Optional[str] = Form(None),
+    transfer_fee: Optional[str] = Form(None),
+    transfer_fee_currency: Optional[str] = Form(None),
+    current_wages_per_week: Optional[str] = Form(None),
+    current_wages_currency: Optional[str] = Form(None),
+    wage_basis: Optional[str] = Form(None),
+    current_wages_basis: Optional[str] = Form(None),
+    expected_wages_per_week: Optional[str] = Form(None),
+    expected_wages_currency: Optional[str] = Form(None),
+    expected_wages_basis: Optional[str] = Form(None),
+    additional_information: Optional[str] = Form(None),
+    linked_universal_id: Optional[str] = Form(None),
+    player_manual_entry: Optional[bool] = Form(False),
+    confirm_new_player: Optional[bool] = Form(False),
+    supporting_file: Optional[UploadFile] = File(None),
+    resubmission_changes: Optional[str] = Form(None),
+    current_user: User = Depends(require_agent_user),
+):
+    return await create_agent_recommendation(
+        previous_recommendation_id=recommendation_id,
+        agent_name=agent_name,
+        agency=agency,
+        agent_email=agent_email,
+        agent_number=agent_number,
+        submission_date=submission_date,
+        player_name=player_name,
+        player_date_of_birth=player_date_of_birth,
+        recommended_position=recommended_position,
+        transfermarkt_link=transfermarkt_link,
+        player_manual_squad=player_manual_squad,
+        agreement_type=agreement_type,
+        confirmed_contract_expiry=confirmed_contract_expiry,
+        contract_options=contract_options,
+        potential_deal_type=potential_deal_type,
+        transfer_fee=transfer_fee,
+        transfer_fee_currency=transfer_fee_currency,
+        current_wages_per_week=current_wages_per_week,
+        current_wages_currency=current_wages_currency,
+        wage_basis=wage_basis,
+        current_wages_basis=current_wages_basis,
+        expected_wages_per_week=expected_wages_per_week,
+        expected_wages_currency=expected_wages_currency,
+        expected_wages_basis=expected_wages_basis,
+        additional_information=additional_information,
+        linked_universal_id=linked_universal_id,
+        player_manual_entry=player_manual_entry,
+        confirm_new_player=confirm_new_player,
+        supporting_file=supporting_file,
+        resubmission_changes=resubmission_changes,
+        current_user=current_user,
+    )
 
 
 @app.patch("/agents/recommendations/{recommendation_id}", response_model=RecommendationResponse)
@@ -4576,6 +4767,12 @@ async def update_internal_recommendation_status(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        lifecycle_locked = has_column("lifecycle_mutex", "ID")
+        if lifecycle_locked:
+            # Existing note-table DDL must happen BEFORE BEGIN: Snowflake DDL commits transactions.
+            if payload.shared_notes and payload.shared_notes.strip():
+                ensure_recommendation_notes_history_table(cursor)
+            acquire_mutex(cursor, core_table)
         row = fetch_recommendation_detail(cursor, recommendation_id)
         if not row:
             raise HTTPException(status_code=404, detail="Recommendation not found")
@@ -4583,39 +4780,27 @@ async def update_internal_recommendation_status(
         previous_status = row[25]
         previous_notes = row[28]
         changed_at = datetime.utcnow()
-        if previous_status != payload.new_status:
-            cursor.execute(
-                f"""
-                INSERT INTO {core_table('status_history')} (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
-                VALUES (%s, %s, %s, %s, %s)
-            """,
-                (recommendation_id, previous_status, payload.new_status, current_user.id, changed_at),
-            )
-
-            if payload.shared_notes is not None:
-                insert_recommendation_note_history_if_changed(
-                    cursor, recommendation_id, payload.shared_notes, previous_notes, current_user.id, changed_at=changed_at
-                )
-
-            cursor.execute(
-                f"""
-                UPDATE {core_table('player_recommendations')}
-                SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s,
-                    INTERNAL_NOTES = COALESCE(%s, INTERNAL_NOTES), UPDATED_AT = %s
-                WHERE ID = %s
-            """,
-                (payload.new_status, changed_at, current_user.id, payload.shared_notes, changed_at, recommendation_id),
-            )
-        elif payload.shared_notes is not None:
+        update_recommendation_status(
+            cursor,
+            core_table,
+            recommendation_id,
+            previous_status,
+            payload.new_status,
+            current_user.id,
+            changed_at,
+        )
+        if payload.shared_notes is not None:
             insert_recommendation_note_history_if_changed(
-                cursor, recommendation_id, payload.shared_notes, previous_notes, current_user.id
+                cursor,
+                recommendation_id,
+                payload.shared_notes,
+                previous_notes,
+                current_user.id,
+                changed_at=changed_at,
+                schema_ready=lifecycle_locked,
             )
             cursor.execute(
-                f"""
-                UPDATE {core_table('player_recommendations')}
-                SET INTERNAL_NOTES = %s, UPDATED_AT = %s
-                WHERE ID = %s
-            """,
+                f'UPDATE {core_table("player_recommendations")} SET INTERNAL_NOTES=%s, UPDATED_AT=%s WHERE ID=%s',
                 (payload.shared_notes, changed_at, recommendation_id),
             )
         conn.commit()
@@ -4626,6 +4811,8 @@ async def update_internal_recommendation_status(
             "warning": None,
         }
     except HTTPException:
+        if conn:
+            conn.rollback()
         raise
     except Exception as e:
         if conn:
@@ -4652,6 +4839,8 @@ async def bulk_update_internal_recommendation_status(
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
+        if has_column("lifecycle_mutex", "ID"):
+            acquire_mutex(cursor, core_table)
         changed_at = datetime.utcnow()
         deduped_updates = list(
             {
@@ -4674,23 +4863,15 @@ async def bulk_update_internal_recommendation_status(
                 continue
 
             previous_status = row[25]
-            if previous_status != update.new_status:
-                cursor.execute(
-                    f"""
-                    INSERT INTO {core_table('status_history')} (RECOMMENDATION_ID, OLD_STATUS, NEW_STATUS, CHANGED_BY, CHANGED_AT)
-                    VALUES (%s, %s, %s, %s, %s)
-                """,
-                    (recommendation_id, previous_status, update.new_status, current_user.id, changed_at),
-                )
-
-                cursor.execute(
-                    f"""
-                    UPDATE {core_table('player_recommendations')}
-                    SET STATUS = %s, STATUS_UPDATED_AT = %s, STATUS_UPDATED_BY = %s, UPDATED_AT = %s
-                    WHERE ID = %s
-                """,
-                    (update.new_status, changed_at, current_user.id, changed_at, recommendation_id),
-                )
+            update_recommendation_status(
+                cursor,
+                core_table,
+                recommendation_id,
+                previous_status,
+                update.new_status,
+                current_user.id,
+                changed_at,
+            )
 
             updated_count += 1
 
@@ -4702,6 +4883,8 @@ async def bulk_update_internal_recommendation_status(
             "failures": failures,
         }
     except HTTPException:
+        if conn:
+            conn.rollback()
         raise
     except Exception as e:
         if conn:
@@ -19394,6 +19577,13 @@ async def bulk_remove_players_from_list(
     finally:
         if conn:
             conn.close()
+
+
+# Register lifecycle API after authentication/schema helpers are defined.
+import sys as _lifecycle_sys
+from email_lifecycle import register_routes as _register_email_routes
+
+_register_email_routes(_lifecycle_sys.modules[__name__])
 
 
 if __name__ == "__main__":

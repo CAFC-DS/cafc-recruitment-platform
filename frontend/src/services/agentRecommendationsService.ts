@@ -71,6 +71,11 @@ export const agentRecommendationsService = {
     return response.data;
   },
 
+  async resubmit(id: number, values: RecommendationFormValues, changes: string) {
+    const response = await axiosInstance.post<Recommendation>(`/agents/recommendations/${id}/resubmit`, toFormData(values, { resubmission_changes: changes }));
+    return response.data;
+  },
+
   async searchPlayers(query: string, limit = 10) {
     const response = await axiosInstance.get<AgentPlayerSearchResponse>('/agents/player-search', {
       params: { query, limit },

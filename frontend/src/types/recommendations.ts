@@ -46,6 +46,9 @@ export interface AgentProfile {
 }
 
 export interface Recommendation {
+  previous_recommendation_id?: number | null;
+  resubmitted_as_id?: number | null;
+  resubmission_changes?: string | null;
   id: number;
   player_name: string;
   linked_player_id?: number | null;

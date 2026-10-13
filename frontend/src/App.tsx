@@ -24,6 +24,7 @@ import AgentResetPasswordPage from './pages/agents/AgentResetPasswordPage';
 import AgentDashboardPage from './pages/agents/AgentDashboardPage';
 import AgentSubmitPage from './pages/agents/AgentSubmitPage';
 import AgentSubmissionDetailPage from './pages/agents/AgentSubmissionDetailPage';
+import AdminEmailPage from './pages/AdminEmailPage';
 import AgentEditSubmissionPage from './pages/agents/AgentEditSubmissionPage';
 import InternalRecommendationsPage from './pages/internal/InternalRecommendationsPage';
 import ListsGatewayPage from './pages/ListsGatewayPage';
@@ -422,6 +423,7 @@ function App() {
             <Route path="/agents/dashboard" element={<AgentRoute><AgentDashboardPage /></AgentRoute>} />
             <Route path="/agents/submit" element={<AgentRoute><AgentSubmitPage /></AgentRoute>} />
             <Route path="/agents/submissions/:id" element={<AgentRoute><AgentSubmissionDetailPage /></AgentRoute>} />
+            <Route path="/agents/submissions/:id/resubmit" element={<AgentRoute><AgentEditSubmissionPage resubmit /></AgentRoute>} />
             <Route path="/agents/submissions/:id/edit" element={<AgentRoute><AgentEditSubmissionPage /></AgentRoute>} />
             {/* Public route for shared reports - no authentication required */}
             <Route path="/shared-report/:token" element={<SharedReportPage />} />
@@ -508,6 +510,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+            <Route path="/admin/email" element={<AdminRoute><AdminEmailPage /></AdminRoute>} />
             <Route
               path="/admin"
               element={

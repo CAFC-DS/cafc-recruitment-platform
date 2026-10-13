@@ -67,6 +67,7 @@ backend/backend_errors.log
 .claude/
 
 # OS
+backend/.venv/
 .DS_Store
 Thumbs.db
 

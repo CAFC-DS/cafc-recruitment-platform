@@ -92,7 +92,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     summary: 'The player does not meet the club’s current criteria and is not under active consideration at this time.',
     clubAction: 'The profile has been archived from the active process.',
     nextStep: 'Unless the club’s needs change, no further review is expected on this submission.',
-    agentAction: 'No further action is required on this submission.',
+    agentAction: 'If the player’s situation has changed, resubmit with new details from this submission.',
     dashboardHint: 'Archived and not under active consideration.',
     isTerminal: true,
     color: { bg: '#fee2e2', text: '#b91c1c', border: '#f87171' },
