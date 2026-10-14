@@ -1,5 +1,6 @@
+import { favoriteTooltip } from "../../utils/favoriteTooltip";
 import ClubMoveDot from "../PlayerLists/ClubMoveDot";
-import type { ClubMove } from "../../services/playerListsService";
+import type { ClubMove, FavoriteDetails } from "../../services/playerListsService";
 import React, { useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -49,6 +50,7 @@ interface CollapsiblePlayerBarProps {
   onToggleDecision?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   isFavorited?: boolean;
+  favoriteDetails?: FavoriteDetails;
   isDecision?: boolean;
   fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
@@ -115,6 +117,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
   onToggleDecision,
   onViewHistory,
   isFavorited = false,
+  favoriteDetails,
   isDecision = false,
   fetchArchiveInfo,
 }) => {
@@ -436,7 +439,8 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
                         color: isFavorited ? "#FFD700" : undefined,
                         borderColor: isFavorited ? "#FFD700" : undefined,
                       }}
-                      title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+                      title={isFavorited ? favoriteTooltip(favoriteDetails) : "Add to favourites"}
+                      aria-label={isFavorited ? `Remove from favourites. ${favoriteTooltip(favoriteDetails)}` : "Add to favourites"}
                     >
                       {isFavorited ? "⭐" : "☆"}
                     </button>

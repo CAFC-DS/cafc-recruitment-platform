@@ -17784,19 +17784,26 @@ async def get_player_list_flags(current_user: User = Depends(get_current_user)):
         cursor = conn.cursor()
         cursor.execute(
             f"""
-            SELECT UNIVERSAL_ID, IS_FAVORITE, IS_DECISION
-            FROM {core_table('player_list_flags')}
-            WHERE IS_FAVORITE = TRUE OR IS_DECISION = TRUE
+            SELECT f.UNIVERSAL_ID, f.IS_FAVORITE, f.IS_DECISION,
+                   f.FAVORITED_AT, u.USERNAME
+            FROM {core_table('player_list_flags')} f
+            LEFT JOIN {core_table('users')} u ON f.FAVORITED_BY = u.ID
+            WHERE f.IS_FAVORITE = TRUE OR f.IS_DECISION = TRUE
             """
         )
         favorites = []
         decisions = []
-        for universal_id, is_favorite, is_decision in cursor.fetchall():
+        favorite_details = {}
+        for universal_id, is_favorite, is_decision, favorited_at, favorited_by in cursor.fetchall():
             if is_favorite:
                 favorites.append(universal_id)
+                favorite_details[universal_id] = {
+                    "favorited_at": favorited_at.isoformat() if favorited_at else None,
+                    "favorited_by": favorited_by,
+                }
             if is_decision:
                 decisions.append(universal_id)
-        return {"favorites": favorites, "decisions": decisions}
+        return {"favorites": favorites, "decisions": decisions, "favorite_details": favorite_details}
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching list flags: {e}")
@@ -17867,7 +17874,10 @@ async def update_player_list_flag(
         conn.commit()
 
         cursor.execute(
-            f"SELECT IS_FAVORITE, IS_DECISION FROM {core_table('player_list_flags')} WHERE UNIVERSAL_ID = %s",
+            f"""SELECT f.IS_FAVORITE, f.IS_DECISION, f.FAVORITED_AT, u.USERNAME
+            FROM {core_table('player_list_flags')} f
+            LEFT JOIN {core_table('users')} u ON f.FAVORITED_BY = u.ID
+            WHERE f.UNIVERSAL_ID = %s""",
             (universal_id,),
         )
         row = cursor.fetchone()
@@ -17875,6 +17885,10 @@ async def update_player_list_flag(
             "universal_id": universal_id,
             "is_favorite": bool(row[0]) if row else False,
             "is_decision": bool(row[1]) if row else False,
+            "favorite_details": {
+                "favorited_at": row[2].isoformat() if row and row[2] else None,
+                "favorited_by": row[3] if row else None,
+            } if row and row[0] else None,
         }
     except HTTPException:
         raise

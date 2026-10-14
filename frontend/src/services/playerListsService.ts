@@ -99,7 +99,18 @@ export interface BulkStageUpdateResponse {
   }>;
 }
 
+export interface FavoriteDetails {
+  favorited_at: string | null;
+  favorited_by: string | null;
+}
+
+export interface FavoriteFlagResponse {
+  is_favorite: boolean;
+  favorite_details: FavoriteDetails | null;
+}
+
 export interface PlayerListFlags {
+  favorite_details?: Record<string, FavoriteDetails>;
   favorites: string[];
   decisions: string[];
 }
@@ -121,12 +132,12 @@ export const getPlayerListFlags = async (): Promise<PlayerListFlags> => {
 export const setPlayerFavoriteFlag = async (
   universalId: string,
   isFavorite: boolean
-): Promise<boolean> => {
+): Promise<FavoriteFlagResponse> => {
   const response = await axiosInstance.put(
     `/player-lists/flags/${encodeURIComponent(universalId)}`,
     { is_favorite: isFavorite }
   );
-  return response.data.is_favorite;
+  return response.data;
 };
 
 /**

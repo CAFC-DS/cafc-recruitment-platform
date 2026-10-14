@@ -54,6 +54,7 @@ import {
   getPlayerListFlags,
   setPlayerFavoriteFlag,
   setPlayerDecisionFlag,
+  FavoriteDetails,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -199,6 +200,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     name: string;
   } | null>(null);
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
+  const [favoriteDetails, setFavoriteDetails] = useState<Record<string, FavoriteDetails>>({});
   const [playerDecisions, setPlayerDecisions] = useState<Set<string>>(new Set());
 
   // Stage change reason modal state
@@ -1166,7 +1168,13 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     });
 
     try {
-      await setPlayerFavoriteFlag(universalId, !wasFavorite);
+      const result = await setPlayerFavoriteFlag(universalId, !wasFavorite);
+      setFavoriteDetails((prev) => {
+        const next = { ...prev };
+        if (result.favorite_details) next[universalId] = result.favorite_details;
+        else delete next[universalId];
+        return next;
+      });
     } catch (err) {
       console.error("Error updating favorite:", err);
       setPlayerFavorites((prev) => {
@@ -1266,9 +1274,10 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   useEffect(() => {
     let cancelled = false;
     getPlayerListFlags()
-      .then(({ favorites, decisions }) => {
+      .then(({ favorites, decisions, favorite_details }) => {
         if (cancelled) return;
         setPlayerFavorites(new Set(favorites));
+        setFavoriteDetails(favorite_details || {});
         setPlayerDecisions(new Set(decisions));
       })
       .catch((err) => console.error("Error loading player list flags:", err));
@@ -1570,6 +1579,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
             onToggleDecision={handleToggleDecision}
             onViewHistory={openStageHistory}
             playerFavorites={playerFavorites}
+            favoriteDetails={favoriteDetails}
             playerDecisions={playerDecisions}
             fetchArchiveInfo={fetchArchiveInfo}
           />
