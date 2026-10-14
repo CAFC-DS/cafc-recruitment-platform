@@ -17785,7 +17785,8 @@ async def get_player_list_flags(current_user: User = Depends(get_current_user)):
         cursor.execute(
             f"""
             SELECT f.UNIVERSAL_ID, f.IS_FAVORITE, f.IS_DECISION,
-                   f.FAVORITED_AT, u.USERNAME
+                   f.FAVORITED_AT,
+                   NULLIF(TRIM(CONCAT(COALESCE(u.FIRSTNAME, ''), ' ', COALESCE(u.LASTNAME, ''))), '') AS FAVORITED_BY_NAME
             FROM {core_table('player_list_flags')} f
             LEFT JOIN {core_table('users')} u ON f.FAVORITED_BY = u.ID
             WHERE f.IS_FAVORITE = TRUE OR f.IS_DECISION = TRUE
@@ -17874,7 +17875,8 @@ async def update_player_list_flag(
         conn.commit()
 
         cursor.execute(
-            f"""SELECT f.IS_FAVORITE, f.IS_DECISION, f.FAVORITED_AT, u.USERNAME
+            f"""SELECT f.IS_FAVORITE, f.IS_DECISION, f.FAVORITED_AT,
+                   NULLIF(TRIM(CONCAT(COALESCE(u.FIRSTNAME, ''), ' ', COALESCE(u.LASTNAME, ''))), '') AS FAVORITED_BY_NAME
             FROM {core_table('player_list_flags')} f
             LEFT JOIN {core_table('users')} u ON f.FAVORITED_BY = u.ID
             WHERE f.UNIVERSAL_ID = %s""",

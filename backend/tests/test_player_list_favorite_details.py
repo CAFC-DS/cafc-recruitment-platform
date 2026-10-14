@@ -31,7 +31,7 @@ def load_routes(connection):
 def test_flags_include_attribution_and_missing_history():
     connection = MagicMock()
     connection.cursor.return_value.fetchall.return_value = [
-        ("1", True, False, datetime(2026, 10, 14, 12, 0), "hashim"),
+        ("1", True, False, datetime(2026, 10, 14, 12, 0), "Hashim Umarji"),
         ("2", False, True, None, None),
         ("3", True, True, None, None),
     ]
@@ -40,16 +40,19 @@ def test_flags_include_attribution_and_missing_history():
     assert result["favorites"] == ["1", "3"]
     assert result["decisions"] == ["2", "3"]
     assert result["favorite_details"] == {
-        "1": {"favorited_at": "2026-10-14T12:00:00", "favorited_by": "hashim"},
+        "1": {"favorited_at": "2026-10-14T12:00:00", "favorited_by": "Hashim Umarji"},
         "3": {"favorited_at": None, "favorited_by": None},
     }
+    query = connection.cursor.return_value.execute.call_args.args[0]
+    assert "u.FIRSTNAME" in query and "u.LASTNAME" in query
+    assert "u.USERNAME" not in query
     connection.close.assert_called_once()
 
 
 def check_toggle_returns_persisted_attribution(enabled):
     connection = MagicMock()
     connection.cursor.return_value.fetchone.return_value = (
-        enabled, True, datetime(2026, 10, 14) if enabled else None, "hashim" if enabled else None,
+        enabled, True, datetime(2026, 10, 14) if enabled else None, "Hashim Umarji" if enabled else None,
     )
     routes = load_routes(connection)
     result = asyncio.run(routes["update_player_list_flag"](
@@ -58,9 +61,12 @@ def check_toggle_returns_persisted_attribution(enabled):
     assert result["is_favorite"] == enabled
     assert result["is_decision"] is True
     assert result["favorite_details"] == (
-        {"favorited_at": "2026-10-14T00:00:00", "favorited_by": "hashim"} if enabled else None
+        {"favorited_at": "2026-10-14T00:00:00", "favorited_by": "Hashim Umarji"} if enabled else None
     )
     connection.commit.assert_called_once()
+    query = connection.cursor.return_value.execute.call_args.args[0]
+    assert "u.FIRSTNAME" in query and "u.LASTNAME" in query
+    assert "u.USERNAME" not in query
     connection.close.assert_called_once()
 
 
