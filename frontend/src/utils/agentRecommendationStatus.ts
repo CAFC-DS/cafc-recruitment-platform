@@ -86,7 +86,7 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     darkColor: { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.4)' },
   },
   'Archived Submission': {
-    badgeClassName: 'agent-status-not-under-consideration',
+    badgeClassName: 'agent-status-archived',
     displayLabel: 'Archived Submission',
     shortLabel: 'Archived',
     title: 'Previous-window submission archived',
