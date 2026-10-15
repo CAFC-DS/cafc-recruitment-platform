@@ -185,7 +185,7 @@ const AgentDashboardPage: React.FC = () => {
                                     View
                                   </Link>
                                   {canResubmitRecommendation(item) ? (
-                                    <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-outline-primary btn-sm">Resubmit</Link>
+                                    <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-link btn-sm">Resubmit with new details</Link>
                                   ) : null}
                                   {item.status === 'Submitted' ? (
                                     <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
@@ -238,7 +238,7 @@ const AgentDashboardPage: React.FC = () => {
                               View
                             </Link>
                             {canResubmitRecommendation(item) ? (
-                                    <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-outline-primary btn-sm">Resubmit</Link>
+                                    <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-link btn-sm">Resubmit with new details</Link>
                                   ) : null}
                                   {item.status === 'Submitted' ? (
                               <Link to={`/agents/submissions/${item.id}/edit`} className="btn btn-link btn-sm">
