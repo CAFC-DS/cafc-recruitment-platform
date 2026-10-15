@@ -6,7 +6,7 @@ import { agentRecommendationsService } from '../../services/agentRecommendations
 import { Recommendation } from '../../types/recommendations';
 import {
   getRecommendationStatusConfig,
-  normalizeRecommendationStatus,
+  canResubmitRecommendation,
   REVIEW_STATUS_ORDER,
 } from '../../utils/agentRecommendationStatus';
 
@@ -53,7 +53,7 @@ const AgentDashboardPage: React.FC = () => {
   }, [sortedItems]);
 
   const activeReviewCount = useMemo(
-    () => items.filter((item) => item.status !== 'Not Currently under Consideration').length,
+    () => items.filter((item) => !['Not Currently under Consideration', 'Archived Submission'].includes(item.status)).length,
     [items],
   );
 
@@ -184,7 +184,7 @@ const AgentDashboardPage: React.FC = () => {
                                   <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
                                     View
                                   </Link>
-                                  {normalizeRecommendationStatus(item.status) === 'Not Currently under Consideration' && !item.resubmitted_as_id && !!item.linked_universal_id ? (
+                                  {canResubmitRecommendation(item) ? (
                                     <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-outline-primary btn-sm">Resubmit</Link>
                                   ) : null}
                                   {item.status === 'Submitted' ? (
@@ -237,7 +237,7 @@ const AgentDashboardPage: React.FC = () => {
                             <Link to={`/agents/submissions/${item.id}`} className="btn btn-link btn-sm">
                               View
                             </Link>
-                            {normalizeRecommendationStatus(item.status) === 'Not Currently under Consideration' && !item.resubmitted_as_id && !!item.linked_universal_id ? (
+                            {canResubmitRecommendation(item) ? (
                                     <Link to={`/agents/submissions/${item.id}/resubmit`} className="btn btn-outline-primary btn-sm">Resubmit</Link>
                                   ) : null}
                                   {item.status === 'Submitted' ? (
