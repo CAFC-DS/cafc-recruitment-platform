@@ -298,9 +298,6 @@ const PlayerSearchOption: React.FC<{
           <div className="agent-player-search-option-meta">{metaParts.join(' · ')}</div>
         ) : null}
       </div>
-      {result.avg_performance_score != null ? (
-        <span className="agent-player-score-badge">{result.avg_performance_score.toFixed(1)}</span>
-      ) : null}
     </button>
   );
 };

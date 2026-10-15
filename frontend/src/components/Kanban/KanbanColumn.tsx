@@ -7,7 +7,7 @@ import {
   getStageBgColor,
   colors,
 } from "../../styles/playerLists.theme";
-import { PlayerListMembership } from "../../services/playerListsService";
+import { FavoriteDetails, PlayerListMembership } from "../../services/playerListsService";
 
 /**
  * PlayerList interface matching the backend API summary
@@ -50,6 +50,7 @@ interface KanbanColumnProps {
   onToggleDecision?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
+  favoriteDetails?: Record<string, FavoriteDetails>;
   playerDecisions?: Set<string>;
   fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
@@ -94,6 +95,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   onToggleDecision,
   onViewHistory,
   playerFavorites,
+  favoriteDetails,
   playerDecisions,
   fetchArchiveInfo,
 }) => {
@@ -281,6 +283,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 onToggleDecision={onToggleDecision}
                 onViewHistory={onViewHistory}
                 isFavorited={playerFavorites?.has(player.universal_id) || false}
+                favoriteDetails={favoriteDetails?.[player.universal_id]}
                 isDecision={playerDecisions?.has(player.universal_id) || false}
                 fetchArchiveInfo={fetchArchiveInfo}
               />

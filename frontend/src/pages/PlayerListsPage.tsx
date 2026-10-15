@@ -1,3 +1,4 @@
+import { favoriteTooltip } from "../utils/favoriteTooltip";
 /**
  * PlayerListsPage Component - REDESIGNED
  *
@@ -57,6 +58,7 @@ import {
   getPlayerListFlags,
   setPlayerFavoriteFlag,
   setPlayerDecisionFlag,
+  FavoriteDetails,
   PlayerListMembership,
   PlayerListFilters,
 } from "../services/playerListsService";
@@ -291,6 +293,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     name: string;
   } | null>(null);
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
+  const [favoriteDetails, setFavoriteDetails] = useState<Record<string, FavoriteDetails>>({});
   const [playerDecisions, setPlayerDecisions] = useState<Set<string>>(new Set());
 
   // Remove player (currently using batch removal with pending state)
@@ -1066,7 +1069,13 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     });
 
     try {
-      await setPlayerFavoriteFlag(universalId, !wasFavorite);
+      const result = await setPlayerFavoriteFlag(universalId, !wasFavorite);
+      setFavoriteDetails((prev) => {
+        const next = { ...prev };
+        if (result.favorite_details) next[universalId] = result.favorite_details;
+        else delete next[universalId];
+        return next;
+      });
     } catch (err) {
       console.error("Error updating favorite:", err);
       setPlayerFavorites((prev) => {
@@ -1113,9 +1122,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   useEffect(() => {
     let cancelled = false;
     getPlayerListFlags()
-      .then(({ favorites, decisions }) => {
+      .then(({ favorites, decisions, favorite_details }) => {
         if (cancelled) return;
         setPlayerFavorites(new Set(favorites));
+        setFavoriteDetails(favorite_details || {});
         setPlayerDecisions(new Set(decisions));
       })
       .catch((err) => console.error("Error loading player list flags:", err));
@@ -1848,8 +1858,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 {playerFavorites.has(player.universal_id) && (
                                   <span
                                     className="ms-2 d-inline-flex align-items-center"
-                                    title="Favorited"
-                                    aria-label="Favorited"
+                                    title={favoriteTooltip(favoriteDetails[player.universal_id])}
+                                    aria-label={favoriteTooltip(favoriteDetails[player.universal_id])}
+                                    tabIndex={0}
                                     style={{ color: "#FFD700" }}
                                   >
                                     <Star size={14} fill="currentColor" aria-hidden="true" />

@@ -189,7 +189,6 @@ export interface AgentPlayerSearchResult {
   label: string;
   name: string;
   date_of_birth?: string | null;
-  avg_performance_score?: number | null;
   universal_id?: string | null;
   similarity?: number | null;
   squad_name?: string | null;

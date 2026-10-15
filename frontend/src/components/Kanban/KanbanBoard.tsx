@@ -17,7 +17,7 @@ import {
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import KanbanColumn, { ListWithPlayers, PlayerList } from "./KanbanColumn";
 import CollapsiblePlayerBar, { PlayerInList } from "./CollapsiblePlayerBar";
-import { PlayerListMembership } from "../../services/playerListsService";
+import { FavoriteDetails, PlayerListMembership } from "../../services/playerListsService";
 
 interface KanbanBoardProps {
   lists: ListWithPlayers[];
@@ -46,6 +46,7 @@ interface KanbanBoardProps {
   onToggleDecision?: (universalId: string) => void;
   onViewHistory?: (player: PlayerInList) => void;
   playerFavorites?: Set<string>;
+  favoriteDetails?: Record<string, FavoriteDetails>;
   playerDecisions?: Set<string>;
   fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
@@ -93,6 +94,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onToggleDecision,
   onViewHistory,
   playerFavorites,
+  favoriteDetails,
   playerDecisions,
   fetchArchiveInfo,
 }) => {
@@ -372,6 +374,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             onToggleDecision={onToggleDecision}
             onViewHistory={onViewHistory}
             playerFavorites={playerFavorites}
+            favoriteDetails={favoriteDetails}
             playerDecisions={playerDecisions}
             fetchArchiveInfo={fetchArchiveInfo}
           />
