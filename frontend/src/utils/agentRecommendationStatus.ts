@@ -6,6 +6,7 @@ export const REVIEW_STATUS_ORDER: RecommendationStatus[] = [
   'Added / Already in Emerging Talent Process',
   'Added / Already in First Team Scouting Process',
   'Not Currently under Consideration',
+  'Archived Submission',
 ];
 
 type ReviewStatusConfig = {
@@ -84,6 +85,20 @@ const STATUS_CONFIG: Record<RecommendationStatus, ReviewStatusConfig> = {
     color: { bg: '#dcfce7', text: '#166534', border: '#22c55e' },
     darkColor: { bg: 'rgba(34, 197, 94, 0.15)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.4)' },
   },
+  'Archived Submission': {
+    badgeClassName: 'agent-status-not-under-consideration',
+    displayLabel: 'Archived Submission',
+    shortLabel: 'Archived',
+    title: 'Previous-window submission archived',
+    summary: 'This submission belongs to a previous recruitment window and has been archived.',
+    clubAction: 'The original submission remains available as a record of the previous window.',
+    nextStep: 'Create a new submission if you have updated details for the player.',
+    agentAction: 'Use Resubmit with new details to send an updated recommendation.',
+    dashboardHint: 'Previous-window submission archived.',
+    isTerminal: true,
+    color: { bg: '#f3f4f6', text: '#374151', border: '#9ca3af' },
+    darkColor: { bg: 'rgba(156, 163, 175, 0.15)', text: '#d1d5db', border: '#6b7280' },
+  },
   'Not Currently under Consideration': {
     badgeClassName: 'agent-status-not-under-consideration',
     displayLabel: 'Not Currently Under Consideration',
@@ -118,3 +133,7 @@ export const getRecommendationStatusConfig = (status?: string | null) => {
 
 export const getRecommendationStatusStep = (status?: string | null) =>
   REVIEW_STATUS_ORDER.indexOf(normalizeRecommendationStatus(status));
+
+export const canResubmitRecommendation = (item: { status?: string | null; resubmitted_as_id?: number | null; linked_universal_id?: string | null }) =>
+  ['Not Currently under Consideration', 'Archived Submission'].includes(normalizeRecommendationStatus(item.status)) &&
+  !item.resubmitted_as_id && !!item.linked_universal_id;

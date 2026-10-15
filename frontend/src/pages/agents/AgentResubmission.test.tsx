@@ -37,7 +37,7 @@ test('requires a change explanation and preserves player identity', async () => 
 test('hides the form when a newer version already exists', async () => {
   mocked.getDetail.mockResolvedValue({ id: 10, player_name: 'Player', status: 'Not Currently under Consideration', agent_status: 'Active', resubmitted_as_id: 11 });
   mount();
-  await screen.findByText('Only the latest NCUC submission can be resubmitted.');
+  await screen.findByText('Only the latest NCUC or archived submission can be resubmitted.');
   expect(screen.queryByRole('button', { name: 'Resubmit' })).not.toBeInTheDocument();
 });
 
@@ -47,4 +47,13 @@ test('explains when staff must link an older submission before resubmission', as
   await screen.findByText('The club needs to link this submission to a player record before you can resubmit it. Please contact the recruitment team.');
   expect(screen.queryByRole('button', { name: 'Resubmit' })).not.toBeInTheDocument();
   expect(mocked.resubmit).not.toHaveBeenCalled();
+});
+
+test('allows an archived submission to be resubmitted with new details', async () => {
+  mocked.getDetail.mockResolvedValue({ id: 10, player_name: 'Original player', status: 'Archived Submission', agent_status: 'Active', linked_universal_id: 'external_1' });
+  mount();
+  fireEvent.change(await screen.findByLabelText("What's changed? *"), { target: { value: 'Now available' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Resubmit' }));
+  await screen.findByText('New submission detail');
+  expect(mocked.resubmit).toHaveBeenCalledWith(10, expect.objectContaining({ player_name: 'Original player' }), 'Now available');
 });

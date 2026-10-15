@@ -3,7 +3,8 @@ export type RecommendationStatus =
   | 'Under Review'
   | 'Added / Already in First Team Scouting Process'
   | 'Added / Already in Emerging Talent Process'
-  | 'Not Currently under Consideration';
+  | 'Not Currently under Consideration'
+  | 'Archived Submission';
 
 export type AgentStatus =
   | 'Active'

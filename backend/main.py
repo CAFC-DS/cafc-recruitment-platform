@@ -922,6 +922,7 @@ RECOMMENDATION_STATUSES = [
     "Added / Already in First Team Scouting Process",
     "Added / Already in Emerging Talent Process",
     "Not Currently under Consideration",
+    "Archived Submission",
 ]
 
 AGENT_STATUSES = [
@@ -3915,8 +3916,8 @@ async def create_agent_recommendation(
             original = fetch_recommendation_detail(cursor, previous_recommendation_id)
             if not original or original[24] != current_user.id:
                 raise HTTPException(404, "Recommendation not found")
-            if original[25] != "Not Currently under Consideration":
-                raise HTTPException(409, "Only NCUC recommendations can be resubmitted")
+            if original[25] not in {"Not Currently under Consideration", "Archived Submission"}:
+                raise HTTPException(409, "Only NCUC or archived submissions can be resubmitted")
             if (
                 not resubmission_changes
                 or not resubmission_changes.strip()

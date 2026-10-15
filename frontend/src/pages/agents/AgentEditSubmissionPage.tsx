@@ -42,8 +42,8 @@ const AgentEditSubmissionPage: React.FC<{ resubmit?: boolean }> = ({ resubmit = 
         ]);
         setProfile(me);
         setItem(detail);
-        if (resubmit ? detail.status !== 'Not Currently under Consideration' || !!detail.resubmitted_as_id : detail.status !== 'Submitted') {
-          setError(resubmit ? 'Only the latest NCUC submission can be resubmitted.' : 'This submission is no longer editable because it has moved beyond Submitted.');
+        if (resubmit ? !['Not Currently under Consideration', 'Archived Submission'].includes(detail.status) || !!detail.resubmitted_as_id : detail.status !== 'Submitted') {
+          setError(resubmit ? 'Only the latest NCUC or archived submission can be resubmitted.' : 'This submission is no longer editable because it has moved beyond Submitted.');
           return;
         }
         if (resubmit && !detail.linked_universal_id) {

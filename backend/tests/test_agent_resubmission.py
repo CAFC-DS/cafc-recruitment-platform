@@ -236,3 +236,10 @@ def test_dedicated_resubmit_http_route_preserves_form_contract():
             assert create.call_args.kwargs["current_user"] == user
     finally:
         main.app.dependency_overrides.pop(main.require_agent_user, None)
+
+
+def test_archived_recommendation_can_create_new_linked_submission():
+    result, conn, cursor, resolver = call(status="Archived Submission")
+    assert result == {"id": 99}
+    conn.commit.assert_called_once()
+    resolver.assert_not_called()

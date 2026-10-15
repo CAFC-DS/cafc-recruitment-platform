@@ -4,7 +4,7 @@ import AgentPortalShell from '../../components/agents/AgentPortalShell';
 import NotesHistoryModal from '../../components/recommendations/NotesHistoryModal';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import { Recommendation } from '../../types/recommendations';
-import { getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
+import { canResubmitRecommendation, getRecommendationStatusConfig } from '../../utils/agentRecommendationStatus';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const formatDateTime = (value?: string | null) =>
@@ -116,7 +116,7 @@ const AgentSubmissionDetailPage: React.FC = () => {
                   A simplified view of the current review status, your submitted details and any notes shared by the club.
                 </div>
                 </div>
-                {item.status === 'Not Currently under Consideration' && !item.resubmitted_as_id && !!item.linked_universal_id ? (
+                {canResubmitRecommendation(item) ? (
                   <Link to={`/agents/submissions/${item.id}/resubmit`} className="agent-auth-button">Resubmit with new details</Link>
                 ) : null}
                 {item.status === 'Submitted' ? (
