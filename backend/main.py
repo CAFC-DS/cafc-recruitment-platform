@@ -1407,7 +1407,6 @@ class AgentPlayerSearchResult(BaseModel):
     label: str
     name: str
     date_of_birth: Optional[str] = None
-    avg_performance_score: Optional[float] = None
     universal_id: Optional[str] = None
     similarity: Optional[int] = None
     squad_name: Optional[str] = None
@@ -3667,11 +3666,6 @@ async def search_agent_players(
         )
         search_name_expr = f"NORMALIZE_TEXT_UDF(p.{player_name_column})"
 
-        scout_report_columns = get_table_columns("scout_reports")
-        has_sr_perf = "PERFORMANCE_SCORE" in scout_report_columns
-        has_sr_cafc = "CAFC_PLAYER_ID" in scout_report_columns
-        has_sr_player = "PLAYER_ID" in scout_report_columns
-
         select_cafc_id_expr = (
             f"MIN(p.{player_cafc_id_column})" if player_cafc_id_column else "NULL"
         )
@@ -3690,69 +3684,34 @@ async def search_agent_players(
             "MIN(p.POSITION)" if "POSITION" in player_columns else "NULL"
         )
 
-        if has_sr_perf and (
-            (has_sr_cafc and player_cafc_id_column)
-            or (has_sr_player and player_external_id_column)
-        ):
-            join_parts = []
-            if has_sr_cafc and player_cafc_id_column:
-                join_parts.append(
-                    f"(p.{player_cafc_id_column} IS NOT NULL AND sr.CAFC_PLAYER_ID = p.{player_cafc_id_column})"
-                )
-            if has_sr_player and player_external_id_column:
-                join_parts.append(
-                    f"(p.{player_external_id_column} IS NOT NULL AND sr.PLAYER_ID = p.{player_external_id_column})"
-                )
-            join_condition = " OR ".join(join_parts)
-            cursor.execute(
-                f"""
-                SELECT
-                    p.{player_name_column},
-                    {select_birthdate_expr},
-                    AVG(CASE WHEN sr.PERFORMANCE_SCORE IS NOT NULL THEN sr.PERFORMANCE_SCORE END) AS AVG_PERFORMANCE_SCORE,
-                    {select_cafc_id_expr} AS CAFC_PLAYER_ID,
-                    {select_external_id_expr} AS PLAYERID,
-                    {select_data_source_expr} AS DATA_SOURCE,
-                    {select_squadname_expr} AS SQUADNAME,
-                    {select_position_expr} AS POSITION
-                FROM {read_table('players')} p
-                LEFT JOIN {core_table('scout_reports')} sr
-                    ON ({join_condition})
-                WHERE {search_name_expr} ILIKE %s
-                GROUP BY p.{player_name_column}, {select_birthdate_expr}
-                ORDER BY
-                    CASE
-                        WHEN {search_name_expr} = %s THEN 1
-                        WHEN {search_name_expr} ILIKE %s THEN 2
-                        ELSE 3
-                    END,
-                    p.{player_name_column},
-                    {select_birthdate_expr}
-                LIMIT %s
+        # Agent search uses player identity only; internal scouting scores must
+        # never be queried or included in the agent-facing response.
+        cursor.execute(
+            f"""
+            SELECT
+                p.{player_name_column},
+                {select_birthdate_expr},
+                NULL AS RESERVED,
+                {select_cafc_id_expr} AS CAFC_PLAYER_ID,
+                {select_external_id_expr} AS PLAYERID,
+                {select_data_source_expr} AS DATA_SOURCE,
+                {select_squadname_expr} AS SQUADNAME,
+                {select_position_expr} AS POSITION
+            FROM {read_table('players')} p
+            WHERE {search_name_expr} ILIKE %s
+            GROUP BY p.{player_name_column}, {select_birthdate_expr}
+            ORDER BY
+                CASE
+                    WHEN {search_name_expr} = %s THEN 1
+                    WHEN {search_name_expr} ILIKE %s THEN 2
+                    ELSE 3
+                END,
+                p.{player_name_column},
+                {select_birthdate_expr}
+            LIMIT %s
             """,
-                (search_pattern, normalized_search, normalized_search + "%", safe_limit),
-            )
-        else:
-            cursor.execute(
-                f"""
-                SELECT
-                    p.{{player_name_column}},
-                    {{select_birthdate_expr}},
-                    NULL AS AVG_PERFORMANCE_SCORE
-                FROM {read_table('players')} p
-                WHERE {{search_name_expr}} ILIKE %s
-                ORDER BY
-                    CASE
-                        WHEN {{search_name_expr}} = %s THEN 1
-                        WHEN {{search_name_expr}} ILIKE %s THEN 2
-                        ELSE 3
-                    END,
-                    p.{{player_name_column}},
-                    {{select_birthdate_expr}}
-                LIMIT %s
-            """,
-                (search_pattern, normalized_search, normalized_search + "%", safe_limit),
-            )
+            (search_pattern, normalized_search, normalized_search + "%", safe_limit),
+        )
 
         def build_result(row: List[Any], similarity: Optional[int] = None) -> Optional[AgentPlayerSearchResult]:
             row_name = row[0]
@@ -3766,7 +3725,6 @@ async def search_agent_players(
                 if dob_iso
                 else "Unknown DOB"
             )
-            avg = format_decimal(row[2]) if len(row) > 2 else None
             cafc_id = row[3] if len(row) > 3 else None
             external_id = row[4] if len(row) > 4 else None
             data_source = row[5] if len(row) > 5 else None
@@ -3776,7 +3734,6 @@ async def search_agent_players(
                 label=f"{row_name} - {dob_label}",
                 name=row_name,
                 date_of_birth=dob_iso,
-                avg_performance_score=avg,
                 universal_id=derive_universal_id(cafc_id, external_id, data_source),
                 similarity=similarity,
                 squad_name=squad_name,
@@ -3820,7 +3777,7 @@ async def search_agent_players(
                     SELECT
                         p.{player_name_column},
                         {select_birthdate_expr},
-                        NULL AS AVG_PERFORMANCE_SCORE,
+                        NULL AS RESERVED,
                         {select_cafc_id_expr} AS CAFC_PLAYER_ID,
                         {select_external_id_expr} AS PLAYERID,
                         {select_data_source_expr} AS DATA_SOURCE,
