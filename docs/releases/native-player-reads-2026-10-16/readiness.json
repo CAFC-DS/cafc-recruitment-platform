@@ -19,7 +19,8 @@
       "passed": false,
       "evidence": null,
       "operator": null,
-      "timestamp": null
+      "timestamp": null,
+      "notes": "Frontend, current role/warehouse and prefixes confirmed. Exact current session default database/schema still require operator confirmation; OAuth redacts variable values."
     },
     "writers_paused_and_drained": {
       "passed": false,
@@ -68,6 +69,18 @@
       "evidence": "../../../backend/tools/normalisation/test-results/2026-10-16/installer-rehearsal.json",
       "operator": "Codex (isolated clone only)",
       "timestamp": "2026-10-16"
+    },
+    "published_frontend_routing": {
+      "passed": true,
+      "evidence": "RUNTIME_ROUTING.md",
+      "operator": "Codex read-only live inspection",
+      "timestamp": "2026-10-16T11:11:23Z"
+    },
+    "live_role_warehouse_and_basic_connection": {
+      "passed": true,
+      "evidence": "runtime-routing-evidence.json and live-backend-health.json",
+      "operator": "Codex read-only live inspection",
+      "timestamp": "2026-10-16T11:11:23Z"
     }
   },
   "performance": {
