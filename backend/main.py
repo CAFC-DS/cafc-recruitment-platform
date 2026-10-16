@@ -2,7 +2,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    filename="backend_errors.log",
+    handlers=[logging.FileHandler("backend_errors.log"), logging.StreamHandler()],
     level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
@@ -25,6 +25,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta, date
 import asyncio
 from functools import lru_cache
+from blocking_io import offload_read, invalidate_read_caches, read_cache_is_current
 import unicodedata
 import re
 import threading
@@ -345,6 +346,23 @@ def refresh_table_schema(table_name: str):
         except Exception:
             pass
 
+_schema_refresh_lock = threading.Lock()
+_schema_refresh_attempts = {}
+
+
+def ensure_table_schema(table_name: str):
+    if get_table_columns(table_name):
+        return
+    with _schema_refresh_lock:
+        if get_table_columns(table_name):
+            return
+        now = datetime.utcnow()
+        last_attempt = _schema_refresh_attempts.get(table_name)
+        if last_attempt is None or (now - last_attempt).total_seconds() >= 60:
+            _schema_refresh_attempts[table_name] = now
+            refresh_table_schema(table_name)
+
+
 def load_user_cache():
     """Load users into memory cache"""
     global USER_CACHE, USER_CACHE_TIMESTAMP
@@ -404,7 +422,8 @@ async def startup_event():
 
 
 @app.get("/health/debug")
-async def debug_health():
+@offload_read
+def debug_health():
     """
     Diagnostic endpoint - exposes env var presence (NOT values) and CORS config.
     Safe to call publicly: only shows whether variables are set, never their contents.
@@ -456,7 +475,8 @@ async def debug_health():
 
 
 @app.get("/health/snowflake")
-async def test_snowflake_connection():
+@offload_read
+def test_snowflake_connection():
     """Test Snowflake connection for debugging"""
     import traceback
 
@@ -680,6 +700,7 @@ WRITES_TO_CORE = WRITE_PREFIX.upper() == "CAFC_DB.CORE"
 _connection_cache = {}
 _data_cache = {}
 _cache_expiry = {}
+_cache_lock = threading.RLock()
 
 # Connection pool - initialized on first use
 _connection_pool = None
@@ -719,48 +740,42 @@ def get_private_key():
 
 
 def is_cache_valid(cache_key: str, expiry_minutes: int = 30) -> bool:
-    """Check if cache entry is still valid"""
-    if cache_key not in _cache_expiry:
-        return False
-
-    from datetime import datetime, timedelta
-
-    return datetime.utcnow() < _cache_expiry[cache_key]
+    with _cache_lock:
+        expiry = _cache_expiry.get(cache_key)
+        return expiry is not None and datetime.utcnow() < expiry
 
 
-def set_cache(cache_key: str, data: any, expiry_minutes: int = 30):
-    """Set cache entry with expiry time"""
-    from datetime import datetime, timedelta
+def set_cache(cache_key: str, data: Any, expiry_minutes: int = 30):
+    with _cache_lock:
+        # An in-flight read must not repopulate a cache invalidated by a write.
+        if not read_cache_is_current():
+            return
+        _data_cache[cache_key] = data
+        _cache_expiry[cache_key] = datetime.utcnow() + timedelta(minutes=expiry_minutes)
 
-    _data_cache[cache_key] = data
-    _cache_expiry[cache_key] = datetime.utcnow() + timedelta(minutes=expiry_minutes)
 
-
-def get_cache(cache_key: str) -> any:
-    """Get cache entry if valid"""
-    if is_cache_valid(cache_key):
-        return _data_cache[cache_key]
-    return None
+def get_cache(cache_key: str) -> Any:
+    with _cache_lock:
+        if is_cache_valid(cache_key):
+            return _data_cache.get(cache_key)
+        _data_cache.pop(cache_key, None)
+        _cache_expiry.pop(cache_key, None)
+        return None
 
 
 def invalidate_cache(cache_key: str):
-    """Invalidate a specific cache entry"""
-    if cache_key in _data_cache:
-        del _data_cache[cache_key]
-    if cache_key in _cache_expiry:
-        del _cache_expiry[cache_key]
+    with _cache_lock:
+        invalidate_read_caches()
+        _data_cache.pop(cache_key, None)
+        _cache_expiry.pop(cache_key, None)
 
 
 def invalidate_cache_by_prefix(prefixes: list[str]):
-    """Invalidate all cache entries whose keys start with any provided prefix."""
-    keys_to_delete = [
-        cache_key
-        for cache_key in list(_data_cache.keys())
-        if any(cache_key.startswith(prefix) for prefix in prefixes)
-    ]
-
-    for cache_key in keys_to_delete:
-        invalidate_cache(cache_key)
+    with _cache_lock:
+        invalidate_read_caches()
+        for key in list(_data_cache):
+            if any(key.startswith(prefix) for prefix in prefixes):
+                invalidate_cache(key)
 
 
 def invalidate_scout_report_caches():
@@ -1664,7 +1679,8 @@ class FeedbackSubmission(BaseModel):
 
 
 # --- User Database Operations ---
-async def get_user(username: str):
+@offload_read
+def get_user(username: str):
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -1723,7 +1739,8 @@ async def get_user(username: str):
     return None
 
 
-async def get_user_by_email(email: str):
+@offload_read
+def get_user_by_email(email: str):
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -1762,7 +1779,8 @@ async def get_user_by_email(email: str):
     return None
 
 
-async def get_user_by_id(user_id: int):
+@offload_read
+def get_user_by_id(user_id: int):
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -2824,7 +2842,7 @@ def prepare_agent_recommendation_payload(
 
 
 def build_recommendation_select():
-    refresh_table_schema("player_recommendations")
+    ensure_table_schema("player_recommendations")
 
     transfer_fee_amount_exists = recommendation_column_exists("player_recommendations", "TRANSFER_FEE_AMOUNT")
     transfer_fee_amount_base_expr = "pr.TRANSFER_FEE_AMOUNT" if transfer_fee_amount_exists else "NULL"
@@ -3619,7 +3637,8 @@ async def reset_agent_password(request: AgentPasswordResetConfirm):
 
 
 @app.get("/agents/me", response_model=AgentProfileResponse)
-async def get_agent_me(current_user: User = Depends(require_agent_user)):
+@offload_read
+def get_agent_me(current_user: User = Depends(require_agent_user)):
     validate_recommendation_schema_ready()
     conn = None
     try:
@@ -3633,7 +3652,8 @@ async def get_agent_me(current_user: User = Depends(require_agent_user)):
 
 
 @app.get("/agents/player-search", response_model=AgentPlayerSearchResponse)
-async def search_agent_players(
+@offload_read
+def search_agent_players(
     query: str,
     limit: int = 10,
     current_user: User = Depends(require_agent_user),
@@ -3831,7 +3851,8 @@ async def search_agent_players(
 
 
 @app.get("/agents/recommendations", response_model=List[RecommendationResponse])
-async def list_agent_recommendations(current_user: User = Depends(require_agent_user)):
+@offload_read
+def list_agent_recommendations(current_user: User = Depends(require_agent_user)):
     validate_recommendation_schema_ready()
     conn = None
     try:
@@ -4395,7 +4416,8 @@ async def update_agent_recommendation(
 
 
 @app.get("/agents/recommendations/{recommendation_id}", response_model=RecommendationResponse)
-async def get_agent_recommendation_detail(
+@offload_read
+def get_agent_recommendation_detail(
     recommendation_id: int, current_user: User = Depends(require_agent_user)
 ):
     validate_recommendation_schema_ready()
@@ -4413,7 +4435,8 @@ async def get_agent_recommendation_detail(
 
 
 @app.get("/agents/recommendations/{recommendation_id}/status-history", response_model=List[RecommendationStatusHistoryResponse])
-async def get_agent_recommendation_history(
+@offload_read
+def get_agent_recommendation_history(
     recommendation_id: int, current_user: User = Depends(require_agent_user)
 ):
     validate_recommendation_schema_ready()
@@ -4432,7 +4455,8 @@ async def get_agent_recommendation_history(
 
 
 @app.get("/agents/recommendations/{recommendation_id}/notes-history", response_model=List[RecommendationNoteHistoryResponse])
-async def get_agent_recommendation_notes_history(
+@offload_read
+def get_agent_recommendation_notes_history(
     recommendation_id: int, current_user: User = Depends(require_agent_user)
 ):
     validate_recommendation_schema_ready()
@@ -4493,7 +4517,8 @@ async def update_agent_recommendation_status(
 
 
 @app.get("/agents/recommendations/{recommendation_id}/supporting-file")
-async def download_agent_recommendation_supporting_file(
+@offload_read
+def download_agent_recommendation_supporting_file(
     recommendation_id: int, current_user: User = Depends(require_agent_user)
 ):
     validate_recommendation_schema_ready()
@@ -4501,7 +4526,8 @@ async def download_agent_recommendation_supporting_file(
 
 
 @app.get("/internal/recommendations")
-async def list_internal_recommendations(
+@offload_read
+def list_internal_recommendations(
     status_filter: Optional[str] = Query(None, alias="status"),
     agent_user_id: Optional[int] = None,
     created_from: Optional[str] = None,
@@ -4630,7 +4656,8 @@ async def list_internal_recommendations(
 
 
 @app.get("/internal/recommendations/filters/meta")
-async def get_internal_recommendation_filters_meta(current_user: User = Depends(require_recs_viewer)):
+@offload_read
+def get_internal_recommendation_filters_meta(current_user: User = Depends(require_recs_viewer)):
     validate_recommendation_schema_ready()
     conn = None
     try:
@@ -4654,7 +4681,8 @@ async def get_internal_recommendation_filters_meta(current_user: User = Depends(
 
 
 @app.get("/internal/recommendations/export.csv")
-async def export_internal_recommendations_csv(current_user: User = Depends(require_recs_viewer)):
+@offload_read
+def export_internal_recommendations_csv(current_user: User = Depends(require_recs_viewer)):
     validate_recommendation_schema_ready()
     conn = None
     try:
@@ -4695,7 +4723,8 @@ async def export_internal_recommendations_csv(current_user: User = Depends(requi
 
 
 @app.get("/internal/recommendations/{recommendation_id}", response_model=InternalRecommendationResponse)
-async def get_internal_recommendation_detail(
+@offload_read
+def get_internal_recommendation_detail(
     recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
@@ -4912,7 +4941,8 @@ async def update_internal_recommendation_review(
 
 
 @app.get("/internal/recommendations/{recommendation_id}/status-history", response_model=List[RecommendationStatusHistoryResponse])
-async def get_internal_recommendation_history(
+@offload_read
+def get_internal_recommendation_history(
     recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
@@ -4930,7 +4960,8 @@ async def get_internal_recommendation_history(
 
 
 @app.get("/internal/recommendations/{recommendation_id}/notes-history", response_model=List[RecommendationNoteHistoryResponse])
-async def get_internal_recommendation_notes_history(
+@offload_read
+def get_internal_recommendation_notes_history(
     recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
@@ -5002,7 +5033,8 @@ async def flag_internal_recommendation_duplicate(
 
 
 @app.get("/internal/recommendations/{recommendation_id}/supporting-file")
-async def download_internal_recommendation_supporting_file(
+@offload_read
+def download_internal_recommendation_supporting_file(
     recommendation_id: int, current_user: User = Depends(require_recs_viewer)
 ):
     validate_recommendation_schema_ready()
@@ -5010,7 +5042,8 @@ async def download_internal_recommendation_supporting_file(
 
 
 @app.get("/analytics/timeline")
-async def get_analytics_timeline(
+@offload_read
+def get_analytics_timeline(
     min_months: Optional[int] = None,
     current_user: User = Depends(get_current_user)
 ):
@@ -5128,7 +5161,8 @@ async def get_analytics_timeline(
 
 
 @app.get("/analytics/timeline-daily")
-async def get_analytics_timeline_daily(
+@offload_read
+def get_analytics_timeline_daily(
     days: int = 30, current_user: User = Depends(get_current_user)
 ):
     """Get daily timeline analytics data for scout reports"""
@@ -5224,7 +5258,8 @@ async def get_analytics_timeline_daily(
 
 
 @app.get("/debug/scout_reports")
-async def debug_scout_reports(current_user: User = Depends(get_current_user)):
+@offload_read
+def debug_scout_reports(current_user: User = Depends(get_current_user)):
     """Debug endpoint to check scout reports and USER_ID data"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -5377,7 +5412,8 @@ class AdminUserCreate(BaseModel):
 
 
 @app.get("/admin/users")
-async def get_all_users(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_all_users(current_user: User = Depends(get_current_user)):
     """Get all users (admin only)"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -5754,7 +5790,8 @@ async def add_email_column_to_users(current_user: User = Depends(get_current_use
 
 
 @app.get("/admin/cafc-system-status")
-async def get_cafc_system_status(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_cafc_system_status(current_user: User = Depends(get_current_user)):
     """Check CAFC Player ID system status (admin only)"""
     if current_user.role != ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -5831,7 +5868,8 @@ async def setup_cafc_player_ids(current_user: User = Depends(get_current_user)):
 
 # --- Modified Endpoints with Authorization ---
 @app.get("/admin/player-safety-check/{player_id}")
-async def check_player_deletion_safety(
+@offload_read
+def check_player_deletion_safety(
     player_id: int, current_user: User = Depends(get_current_user)
 ):
     """Check if a player can be safely deleted (admin only)"""
@@ -6235,7 +6273,8 @@ async def merge_players(
 
 
 @app.get("/admin/detect-clashes")
-async def detect_data_clashes(
+@offload_read
+def detect_data_clashes(
     current_user: User = Depends(get_current_user),
     max_results: int = 100,
     name_filter: str = None
@@ -6665,7 +6704,8 @@ async def detect_data_clashes(
 
 
 @app.get("/admin/check-player-duplicates")
-async def check_player_duplicates(
+@offload_read
+def check_player_duplicates(
     name: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -6721,7 +6761,8 @@ async def check_player_duplicates(
 
 
 @app.get("/admin/internal-player-audit")
-async def internal_player_audit(
+@offload_read
+def internal_player_audit(
     page: int = 1,
     limit: int = 50,
     confidence: str = "all",
@@ -7492,7 +7533,8 @@ async def add_player(player: Player, current_user: User = Depends(get_current_us
 
 
 @app.get("/players/by-cafc-id/{cafc_player_id}")
-async def get_player_by_cafc_id(
+@offload_read
+def get_player_by_cafc_id(
     cafc_player_id: int, current_user: User = Depends(get_current_user)
 ):
     """Get player by CAFC Player ID (internal stable ID)"""
@@ -7552,7 +7594,8 @@ async def read_root():
 
 
 @app.get("/players/search")
-async def search_players(query: str, limit: int = 10, offset: int = 0, current_user: User = Depends(get_current_user)):
+@offload_read
+def search_players(query: str, limit: int = 10, offset: int = 0, current_user: User = Depends(get_current_user)):
     """Search players with support for CAFC_PLAYER_ID system and accent-insensitive matching
 
     Uses Snowflake NORMALIZE_TEXT_UDF() for accent-insensitive search.
@@ -7562,19 +7605,6 @@ async def search_players(query: str, limit: int = 10, offset: int = 0, current_u
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-
-        # Debug: Print current database context
-        cursor.execute("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA()")
-        db_info = cursor.fetchone()
-        print(f"🔍 DEBUG /players/search - Database: {db_info[0]}, Schema: {db_info[1]}")
-
-        # Debug: Check if UDF exists
-        cursor.execute("SHOW USER FUNCTIONS LIKE 'NORMALIZE_TEXT_UDF'")
-        udf_results = cursor.fetchall()
-        print(f"🔍 DEBUG - Found {len(udf_results)} UDFs named NORMALIZE_TEXT_UDF")
-        if udf_results:
-            for udf in udf_results:
-                print(f"    UDF: {udf}")
 
         # Check if CAFC_PLAYER_ID column exists (using cached schema)
         has_cafc_id = has_column("players", "CAFC_PLAYER_ID")
@@ -8438,7 +8468,8 @@ async def delete_scout_report(
 
 
 @app.get("/scout_reports/details/{report_id}")
-async def get_scout_report(
+@offload_read
+def get_scout_report(
     report_id: int, current_user: User = Depends(get_current_user)
 ):
     conn = None
@@ -8541,7 +8572,8 @@ async def get_scout_report(
 
 
 @app.get("/tables")
-async def get_tables(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_tables(current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -8757,7 +8789,8 @@ def parse_fixture_search_query(query: str) -> dict:
 
 
 @app.get("/matches/search")
-async def search_matches(
+@offload_read
+def search_matches(
     query: str, current_user: User = Depends(get_current_user)
 ):
     """Search for historic matches by team name (autocomplete for fixture filter)"""
@@ -8902,7 +8935,8 @@ async def search_matches(
 
 
 @app.get("/matches/date")
-async def get_matches_by_date(
+@offload_read
+def get_matches_by_date(
     fixture_date: str, current_user: User = Depends(get_current_user)
 ):
     conn = None
@@ -8974,7 +9008,8 @@ async def get_matches_by_date(
 _attributes_cache = {}
 
 @app.get("/attributes/{position}")
-async def get_attributes_by_position(
+@offload_read
+def get_attributes_by_position(
     position: str, current_user: User = Depends(get_current_user)
 ):
     # Check cache first
@@ -9044,7 +9079,8 @@ async def get_attributes_by_position(
 
 
 @app.get("/positions/distinct")
-async def get_distinct_positions(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_distinct_positions(current_user: User = Depends(get_current_user)):
     """Get list of all available positions for dropdown filters"""
     # Return the same positions used throughout the application
     positions = [
@@ -9223,7 +9259,8 @@ async def add_match(match: Match, current_user: User = Depends(get_current_user)
 
 
 @app.get("/scout_reports/all")
-async def get_all_scout_reports(
+@offload_read
+def get_all_scout_reports(
     current_user: User = Depends(get_current_user),
     page: int = 1,
     limit: int = 20,
@@ -9559,7 +9596,8 @@ async def get_all_scout_reports(
 
 
 @app.get("/scout_reports/recent")
-async def get_recent_scout_reports(
+@offload_read
+def get_recent_scout_reports(
     current_user: User = Depends(get_current_user),
     report_type: Optional[str] = None,  # "Player Assessment", "Flag", etc.
     limit: int = 20,
@@ -9767,7 +9805,8 @@ async def get_recent_scout_reports(
 
 
 @app.get("/scout_reports/top-attributes")
-async def get_top_attribute_reports(
+@offload_read
+def get_top_attribute_reports(
     current_user: User = Depends(get_current_user),
     recency_days: Optional[int] = None,
     limit: int = 10,
@@ -9927,7 +9966,8 @@ async def get_top_attribute_reports(
 
 
 @app.get("/scout_reports/{report_id}")
-async def get_single_scout_report(
+@offload_read
+def get_single_scout_report(
     report_id: int, current_user: User = Depends(get_current_user)
 ):
     conn = None
@@ -10166,7 +10206,8 @@ async def create_shareable_link(
 
 
 @app.get("/public/report/{token}")
-async def get_public_report(token: str):
+@offload_read
+def get_public_report(token: str):
     """
     Get a scout report via public shareable link.
     No authentication required.
@@ -10343,7 +10384,8 @@ async def get_public_report(token: str):
 
 
 @app.get("/scout_reports/{report_id}/shares")
-async def get_report_share_links(
+@offload_read
+def get_report_share_links(
     report_id: int,
     current_user: User = Depends(get_current_user)
 ):
@@ -10673,7 +10715,8 @@ def format_flow_history_deal_type(deal_type: Optional[str]) -> Optional[str]:
 
 
 @app.get("/players/{player_id}/flow-history")
-async def get_player_flow_history(
+@offload_read
+def get_player_flow_history(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:
@@ -10692,8 +10735,8 @@ async def get_player_flow_history(
 
         # These tables are optional in some environments and may not be present
         # in older in-memory schema caches if they were created after startup.
-        refresh_table_schema("player_list_items")
-        refresh_table_schema("player_stage_history")
+        ensure_table_schema("player_list_items")
+        ensure_table_schema("player_stage_history")
 
         player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
         if not player_data:
@@ -11000,7 +11043,8 @@ async def get_player_flow_history(
 
 
 @app.get("/players/{player_id}/profile")
-async def get_player_profile(
+@offload_read
+def get_player_profile(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     # Generate cache key based on player_id and user role (scouts/loan_manager see filtered data)
@@ -11322,7 +11366,8 @@ async def get_player_profile(
 
 
 @app.get("/players/{player_id}/attributes")
-async def get_player_attributes(
+@offload_read
+def get_player_attributes(
     player_id: str,
     report_ids: Optional[str] = None,  # Comma-separated report IDs
     position_filter: Optional[str] = None,  # Comma-separated positions
@@ -11585,8 +11630,17 @@ TECHNICAL_RADAR_METRICS = {
 }
 
 
+def select_metric_season(available_pairs, competition=None, season=None):
+    """Prefer the requested competition when its season is being reset."""
+    return next(
+        (pair for pair in available_pairs if pair["competition"] == competition and pair["season"] == season),
+        next((pair for pair in available_pairs if pair["competition"] == competition), available_pairs[0]),
+    )
+
+
 @app.get("/players/{player_id}/position-history")
-async def get_player_position_history(
+@offload_read
+def get_player_position_history(
     player_id: str,
     competition: Optional[str] = None,
     season: Optional[str] = None,
@@ -11619,10 +11673,7 @@ async def get_player_position_history(
         if not available_pairs:
             return {"available": False, "message": "No position history is available.", "filters": {"available": []}, "positions": []}
 
-        selected = next(
-            (pair for pair in available_pairs if pair["competition"] == competition and pair["season"] == season),
-            available_pairs[0],
-        )
+        selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
         cache_key = f"player_position_history_v1_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
@@ -11678,7 +11729,8 @@ async def get_player_position_history(
 
 
 @app.get("/players/{player_id}/technical-metrics")
-async def get_player_technical_metrics(
+@offload_read
+def get_player_technical_metrics(
     player_id: str,
     competition: Optional[str] = None,
     season: Optional[str] = None,
@@ -11714,8 +11766,7 @@ async def get_player_technical_metrics(
         if not available_pairs:
             return {"available": False, "message": "There is no technical event data for this player.", "player_id": player_id, "filters": {"available": []}, "entries": []}
 
-        valid_pair = next((p for p in available_pairs if p["competition"] == competition and p["season"] == season), None)
-        selected = valid_pair or available_pairs[0]
+        selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
         cache_key = f"technical_metrics_v2_{source_player_id}_{competition}_{season}_{position or 'Overall'}"
         cached = get_cache(cache_key)
@@ -11942,7 +11993,8 @@ async def get_player_technical_metrics(
 
 
 @app.get("/players/{player_id}/scout-reports")
-async def get_player_scout_reports(
+@offload_read
+def get_player_scout_reports(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get scout reports timeline for a player"""
@@ -12104,7 +12156,8 @@ async def get_player_scout_reports(
 
 
 @app.get("/players/{player_id}/position-counts")
-async def get_player_position_counts(
+@offload_read
+def get_player_position_counts(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get count of scout reports by position for a player"""
@@ -12261,7 +12314,8 @@ async def add_player_note(
 
 
 @app.get("/players/all")
-async def get_all_players(
+@offload_read
+def get_all_players(
     page: int = 1,
     limit: int = 20,
     search: str = None,
@@ -12388,7 +12442,8 @@ async def get_all_players(
 
 
 @app.get("/players/{player_id}/export-pdf")
-async def export_player_pdf(
+@offload_read
+def export_player_pdf(
     player_id: str, current_user: User = Depends(get_current_user)
 ):
     """Generate a printable HTML report for the player that can be converted to PDF"""
@@ -13080,7 +13135,8 @@ async def delete_intel_report(
 
 
 @app.get("/intel_reports/all")
-async def get_all_intel_reports(
+@offload_read
+def get_all_intel_reports(
     current_user: User = Depends(get_current_user),
     page: int = 1,
     limit: int = 10,
@@ -13304,7 +13360,8 @@ async def get_all_intel_reports(
 
 
 @app.get("/intel_reports/{intel_id}")
-async def get_single_intel_report(
+@offload_read
+def get_single_intel_report(
     intel_id: int, current_user: User = Depends(get_current_user)
 ):
     # Intel reports are viewable by Admin, Senior Manager and the read-only Intel Reviewer
@@ -13505,7 +13562,8 @@ async def get_single_intel_report(
 
 # --- Dropdown Data Endpoints ---
 @app.get("/leagues")
-async def get_leagues(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_leagues(current_user: User = Depends(get_current_user)):
     """Get all available leagues/competitions with caching"""
     cache_key = "leagues_list_squad_competition_v2"
 
@@ -13546,7 +13604,8 @@ async def get_leagues(current_user: User = Depends(get_current_user)):
             conn.close()
 
 @app.get("/countries")
-async def get_countries(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_countries(current_user: User = Depends(get_current_user)):
     """Get all available player/team countries for dropdown filters"""
     cache_key = "countries_list"
 
@@ -13589,7 +13648,8 @@ async def get_countries(current_user: User = Depends(get_current_user)):
             conn.close()
 
 @app.get("/clubs")
-async def get_clubs(
+@offload_read
+def get_clubs(
     league: Optional[str] = None, current_user: User = Depends(get_current_user)
 ):
     """Get all clubs, optionally filtered by league with caching"""
@@ -13654,7 +13714,8 @@ async def get_clubs(
 
 
 @app.get("/teams")
-async def get_teams(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_teams(current_user: User = Depends(get_current_user)):
     f"""Get all team names from {read_table('matches')} for fixture creation with caching"""
     cache_key = "teams_list"
 
@@ -13698,7 +13759,8 @@ async def get_teams(current_user: User = Depends(get_current_user)):
 
 
 @app.get("/teams-with-ids")
-async def get_teams_with_ids(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_teams_with_ids(current_user: User = Depends(get_current_user)):
     """Get all teams with their squad IDs from external matches for fixture creation"""
     cache_key = "teams_with_ids_list"
 
@@ -13786,8 +13848,10 @@ async def clear_cache(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
 
     global _data_cache, _cache_expiry
-    _data_cache.clear()
-    _cache_expiry.clear()
+    with _cache_lock:
+        invalidate_read_caches()
+        _data_cache.clear()
+        _cache_expiry.clear()
 
     return {"message": "Cache cleared successfully"}
 
@@ -13802,13 +13866,14 @@ async def get_cache_stats(current_user: User = Depends(get_current_user)):
 
     current_time = datetime.utcnow()
 
-    stats = {
-        "total_entries": len(_data_cache),
-        "expired_entries": sum(
-            1 for key, expiry in _cache_expiry.items() if current_time >= expiry
-        ),
-        "cache_keys": list(_data_cache.keys()),
-    }
+    with _cache_lock:
+        stats = {
+            "total_entries": len(_data_cache),
+            "expired_entries": sum(
+                1 for key, expiry in _cache_expiry.items() if current_time >= expiry
+            ),
+            "cache_keys": list(_data_cache.keys()),
+        }
 
     return stats
 
@@ -13880,8 +13945,10 @@ async def optimize_all_operations(current_user: User = Depends(get_current_user)
 
         # 4. Clear application cache to force fresh data
         global _data_cache, _cache_expiry
-        _data_cache.clear()
-        _cache_expiry.clear()
+        with _cache_lock:
+            invalidate_read_caches()
+            _data_cache.clear()
+            _cache_expiry.clear()
         optimizations.append("Cleared application cache")
 
         return {
@@ -14146,7 +14213,8 @@ async def create_test_users(current_user: User = Depends(get_current_user)):
 
 
 @app.get("/database/metadata")
-async def get_database_metadata():
+@offload_read
+def get_database_metadata():
     """Get database metadata including counts and recent data info"""
     conn = None
     try:
@@ -14203,7 +14271,8 @@ async def get_database_metadata():
 
 
 @app.get("/analytics/player-coverage")
-async def get_player_coverage_analytics(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_player_coverage_analytics(current_user: User = Depends(get_current_user)):
     """Get analytics on player coverage per game"""
     # Analytics access restricted to Admin, Senior Manager, and Manager
     if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
@@ -14429,7 +14498,8 @@ async def get_player_coverage_analytics(current_user: User = Depends(get_current
 
 
 @app.get("/users/me/analytics")
-async def get_my_analytics(
+@offload_read
+def get_my_analytics(
     current_user: User = Depends(get_current_user),
     months: Optional[int] = None,
     position: Optional[str] = None,
@@ -14808,7 +14878,8 @@ async def get_my_analytics(
 
 
 @app.get("/users/me/reports")
-async def get_my_reports(
+@offload_read
+def get_my_reports(
     current_user: User = Depends(get_current_user),
     months: Optional[int] = None,
     position: Optional[str] = None,
@@ -14976,7 +15047,8 @@ async def get_my_reports(
 
 
 @app.get("/analytics/players")
-async def get_player_analytics(
+@offload_read
+def get_player_analytics(
     current_user: User = Depends(get_current_user),
     months: Optional[int] = None,
     position: Optional[str] = None,
@@ -15438,7 +15510,8 @@ async def get_player_analytics(
 
 
 @app.get("/analytics/matches-teams")
-async def get_match_team_analytics(
+@offload_read
+def get_match_team_analytics(
     current_user: User = Depends(get_current_user),
     months: Optional[int] = None
 ):
@@ -15752,7 +15825,8 @@ async def get_match_team_analytics(
 
 
 @app.get("/analytics/scouts")
-async def get_scout_analytics(
+@offload_read
+def get_scout_analytics(
     current_user: User = Depends(get_current_user),
     months: Optional[int] = None,
     position: Optional[str] = None
@@ -15906,7 +15980,8 @@ async def get_scout_analytics(
 
 
 @app.get("/analytics/stage-movements")
-async def get_stage_movement_analytics(
+@offload_read
+def get_stage_movement_analytics(
     current_user: User = Depends(get_current_user),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
@@ -16171,7 +16246,8 @@ async def get_stage_movement_analytics(
 
 
 @app.get("/analytics/players/by-score")
-async def get_players_by_score(
+@offload_read
+def get_players_by_score(
     current_user: User = Depends(get_current_user),
     min_performance: Optional[float] = None,
     max_performance: Optional[float] = None,
@@ -16274,7 +16350,8 @@ async def get_players_by_score(
 
 
 @app.get("/analytics/attributes/by-position")
-async def get_attributes_by_position(
+@offload_read
+def get_attributes_by_position(
     current_user: User = Depends(get_current_user),
     position: Optional[str] = None,
     include_archived: bool = False
@@ -16388,7 +16465,8 @@ async def get_attributes_by_position(
 
 
 @app.get("/analytics/players/by-attributes")
-async def get_players_by_attributes(
+@offload_read
+def get_players_by_attributes(
     current_user: User = Depends(get_current_user),
     position: Optional[str] = None,
     attributes: Optional[str] = None,
@@ -16702,7 +16780,8 @@ async def get_suggested_queries(current_user: User = Depends(get_current_user)):
 
 
 @app.get("/chatbot/schema")
-async def get_schema_summary(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_schema_summary(current_user: User = Depends(get_current_user)):
     """Get summary of available data for chatbot queries"""
     if not current_user or current_user.role not in ["manager", "admin"]:
         raise HTTPException(
@@ -17050,7 +17129,8 @@ async def create_player_list(
 
 
 @app.get("/player-lists")
-async def get_all_player_lists(
+@offload_read
+def get_all_player_lists(
     category: str = "first_team",
     current_user: User = Depends(get_current_user),
 ):
@@ -17146,7 +17226,8 @@ async def get_all_player_lists(
 
 
 @app.get("/player-lists/all-with-details")
-async def get_all_lists_with_details(
+@offload_read
+def get_all_lists_with_details(
     player_name: Optional[str] = None,
     position: Optional[str] = None,
     club: Optional[str] = None,
@@ -17724,7 +17805,8 @@ async def get_all_lists_with_details(
 
 
 @app.get("/player-lists/flags")
-async def get_player_list_flags(current_user: User = Depends(get_current_user)):
+@offload_read
+def get_player_list_flags(current_user: User = Depends(get_current_user)):
     """Get shared favorite/decision markers for players on internal lists.
 
     These are shared across every user with list access (not per-account), so
@@ -17863,7 +17945,8 @@ async def update_player_list_flag(
 
 
 @app.get("/player-lists/{list_id}")
-async def get_player_list_detail(
+@offload_read
+def get_player_list_detail(
     list_id: int,
     include_archived: bool = False,
     include_flags: bool = False,  # Include flag reports in counts (default: exclude)
@@ -18945,7 +19028,8 @@ async def bulk_update_player_stages(
 
 
 @app.get("/stage-change-reasons")
-async def get_stage_change_reasons(
+@offload_read
+def get_stage_change_reasons(
     stage: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -19063,7 +19147,8 @@ async def update_stage_history_reason(
 
 
 @app.get("/player-lists/{list_id}/players/{item_id}/stage-history")
-async def get_player_stage_history(
+@offload_read
+def get_player_stage_history(
     list_id: int,
     item_id: int,
     current_user: User = Depends(get_current_user)
@@ -19143,7 +19228,8 @@ async def get_player_stage_history(
 
 
 @app.get("/players/{universal_id}/lists")
-async def get_player_list_memberships(
+@offload_read
+def get_player_list_memberships(
     universal_id: str, current_user: User = Depends(get_current_user)
 ):
     """Get all lists that a specific player belongs to (admin/manager only)"""

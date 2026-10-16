@@ -3,7 +3,7 @@ import { Alert, Button, Form, Spinner } from 'react-bootstrap';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import AuthShell from '../../components/auth/AuthShell';
 
 const AgentLoginPage: React.FC = () => {

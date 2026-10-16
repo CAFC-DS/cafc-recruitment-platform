@@ -1,189 +1,40 @@
 // FORCE CACHE REFRESH - UI REDESIGN COMPLETE
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { BrowserRouter as Router, Route, Routes, useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ViewModeProvider } from './contexts/ViewModeContext';
-import { useCurrentUser } from './hooks/useCurrentUser';
+import { CurrentUserProvider, useCurrentUser } from './hooks/useCurrentUser';
 import AppNavbar from './components/Navbar';
-import HomePage from './pages/HomePage';
-import ScoutingPage from './pages/ScoutingPage';
-import IntelPage from './pages/IntelPage';
-import LoginPage from './pages/LoginPage';
-import PlayerProfilePage from './pages/PlayerProfilePage';
-import AdminPage from './pages/AdminPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import PersonalAnalyticsPage from './pages/PersonalAnalyticsPage';
-import PlayerListsPage from './pages/PlayerListsPage';
-import KanbanPage from './pages/KanbanPage';
-import SharedReportPage from './pages/SharedReportPage';
-import AgentLandingPage from './pages/agents/AgentLandingPage';
-import AgentLoginPage from './pages/agents/AgentLoginPage';
-import AgentRegisterPage from './pages/agents/AgentRegisterPage';
-import AgentResetPasswordPage from './pages/agents/AgentResetPasswordPage';
-import AgentDashboardPage from './pages/agents/AgentDashboardPage';
-import AgentSubmitPage from './pages/agents/AgentSubmitPage';
-import AgentSubmissionDetailPage from './pages/agents/AgentSubmissionDetailPage';
-import AdminEmailPage from './pages/AdminEmailPage';
-import AgentEditSubmissionPage from './pages/agents/AgentEditSubmissionPage';
-import InternalRecommendationsPage from './pages/internal/InternalRecommendationsPage';
-import ListsGatewayPage from './pages/ListsGatewayPage';
-import ExternalRecommendationsListPage from './pages/ExternalRecommendationsListPage';
-import EmergingTalentListsPage from './pages/EmergingTalentListsPage';
-import EmergingTalentKanbanPage from './pages/EmergingTalentKanbanPage';
-import StyleTilePage from './pages/StyleTilePage';
+export { useAuth } from './contexts/AuthContext';
 
-interface AuthContextType {
-  token: string | null;
-  login: (newToken: string) => void;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-
-  const login = useCallback((newToken: string) => {
-    setToken(newToken);
-    localStorage.setItem('token', newToken);
-  }, []);
-
-  const logout = () => {
-    setToken(null);
-    localStorage.removeItem('token');
-  };
-
-  // Basic token validation on app startup (less aggressive)
-  useEffect(() => {
-    const validateToken = async () => {
-      const storedToken = localStorage.getItem('token');
-      if (storedToken) {
-        try {
-          // Only validate token format, not expiry - let token refresh handle expiry
-          const payload = JSON.parse(atob(storedToken.split('.')[1]));
-
-          // Only logout if token is malformed or significantly expired (more than 24 hours)
-          const currentTime = Date.now() / 1000;
-          if (payload.exp && payload.exp < currentTime - (24 * 60 * 60)) {
-            console.warn('Token extremely expired, clearing...');
-            logout();
-          }
-        } catch (error) {
-          // Invalid token format - only clear if completely malformed
-          console.warn('Malformed token found, clearing...');
-          logout();
-        }
-      }
-    };
-
-    validateToken();
-  }, []);
-
-  // Optional logout behaviors (disabled to prevent accidental logouts)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // User switched tabs or minimized - do nothing
-        // Aggressive logout disabled to prevent accidental logouts during report uploads
-      }
-    };
-
-    // Only listen for visibility changes, no auto-logout on page refresh
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // Session timeout after 20 minutes of inactivity
-  useEffect(() => {
-    let inactivityTimer: NodeJS.Timeout;
-
-    const resetTimer = () => {
-      clearTimeout(inactivityTimer);
-      if (token) {
-        inactivityTimer = setTimeout(() => {
-          logout();
-          alert('Session expired due to inactivity. Please login again.');
-        }, 20 * 60 * 1000); // 20 minutes
-      }
-    };
-
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    
-    if (token) {
-      events.forEach(event => {
-        document.addEventListener(event, resetTimer, true);
-      });
-      resetTimer(); // Start timer
-    }
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, resetTimer, true);
-      });
-      clearTimeout(inactivityTimer);
-    };
-  }, [token]);
-
-  // Automatic token refresh every 15 minutes for active users
-  useEffect(() => {
-    let refreshTimer: NodeJS.Timeout;
-
-    const refreshToken = async () => {
-      if (!token) return;
-
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? 'https://cafc-recruitment-platform-production.up.railway.app' : 'http://localhost:8000')}/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          login(data.access_token);
-        }
-      } catch (error) {
-        console.warn('Token refresh failed:', error);
-      }
-    };
-
-    const startRefreshTimer = () => {
-      clearTimeout(refreshTimer);
-      if (token) {
-        refreshTimer = setTimeout(() => {
-          refreshToken();
-          startRefreshTimer(); // Schedule next refresh
-        }, 15 * 60 * 1000); // 15 minutes
-      }
-    };
-
-    startRefreshTimer();
-
-    return () => {
-      clearTimeout(refreshTimer);
-    };
-  }, [token, login]);
-
-  return (
-    <AuthContext.Provider value={{ token, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+const HomePage = lazy(() => import('./pages/HomePage'));
+const ScoutingPage = lazy(() => import('./pages/ScoutingPage'));
+const IntelPage = lazy(() => import('./pages/IntelPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const PlayerProfilePage = lazy(() => import('./pages/PlayerProfilePage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
+const PersonalAnalyticsPage = lazy(() => import('./pages/PersonalAnalyticsPage'));
+const PlayerListsPage = lazy(() => import('./pages/PlayerListsPage'));
+const KanbanPage = lazy(() => import('./pages/KanbanPage'));
+const SharedReportPage = lazy(() => import('./pages/SharedReportPage'));
+const AgentLandingPage = lazy(() => import('./pages/agents/AgentLandingPage'));
+const AgentLoginPage = lazy(() => import('./pages/agents/AgentLoginPage'));
+const AgentRegisterPage = lazy(() => import('./pages/agents/AgentRegisterPage'));
+const AgentResetPasswordPage = lazy(() => import('./pages/agents/AgentResetPasswordPage'));
+const AgentDashboardPage = lazy(() => import('./pages/agents/AgentDashboardPage'));
+const AgentSubmitPage = lazy(() => import('./pages/agents/AgentSubmitPage'));
+const AgentSubmissionDetailPage = lazy(() => import('./pages/agents/AgentSubmissionDetailPage'));
+const AdminEmailPage = lazy(() => import('./pages/AdminEmailPage'));
+const AgentEditSubmissionPage = lazy(() => import('./pages/agents/AgentEditSubmissionPage'));
+const InternalRecommendationsPage = lazy(() => import('./pages/internal/InternalRecommendationsPage'));
+const ListsGatewayPage = lazy(() => import('./pages/ListsGatewayPage'));
+const ExternalRecommendationsListPage = lazy(() => import('./pages/ExternalRecommendationsListPage'));
+const EmergingTalentListsPage = lazy(() => import('./pages/EmergingTalentListsPage'));
+const EmergingTalentKanbanPage = lazy(() => import('./pages/EmergingTalentKanbanPage'));
+const StyleTilePage = lazy(() => import('./pages/StyleTilePage'));
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
@@ -411,7 +262,9 @@ function App() {
       <ViewModeProvider>
         <Router>
           <AuthProvider>
+            <CurrentUserProvider>
             <ConditionalNavbar />
+            <Suspense fallback={<div role="status" aria-live="polite" className="text-center p-4">Loading page…</div>}>
           <Routes>
             <Route path="/" element={<HomePageWrapper />} />
             <Route path="/login" element={<LoginPageWrapper />} /> {/* Use the wrapper here */}
@@ -544,6 +397,8 @@ function App() {
               }
             />
           </Routes>
+            </Suspense>
+            </CurrentUserProvider>
           </AuthProvider>
         </Router>
       </ViewModeProvider>

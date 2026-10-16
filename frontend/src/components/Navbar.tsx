@@ -38,7 +38,7 @@ import {
   Pencil,
   Check,
 } from "lucide-react";
-import { useAuth } from "../App"; // Import useAuth
+import { useAuth } from "../contexts/AuthContext"; // Import useAuth
 import { useTheme } from "../contexts/ThemeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import axiosInstance from "../axiosInstance";

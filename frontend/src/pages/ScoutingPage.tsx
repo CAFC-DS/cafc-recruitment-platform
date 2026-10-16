@@ -21,7 +21,7 @@ import AddFixtureModal from "../components/AddFixtureModal";
 import ScoutingAssessmentModal from "../components/ScoutingAssessmentModal";
 import AddPlayerToListModal from "../components/AddPlayerToListModal";
 import ShimmerLoading from "../components/ShimmerLoading";
-import { useAuth } from "../App";
+import { useAuth } from "../contexts/AuthContext";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useTheme } from "../contexts/ThemeContext";

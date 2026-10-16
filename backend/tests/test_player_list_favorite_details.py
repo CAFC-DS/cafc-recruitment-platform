@@ -7,13 +7,14 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 from fastapi import HTTPException
+from blocking_io import offload_read
 
 
 def load_routes(connection):
     # Load the route bodies without initializing unrelated application services.
     tree = ast.parse((Path(__file__).parents[1] / "main.py").read_text())
     names = {"get_player_list_flags", "update_player_list_flag"}
-    routes = [node for node in tree.body if isinstance(node, ast.AsyncFunctionDef) and node.name in names]
+    routes = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in names]
     for route in routes:
         route.decorator_list = []
     namespace = {
@@ -25,6 +26,9 @@ def load_routes(connection):
         "logging": MagicMock(),
     }
     exec(compile(ast.Module(body=routes, type_ignores=[]), "main.py", "exec"), namespace)
+    for route in routes:
+        if isinstance(route, ast.FunctionDef):
+            namespace[route.name] = offload_read(namespace[route.name])
     return namespace
 
 

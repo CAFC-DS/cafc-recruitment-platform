@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
 import logo from '../../assets/logo.png';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface AgentPortalShellProps {

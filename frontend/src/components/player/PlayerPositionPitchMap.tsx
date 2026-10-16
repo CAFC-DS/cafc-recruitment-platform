@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Form, Spinner } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import "./PlayerPositionPitchMap.css";
@@ -39,7 +39,12 @@ const PlayerPositionPitchMap: React.FC<{ playerId: string }> = ({ playerId }) =>
   const [season, setSeason] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const resolvedRequest = useRef("");
+
   useEffect(() => {
+    const requestKey = JSON.stringify([playerId, competition, season]);
+    if (resolvedRequest.current === requestKey) return;
+    resolvedRequest.current = "";
     let cancelled = false;
     const params = new URLSearchParams();
     if (competition) params.set("competition", competition);
@@ -48,6 +53,9 @@ const PlayerPositionPitchMap: React.FC<{ playerId: string }> = ({ playerId }) =>
     axiosInstance.get<PositionHistoryResponse>(`/players/${playerId}/position-history?${params}`)
       .then(({ data: response }) => {
         if (cancelled) return;
+        setLoading(false);
+        // Reflect server-selected defaults without issuing the same query twice.
+        resolvedRequest.current = JSON.stringify([playerId, response.filters.competition || "", response.filters.season || ""]);
         setData(response);
         setCompetition(response.filters.competition || "");
         setSeason(response.filters.season || "");
