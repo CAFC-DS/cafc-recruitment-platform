@@ -6,6 +6,9 @@ player sources under the same concurrent, interleaved workload:
   old_live      CAFC_DB.APP_COMPAT.PLAYERS, the view production reads today
   old_snapshot  <clone>.PLAYER_READ_BEFORE_BACKUP, the frozen pre-release table
   native        canonical_players.projection(<clone>)
+  native_mat    prototype: the native projection reading a precomputed
+                <clone>.CORE_PLAYER_IMPECT_IDENTITY instead of ranking
+                PLAYER_IDENTITIES on every query (only if that table exists)
 
 Every worker owns one connection, disables the result cache, sets a statement
 timeout and query tag, and picks the mode round-robin per request so warehouse
@@ -112,7 +115,10 @@ def run(env_file, name, concurrency, requests, warmup, max_seconds, timeout, mod
     schema = isolated_schema(name)
     native = canonical_players.projection(schema)
     targets = {'old_live': 'CAFC_DB.APP_COMPAT.PLAYERS',
-               'old_snapshot': f'{schema}.PLAYER_READ_BEFORE_BACKUP', 'native': native}
+               'old_snapshot': f'{schema}.PLAYER_READ_BEFORE_BACKUP', 'native': native,
+               'native_mat': native.replace(
+                   canonical_players.identities(schema),
+                   f'SELECT cafc_player_id, source_player_id FROM {schema}.CORE_PLAYER_IMPECT_IDENTITY')}
     targets = {m: targets[m] for m in modes}
     run_id = uuid.uuid4().hex[:12]
     setup = connect(env_file)
@@ -199,7 +205,7 @@ def run(env_file, name, concurrency, requests, warmup, max_seconds, timeout, mod
                     'warehouse_size': wh.get('size'), 'warehouse_state_at_start': wh.get('state'),
                     'min_cluster_count': wh.get('min_cluster_count'), 'max_cluster_count': wh.get('max_cluster_count'),
                     'scaling_policy': wh.get('scaling_policy')},
-        'targets': {m: (t if m != 'native' else 'canonical_players.projection') for m, t in targets.items()},
+        'targets': {m: (t if not m.startswith('native') else f'canonical_players.projection ({m})') for m, t in targets.items()},
         'by_mode': {m: summarise([s for s in measured if s['mode'] == m]) for m in targets},
         'by_mode_kind': {f'{m}.{k}': summarise([s for s in measured if s['mode'] == m and s['kind'] == k])
                          for m in targets for k, _ in WORKLOAD},
@@ -216,6 +222,12 @@ def run(env_file, name, concurrency, requests, warmup, max_seconds, timeout, mod
         old, new = result['by_mode']['old_live'], result['by_mode']['native']
         result['native_vs_old_live'] = {
             k: round(new[k] / old[k], 3) if old[k] and new[k] else None for k in ('p50', 'p95', 'p99')}
+    if 'old_live' in result['by_mode']:
+        base = result['by_mode_kind']
+        result['p95_ratio_vs_old_live_by_kind'] = {
+            f'{m}.{k}': round(base[f'{m}.{k}']['p95'] / base[f'old_live.{k}']['p95'], 3)
+            for m in targets if m != 'old_live' for k, _ in WORKLOAD
+            if base[f'{m}.{k}']['p95'] and base[f'old_live.{k}']['p95']}
     return result
 
 
@@ -247,12 +259,14 @@ if __name__ == '__main__':
     if not 1 <= a.requests <= 5000:
         p.error('--requests must be between 1 and 5000')
     modes = [m.strip() for m in a.modes.split(',') if m.strip()]
-    if not set(modes) <= {'old_live', 'old_snapshot', 'native'}:
+    if not set(modes) <= {'old_live', 'old_snapshot', 'native', 'native_mat'}:
         p.error('unknown mode')
     out = run(a.env_file, a.schema, a.concurrency, a.requests, a.warmup, a.max_seconds,
               a.statement_timeout, modes, a.seed)
     a.result.write_text(json.dumps(out, indent=2, default=str) + '\n')
     print(json.dumps({k: out[k] for k in ('duration_seconds', 'stopped_by_time_cap', 'by_mode',
                                           'native_connection_validation', 'worker_errors')}
-                     | ({'native_vs_old_live': out['native_vs_old_live']} if 'native_vs_old_live' in out else {}),
+                     | ({'native_vs_old_live': out['native_vs_old_live']} if 'native_vs_old_live' in out else {})
+                     | ({'p95_ratio_vs_old_live_by_kind': out['p95_ratio_vs_old_live_by_kind']}
+                        if 'p95_ratio_vs_old_live_by_kind' in out else {}),
                      indent=2, default=str))
