@@ -527,7 +527,24 @@ const RecommendationForm: React.FC<RecommendationFormProps> = ({
                 submitted before player creation was restricted to staff.
                 New submissions must link a player from the search. */}
             {isResubmitMode ? (
-              <div className="agent-player-selected-card"><div><strong>{values.player_name}</strong><div>{formatDob(values.player_date_of_birth)}</div><small>Player identity is fixed for this resubmission.</small></div></div>
+              <div className="agent-portal-form-grid">
+                <div className="agent-player-selected-card">
+                  <div>
+                    <strong>{values.player_name}</strong>
+                    <div>{formatDob(values.player_date_of_birth)}</div>
+                    <small>Player identity is fixed for this resubmission.</small>
+                  </div>
+                </div>
+                <div>
+                  <MultiSelectDropdown
+                    label="Recommended Position *"
+                    values={values.recommended_position}
+                    options={RECOMMENDED_POSITION_OPTIONS}
+                    placeholder="Select recommended position"
+                    onChange={(nextValues) => onChange('recommended_position', nextValues)}
+                  />
+                </div>
+              </div>
             ) : isManualPlayerEntry ? (
               <div className="agent-portal-form-grid">
                 <div>
