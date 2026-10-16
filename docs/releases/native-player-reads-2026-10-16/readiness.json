@@ -38,11 +38,11 @@
       "timestamp": null
     },
     "persistent_grants_and_actual_service_identity": {
-      "passed": false,
-      "evidence": null,
-      "operator": null,
-      "timestamp": null,
-      "notes": "Live grants applied and matching application identity verified. Owning dbt deployment/rebuild persistence remains unverified. Persistence now in PR CAFC-DS/cafc-data-platform#17 (adds core_player_id_resolutions); unmerged."
+      "passed": true,
+      "evidence": "prod-player-refresh-2026-10-16.json; READ_PERMISSIONS.md",
+      "operator": "Claude (authorised prod dbt run of five models)",
+      "timestamp": "2026-10-16T20:10:50Z",
+      "notes": "PR CAFC-DS/cafc-data-platform#17 merged (db216d5); authorised prod rebuild kept APP_ROLE SELECT on all native sources and fallback objects. Application principal verified earlier."
     },
     "fresh_compatibility_fallback": {
       "passed": true,
