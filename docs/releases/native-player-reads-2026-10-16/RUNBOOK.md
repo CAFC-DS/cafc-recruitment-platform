@@ -116,3 +116,11 @@ For approved production maintenance only, set SCHEMA=CORE and add
 --execute-production to each operation. Native reads must be off before restore.
 The installer itself never grants privileges, changes app flags, rebuilds snapshots,
 pauses jobs or deploys services. Those operations need separately recorded evidence.
+
+## Subsequent permission stage
+
+On 16 October the two live SELECT grants were explicitly authorised, applied
+and verified using the matching application principal. See READ_PERMISSIONS.md.
+Earlier statements about missing grants or unchanged permissions describe the
+preceding inspection/rehearsal stage. Persistent dbt deployment remains pending;
+player data and native-read activation flags remain unchanged.

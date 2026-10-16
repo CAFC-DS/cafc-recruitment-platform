@@ -58,3 +58,11 @@ remain release gates. No browser/login or live user writes were performed.
 Machine evidence lives under backend/tools/normalisation/test-results/2026-10-16.
 The original platform grant patch remains under test-results/2026-10-10 and has
 not been deployed. No production flags, permissions, data or services changed.
+
+## Subsequent permission stage
+
+On 16 October the two live SELECT grants were explicitly authorised, applied
+and verified using the matching application principal. See READ_PERMISSIONS.md.
+Earlier statements about missing grants or unchanged permissions describe the
+preceding inspection/rehearsal stage. Persistent dbt deployment remains pending;
+player data and native-read activation flags remain unchanged.

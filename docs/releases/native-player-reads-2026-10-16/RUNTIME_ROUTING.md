@@ -52,3 +52,11 @@ the configuration gate. This is operator-confirmed configuration, not an
 independent CURRENT_DATABASE()/CURRENT_SCHEMA() query from the running service.
 The earlier unverified-default statements above describe the audit before that
 confirmation. Missing native-table grants and performance gates remain open.
+
+## Subsequent permission stage
+
+On 16 October the two live SELECT grants were explicitly authorised, applied
+and verified using the matching application principal. See READ_PERMISSIONS.md.
+Earlier statements about missing grants or unchanged permissions describe the
+preceding inspection/rehearsal stage. Persistent dbt deployment remains pending;
+player data and native-read activation flags remain unchanged.

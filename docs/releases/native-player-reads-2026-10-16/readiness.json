@@ -41,7 +41,8 @@
       "passed": false,
       "evidence": null,
       "operator": null,
-      "timestamp": null
+      "timestamp": null,
+      "notes": "Live grants applied and matching application identity verified. Owning dbt deployment/rebuild persistence remains unverified."
     },
     "fresh_compatibility_fallback": {
       "passed": false,
@@ -84,6 +85,12 @@
       "evidence": "runtime-routing-evidence.json and live-backend-health.json",
       "operator": "Codex read-only live inspection",
       "timestamp": "2026-10-16T11:11:23Z"
+    },
+    "live_native_source_permissions": {
+      "passed": true,
+      "evidence": "READ_PERMISSIONS.md and applied-read-permissions.json",
+      "operator": "Codex, explicitly authorised grants and verified matching application principal",
+      "timestamp": "2026-10-16"
     }
   },
   "performance": {

@@ -1,4 +1,5 @@
--- Reviewed proposal, not applied. No schema-wide or write privileges added.
+-- Applied with explicit user authorisation on 2026-10-16; see READ_PERMISSIONS.md.
+-- No schema-wide or write privileges added.
 -- APP_ROLE read probe on 2026-10-10 verified all other projection sources,
 -- the identity resolver, CORE search UDF and COMPUTE_WH access.
 -- These two materialized dbt summary tables are the missing privileges.
