@@ -5,7 +5,7 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../axiosInstance';
-import { useAuth } from '../../App';
+import { useAuth } from '../../contexts/AuthContext';
 import { agentRecommendationsService } from '../../services/agentRecommendationsService';
 import AuthShell from '../../components/auth/AuthShell';
 

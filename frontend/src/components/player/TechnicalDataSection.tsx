@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Col, Form, Row, Spinner } from "react-bootstrap";
 import { PolarArea } from "react-chartjs-2";
 import {
@@ -113,7 +113,12 @@ const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
   const [position, setPosition] = useState("");
   const [selectedMetricId, setSelectedMetricId] = useState("");
 
+  const resolvedRequest = useRef("");
+
   useEffect(() => {
+    const requestKey = JSON.stringify([playerId, competition, season, position]);
+    if (resolvedRequest.current === requestKey) return;
+    resolvedRequest.current = "";
     let cancelled = false;
     setLoading(true); setError("");
     const params = new URLSearchParams();
@@ -123,6 +128,8 @@ const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
     axiosInstance.get<PlayerTechnicalMetricsResponse>(`/players/${playerId}/technical-metrics?${params}`)
       .then(({ data: response }) => {
         if (cancelled) return;
+        setLoading(false);
+        resolvedRequest.current = JSON.stringify([playerId, response.filters.competition || "", response.filters.season || "", response.filters.position || "Overall"]);
         setData(response);
         setCompetition(response.filters.competition || "");
         setSeason(response.filters.season || "");

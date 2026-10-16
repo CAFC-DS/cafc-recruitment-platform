@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -45,7 +45,7 @@ import GradeChip from "../components/GradeChip";
 import GradeLabelChip from "../components/GradeLabelChip";
 import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import ShimmerLoading from "../components/ShimmerLoading";
-import TechnicalDataSection from "../components/player/TechnicalDataSection";
+
 import PlayerPositionPitchMap from "../components/player/PlayerPositionPitchMap";
 import {
   Flag,
@@ -80,6 +80,8 @@ ChartJS.register(
   ArcElement,
   ChartDataLabels,
 );
+
+const TechnicalDataSection = lazy(() => import("../components/player/TechnicalDataSection"));
 
 interface ScoutReport {
   report_id: number;
@@ -3653,7 +3655,7 @@ const PlayerProfilePage: React.FC = () => {
         </div>
         </>
         ) : actualPlayerId ? (
-          <TechnicalDataSection playerId={actualPlayerId} />
+          <Suspense fallback={<div role="status" className="text-center py-4">Loading technical data…</div>}><TechnicalDataSection playerId={actualPlayerId} /></Suspense>
         ) : null}
       </Container>
 

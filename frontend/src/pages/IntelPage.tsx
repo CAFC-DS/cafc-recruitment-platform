@@ -19,7 +19,7 @@ import axiosInstance from "../axiosInstance";
 import IntelModal from "../components/IntelModal";
 import IntelReportModal from "../components/IntelReportModal";
 import ShimmerLoading from "../components/ShimmerLoading";
-import { useAuth } from "../App";
+import { useAuth } from "../contexts/AuthContext";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 import { getRecommendationColor, getContrastTextColor } from "../utils/colorUtils";

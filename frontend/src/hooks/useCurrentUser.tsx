@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import axiosInstance from "../axiosInstance";
-import { useAuth } from "../App";
+import { useAuth } from "../contexts/AuthContext";
 
 interface CurrentUser {
   id: number;
@@ -11,32 +11,60 @@ interface CurrentUser {
   lastname?: string;
 }
 
-export const useCurrentUser = () => {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
+const CurrentUserContext = createContext<{ user: CurrentUser | null; loading: boolean } | undefined>(undefined);
+
+export const CurrentUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token } = useAuth();
+  const [state, setState] = useState<{ token: string | null; user: CurrentUser | null; loading: boolean }>({ token: null, user: null, loading: false });
+  const pending = useRef<{ token: string; request: Promise<CurrentUser> } | null>(null);
 
   useEffect(() => {
-    const fetchCurrentUser = async () => {
-      if (!token) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
+    let active = true;
+    if (!token) {
+      pending.current = null;
+      setState({ token: null, user: null, loading: false });
+      return;
+    }
 
+    const refresh = async () => {
+      // Reuse the request on concurrent focus events and StrictMode effect replay.
+      if (pending.current?.token !== token) {
+        pending.current = { token, request: axiosInstance.get<CurrentUser>("/users/me").then(({ data }) => data) };
+      }
+      const request = pending.current.request;
       try {
-        const response = await axiosInstance.get("/users/me");
-        setUser(response.data);
+        const user = await request;
+        if (active) setState({ token, user, loading: false });
       } catch (error) {
-        console.error("Failed to fetch current user:", error);
-        setUser(null);
+        if (active) {
+          console.error("Failed to fetch current user:", error);
+          setState({ token, user: null, loading: false });
+        }
       } finally {
-        setLoading(false);
+        if (pending.current?.request === request) pending.current = null;
       }
     };
 
-    fetchCurrentUser();
+    void refresh();
+    const onVisibility = () => { if (document.visibilityState === "visible") void refresh(); };
+    const interval = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [token]);
+
+  // Never expose the previous account's permissions while a new token loads.
+  const value = state.token === token ? state : { user: null, loading: Boolean(token) };
+  return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
+};
+
+export const useCurrentUser = () => {
+  const context = useContext(CurrentUserContext);
+  if (!context) throw new Error("useCurrentUser must be used within a CurrentUserProvider");
+  const { user, loading } = context;
 
   // Role checks
   const isAdmin = user?.role === "admin";

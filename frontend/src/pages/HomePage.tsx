@@ -13,7 +13,7 @@ import {
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
-import { useAuth } from "../App";
+import { useAuth } from "../contexts/AuthContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import PlayerReportModal from "../components/PlayerReportModal";
 import {
@@ -45,7 +45,7 @@ const HomePage: React.FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
   const { user } = useCurrentUser();
-  const [userRole, setUserRole] = useState("");
+  const userRole = user?.role || "";
   const [recentScoutReports, setRecentScoutReports] = useState<ScoutReport[]>(
     [],
   );
@@ -53,8 +53,8 @@ const HomePage: React.FC = () => {
   const [topAttributeReports, setTopAttributeReports] = useState<ScoutReport[]>(
     [],
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [sectionLoading, setSectionLoading] = useState({ scout: true, flag: true, top: true });
+  const [sectionErrors, setSectionErrors] = useState({ scout: "", flag: "", top: "" });
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
@@ -88,10 +88,6 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     axiosInstance
-      .get("/users/me")
-      .then((res) => setUserRole(res.data.role || "scout"))
-      .catch((error) => console.error("Error fetching user info:", error));
-    axiosInstance
       .get("/database/metadata")
       .then((res) => setDatabaseMetadata(res.data))
       .catch((error) =>
@@ -109,14 +105,15 @@ const HomePage: React.FC = () => {
 
     setRecentScoutReports([]);
     setRecentFlagReports([]);
+    setTopAttributeReports([]);
     setScoutReportsOffset(0);
     setFlagReportsOffset(0);
     setHasMoreScoutReports(true);
     setHasMoreFlagReports(true);
     setLoadingMoreScoutReports(false);
     setLoadingMoreFlagReports(false);
-    setError("");
-    setLoading(true);
+    setSectionErrors({ scout: "", flag: "", top: "" });
+    setSectionLoading({ scout: true, flag: true, top: true });
 
     const signal = controller.signal;
     const topAttributesUrl =
@@ -124,39 +121,33 @@ const HomePage: React.FC = () => {
         ? `/scout_reports/top-attributes?limit=10`
         : `/scout_reports/top-attributes?limit=10&recency_days=${recencyFilter}`;
 
-    Promise.all([
-      axiosInstance.get(recentUrl("Player Assessment", 0), { signal }),
-      axiosInstance.get(recentUrl("Flag", 0), { signal }),
-      // Top attribute scores use a dedicated endpoint (sorted by attribute
-      // score, not recency) so it's the real top 10 in the selected period
-      axiosInstance.get(topAttributesUrl, { signal }),
-    ])
-      .then(([scoutResponse, flagResponse, topResponse]) => {
+    const loadSection = async (section: "scout" | "flag" | "top", url: string) => {
+      try {
+        const { data } = await axiosInstance.get(url, { signal });
         if (generation !== generationRef.current) return;
-        setRecentScoutReports(scoutResponse.data.reports || []);
-        setHasMoreScoutReports(scoutResponse.data.has_more || false);
-        setScoutReportsOffset(20);
-        setRecentFlagReports(flagResponse.data.reports || []);
-        setHasMoreFlagReports(flagResponse.data.has_more || false);
-        setFlagReportsOffset(20);
-        const topReports = topResponse.data.reports || [];
-        setTopAttributeReports(Array.isArray(topReports) ? topReports : []);
-      })
-      .catch((error: any) => {
-        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
-        if (generation !== generationRef.current) return;
-        console.error("Error fetching dashboard data:", error);
-        // Handle authentication errors specifically
-        if (error.response?.status === 401 || error.response?.status === 422) {
-          setError("Authentication failed. Please log in again.");
-          // Clear token and redirect will be handled by axios interceptor
+        const reports = Array.isArray(data.reports) ? data.reports : [];
+        if (section === "scout") {
+          setRecentScoutReports(reports);
+          setHasMoreScoutReports(Boolean(data.has_more));
+          setScoutReportsOffset(20);
+        } else if (section === "flag") {
+          setRecentFlagReports(reports);
+          setHasMoreFlagReports(Boolean(data.has_more));
+          setFlagReportsOffset(20);
         } else {
-          setError("Failed to load dashboard data");
+          setTopAttributeReports(reports);
         }
-      })
-      .finally(() => {
-        if (generation === generationRef.current) setLoading(false);
-      });
+      } catch (error: any) {
+        if (signal.aborted || generation !== generationRef.current) return;
+        console.error(`Error fetching ${section} dashboard reports:`, error);
+        setSectionErrors((previous) => ({ ...previous, [section]: "Reports could not be loaded. Please refresh to try again." }));
+      } finally {
+        if (generation === generationRef.current) setSectionLoading((previous) => ({ ...previous, [section]: false }));
+      }
+    };
+    void loadSection("scout", recentUrl("Player Assessment", 0));
+    void loadSection("flag", recentUrl("Flag", 0));
+    void loadSection("top", topAttributesUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, recencyFilter]);
 
@@ -271,64 +262,6 @@ const HomePage: React.FC = () => {
 
   // Note: Color functions now imported from utils/colorUtils.ts for consistency across the platform
 
-  if (loading) {
-    return (
-      <Container className="mt-4">
-        {/* Welcome Header Shimmer */}
-        <div className="mb-4">
-          <div className="shimmer-line mb-3" style={{ width: "300px", height: "36px" }}></div>
-          <div className="shimmer-line" style={{ width: "400px", height: "20px" }}></div>
-        </div>
-
-        {/* 1x3 Grid Dashboard Shimmer */}
-        <Row className="g-4">
-          {/* Three shimmer cards */}
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <Col md={4} key={`shimmer-card-${idx}`}>
-              <Card className="h-100">
-                <Card.Header className="bg-light border-bottom">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div className="shimmer-line" style={{ width: "200px", height: "24px" }}></div>
-                    <div className="shimmer-line" style={{ width: "80px", height: "32px", borderRadius: "4px" }}></div>
-                  </div>
-                </Card.Header>
-                <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                  {Array.from({ length: 5 }).map((_, itemIdx) => (
-                    <div key={`shimmer-item-${itemIdx}`} className="border-bottom pb-2 mb-2">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="d-flex align-items-start">
-                          <div className="shimmer-line me-2 mt-1" style={{ width: "32px", height: "32px", borderRadius: "50%" }}></div>
-                          <div>
-                            <div className="shimmer-line mb-2" style={{ width: "150px", height: "20px" }}></div>
-                            <div className="shimmer-line" style={{ width: "100px", height: "16px" }}></div>
-                          </div>
-                        </div>
-                        <div className="text-end">
-                          <div className="mb-1">
-                            <div className="shimmer-line" style={{ width: "60px", height: "24px", borderRadius: "12px", marginLeft: "auto", marginBottom: "4px" }}></div>
-                          </div>
-                          <div className="shimmer-line" style={{ width: "80px", height: "16px", marginLeft: "auto" }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </Container>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container className="mt-4">
-        <Alert variant="danger">{error}</Alert>
-      </Container>
-    );
-  }
-
   return (
     <>
       <Container className="mt-4">
@@ -430,7 +363,11 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentScoutReports.length === 0 && !loadingMoreScoutReports ? (
+                {sectionLoading.scout ? (
+                  <div role="status" className="text-center py-4"><Spinner animation="border" size="sm" /><span className="ms-2">Loading reports…</span></div>
+                ) : sectionErrors.scout ? (
+                  <Alert variant="warning">{sectionErrors.scout}</Alert>
+                ) : recentScoutReports.length === 0 && !loadingMoreScoutReports ? (
                   <p className="text-muted text-center">
                     No recent scout reports
                   </p>
@@ -567,7 +504,11 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {recentFlagReports.length === 0 && !loadingMoreFlagReports ? (
+                {sectionLoading.flag ? (
+                  <div role="status" className="text-center py-4"><Spinner animation="border" size="sm" /><span className="ms-2">Loading reports…</span></div>
+                ) : sectionErrors.flag ? (
+                  <Alert variant="warning">{sectionErrors.flag}</Alert>
+                ) : recentFlagReports.length === 0 && !loadingMoreFlagReports ? (
                   <p className="text-muted text-center">
                     No recent flag reports
                   </p>
@@ -713,7 +654,11 @@ const HomePage: React.FC = () => {
                 </div>
               </Card.Header>
               <Card.Body style={{ maxHeight: "300px", overflowY: "auto" }}>
-                {topAttributeReports.length === 0 ? (
+                {sectionLoading.top ? (
+                  <div role="status" className="text-center py-4"><Spinner animation="border" size="sm" /><span className="ms-2">Loading reports…</span></div>
+                ) : sectionErrors.top ? (
+                  <Alert variant="warning">{sectionErrors.top}</Alert>
+                ) : topAttributeReports.length === 0 ? (
                   <p className="text-muted text-center">
                     No reports with attribute scores
                   </p>
