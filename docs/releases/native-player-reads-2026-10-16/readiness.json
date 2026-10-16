@@ -16,11 +16,14 @@
       "timestamp": "2026-10-16"
     },
     "live_frontend_and_session_configuration": {
-      "passed": false,
-      "evidence": null,
-      "operator": null,
-      "timestamp": null,
-      "notes": "Frontend, current role/warehouse and prefixes confirmed. Exact current session default database/schema still require operator confirmation; OAuth redacts variable values."
+      "passed": true,
+      "evidence": "RUNTIME_ROUTING.md; operator confirmation in this conversation",
+      "operator": "User confirmed Railway variable values; Codex verified routing and logs",
+      "timestamp": "2026-10-16",
+      "confirmed_values": {
+        "SNOWFLAKE_PROD_DATABASE": "CAFC_DB",
+        "SNOWFLAKE_PROD_SCHEMA": "CORE"
+      }
     },
     "writers_paused_and_drained": {
       "passed": false,

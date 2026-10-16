@@ -42,3 +42,13 @@ combined configuration gate remains open pending those current default values.
 Permissions and actual native-source access still require a separate check after
 the reviewed grants are applied. Production data, privileges, flags and services
 were not changed by this audit.
+
+## Operator confirmation
+
+The user confirmed in this conversation that the current Railway values are
+SNOWFLAKE_PROD_DATABASE=CAFC_DB and SNOWFLAKE_PROD_SCHEMA=CORE. Together with the
+published asset, deployment logs and successful live health query, this closes
+the configuration gate. This is operator-confirmed configuration, not an
+independent CURRENT_DATABASE()/CURRENT_SCHEMA() query from the running service.
+The earlier unverified-default statements above describe the audit before that
+confirmation. Missing native-table grants and performance gates remain open.

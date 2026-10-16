@@ -26,7 +26,7 @@
     "backend/tools/normalisation/verify_player_read_release.py": "81c6a60b7c2311bf3fde8658452bdeaeda73a8c1ef7b9f03e475bef488c75c5f",
     "docs/releases/native-player-reads-2026-10-16/RUNBOOK.md": "36eaf3eac9cfe60da51bf8ec941829a20407298e821ab99bfcf1772872c74ab3",
     "docs/releases/native-player-reads-2026-10-16/VERIFICATION.md": "de7f775da99eb2569405911b8ea63e7f28111fa0faae2ca96cf1c9b7eea2c84d",
-    "docs/releases/native-player-reads-2026-10-16/RUNTIME_ROUTING.md": "06d0d580b707766bba5c13fbb8c7d39eef532d5f462dd99cac488a2ee6a4c22b",
+    "docs/releases/native-player-reads-2026-10-16/RUNTIME_ROUTING.md": "a792cdd1fa9eea881b9a04e5d20a2d949ba6a1c0fdc37b4112b5046aefa50c88",
     "docs/releases/native-player-reads-2026-10-16/runtime-routing-evidence.json": "ef4eb37f8eb25fa307d49866860413a794c33e85a99af9b59a42c92ed7e19e54",
     "docs/releases/native-player-reads-2026-10-16/published-frontend-routing.json": "8ce57f676652c1cd1498ba48ac1d8eed280855ebdc0512400c7a37637ff36601",
     "docs/releases/native-player-reads-2026-10-16/live-backend-health.json": "20889e69f68a37fe2c015e16e1b803b92a18be2d91132d24ec9c248d8d427320"
