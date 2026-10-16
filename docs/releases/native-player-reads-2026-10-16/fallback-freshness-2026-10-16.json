@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-10-16T15:31:08+01:00",
+  "method": "Read-only queries as DEV_ROLE against live CAFC_DB (no writes)",
+  "objects": {
+    "APP_COMPAT.PLAYERS_BASE": {"type": "table", "last_altered": "2026-10-12T14:11:18+01:00", "rows": 123507},
+    "APP_COMPAT.PLAYERS": {"type": "view", "definition": "players_base UNION ALL live tail of active CORE.PLAYERS not in players_base"},
+    "CORE.PLAYERS": {"last_altered": "2026-10-16T11:20:48+01:00", "rows": 123555},
+    "CORE.PLAYER_IDENTITIES": {"last_altered": "2026-10-16T11:20:48+01:00", "rows": 427186},
+    "CORE.CORE_PLAYER_CURRENT_CONTEXT": {"last_built": "2026-09-30T13:16:48+01:00", "rows": 109006},
+    "CORE.CORE_PLAYER_RECENT_POSITION": {"last_built": "2026-09-30T13:16:59+01:00", "rows": 44872}
+  },
+  "comparison_native_vs_fallback": {
+    "native_rows_not_in_fallback": 0,
+    "fallback_rows_not_in_native": 0,
+    "same_cafc_id_column_differences": {"PLAYERNAME": 0, "SQUADNAME": 0, "POSITION": 0, "PLAYERID": 0, "BIRTHDATE": 0, "COMPETITIONNAME": 0},
+    "core_players_updated_since_players_base": 5
+  },
+  "caveats": [
+    "Club and position summaries in BOTH paths date from the 2026-09-30 prod dbt build.",
+    "After the duplicate correction, PLAYERS_BASE still contains the five retired players until its owning dbt model is rebuilt, so falling back re-shows them.",
+    "A prod dbt build before PR CAFC-DS/cafc-data-platform#17 merges drops the manual APP_ROLE grants on the native sources."
+  ],
+  "passed": true
+}

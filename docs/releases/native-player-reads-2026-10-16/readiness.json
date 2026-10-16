@@ -42,25 +42,28 @@
       "evidence": null,
       "operator": null,
       "timestamp": null,
-      "notes": "Live grants applied and matching application identity verified. Owning dbt deployment/rebuild persistence remains unverified."
+      "notes": "Live grants applied and matching application identity verified. Owning dbt deployment/rebuild persistence remains unverified. Persistence now in PR CAFC-DS/cafc-data-platform#17 (adds core_player_id_resolutions); unmerged."
     },
     "fresh_compatibility_fallback": {
-      "passed": false,
-      "evidence": null,
-      "operator": null,
-      "timestamp": null
+      "passed": true,
+      "evidence": "fallback-freshness-2026-10-16.json",
+      "operator": "Claude (read-only live queries)",
+      "timestamp": "2026-10-16T14:31:08Z",
+      "notes": "Native and fallback rows identical today. Fallback re-shows the five retired players after correction until PLAYERS_BASE is rebuilt; recheck inside the maintenance window."
     },
     "concurrent_performance_acceptance": {
       "passed": false,
       "evidence": null,
       "operator": null,
-      "timestamp": null
+      "timestamp": null,
+      "notes": "Dev-clone runs (DEVELOPMENT_WH X-Small, 10 readers, result cache off): 0 errors; native p95 detail 0.52s, report 0.60s, list 0.78-0.83s, search 1.05-1.07s. Evidence: backend/tools/normalisation/test-results/2026-10-16/concurrent-read-benchmark-c10*.json. Not yet run on production's COMPUTE_WH; pending search sub-rule confirmation."
     },
     "baseline_failure_review_and_monitoring": {
       "passed": false,
       "evidence": null,
       "operator": null,
-      "timestamp": null
+      "timestamp": null,
+      "notes": "Reviewed: all 34 failures are tests for the agent-portal duplicate-player gate (_find_agent_intake_duplicate_candidates, _create_external_player_from_agent_intake, confirm_new_player). The cutover merge c45330e dropped that code from main.py; deployed 3db15bb accepts confirm_new_player but never checks for duplicates. None touch native-read code; the release neither fixes nor worsens them. Production gap: agent manual entries can mint duplicate players. Monitoring/rollback ownership still to be agreed, so gate stays open."
     },
     "production_execution_approval": {
       "passed": false,
@@ -94,12 +97,15 @@
     }
   },
   "performance": {
-    "p95_seconds": null,
+    "p95_seconds": 1.0,
     "max_regression_percent": null,
-    "concurrency": null,
+    "concurrency": 10,
     "duration_minutes": null,
     "soak_minutes": null,
-    "approved_by": null
+    "approved_by": "Hashim, project chat 2026-10-16T14:30:19Z ('Ok that's fine') accepting the recommended absolute bar",
+    "max_error_rate": 0.005,
+    "rule": "Absolute bar per read type: p95 < 1s for detail, report-join and list-join; search p95 no slower than old_live search in the same run; errors < 0.5%. No precomputed identity table.",
+    "open_points": "Search sub-rule was added after acceptance (native search p95 1.05-1.07s vs old 1.00-1.27s) and awaits confirmation. max_regression_percent, run duration and soak window not yet agreed."
   },
   "execution_ledger": []
 }
