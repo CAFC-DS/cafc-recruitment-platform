@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -80,8 +80,6 @@ ChartJS.register(
   ArcElement,
   ChartDataLabels,
 );
-
-const TechnicalDataSection = lazy(() => import("../components/player/TechnicalDataSection"));
 
 interface ScoutReport {
   report_id: number;
@@ -633,9 +631,6 @@ const PlayerProfilePage: React.FC = () => {
   const [scoutingHistoryExpanded, setScoutingHistoryExpanded] = useState(true);
   const [intelExpanded, setIntelExpanded] = useState(true);
   const [attributeBreakdownExpanded, setAttributeBreakdownExpanded] = useState(true);
-  const [activeProfileTab, setActiveProfileTab] = useState<"profile" | "technical">(
-    () => new URLSearchParams(window.location.search).get("tab") === "technical" ? "technical" : "profile",
-  );
 
   // View mode for Intel section
   const [intelViewMode, setIntelViewMode] = useState<"cards" | "table">("cards");
@@ -1842,22 +1837,10 @@ const PlayerProfilePage: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className="profile-section-tabs" role="tablist" aria-label="Player profile sections">
-            <button type="button" role="tab" aria-selected={activeProfileTab === "profile"} className={activeProfileTab === "profile" ? "is-active" : ""} onClick={() => setActiveProfileTab("profile")}>
-              <ClipboardList size={16} aria-hidden="true" />
-              <span>Profile</span>
-            </button>
-            <button type="button" role="tab" aria-selected={activeProfileTab === "technical"} className={activeProfileTab === "technical" ? "is-active" : ""} onClick={() => setActiveProfileTab("technical")}>
-              <BarChart3 size={16} aria-hidden="true" />
-              <span>Technical Data</span>
-            </button>
-          </div>
         </div>
         {actualPlayerId && <PlayerPositionPitchMap playerId={actualPlayerId} />}
         </div>
 
-        {activeProfileTab === "profile" ? (
-        <>
         {/* Reports Sections - Full Width Stacked Layout */}
         <div className="mt-4 mb-4">
           {showScoutingContent && canViewFlowHistory && (
@@ -3653,10 +3636,6 @@ const PlayerProfilePage: React.FC = () => {
           </div>
           )}
         </div>
-        </>
-        ) : actualPlayerId ? (
-          <Suspense fallback={<div role="status" className="text-center py-4">Loading technical data…</div>}><TechnicalDataSection playerId={actualPlayerId} /></Suspense>
-        ) : null}
       </Container>
 
       {/* Add Note Modal */}
