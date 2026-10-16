@@ -63,7 +63,7 @@
       "evidence": null,
       "operator": null,
       "timestamp": null,
-      "notes": "Reviewed: all 34 failures are tests for the agent-portal duplicate-player gate (_find_agent_intake_duplicate_candidates, _create_external_player_from_agent_intake, confirm_new_player). The cutover merge c45330e dropped that code from main.py; deployed 3db15bb accepts confirm_new_player but never checks for duplicates. None touch native-read code; the release neither fixes nor worsens them. Production gap: agent manual entries can mint duplicate players. Monitoring/rollback ownership still to be agreed, so gate stays open."
+      "notes": "Reviewed: all 34 failures are stale tests for the agent-portal player-creation duplicate gate (_find_agent_intake_duplicate_candidates, _create_external_player_from_agent_intake, confirm_new_player). Phase 5 commit 70aa88b deliberately removed agent player creation; deployed resolve_agent_intake_player_link returns HTTP 400 unless an existing player is linked, so agents cannot mint players and there is no duplicate-creation gap. The tests should be retired or rewritten for the 400 behaviour. None touch native-read code. Monitoring/rollback ownership still to be agreed, so gate stays open."
     },
     "production_execution_approval": {
       "passed": false,

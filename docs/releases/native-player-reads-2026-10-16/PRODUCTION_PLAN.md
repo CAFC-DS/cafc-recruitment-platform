@@ -78,10 +78,9 @@ report/list writers, and never drop or replace tables as a rollback.
 
 ## Known gaps this release does not fix
 
-- The agent-portal duplicate-player check was lost in the cutover merge (c45330e):
-  deployed code accepts `confirm_new_player` but never checks for duplicates, so
-  agent manual entries can create new duplicate players. Its 34 tests fail on the
-  deployed build too. Separate fix recommended before or soon after this release.
+- The 34 failing backend tests cover agent-portal player creation, which Phase 5
+  (70aa88b) deliberately removed: agents must now link an existing player or get
+  HTTP 400. The tests are stale, not a live gap; retire or rewrite them separately.
 - 71% of IMPECT identity rows repeat the same player and IMPECT ID once per season;
   this slows native lookups. Data clean-up for a later release.
 - Report, list, intel and recommendation writers, manual team/position edits and
