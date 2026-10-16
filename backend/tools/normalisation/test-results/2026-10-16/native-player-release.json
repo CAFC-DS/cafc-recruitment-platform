@@ -1,0 +1,753 @@
+{
+  "schema": "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8",
+  "player_rows": 123510,
+  "benchmarks": {
+    "detail_snapshot_uncached": {
+      "seconds": [
+        0.1202,
+        0.1034,
+        0.1514
+      ],
+      "median_seconds": 0.1202,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-6fe3-0002-73ee02a02fc6",
+        "01c7c456-0004-6e57-0002-73ee02a0480e",
+        "01c7c456-0004-6fe3-0002-73ee02a02fce"
+      ]
+    },
+    "detail_native_uncached": {
+      "seconds": [
+        0.2656,
+        0.2244,
+        0.1933
+      ],
+      "median_seconds": 0.2244,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-6e57-0002-73ee02a04812",
+        "01c7c456-0004-6fe3-0002-73ee02a02fd2",
+        "01c7c456-0004-703f-0002-73ee02a03926"
+      ]
+    },
+    "search_snapshot_uncached": {
+      "seconds": [
+        0.2988,
+        0.2556,
+        0.3028
+      ],
+      "median_seconds": 0.2988,
+      "row_counts": [
+        11,
+        11,
+        11
+      ],
+      "query_ids": [
+        "01c7c456-0004-6e57-0002-73ee02a04816",
+        "01c7c456-0004-703f-0002-73ee02a0392a",
+        "01c7c456-0004-6e57-0002-73ee02a0481a"
+      ]
+    },
+    "search_native_uncached": {
+      "seconds": [
+        0.5003,
+        0.5142,
+        0.5329
+      ],
+      "median_seconds": 0.5142,
+      "row_counts": [
+        11,
+        11,
+        11
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a0392e",
+        "01c7c456-0004-703f-0002-73ee02a03932",
+        "01c7c456-0004-6fe3-0002-73ee02a02fd6"
+      ]
+    },
+    "report_join_snapshot_uncached": {
+      "seconds": [
+        0.1157,
+        0.1142,
+        0.1229
+      ],
+      "median_seconds": 0.1157,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a03946",
+        "01c7c456-0004-6fe3-0002-73ee02a02fea",
+        "01c7c456-0004-703f-0002-73ee02a0395a"
+      ]
+    },
+    "report_join_native_uncached": {
+      "seconds": [
+        0.2558,
+        0.2901,
+        0.6964
+      ],
+      "median_seconds": 0.2901,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-6fe3-0002-73ee02a02ff2",
+        "01c7c456-0004-6e57-0002-73ee02a04832",
+        "01c7c456-0004-6fe3-0002-73ee02a0600a"
+      ]
+    },
+    "list_join_snapshot_uncached": {
+      "seconds": [
+        1.6437,
+        0.1993,
+        0.3684
+      ],
+      "median_seconds": 0.3684,
+      "row_counts": [
+        619,
+        619,
+        619
+      ],
+      "query_ids": [
+        "01c7c456-0004-6e57-0002-73ee02a0483a",
+        "01c7c456-0004-6fe3-0002-73ee02a0601e",
+        "01c7c456-0004-6e57-0002-73ee02a04846"
+      ]
+    },
+    "list_join_native_uncached": {
+      "seconds": [
+        0.4148,
+        0.9162,
+        0.451
+      ],
+      "median_seconds": 0.451,
+      "row_counts": [
+        619,
+        619,
+        619
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a03972",
+        "01c7c456-0004-6e57-0002-73ee02a0484e",
+        "01c7c456-0004-6fe3-0002-73ee02a06026"
+      ]
+    },
+    "detail_snapshot_cached": {
+      "seconds": [
+        0.0691,
+        0.152,
+        0.0547
+      ],
+      "median_seconds": 0.0691,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a03976",
+        "01c7c456-0004-6e57-0002-73ee02a0485a",
+        "01c7c456-0004-703f-0002-73ee02a0397e"
+      ]
+    },
+    "detail_native_cached": {
+      "seconds": [
+        0.0833,
+        0.1672,
+        0.2001
+      ],
+      "median_seconds": 0.1672,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a03982",
+        "01c7c456-0004-6fe3-0002-73ee02a06032",
+        "01c7c456-0004-6e57-0002-73ee02a04862"
+      ]
+    },
+    "search_snapshot_cached": {
+      "seconds": [
+        0.5348,
+        0.3115,
+        0.3788
+      ],
+      "median_seconds": 0.3788,
+      "row_counts": [
+        11,
+        11,
+        11
+      ],
+      "query_ids": [
+        "01c7c456-0004-6e57-0002-73ee02a0486a",
+        "01c7c456-0004-6fe3-0002-73ee02a0603a",
+        "01c7c456-0004-6e57-0002-73ee02a0487e"
+      ]
+    },
+    "search_native_cached": {
+      "seconds": [
+        0.5033,
+        0.4608,
+        0.4967
+      ],
+      "median_seconds": 0.4967,
+      "row_counts": [
+        11,
+        11,
+        11
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a0399e",
+        "01c7c456-0004-703f-0002-73ee02a039a6",
+        "01c7c456-0004-6fe3-0002-73ee02a06046"
+      ]
+    },
+    "report_join_snapshot_cached": {
+      "seconds": [
+        0.0889,
+        0.0588,
+        0.1123
+      ],
+      "median_seconds": 0.0889,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-703f-0002-73ee02a039b6",
+        "01c7c456-0004-6fe3-0002-73ee02a0604e",
+        "01c7c456-0004-703f-0002-73ee02a039ba"
+      ]
+    },
+    "report_join_native_cached": {
+      "seconds": [
+        0.1729,
+        0.092,
+        0.0841
+      ],
+      "median_seconds": 0.092,
+      "row_counts": [
+        1,
+        1,
+        1
+      ],
+      "query_ids": [
+        "01c7c456-0004-6e57-0002-73ee02a0489a",
+        "01c7c456-0004-703f-0002-73ee02a039be",
+        "01c7c456-0004-6fe3-0002-73ee02a06056"
+      ]
+    },
+    "list_join_snapshot_cached": {
+      "seconds": [
+        0.2582,
+        0.0757,
+        0.1366
+      ],
+      "median_seconds": 0.1366,
+      "row_counts": [
+        619,
+        619,
+        619
+      ],
+      "query_ids": [
+        "01c7c456-0004-6e57-0002-73ee02a0489e",
+        "01c7c456-0004-6fe3-0002-73ee02a0605a",
+        "01c7c456-0004-6e57-0002-73ee02a048a6"
+      ]
+    },
+    "list_join_native_cached": {
+      "seconds": [
+        0.0749,
+        0.1596,
+        0.3631
+      ],
+      "median_seconds": 0.1596,
+      "row_counts": [
+        619,
+        619,
+        619
+      ],
+      "query_ids": [
+        "01c7c456-0004-6fe3-0002-73ee02a06066",
+        "01c7c456-0004-6e57-0002-73ee02a048aa",
+        "01c7c456-0004-703f-0002-73ee02a039ca"
+      ]
+    }
+  },
+  "api_cases": [
+    {
+      "case": "search",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.7485,
+        0.6194
+      ],
+      "sha256": [
+        "367b5a82f445f5cbe775b144c1115b2ecbec32e83dc4ec2e2acfe50b7474d686",
+        "367b5a82f445f5cbe775b144c1115b2ecbec32e83dc4ec2e2acfe50b7474d686"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "detail_external",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.1391,
+        0.2025
+      ],
+      "sha256": [
+        "de758f41e5557fc7dd6a5983a3f7e342001a0f2b936fbadcfd81e515f3241fa7",
+        "de758f41e5557fc7dd6a5983a3f7e342001a0f2b936fbadcfd81e515f3241fa7"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "detail_internal",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.0829,
+        0.1955
+      ],
+      "sha256": [
+        "5ce68b783e528e5494a9964d6d3abae8d3ec741db2404dceda4150f9324ec442",
+        "5ce68b783e528e5494a9964d6d3abae8d3ec741db2404dceda4150f9324ec442"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "profile_external",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        5.7421,
+        2.1918
+      ],
+      "sha256": [
+        "e6cd4f7da5c09be18f02323f2cc893ee8c2f1cf5d8017d1554566a43ba3bf148",
+        "e6cd4f7da5c09be18f02323f2cc893ee8c2f1cf5d8017d1554566a43ba3bf148"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "profile_internal",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        3.3612,
+        2.8317
+      ],
+      "sha256": [
+        "88c81db1c7d2d015cebceb617e1ca66387530fb706d86bfefe24d2c24b1da673",
+        "88c81db1c7d2d015cebceb617e1ca66387530fb706d86bfefe24d2c24b1da673"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "profile_scout",
+      "role": "scout",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.5226,
+        0.6969
+      ],
+      "sha256": [
+        "e6cd4f7da5c09be18f02323f2cc893ee8c2f1cf5d8017d1554566a43ba3bf148",
+        "e6cd4f7da5c09be18f02323f2cc893ee8c2f1cf5d8017d1554566a43ba3bf148"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "profile_loan",
+      "role": "loan_manager",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.4534,
+        0.611
+      ],
+      "sha256": [
+        "0fd3fe3944695fd57456313991acc905a42c2ca2d5053d2e63ee71a63a87bc2d",
+        "0fd3fe3944695fd57456313991acc905a42c2ca2d5053d2e63ee71a63a87bc2d"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "profile_intel",
+      "role": "intel_reviewer",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        3.0691,
+        2.2361
+      ],
+      "sha256": [
+        "0fd3fe3944695fd57456313991acc905a42c2ca2d5053d2e63ee71a63a87bc2d",
+        "0fd3fe3944695fd57456313991acc905a42c2ca2d5053d2e63ee71a63a87bc2d"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "flow",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        3.1416,
+        1.8497
+      ],
+      "sha256": [
+        "7f7ccc4ef46aff30345e3332c205cb3f9516e1d51e2c095b14ad8e0eea8a697d",
+        "7f7ccc4ef46aff30345e3332c205cb3f9516e1d51e2c095b14ad8e0eea8a697d"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "player_report_feed",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.7497,
+        0.6315
+      ],
+      "sha256": [
+        "c7dff26e043948bc1e2d90972b2dd1d014ea7604e797aa3f680b26cbe537cd86",
+        "c7dff26e043948bc1e2d90972b2dd1d014ea7604e797aa3f680b26cbe537cd86"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "scout_detail",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.6171,
+        0.6879
+      ],
+      "sha256": [
+        "160991df1b7a2390d67b17c0862fa84b4d76420576ffcbbd2389a172cce8465b",
+        "160991df1b7a2390d67b17c0862fa84b4d76420576ffcbbd2389a172cce8465b"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "scout_rendered",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.7891,
+        0.5147
+      ],
+      "sha256": [
+        "71cf604494c11816b8ca5ca694462d23c6b258ffe67c3740febae03a1cc862df",
+        "71cf604494c11816b8ca5ca694462d23c6b258ffe67c3740febae03a1cc862df"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "scout_feed",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.7674,
+        0.9071
+      ],
+      "sha256": [
+        "4e4abc2dcf1c30e651176181c892088660f2e9d9ee7b17486ff3173917e88867",
+        "4e4abc2dcf1c30e651176181c892088660f2e9d9ee7b17486ff3173917e88867"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "filtered_players",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.8903,
+        1.1452
+      ],
+      "sha256": [
+        "5e62920b5d66a842257f7f85faf8435f0b60d6abeda875a92e3170d75482a4ac",
+        "5e62920b5d66a842257f7f85faf8435f0b60d6abeda875a92e3170d75482a4ac"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "list_detail",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        2.0004,
+        2.2362
+      ],
+      "sha256": [
+        "ba1109bb407368bfd92ee3173ddf91fe9ac308140a10ad9ea44ced863a48dd41",
+        "ba1109bb407368bfd92ee3173ddf91fe9ac308140a10ad9ea44ced863a48dd41"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "list_detail_flags",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        1.97,
+        2.3784
+      ],
+      "sha256": [
+        "ba1109bb407368bfd92ee3173ddf91fe9ac308140a10ad9ea44ced863a48dd41",
+        "ba1109bb407368bfd92ee3173ddf91fe9ac308140a10ad9ea44ced863a48dd41"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "list_memberships",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.2019,
+        0.3756
+      ],
+      "sha256": [
+        "4319892c433788dd77417c32fadbbbea62a4a06b79d5cb4ae1e4e97a83b877a5",
+        "4319892c433788dd77417c32fadbbbea62a4a06b79d5cb4ae1e4e97a83b877a5"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "agent_search",
+      "role": "agent",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.2994,
+        0.6475
+      ],
+      "sha256": [
+        "7f11aae370fafd15d52c42eb6ff89f94258c08df08d0ae90a4785c1019605c59",
+        "7f11aae370fafd15d52c42eb6ff89f94258c08df08d0ae90a4785c1019605c59"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "leagues",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        0.6347,
+        0.8332
+      ],
+      "sha256": [
+        "260fddc576e1b05bb4ed5d6a6a84336f5387cfa84ac6375d79289f4326ccbe69",
+        "260fddc576e1b05bb4ed5d6a6a84336f5387cfa84ac6375d79289f4326ccbe69"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    },
+    {
+      "case": "lists_with_competition",
+      "role": "admin",
+      "statuses": [
+        200,
+        200
+      ],
+      "identical": true,
+      "seconds": [
+        2.8149,
+        3.8753
+      ],
+      "sha256": [
+        "909803e57de29ae56c4543ca7fcb5a670bde3d07ed14c7365ac9f0e3bfa3ee7a",
+        "909803e57de29ae56c4543ca7fcb5a670bde3d07ed14c7365ac9f0e3bfa3ee7a"
+      ],
+      "errors": [
+        null,
+        null
+      ]
+    }
+  ],
+  "sql_errors": [],
+  "objects": [
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.CORE_PLAYER_CURRENT_CONTEXT",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.CORE_PLAYER_RECENT_POSITION",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.PLAYERS",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.PLAYER_IDENTITIES",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.PLAYER_READ_BEFORE_BACKUP",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.core_player_id_resolutions",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.core_squad_iteration_kpis",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.core_squads",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.matches",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.player_information",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.player_list_items",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.player_lists",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.player_notes",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.player_recommendations",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.player_stage_history",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.scout_report_attribute_scores",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.scout_report_views",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.scout_reports",
+    "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.users"
+  ],
+  "unexpected_native_rows": 0,
+  "unexpected_missing_rows": 0,
+  "recommendation_feed": {
+    "counts": [
+      604,
+      604
+    ],
+    "identical": true,
+    "sha256": [
+      "2604a290e2250f9f3b2670beda8ced1f4f1222c9d49a02ca442ccc5ee4afe07e",
+      "2604a290e2250f9f3b2670beda8ced1f4f1222c9d49a02ca442ccc5ee4afe07e"
+    ]
+  },
+  "queries_executed": 134,
+  "passed": true
+}

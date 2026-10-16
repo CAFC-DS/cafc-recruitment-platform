@@ -1,0 +1,82 @@
+{
+  "status": "reconciled_not_authorised_for_production",
+  "base_revision": "3db15bb03693b2edcaa99c8aa4c62ed1969fb1ae",
+  "branch": "codex/native-player-release-current",
+  "gates": {
+    "deployed_code_reconciliation": {
+      "passed": true,
+      "evidence": "VERIFICATION.md",
+      "operator": "Codex (isolated checks only)",
+      "timestamp": "2026-10-16"
+    },
+    "clone_api_parity": {
+      "passed": true,
+      "evidence": "../../../backend/tools/normalisation/test-results/2026-10-16/native-player-release.json",
+      "operator": "Codex (isolated checks only)",
+      "timestamp": "2026-10-16"
+    },
+    "live_frontend_and_session_configuration": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "writers_paused_and_drained": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "maintenance_window_dependency_audit": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "persistent_grants_and_actual_service_identity": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "fresh_compatibility_fallback": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "concurrent_performance_acceptance": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "baseline_failure_review_and_monitoring": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "production_execution_approval": {
+      "passed": false,
+      "evidence": null,
+      "operator": null,
+      "timestamp": null
+    },
+    "versioned_installer_clone_rehearsal": {
+      "passed": true,
+      "evidence": "../../../backend/tools/normalisation/test-results/2026-10-16/installer-rehearsal.json",
+      "operator": "Codex (isolated clone only)",
+      "timestamp": "2026-10-16"
+    }
+  },
+  "performance": {
+    "p95_seconds": null,
+    "max_regression_percent": null,
+    "concurrency": null,
+    "duration_minutes": null,
+    "soak_minutes": null,
+    "approved_by": null
+  },
+  "execution_ledger": []
+}

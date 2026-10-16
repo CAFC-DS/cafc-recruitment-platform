@@ -1,0 +1,32 @@
+diff --git a/dbt/models/canonical/dimensions/core_player_current_context.sql b/dbt/models/canonical/dimensions/core_player_current_context.sql
+index f53300f..58e6f92 100644
+--- a/dbt/models/canonical/dimensions/core_player_current_context.sql
++++ b/dbt/models/canonical/dimensions/core_player_current_context.sql
+@@ -20,7 +20,10 @@
+   players with no IMPECT PLAYERS row at all (manually-added/internal players).
+ */
+ 
+-{{ config(materialized='table') }}
++{{ config(
++    materialized='table',
++    grants={'select': ['APP_ROLE']} if target.name == 'prod' else {}
++) }}
+ 
+ with stg as (
+     select * from {{ ref('stg_impect__players') }}
+diff --git a/dbt/models/canonical/dimensions/core_player_recent_position.sql b/dbt/models/canonical/dimensions/core_player_recent_position.sql
+index 26fbc34..6f0d19e 100644
+--- a/dbt/models/canonical/dimensions/core_player_recent_position.sql
++++ b/dbt/models/canonical/dimensions/core_player_recent_position.sql
+@@ -18,7 +18,10 @@
+   given events don't carry a wall-clock match date directly.
+ */
+ 
+-{{ config(materialized='table') }}
++{{ config(
++    materialized='table',
++    grants={'select': ['APP_ROLE']} if target.name == 'prod' else {}
++) }}
+ 
+ with stg as (
+     select * from {{ ref('stg_impect__events') }}

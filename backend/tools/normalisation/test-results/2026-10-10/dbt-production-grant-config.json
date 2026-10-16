@@ -1,0 +1,12 @@
+{
+  "core_player_current_context": {
+    "select": [
+      "APP_ROLE"
+    ]
+  },
+  "core_player_recent_position": {
+    "select": [
+      "APP_ROLE"
+    ]
+  }
+}
