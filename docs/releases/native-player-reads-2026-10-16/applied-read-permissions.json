@@ -1,0 +1,61 @@
+{
+  "production_permissions_changed": true,
+  "data_changed": false,
+  "native_reads_enabled": false,
+  "grants": [
+    {
+      "object": "CAFC_DB.CORE.CORE_PLAYER_CURRENT_CONTEXT",
+      "privilege": "SELECT",
+      "role": "APP_ROLE",
+      "query_id": "01c7c464-0004-6fe3-0002-73ee02a06b16"
+    },
+    {
+      "object": "CAFC_DB.CORE.CORE_PLAYER_RECENT_POSITION",
+      "privilege": "SELECT",
+      "role": "APP_ROLE",
+      "query_id": "01c7c464-0004-6fe3-0002-73ee02a06b1a"
+    }
+  ],
+  "actual_application_identity_verified": true,
+  "session": {
+    "role": "APP_ROLE",
+    "warehouse": "COMPUTE_WH",
+    "database": "CAFC_DB",
+    "schema": "CORE",
+    "secondary_roles": "disabled",
+    "matches_deployed_username": true
+  },
+  "reads": [
+    {
+      "object": "PLAYERS",
+      "rows": 123555,
+      "query_id": "01c7c464-0004-703f-0002-73ee02a07476",
+      "passed": true
+    },
+    {
+      "object": "PLAYER_IDENTITIES",
+      "rows": 427186,
+      "query_id": "01c7c464-0004-6fe3-0002-73ee02a06b22",
+      "passed": true
+    },
+    {
+      "object": "CORE_PLAYER_CURRENT_CONTEXT",
+      "rows": 109006,
+      "query_id": "01c7c464-0004-703f-0002-73ee02a0747a",
+      "passed": true
+    },
+    {
+      "object": "CORE_PLAYER_RECENT_POSITION",
+      "rows": 44872,
+      "query_id": "01c7c464-0004-6fe3-0002-73ee02a06b26",
+      "passed": true
+    },
+    {
+      "object": "CORE_PLAYER_ID_RESOLUTIONS",
+      "rows": 123639,
+      "query_id": "01c7c464-0004-703f-0002-73ee02a0747e",
+      "passed": true
+    }
+  ],
+  "search_udf_passed": true
+}

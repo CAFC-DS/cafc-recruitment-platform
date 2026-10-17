@@ -1,0 +1,197 @@
+{
+  "run": "dbt run --target prod --select core_player_current_context core_player_recent_position core_player_id_resolutions players_base players",
+  "platform_revision": "db216d5 (cutover/full-platform, PR #17 merged)",
+  "started_utc": "2026-10-16T20:10:26Z",
+  "result": "5 of 5 OK, 23.6s",
+  "authorised_by": "Hashim, thread 2026-10-16T20:08:10Z ('yes to both')",
+  "pre": {
+    "CORE.CORE_PLAYER_CURRENT_CONTEXT": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "type": "BASE TABLE",
+      "last_altered": "2026-09-30 13:16:48.034000+01:00",
+      "count": 109006
+    },
+    "CORE.CORE_PLAYER_RECENT_POSITION": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "type": "BASE TABLE",
+      "last_altered": "2026-09-30 13:16:59.544000+01:00",
+      "count": 44872
+    },
+    "CORE.CORE_PLAYER_ID_RESOLUTIONS": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "type": "VIEW",
+      "last_altered": "2026-09-15 09:49:30.930000+01:00",
+      "count": 123639
+    },
+    "APP_COMPAT.PLAYERS_BASE": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "type": "BASE TABLE",
+      "last_altered": "2026-10-12 14:11:18.661000+01:00",
+      "count": 123507
+    },
+    "APP_COMPAT.PLAYERS": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "type": "VIEW",
+      "last_altered": "2026-09-15 10:15:12.222000+01:00",
+      "count": 123515
+    }
+  },
+  "post": {
+    "CORE.CORE_PLAYER_CURRENT_CONTEXT": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "last_altered": "2026-10-16 21:10:31.300000+01:00",
+      "count": 109005
+    },
+    "CORE.CORE_PLAYER_RECENT_POSITION": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "last_altered": "2026-10-16 21:10:47.045000+01:00",
+      "count": 94236
+    },
+    "CORE.CORE_PLAYER_ID_RESOLUTIONS": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ],
+        [
+          "SELECT",
+          "CLAUDE_MCP_ROLE"
+        ]
+      ],
+      "last_altered": "2026-10-16 21:10:28.711000+01:00",
+      "count": 123639
+    },
+    "APP_COMPAT.PLAYERS_BASE": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ]
+      ],
+      "last_altered": "2026-10-16 21:10:48.825000+01:00",
+      "count": 123515
+    },
+    "APP_COMPAT.PLAYERS": {
+      "grants": [
+        [
+          "OWNERSHIP",
+          "DEV_ROLE"
+        ],
+        [
+          "SELECT",
+          "APP_ROLE"
+        ]
+      ],
+      "last_altered": "2026-10-16 21:10:49.469000+01:00",
+      "count": 123515
+    },
+    "native_minus_fallback": 0,
+    "fallback_minus_native": 0,
+    "native_validate": "Native player reads blocked: selected IMPECT identities disagree with the canonical resolver"
+  },
+  "notes": [
+    "APP_ROLE SELECT present on all five objects after CREATE OR REPLACE (dbt grants on CORE models, schema future grants on APP_COMPAT).",
+    "CLAUDE_MCP_ROLE kept SELECT on CORE objects (database-level future grants) but lost it on APP_COMPAT.PLAYERS and PLAYERS_BASE, because schema-level future grants in APP_COMPAT take precedence.",
+    "Native vs fallback rows identical after refresh. Native validation fails only on the five reviewed duplicate pairs (expected until the duplicate correction runs).",
+    "CORE_PLAYER_RECENT_POSITION grew 44,872 -> 94,236 rows; players with a position in APP_COMPAT.PLAYERS now 94,236 of 123,515."
+  ]
+}

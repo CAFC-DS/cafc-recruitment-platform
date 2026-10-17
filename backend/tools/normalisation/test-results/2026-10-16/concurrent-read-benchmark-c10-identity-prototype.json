@@ -1,0 +1,272 @@
+{
+  "run_id": "7f3d5c5583d7",
+  "query_tag": "native-read-bench:7f3d5c5583d7",
+  "schema": "CAFC_DB.CORE_DEV_CODEX_IDMAT_F552CEAC",
+  "started_at": "2026-10-16T14:27:14.229989+00:00",
+  "duration_seconds": 36.88,
+  "stopped_by_time_cap": false,
+  "settings": {
+    "concurrency": 10,
+    "requests": 800,
+    "warmup": 40,
+    "max_seconds": 600,
+    "statement_timeout_seconds": 60,
+    "seed": 20261016,
+    "workload": {
+      "detail": 40,
+      "search": 25,
+      "report_join": 20,
+      "list_join": 15
+    },
+    "result_cache": "disabled"
+  },
+  "session": {
+    "role": "DEV_ROLE",
+    "warehouse": "DEVELOPMENT_WH",
+    "version": "10.37.102",
+    "warehouse_size": "X-Small",
+    "warehouse_state_at_start": "STARTED",
+    "min_cluster_count": null,
+    "max_cluster_count": null,
+    "scaling_policy": null
+  },
+  "targets": {
+    "old_live": "CAFC_DB.APP_COMPAT.PLAYERS",
+    "old_snapshot": "CAFC_DB.CORE_DEV_CODEX_IDMAT_F552CEAC.PLAYER_READ_BEFORE_BACKUP",
+    "native": "canonical_players.projection (native)",
+    "native_mat": "canonical_players.projection (native_mat)"
+  },
+  "by_mode": {
+    "old_live": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.2085,
+      "p95": 0.9165,
+      "p99": 1.0093,
+      "mean": 0.3622,
+      "max": 1.1351
+    },
+    "old_snapshot": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1613,
+      "p95": 0.4909,
+      "p99": 0.7715,
+      "mean": 0.2251,
+      "max": 1.2747
+    },
+    "native": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.4692,
+      "p95": 0.8595,
+      "p99": 1.2288,
+      "mean": 0.5265,
+      "max": 1.6823
+    },
+    "native_mat": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.3711,
+      "p95": 0.8845,
+      "p99": 1.0408,
+      "mean": 0.4738,
+      "max": 1.5261
+    }
+  },
+  "by_mode_kind": {
+    "old_live.detail": {
+      "requests": 79,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1164,
+      "p95": 0.3047,
+      "p99": 0.8538,
+      "mean": 0.149,
+      "max": 0.8538
+    },
+    "old_live.search": {
+      "requests": 51,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.8225,
+      "p95": 0.995,
+      "p99": 1.1351,
+      "mean": 0.8278,
+      "max": 1.1351
+    },
+    "old_live.report_join": {
+      "requests": 45,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1922,
+      "p95": 0.2685,
+      "p99": 0.4543,
+      "mean": 0.2062,
+      "max": 0.4543
+    },
+    "old_live.list_join": {
+      "requests": 25,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.3018,
+      "p95": 0.5501,
+      "p99": 1.0093,
+      "mean": 0.3668,
+      "max": 1.0093
+    },
+    "old_snapshot.detail": {
+      "requests": 80,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.0984,
+      "p95": 0.1758,
+      "p99": 1.0793,
+      "mean": 0.1319,
+      "max": 1.0793
+    },
+    "old_snapshot.search": {
+      "requests": 39,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.4151,
+      "p95": 0.634,
+      "p99": 1.2747,
+      "mean": 0.4396,
+      "max": 1.2747
+    },
+    "old_snapshot.report_join": {
+      "requests": 47,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1711,
+      "p95": 0.2271,
+      "p99": 0.7715,
+      "mean": 0.188,
+      "max": 0.7715
+    },
+    "old_snapshot.list_join": {
+      "requests": 34,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.2555,
+      "p95": 0.4909,
+      "p99": 0.4993,
+      "mean": 0.2494,
+      "max": 0.4993
+    },
+    "native.detail": {
+      "requests": 69,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.35,
+      "p95": 0.5227,
+      "p99": 0.8475,
+      "mean": 0.3659,
+      "max": 0.8475
+    },
+    "native.search": {
+      "requests": 49,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.7726,
+      "p95": 1.0531,
+      "p99": 1.3011,
+      "mean": 0.7744,
+      "max": 1.3011
+    },
+    "native.report_join": {
+      "requests": 52,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.462,
+      "p95": 0.6011,
+      "p99": 1.6823,
+      "mean": 0.4805,
+      "max": 1.6823
+    },
+    "native.list_join": {
+      "requests": 30,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.5712,
+      "p95": 0.8298,
+      "p99": 0.8702,
+      "mean": 0.5709,
+      "max": 0.8702
+    },
+    "native_mat.detail": {
+      "requests": 81,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.2904,
+      "p95": 0.4061,
+      "p99": 0.7684,
+      "mean": 0.3042,
+      "max": 0.7684
+    },
+    "native_mat.search": {
+      "requests": 53,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.759,
+      "p95": 0.9076,
+      "p99": 1.1355,
+      "mean": 0.7619,
+      "max": 1.1355
+    },
+    "native_mat.report_join": {
+      "requests": 46,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.3796,
+      "p95": 0.4614,
+      "p99": 0.7014,
+      "mean": 0.3824,
+      "max": 0.7014
+    },
+    "native_mat.list_join": {
+      "requests": 20,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.5478,
+      "p95": 1.5261,
+      "p99": 1.5261,
+      "mean": 0.6075,
+      "max": 1.5261
+    }
+  },
+  "native_connection_validation": {
+    "connections": 10,
+    "errors": [],
+    "p50": 1.5146,
+    "max": 1.6428
+  },
+  "worker_errors": [],
+  "error_samples": [],
+  "measured_requests": 800,
+  "warmup_requests": 40,
+  "native_vs_old_live": {
+    "p50": 2.25,
+    "p95": 0.938,
+    "p99": 1.217
+  },
+  "p95_ratio_vs_old_live_by_kind": {
+    "old_snapshot.detail": 0.577,
+    "old_snapshot.search": 0.637,
+    "old_snapshot.report_join": 0.846,
+    "old_snapshot.list_join": 0.892,
+    "native.detail": 1.715,
+    "native.search": 1.058,
+    "native.report_join": 2.239,
+    "native.list_join": 1.508,
+    "native_mat.detail": 1.333,
+    "native_mat.search": 0.912,
+    "native_mat.report_join": 1.718,
+    "native_mat.list_join": 2.774
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "checked_at": "2026-10-16T11:11:23Z",
+  "backend_service": {
+    "id": "def6cce8-e07c-4e19-bdd1-1067c287286b",
+    "name": "dependable-adventure",
+    "state": "live"
+  },
+  "backend_deployment": {
+    "id": "b8ba0b81-e22c-48ce-b395-404cc1de0c48",
+    "status": "SUCCESS",
+    "createdAt": "2026-10-16T10:44:11.968Z",
+    "url": null
+  },
+  "startup_logs": [
+    {
+      "timestamp": "2026-10-16T10:48:22.655976857Z",
+      "message": "Environment: production"
+    },
+    {
+      "timestamp": "2026-10-16T10:48:22.656002267Z",
+      "message": "🚀 PRODUCTION MODE: Connecting to Snowflake with role APP_ROLE using warehouse COMPUTE_WH"
+    },
+    {
+      "timestamp": "2026-10-16T10:48:22.656006897Z",
+      "message": "📍 Canonical seam: READ_PREFIX=CAFC_DB.APP_COMPAT  WRITE_PREFIX=CAFC_DB.CORE"
+    }
+  ],
+  "historical_session_logs": [
+    {
+      "timestamp": "2026-10-16T10:22:43.485890149Z",
+      "message": "🔍 DEBUG /players/search - Database: CAFC_DB, Schema: CORE"
+    },
+    {
+      "timestamp": "2026-10-16T10:22:44.501715892Z",
+      "message": "🔍 DEBUG /players/search - Database: CAFC_DB, Schema: CORE"
+    }
+  ],
+  "query_history_probe": "Returned no matching rows visible to the connector; no current session default inferred."
+}

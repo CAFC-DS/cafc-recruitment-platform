@@ -1,0 +1,90 @@
+{
+  "role": "APP_ROLE",
+  "warehouse": "COMPUTE_WH",
+  "secondary_roles": "disabled",
+  "reads": {
+    "CORE_FIXTURE_DETAILS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee02843286"
+    },
+    "CORE_FIXTURE_ID_RESOLUTIONS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee0284328a"
+    },
+    "CORE_PLAYER_CURRENT_CONTEXT": {
+      "passed": false,
+      "query_id": "01c7a454-0004-5734-0002-73ee0284328e",
+      "error": "002003 (42S02): SQL compilation error:\nObject 'CAFC_DB.CORE.CORE_PLAYER_CURRENT_CONTEXT' does not exist or not authorized. Your primary role APP_ROLE must have at least one privilege granted on TABLE CAFC_DB.CORE.CORE_PLAYER_CURRENT_CONTEXT."
+    },
+    "CORE_PLAYER_ID_RESOLUTIONS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee02843292"
+    },
+    "CORE_PLAYER_RECENT_POSITION": {
+      "passed": false,
+      "query_id": "01c7a454-0004-5734-0002-73ee0284329a",
+      "error": "002003 (42S02): SQL compilation error:\nObject 'CAFC_DB.CORE.CORE_PLAYER_RECENT_POSITION' does not exist or not authorized. Your primary role APP_ROLE must have at least one privilege granted on TABLE CAFC_DB.CORE.CORE_PLAYER_RECENT_POSITION."
+    },
+    "CORE_SQUADS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429b6"
+    },
+    "CORE_SQUAD_ITERATION_KPIS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429ba"
+    },
+    "PLAYERS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429be"
+    },
+    "PLAYER_IDENTITIES": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429c2"
+    },
+    "PLAYER_INFORMATION": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429c6"
+    },
+    "PLAYER_LISTS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee028432a6"
+    },
+    "PLAYER_LIST_ITEMS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429ca"
+    },
+    "PLAYER_NOTES": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee028432aa"
+    },
+    "PLAYER_RECOMMENDATIONS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429d2"
+    },
+    "PLAYER_STAGE_HISTORY": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee028432b2"
+    },
+    "SCOUT_REPORTS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee028432b6"
+    },
+    "SCOUT_REPORT_ATTRIBUTE_SCORES": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5bf5-0002-73ee028429da"
+    },
+    "SCOUT_REPORT_VIEWS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee028432ba"
+    },
+    "USERS": {
+      "passed": true,
+      "query_id": "01c7a454-0004-5734-0002-73ee028432be"
+    }
+  },
+  "search_udf": {
+    "passed": true,
+    "query_id": "01c7a454-0004-5734-0002-73ee028432c2"
+  },
+  "passed": false
+}

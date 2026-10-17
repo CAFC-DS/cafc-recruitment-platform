@@ -1,0 +1,19 @@
+{
+  "frontend": "https://cafc-recruitment-platform.vercel.app",
+  "html_status": 200,
+  "final_url": "https://cafc-recruitment-platform.vercel.app/",
+  "assets": [
+    {
+      "url": "https://cafc-recruitment-platform.vercel.app/static/js/main.cc82ceb7.js",
+      "status": 200,
+      "sha256": "84f8a45f2be15451a0ffb98bb73aa238e3dcb86c290616a203e7671d79aefec4",
+      "railway_origins": [
+        "https://dependable-adventure-production.up.railway.app"
+      ],
+      "baseURL_contexts": [
+        ",t)}function o(n,a,s){return s in t?r(n,a):s in e?r(void 0,n):void 0}const l={url:s,method:s,data:s,baseURL:i,transformRequest:i,transformResponse:i,paramsSerializer:i,timeout:i,timeoutMessage:i,withCredentia",
+        "e)?new FormData(e):e),xr.getAdapter=rr,xr.HttpStatusCode=gr,xr.default=xr;const yr=xr,vr=yr.create({baseURL:\"https://dependable-adventure-production.up.railway.app\",timeout:6e4});vr.interceptors.request.use(e"
+      ]
+    }
+  ]
+}

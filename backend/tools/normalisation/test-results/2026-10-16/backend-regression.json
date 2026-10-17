@@ -1,0 +1,49 @@
+{
+  "deployed_revision": "3db15bb03693b2edcaa99c8aa4c62ed1969fb1ae",
+  "baseline": {
+    "passed": 146,
+    "failed": 34
+  },
+  "reconciled": {
+    "passed": 181,
+    "failed": 34,
+    "skipped": 6
+  },
+  "failure_identifiers_unchanged": true,
+  "failures": [
+    "backend.tests.test_agent_intake_duplicate_gate::test_create_endpoint_confirm_new_player_bypasses_gate_and_commits",
+    "backend.tests.test_agent_intake_duplicate_gate::test_create_external_player_includes_squadname_when_provided_and_column_exists",
+    "backend.tests.test_agent_intake_duplicate_gate::test_create_external_player_omits_squadname_when_blank_string",
+    "backend.tests.test_agent_intake_duplicate_gate::test_create_external_player_omits_squadname_when_column_missing",
+    "backend.tests.test_agent_intake_duplicate_gate::test_create_external_player_omits_squadname_when_not_provided",
+    "backend.tests.test_agent_intake_duplicate_gate::test_duplicate_universal_ids_across_ilike_and_fuzzy_pass_are_deduped",
+    "backend.tests.test_agent_intake_duplicate_gate::test_exact_dob_match_scores_high_when_birthdate_is_a_datetime",
+    "backend.tests.test_agent_intake_duplicate_gate::test_exact_duplicate_survives_limit_10_cap_among_substring_decoys",
+    "backend.tests.test_agent_intake_duplicate_gate::test_exclude_universal_id_does_not_filter_out_other_players",
+    "backend.tests.test_agent_intake_duplicate_gate::test_exclude_universal_id_filters_out_self_linked_player",
+    "backend.tests.test_agent_intake_duplicate_gate::test_fuzzy_name_with_exact_dob_scores_medium_when_birthdate_is_a_datetime",
+    "backend.tests.test_agent_intake_duplicate_gate::test_high_confidence_exact_name_and_dob_match",
+    "backend.tests.test_agent_intake_duplicate_gate::test_ilike_query_orders_exact_match_first_so_it_survives_the_cap",
+    "backend.tests.test_agent_intake_duplicate_gate::test_internal_player_derives_internal_universal_id",
+    "backend.tests.test_agent_intake_duplicate_gate::test_low_confidence_candidates_are_excluded",
+    "backend.tests.test_agent_intake_duplicate_gate::test_medium_confidence_exact_name_missing_dob",
+    "backend.tests.test_agent_intake_duplicate_gate::test_resolve_bypasses_gate_when_confirm_new_player_true",
+    "backend.tests.test_agent_intake_duplicate_gate::test_resolve_does_not_run_gate_on_resolved_typeahead_link",
+    "backend.tests.test_agent_intake_duplicate_gate::test_resolve_forwards_exclude_universal_id_to_candidate_lookup",
+    "backend.tests.test_agent_intake_duplicate_gate::test_resolve_forwards_player_squad_to_candidate_lookup_and_create",
+    "backend.tests.test_agent_intake_duplicate_gate::test_resolve_proceeds_without_gate_when_no_candidates_found",
+    "backend.tests.test_agent_intake_duplicate_gate::test_resolve_raises_409_when_duplicate_candidates_found_and_not_confirmed",
+    "backend.tests.test_agent_intake_duplicate_gate::test_returns_empty_when_player_name_blank",
+    "backend.tests.test_agent_intake_duplicate_gate::test_returns_empty_when_players_table_missing_playername_column",
+    "backend.tests.test_agent_intake_duplicate_gate::test_rows_with_no_derivable_universal_id_are_skipped",
+    "backend.tests.test_agent_intake_duplicate_gate::test_select_falls_back_to_null_when_transfermarkt_and_squad_columns_absent",
+    "backend.tests.test_agent_intake_duplicate_gate::test_shared_transfermarkt_link_scores_high_even_with_different_names",
+    "backend.tests.test_agent_intake_duplicate_gate::test_skips_jarowinkler_fallback_when_ilike_pass_already_hits_limit",
+    "backend.tests.test_agent_intake_duplicate_gate::test_sorted_high_before_medium_then_by_name_similarity_and_capped_at_5",
+    "backend.tests.test_agent_intake_duplicate_gate::test_update_endpoint_confirm_new_player_bypasses_gate_and_commits",
+    "backend.tests.test_agent_intake_duplicate_gate::test_update_endpoint_no_409_when_editing_own_linked_players_dob",
+    "backend.tests.test_agent_recommendation_edit_link::test_endpoint_skips_resolve_and_reuses_link_when_manual_entry_unchanged",
+    "backend.tests.test_agent_recommendation_edit_link::test_endpoint_still_resolves_when_manual_entry_name_changed",
+    "backend.tests.test_recommendation_manual_entry_signal::test_flag_duplicate_inserts_note_and_commits"
+  ]
+}

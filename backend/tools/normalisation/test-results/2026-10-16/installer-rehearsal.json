@@ -1,0 +1,469 @@
+{
+  "schema": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A",
+  "passed": true,
+  "checks": [
+    "failure rollback with no ledger",
+    "exact five-row difference",
+    "idempotent apply",
+    "override ownership drift refused",
+    "recorded restore",
+    "idempotent restore",
+    "restored ID replay refused",
+    "new release reapplication"
+  ],
+  "result": {
+    "schema": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A",
+    "pairs": [
+      {
+        "duplicate": 1354027,
+        "survivor": 1329814,
+        "name": "Trialist B",
+        "duplicate_active": false,
+        "survivor_active": true,
+        "duplicate_updated_at": "2026-10-16 12:05:02.815000",
+        "profiles_equal": true,
+        "identity_bags_equal": true,
+        "retained_identity_rows": 21,
+        "sources": [
+          {
+            "system": "IMPECT",
+            "source_id": "106165",
+            "resolved_ids": [
+              1329814
+            ],
+            "override_ids": [
+              1329814
+            ]
+          },
+          {
+            "system": "IMPECT",
+            "source_id": "109214",
+            "resolved_ids": [
+              1329814
+            ],
+            "override_ids": [
+              1329814
+            ]
+          }
+        ]
+      },
+      {
+        "duplicate": 1282585,
+        "survivor": 1246662,
+        "name": "Seven PECZwolle UTwenty-One",
+        "duplicate_active": false,
+        "survivor_active": true,
+        "duplicate_updated_at": "2026-10-16 12:05:04.386000",
+        "profiles_equal": true,
+        "identity_bags_equal": true,
+        "retained_identity_rows": 2,
+        "sources": [
+          {
+            "system": "IMPECT",
+            "source_id": "208906",
+            "resolved_ids": [
+              1246662
+            ],
+            "override_ids": [
+              1246662
+            ]
+          },
+          {
+            "system": "IMPECT",
+            "source_id": "209081",
+            "resolved_ids": [
+              1246662
+            ],
+            "override_ids": [
+              1246662
+            ]
+          }
+        ]
+      },
+      {
+        "duplicate": 1365024,
+        "survivor": 1297062,
+        "name": "Trialist",
+        "duplicate_active": false,
+        "survivor_active": true,
+        "duplicate_updated_at": "2026-10-16 12:05:05.833000",
+        "profiles_equal": true,
+        "identity_bags_equal": true,
+        "retained_identity_rows": 16,
+        "sources": [
+          {
+            "system": "IMPECT",
+            "source_id": "115086",
+            "resolved_ids": [
+              1297062
+            ],
+            "override_ids": [
+              1297062
+            ]
+          },
+          {
+            "system": "IMPECT",
+            "source_id": "234837",
+            "resolved_ids": [
+              1297062
+            ],
+            "override_ids": [
+              1297062
+            ]
+          }
+        ]
+      },
+      {
+        "duplicate": 1350827,
+        "survivor": 1275591,
+        "name": "Trialist C",
+        "duplicate_active": false,
+        "survivor_active": true,
+        "duplicate_updated_at": "2026-10-16 12:05:07.034000",
+        "profiles_equal": true,
+        "identity_bags_equal": true,
+        "retained_identity_rows": 8,
+        "sources": [
+          {
+            "system": "IMPECT",
+            "source_id": "106166",
+            "resolved_ids": [
+              1275591
+            ],
+            "override_ids": [
+              1275591
+            ]
+          },
+          {
+            "system": "IMPECT",
+            "source_id": "115335",
+            "resolved_ids": [
+              1275591
+            ],
+            "override_ids": [
+              1275591
+            ]
+          }
+        ]
+      },
+      {
+        "duplicate": 1299064,
+        "survivor": 1289281,
+        "name": "Twenty Birmingham UTwenty-Three",
+        "duplicate_active": false,
+        "survivor_active": true,
+        "duplicate_updated_at": "2026-10-16 12:05:08.380000",
+        "profiles_equal": true,
+        "identity_bags_equal": true,
+        "retained_identity_rows": 2,
+        "sources": [
+          {
+            "system": "IMPECT",
+            "source_id": "222391",
+            "resolved_ids": [
+              1289281
+            ],
+            "override_ids": [
+              1289281
+            ]
+          },
+          {
+            "system": "IMPECT",
+            "source_id": "248285",
+            "resolved_ids": [
+              1289281
+            ],
+            "override_ids": [
+              1289281
+            ]
+          }
+        ]
+      }
+    ],
+    "references": [
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_IMPECT_PLAYER_FIXTURE_POSITION_PARTICIPATION",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "109214": 2,
+          "106166": 1,
+          "106165": 2,
+          "115335": 1
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_CURRENT_CONTEXT",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1246662": 1,
+          "1275591": 1,
+          "1297062": 1,
+          "1329814": 1,
+          "1289281": 1
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_FIXTURE_KPIS",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_FIXTURE_KPIS",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_FIXTURE_PARTICIPATION",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1329814": 3,
+          "1275591": 2
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_FIXTURE_PARTICIPATION",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "109214": 1,
+          "106165": 2,
+          "115335": 1,
+          "106166": 1
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_FIXTURE_POSITION_PARTICIPATION",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1275591": 2,
+          "1329814": 3
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_FIXTURE_POSITION_PARTICIPATION",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "109214": 1,
+          "106166": 1,
+          "115335": 1,
+          "106165": 2
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ID_RESOLUTIONS",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "VIEW",
+        "counts": {
+          "106165": 1,
+          "109214": 1,
+          "248285": 1,
+          "208906": 1,
+          "115335": 1,
+          "115086": 1,
+          "106166": 1,
+          "234837": 1,
+          "222391": 1,
+          "209081": 1
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ID_RESOLUTIONS",
+        "column": "CAFC_PLAYER_ID",
+        "type": "VIEW",
+        "counts": {
+          "1329814": 2,
+          "1297062": 2,
+          "1289281": 2,
+          "1246662": 2,
+          "1275591": 2
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ITERATION_KPIS",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1329814": 12818,
+          "1297062": 21460,
+          "1289281": 1935,
+          "1275591": 2418,
+          "1246662": 812
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ITERATION_KPIS",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "248285": 75,
+          "209081": 272,
+          "106165": 1452,
+          "109214": 11366,
+          "222391": 1860,
+          "106166": 1804,
+          "234837": 8322,
+          "208906": 540,
+          "115086": 13138,
+          "115335": 614
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ITERATION_PARTICIPATION",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1275591": 2,
+          "1329814": 2
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ITERATION_SCORES",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1289281": 487,
+          "1246662": 235,
+          "1329814": 4008,
+          "1275591": 958,
+          "1297062": 6215
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_ITERATION_SCORES",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "109214": 3561,
+          "106166": 715,
+          "106165": 447,
+          "208906": 118,
+          "248285": 115,
+          "115086": 3869,
+          "209081": 117,
+          "222391": 372,
+          "234837": 2346,
+          "115335": 243
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_RECENT_POSITION",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {
+          "1329814": 1,
+          "1297062": 1,
+          "1275591": 1
+        }
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.CORE_PLAYER_SEASON_KPIS",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_CLUB_MOVES",
+        "column": "IMPECT_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_CLUB_MOVES",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_IDENTITY_CANDIDATES",
+        "column": "SOURCE_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_IDENTITY_CANDIDATES",
+        "column": "CANDIDATE_CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_INFORMATION",
+        "column": "PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_LIST_FLAGS",
+        "column": "UNIVERSAL_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_LIST_ITEMS",
+        "column": "PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_LIST_ITEMS",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_NOTES",
+        "column": "PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_RECOMMENDATIONS",
+        "column": "LINKED_UNIVERSAL_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_SQUAD_SNAPSHOT",
+        "column": "IMPECT_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_STAGE_HISTORY",
+        "column": "PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.SCOUT_REPORTS",
+        "column": "PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      },
+      {
+        "object": "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.SCOUT_REPORTS",
+        "column": "CAFC_PLAYER_ID",
+        "type": "BASE TABLE",
+        "counts": {}
+      }
+    ],
+    "excluded_archives": [
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYERS_BACKUP_20260610.CAFC_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYERS_BAK_20260930.CAFC_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_IDENTITIES_BAK_20260930.CAFC_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_IDENTITIES_BAK_20260930.SOURCE_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_IDENTITY_OVERRIDES_BAK_20260930.SOURCE_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_IDENTITY_OVERRIDES_BAK_20260930.CAFC_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_READ_BEFORE_BACKUP.PLAYERID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.PLAYER_READ_BEFORE_BACKUP.CAFC_PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.SCOUT_REPORTS_BAK_20260930.PLAYER_ID",
+      "CAFC_DB.CORE_DEV_CODEX_RELEASE_53345E8E316A.SCOUT_REPORTS_BAK_20260930.CAFC_PLAYER_ID"
+    ]
+  }
+}

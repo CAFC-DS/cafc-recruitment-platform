@@ -1,0 +1,207 @@
+{
+  "run_id": "743fe179b4d8",
+  "query_tag": "native-read-bench:743fe179b4d8",
+  "schema": "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8",
+  "started_at": "2026-10-16T13:57:35.975794+00:00",
+  "duration_seconds": 28.26,
+  "stopped_by_time_cap": false,
+  "settings": {
+    "concurrency": 10,
+    "requests": 600,
+    "warmup": 30,
+    "max_seconds": 600,
+    "statement_timeout_seconds": 60,
+    "seed": 20261016,
+    "workload": {
+      "detail": 40,
+      "search": 25,
+      "report_join": 20,
+      "list_join": 15
+    },
+    "result_cache": "disabled"
+  },
+  "session": {
+    "role": "DEV_ROLE",
+    "warehouse": "DEVELOPMENT_WH",
+    "version": "10.37.102",
+    "warehouse_size": "X-Small",
+    "warehouse_state_at_start": "STARTED",
+    "min_cluster_count": null,
+    "max_cluster_count": null,
+    "scaling_policy": null
+  },
+  "targets": {
+    "old_live": "CAFC_DB.APP_COMPAT.PLAYERS",
+    "old_snapshot": "CAFC_DB.CORE_DEV_CODEX_RELEASE_4C384B343DA8.PLAYER_READ_BEFORE_BACKUP",
+    "native": "canonical_players.projection"
+  },
+  "by_mode": {
+    "old_live": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.2166,
+      "p95": 0.9917,
+      "p99": 1.2725,
+      "mean": 0.3731,
+      "max": 1.3512
+    },
+    "old_snapshot": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1848,
+      "p95": 0.519,
+      "p99": 0.6326,
+      "mean": 0.2386,
+      "max": 0.6939
+    },
+    "native": {
+      "requests": 200,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.5193,
+      "p95": 0.8801,
+      "p99": 1.0654,
+      "mean": 0.5605,
+      "max": 1.2271
+    }
+  },
+  "by_mode_kind": {
+    "old_live.detail": {
+      "requests": 81,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1368,
+      "p95": 0.2326,
+      "p99": 0.4939,
+      "mean": 0.1502,
+      "max": 0.4939
+    },
+    "old_live.search": {
+      "requests": 45,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.9091,
+      "p95": 1.2725,
+      "p99": 1.3512,
+      "mean": 0.9164,
+      "max": 1.3512
+    },
+    "old_live.report_join": {
+      "requests": 48,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.2138,
+      "p95": 0.3709,
+      "p99": 0.4019,
+      "mean": 0.228,
+      "max": 0.4019
+    },
+    "old_live.list_join": {
+      "requests": 26,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.3838,
+      "p95": 0.5449,
+      "p99": 0.8827,
+      "mean": 0.3955,
+      "max": 0.8827
+    },
+    "old_snapshot.detail": {
+      "requests": 79,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1118,
+      "p95": 0.241,
+      "p99": 0.5393,
+      "mean": 0.1338,
+      "max": 0.5393
+    },
+    "old_snapshot.search": {
+      "requests": 47,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.433,
+      "p95": 0.6209,
+      "p99": 0.6939,
+      "mean": 0.4446,
+      "max": 0.6939
+    },
+    "old_snapshot.report_join": {
+      "requests": 50,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.1776,
+      "p95": 0.2866,
+      "p99": 0.6372,
+      "mean": 0.198,
+      "max": 0.6372
+    },
+    "old_snapshot.list_join": {
+      "requests": 24,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.2689,
+      "p95": 0.3901,
+      "p99": 0.4351,
+      "mean": 0.2647,
+      "max": 0.4351
+    },
+    "native.detail": {
+      "requests": 70,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.3775,
+      "p95": 0.5285,
+      "p99": 0.567,
+      "mean": 0.3768,
+      "max": 0.567
+    },
+    "native.search": {
+      "requests": 54,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.8199,
+      "p95": 1.0654,
+      "p99": 1.2271,
+      "mean": 0.8184,
+      "max": 1.2271
+    },
+    "native.report_join": {
+      "requests": 48,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.5125,
+      "p95": 0.6717,
+      "p99": 0.8247,
+      "mean": 0.5183,
+      "max": 0.8247
+    },
+    "native.list_join": {
+      "requests": 28,
+      "errors": 0,
+      "error_rate": 0.0,
+      "p50": 0.5859,
+      "p95": 0.7791,
+      "p99": 0.8687,
+      "mean": 0.5948,
+      "max": 0.8687
+    }
+  },
+  "native_connection_validation": {
+    "connections": 10,
+    "errors": [],
+    "p50": 1.4864,
+    "max": 1.7668
+  },
+  "worker_errors": [],
+  "error_samples": [],
+  "measured_requests": 600,
+  "warmup_requests": 30,
+  "native_vs_old_live": {
+    "p50": 2.398,
+    "p95": 0.887,
+    "p99": 0.837
+  }
+}

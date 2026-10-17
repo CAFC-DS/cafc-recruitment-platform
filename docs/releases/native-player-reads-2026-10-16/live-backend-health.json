@@ -1,0 +1,26 @@
+{
+  "/health/debug": {
+    "http_status": 200,
+    "environment": "production",
+    "snowflake": {
+      "account": "SET",
+      "username": "SET",
+      "warehouse": "SET",
+      "database": "SET",
+      "schema": "SET",
+      "role": "SET",
+      "private_key": "SET (length=1703, has PEM header=True)"
+    },
+    "cors": {
+      "origins_env_var_set": true,
+      "parsed_origins": [
+        "https://cafc-recruitment-platform.vercel.app"
+      ]
+    }
+  },
+  "/health/snowflake": {
+    "http_status": 200,
+    "status": "success",
+    "result": 1
+  }
+}

@@ -1,4 +1,5 @@
 import logging
+import canonical_players
 
 # Configure logging
 logging.basicConfig(
@@ -292,11 +293,7 @@ def load_table_schemas():
                 # APP_COMPAT view in the canonical world), not the bare name,
                 # which resolves to CAFC_DB.CORE where players/matches have the
                 # canonical column shape, not the legacy one the app expects.
-                cursor.execute(
-                    f"DESCRIBE TABLE {core_table(table_name) if table_name in {'player_recommendations', 'lifecycle_mutex'} else read_table(table_name)}"
-                )
-                columns = cursor.fetchall()
-                TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in columns]
+                TABLE_SCHEMA_CACHE[table_name] = describe_read_columns(cursor, table_name)
                 print(f"✅ Cached schema for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
             except Exception as e:
                 print(f"⚠️ Could not cache schema for {table_name}: {e}")
@@ -332,10 +329,7 @@ def refresh_table_schema(table_name: str):
     try:
         conn = get_snowflake_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            f"DESCRIBE TABLE {core_table(table_name) if table_name in {'player_recommendations', 'lifecycle_mutex'} else read_table(table_name)}"
-        )
-        TABLE_SCHEMA_CACHE[table_name] = [col[0] for col in cursor.fetchall()]
+        TABLE_SCHEMA_CACHE[table_name] = describe_read_columns(cursor, table_name)
         print(f"✅ Refreshed schema cache for {table_name}: {len(TABLE_SCHEMA_CACHE[table_name])} columns")
         print(f"DEBUG: Columns for {table_name}: {TABLE_SCHEMA_CACHE[table_name]}")
     except Exception as e:
@@ -605,6 +599,11 @@ CORE_DB_SCHEMA = os.getenv("CORE_DB_SCHEMA", "PUBLIC")
 # unchanged; once a table physically moves, drop WRITE_DB and set
 # CORE_DB_SCHEMA=CORE.
 WRITE_DB = os.getenv("WRITE_DB", CANONICAL_DB)
+NATIVE_PLAYER_READS = os.getenv('NATIVE_PLAYER_READS', 'false').lower() == 'true'
+if NATIVE_PLAYER_READS:
+    canonical_players.validate_schema(f'{CANONICAL_DB}.{CORE_DB_SCHEMA}')
+    if WRITE_DB.upper() != CANONICAL_DB.upper():
+        raise ValueError('Native player reads require canonical player writes in the same database')
 
 # READ_PREFIX  – use in `FROM {READ_PREFIX}.x` for reads we want to flip.
 # WRITE_PREFIX – use in `INSERT INTO {WRITE_PREFIX}.x` / `UPDATE {WRITE_PREFIX}.x`
@@ -621,7 +620,18 @@ def read_table(table_name: str) -> str:
     """Fully-qualified read-path for `table_name`. Use in per-feature cutover
     PRs as we template specific reads. With Phase 0 defaults this resolves to
     `RECRUITMENT_TEST.PUBLIC.<name>` – identical to today's bare `FROM <name>`."""
+    if NATIVE_PLAYER_READS and table_name.lower() in {'players', 'players_base'}:
+        return canonical_players.projection(f'{CANONICAL_DB}.{CORE_DB_SCHEMA}')
     return f"{READ_PREFIX}.{table_name}"
+
+
+def describe_read_columns(cursor, table_name):
+    """Describe the actual result shape, including derived native projections."""
+    if NATIVE_PLAYER_READS and table_name.lower() in {'players', 'players_base'}:
+        cursor.execute(f'SELECT * FROM {read_table(table_name)} LIMIT 0')
+        return [column[0] for column in cursor.description]
+    cursor.execute(f"DESCRIBE TABLE {core_table(table_name) if table_name in {'player_recommendations', 'lifecycle_mutex'} else read_table(table_name)}")
+    return [column[0] for column in cursor.fetchall()]
 
 
 def write_table(table_name: str) -> str:
@@ -815,7 +825,15 @@ def _create_new_connection():
     if ENVIRONMENT == "production":
         connect_params["insecure_mode"] = True
 
-    return snowflake.connector.connect(**connect_params)
+    connection = snowflake.connector.connect(**connect_params)
+    if NATIVE_PLAYER_READS:
+        try:
+            with connection.cursor() as cursor:
+                canonical_players.validate(cursor, f'{CANONICAL_DB}.{CORE_DB_SCHEMA}')
+        except Exception:
+            connection.close()
+            raise
+    return connection
 
 
 def _initialize_connection_pool():
@@ -2934,7 +2952,34 @@ def build_recommendation_select():
     has_players_birthdate = recommendation_column_exists("players", "BIRTHDATE")
     has_players_data_source = recommendation_column_exists("players", "DATA_SOURCE")
 
-    if has_sr_perf and has_players_playername and (
+    native_summary_join = ""
+    if NATIVE_PLAYER_READS and has_players_playername:
+        # A single grouped join preserves the legacy name-match aggregates.
+        # Correlated scalar lookups over the native player projection caused
+        # Snowflake internal errors that profile/flow handlers silently caught.
+        score_joins = []
+        if has_sr_player_id:
+            score_joins.append("(p.PLAYERID IS NOT NULL AND sr.PLAYER_ID = p.PLAYERID)")
+        if has_sr_cafc_player_id:
+            score_joins.append("(p.CAFC_PLAYER_ID IS NOT NULL AND sr.CAFC_PLAYER_ID = p.CAFC_PLAYER_ID)")
+        score_join = f"LEFT JOIN {core_table('scout_reports')} sr ON ({' OR '.join(score_joins)})" if has_sr_perf and score_joins else ""
+        score_expr = "AVG(CASE WHEN sr.PERFORMANCE_SCORE > 0 THEN sr.PERFORMANCE_SCORE END)" if score_join else "NULL"
+        native_summary_join = f"""LEFT JOIN (
+            SELECT NORMALIZE_TEXT_UDF(p.PLAYERNAME) AS MATCH_NAME,
+                   MIN(p.PLAYERID) AS MATCH_PLAYER_ID,
+                   MIN(p.CAFC_PLAYER_ID) AS MATCH_CAFC_PLAYER_ID,
+                   CASE WHEN MIN(p.CAFC_PLAYER_ID) IS NOT NULL THEN 'internal'
+                        ELSE MIN(p.DATA_SOURCE) END AS MATCH_DATA_SOURCE,
+                   MIN(p.BIRTHDATE) AS MATCH_BIRTHDATE,
+                   {score_expr} AS MATCH_AVG_SCORE
+            FROM {read_table('players')} p
+            {score_join}
+            GROUP BY NORMALIZE_TEXT_UDF(p.PLAYERNAME)
+        ) npm ON npm.MATCH_NAME = NORMALIZE_TEXT_UDF(pr.PLAYER_NAME)"""
+
+    if native_summary_join:
+        avg_performance_expr = "npm.MATCH_AVG_SCORE"
+    elif has_sr_perf and has_players_playername and (
         (has_sr_player_id and has_players_playerid)
         or (has_sr_cafc_player_id and has_players_cafc_id)
     ):
@@ -2974,7 +3019,12 @@ def build_recommendation_select():
     matched_cafc_player_id_expr = "NULL"
     matched_data_source_expr = "NULL"
     matched_player_dob_expr = "NULL"
-    if has_players_playername:
+    if native_summary_join:
+        matched_player_id_expr = "npm.MATCH_PLAYER_ID"
+        matched_cafc_player_id_expr = "npm.MATCH_CAFC_PLAYER_ID"
+        matched_data_source_expr = "npm.MATCH_DATA_SOURCE"
+        matched_player_dob_expr = "npm.MATCH_BIRTHDATE"
+    elif has_players_playername:
         if has_players_playerid:
             matched_player_id_expr = f"""
                 (
@@ -3178,6 +3228,7 @@ def build_recommendation_select():
         FROM {player_recommendations_table} pr
         LEFT JOIN {users_table} u ON pr.SUBMITTED_BY_USER_ID = u.ID
         LEFT JOIN {users_table} su ON pr.STATUS_UPDATED_BY = su.ID
+        {native_summary_join}
     """.format(
         previous_expr="pr.PREVIOUS_RECOMMENDATION_ID"
         if recommendation_column_exists(
@@ -3217,6 +3268,7 @@ def build_recommendation_select():
         matched_data_source_expr=matched_data_source_expr,
         linked_universal_id_expr=linked_universal_id_expr,
         linked_player_transfermarkt_link_expr=linked_player_transfermarkt_link_expr,
+        native_summary_join=native_summary_join,
     )
 
 
@@ -5802,9 +5854,7 @@ def get_cafc_system_status(current_user: User = Depends(get_current_user)):
         cursor = conn.cursor()
 
         # Check if CAFC_PLAYER_ID exists in players table
-        cursor.execute("DESCRIBE TABLE players")
-        players_columns = cursor.fetchall()
-        players_column_names = [col[0] for col in players_columns]
+        players_column_names = describe_read_columns(cursor, 'players')
         has_cafc_system = "CAFC_PLAYER_ID" in players_column_names
 
         stats = {"has_cafc_system": has_cafc_system}
@@ -7636,7 +7686,7 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
                         WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
-                    PLAYERNAME
+                    PLAYERNAME, CAFC_PLAYER_ID, PLAYERID
                 LIMIT %s OFFSET %s
             """,
                 (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
@@ -7653,7 +7703,7 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
                         WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
                         ELSE 3
                     END,
-                    PLAYERNAME
+                    PLAYERNAME, PLAYERID
                 LIMIT %s OFFSET %s
             """,
                 (search_pattern, normalized_query, normalized_query + '%', fetch_limit, offset),
@@ -17624,8 +17674,12 @@ def get_all_lists_with_details(
         squad_change_name_lookup = {}
         if all_player_ids or all_cafc_ids:
             try:
-                cursor.execute("DESCRIBE TABLE squad_change_log")
-                squad_change_columns = {str(row[0]).upper(): str(row[0]) for row in cursor.fetchall()}
+                cursor.execute("SHOW TABLES LIKE 'SQUAD_CHANGE_LOG' IN SCHEMA")
+                if cursor.fetchone():
+                    cursor.execute("DESCRIBE TABLE squad_change_log")
+                    squad_change_columns = {str(row[0]).upper(): str(row[0]) for row in cursor.fetchall()}
+                else:
+                    squad_change_columns = {}
 
                 def squad_change_column(*candidates):
                     return next((squad_change_columns[name] for name in candidates if name in squad_change_columns), None)
@@ -17680,7 +17734,7 @@ def get_all_lists_with_details(
                                 squad_change_lookup[change_key] = change_data
                             if change_row[2]:
                                 squad_change_name_lookup[str(change_row[2]).strip().casefold()] = change_data
-                else:
+                elif squad_change_columns:
                     logging.warning("SQUAD_CHANGE_LOG has no supported player/squad/date column combination")
             except Exception as squad_change_error:
                 logging.warning(f"Could not enrich lists with recent squad changes: {squad_change_error}")
