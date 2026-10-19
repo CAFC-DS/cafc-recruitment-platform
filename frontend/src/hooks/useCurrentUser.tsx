@@ -11,6 +11,17 @@ interface CurrentUser {
   lastname?: string;
 }
 
+// Claims identify renewal only; API authorization still validates the token.
+const tokenAccount = (token: string | null): string | null => {
+  if (!token) return null;
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(part));
+    return typeof claims.sub === "string" && claims.user_id != null
+      ? JSON.stringify([claims.sub, claims.user_id]) : null;
+  } catch { return null; }
+};
+
 const CurrentUserContext = createContext<{ user: CurrentUser | null; loading: boolean } | undefined>(undefined);
 
 export const CurrentUserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -38,7 +49,15 @@ export const CurrentUserProvider: React.FC<{ children: React.ReactNode }> = ({ c
       } catch (error) {
         if (active) {
           console.error("Failed to fetch current user:", error);
-          setState({ token, user: null, loading: false });
+          const status = (error as any)?.response?.status;
+          setState(previous => {
+            const sameAccount = previous.token === token || (
+              tokenAccount(token) !== null && tokenAccount(previous.token) === tokenAccount(token)
+            );
+            // Temporary background failures must not discard an active editor.
+            if (sameAccount && previous.user && ![401, 403, 422].includes(status)) return previous;
+            return { token, user: null, loading: false };
+          });
         }
       } finally {
         if (pending.current?.request === request) pending.current = null;
@@ -56,8 +75,10 @@ export const CurrentUserProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
   }, [token]);
 
-  // Never expose the previous account's permissions while a new token loads.
-  const value = state.token === token ? state : { user: null, loading: Boolean(token) };
+  // Preserve editors during renewal, but mask permissions on account changes.
+  const sameAccount = Boolean(token && state.user && tokenAccount(token) !== null &&
+    tokenAccount(state.token) === tokenAccount(token));
+  const value = state.token === token || sameAccount ? state : { user: null, loading: Boolean(token) };
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
 };
 
