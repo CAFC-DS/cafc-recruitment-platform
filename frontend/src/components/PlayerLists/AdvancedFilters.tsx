@@ -1,3 +1,4 @@
+import { ALL_STAGES } from "../../constants/stages";
 import React, { useState } from "react";
 import { Card, Collapse, Button, Row, Col, Form, Dropdown } from "react-bootstrap";
 
@@ -35,7 +36,7 @@ interface AdvancedFiltersProps {
   stageCounts?: Partial<Record<string, number>>;
 }
 
-const STAGE_OPTIONS = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"];
+const STAGE_OPTIONS = ALL_STAGES;
 
 export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   showFilters,

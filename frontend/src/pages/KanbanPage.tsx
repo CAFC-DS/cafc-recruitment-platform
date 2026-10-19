@@ -2,7 +2,7 @@
  * KanbanPage Component - REDESIGNED
  *
  * Clean Kanban view for player lists with:
- * - Stage-based columns (Stage 1-4) spanning full width
+ * - Stage-based columns (Stage 1-5) spanning full width
  * - List selection with toggle pills
  * - Drag & drop stage changes
  * - Batch save mode for stage changes
@@ -10,6 +10,7 @@
  * - Optimized data fetching
  */
 
+import { ACTIVE_STAGES, emptyStageCounts } from "../constants/stages";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Container,
@@ -379,7 +380,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     // Determine which stages to show
     const stagesToShow = filters.stages.length > 0
       ? filters.stages
-      : ["Stage 1", "Stage 2", "Stage 3", "Stage 4", ...(showArchived ? ["Archived"] : [])];
+      : [...ACTIVE_STAGES, ...(showArchived ? ["Archived"] : [])];
 
     // Initialize stages object with only the stages to show
     const stages: Record<string, PlayerInList[]> = {};
@@ -483,13 +484,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   }, [lists, visibleListIds, pendingStageChanges, pendingRemovals, showArchived, filters.stages, sortField, sortDirection, playerFavorites, playerDecisions]);
 
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      "Stage 1": 0,
-      "Stage 2": 0,
-      "Stage 3": 0,
-      "Stage 4": 0,
-      Archived: 0,
-    };
+    const counts: Record<string, number> = emptyStageCounts();
 
     visibleLists.forEach((list) => {
       list.players.forEach((player) => {
@@ -861,7 +856,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       });
       setShowStageReasonModal(true);
     } else {
-      // Stage 2, 3, 4 use batch mode as before
+      // Stage 2–5 use batch mode as before
       setPendingStageChanges((prev) => {
         const newMap = new Map(prev);
 

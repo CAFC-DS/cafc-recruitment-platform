@@ -1,3 +1,4 @@
+import { ALL_STAGES } from "../../constants/stages";
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Card, Col, Form, Row } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
@@ -14,10 +15,12 @@ interface StageMovementAnalytics {
     moved_stage_1_to_2: number;
     moved_stage_2_to_3: number;
     moved_stage_3_to_4: number;
+    moved_stage_4_to_5: number;
     archived_from_stage_1: number;
     archived_from_stage_2: number;
     archived_from_stage_3: number;
     archived_from_stage_4: number;
+    archived_from_stage_5: number;
   };
   stage_counts: Record<string, number>;
   stage_ever_counts: Record<string, number>;
@@ -52,12 +55,17 @@ const metricCards = [
   {
     key: "moved_stage_2_to_3",
     title: "Stage 2 to Stage 3",
-    subtitle: "Players moved into final shortlist review",
+    subtitle: "Players moved into Stage 3 review",
   },
   {
     key: "moved_stage_3_to_4",
     title: "Moved Stage 3 to 4",
     subtitle: "Players progressed into Stage 4",
+  },
+  {
+    key: "moved_stage_4_to_5",
+    title: "Stage 4 to Stage 5",
+    subtitle: "Players progressed into Stage 5",
   },
   {
     key: "archived_from_stage_1",
@@ -79,15 +87,14 @@ const metricCards = [
     title: "Archived from Stage 4",
     subtitle: "Players removed after Stage 4 review",
   },
+  {
+    key: "archived_from_stage_5",
+    title: "Archived from Stage 5",
+    subtitle: "Players removed after Stage 5 review",
+  },
 ] as const;
 
-const stageCountCards = [
-  { key: "Stage 1", title: "Stage 1" },
-  { key: "Stage 2", title: "Stage 2" },
-  { key: "Stage 3", title: "Stage 3" },
-  { key: "Stage 4", title: "Stage 4" },
-  { key: "Archived", title: "Archived" },
-] as const;
+const stageCountCards = ALL_STAGES.map(stage => ({ key: stage, title: stage }));
 
 const StageMovementAnalyticsTab: React.FC = () => {
   const [data, setData] = useState<StageMovementAnalytics | null>(null);

@@ -11,6 +11,7 @@ import { favoriteTooltip } from "../utils/favoriteTooltip";
  * - Optimized data fetching
  */
 
+import { ACTIVE_STAGES, emptyStageCounts } from "../constants/stages";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Container,
@@ -659,13 +660,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   }, [mergedPlayers, sortField, sortDirection, pendingStageChanges, pendingRemovals, showArchived, playerFavorites, playerDecisions]);
 
   const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      "Stage 1": 0,
-      "Stage 2": 0,
-      "Stage 3": 0,
-      "Stage 4": 0,
-      Archived: 0,
-    };
+    const counts: Record<string, number> = emptyStageCounts();
 
     mergedPlayers.forEach((player) => {
       if (pendingRemovals.has(player.item_id)) {
@@ -1159,7 +1154,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           .catch((err: any) => setError(err.response?.data?.detail || "Failed to update player stage."));
         return;
       }
-      // Stage 2, 3, 4 use batch mode in a single-list view.
+      // Stage 2–5 use batch mode in a single-list view.
       setPendingStageChanges((prev) => {
         const newMap = new Map(prev);
         newMap.set(itemId, newStage);
@@ -1974,10 +1969,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                     fontWeight: "600",
                                   }}
                                 >
-                                  <option value="Stage 1">Stage 1</option>
-                                  <option value="Stage 2">Stage 2</option>
-                                  <option value="Stage 3">Stage 3</option>
-                                  <option value="Stage 4">Stage 4</option>
+                                  {ACTIVE_STAGES.map(stage => (
+                                    <option key={stage} value={stage}>{stage}</option>
+                                  ))}
                                   <option value="Archived">Archived</option>
                                 </Form.Select>
                               ) : (
