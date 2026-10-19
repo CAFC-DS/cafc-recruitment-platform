@@ -55,32 +55,38 @@ test("logout ignores an in-flight user response", async () => {
 const jwt = (id: number, issued: number) => `header.${btoa(JSON.stringify({ sub: `user-${id}`, user_id: id, iat: issued }))}.signature`;
 const PendingStages = () => {
   const [stage, setStage] = React.useState("");
-  return <input aria-label="pending stage" value={stage} onChange={event => setStage(event.target.value)} />;
+  const [filter, setFilter] = React.useState("");
+  return <><input aria-label="pending stage" value={stage} onChange={event => setStage(event.target.value)} />
+    <input aria-label="list filter" value={filter} onChange={event => setFilter(event.target.value)} /></>;
 };
 const StageEditor = () => {
   const { user } = useCurrentUser();
   return user ? <PendingStages /> : null;
 };
-test("pending edits survive renewal and temporary background errors, but not account changes", async () => {
+test("pending edits and filters survive renewal and temporary background errors, but not account changes", async () => {
   mockToken = jwt(1, 1);
   get.mockResolvedValueOnce({ data: staff });
   const app = () => <CurrentUserProvider><StageEditor /></CurrentUserProvider>;
   const { rerender } = render(app());
   const editor = await screen.findByLabelText("pending stage");
   fireEvent.change(editor, { target: { value: "Stage 3" } });
+  fireEvent.change(screen.getByLabelText("list filter"), { target: { value: "Championship" } });
   let resolve: (value: any) => void = () => {};
   get.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
   mockToken = jwt(1, 2);
   rerender(app());
   expect(screen.getByLabelText("pending stage")).toBe(editor);
   expect(editor).toHaveValue("Stage 3");
+  expect(screen.getByLabelText("list filter")).toHaveValue("Championship");
   await act(async () => { resolve({ data: staff }); });
   expect(editor).toHaveValue("Stage 3");
+  expect(screen.getByLabelText("list filter")).toHaveValue("Championship");
   get.mockRejectedValueOnce(new Error("temporary network error"));
   const log = jest.spyOn(console, "error").mockImplementation(() => {});
   await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
   expect(screen.getByLabelText("pending stage")).toBe(editor);
   expect(editor).toHaveValue("Stage 3");
+  expect(screen.getByLabelText("list filter")).toHaveValue("Championship");
   log.mockRestore();
   get.mockImplementationOnce(() => new Promise(() => {}));
   mockToken = jwt(2, 3);
