@@ -1099,6 +1099,9 @@ RECOMMENDATION_EMAILS_ENABLED = False
 RECOMMENDATION_UPLOADS_ENABLED = False
 
 # --- Stage Change Reason Constants ---
+ACTIVE_RECRUITMENT_STAGES = tuple(f"Stage {number}" for number in range(1, 6))
+VALID_RECRUITMENT_STAGES = (*ACTIVE_RECRUITMENT_STAGES, "Archived")
+
 STAGE_1_REASONS = [
     "Flagged by Data",
     "Flagged by Live Scouting",
@@ -16148,7 +16151,9 @@ def get_stage_movement_analytics(
                 COUNT_IF(psh.OLD_STAGE = 'Stage 1' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_1,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 2' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_2,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3,
-                COUNT_IF(psh.OLD_STAGE = 'Stage 4' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_4
+                COUNT_IF(psh.OLD_STAGE = 'Stage 4' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_4,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 4' AND psh.NEW_STAGE = 'Stage 5') AS moved_stage_4_to_5,
+                COUNT_IF(psh.OLD_STAGE = 'Stage 5' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_5
             FROM {core_table('player_stage_history')} psh
             {list_join}
             WHERE {EFFECTIVE_START} >= %s
@@ -16204,13 +16209,7 @@ def get_stage_movement_analytics(
             stage_row.get("STAGE"): int(stage_row.get("PLAYER_COUNT") or 0)
             for stage_row in (cursor.fetchall() or [])
         }
-        stage_counts = {
-            "Stage 1": raw_counts.get("Stage 1", 0),
-            "Stage 2": raw_counts.get("Stage 2", 0),
-            "Stage 3": raw_counts.get("Stage 3", 0),
-            "Stage 4": raw_counts.get("Stage 4", 0),
-            "Archived": raw_counts.get("Archived", 0),
-        }
+        stage_counts = {stage: raw_counts.get(stage, 0) for stage in VALID_RECRUITMENT_STAGES}
 
         # 3. CUMULATIVE stage presence over the window: distinct players who spent
         #    any time in a stage between window_start and window_end, including
@@ -16256,13 +16255,7 @@ def get_stage_movement_analytics(
             stage_row.get("STAGE"): int(stage_row.get("PLAYER_COUNT") or 0)
             for stage_row in (cursor.fetchall() or [])
         }
-        stage_ever_counts = {
-            "Stage 1": raw_ever_counts.get("Stage 1", 0),
-            "Stage 2": raw_ever_counts.get("Stage 2", 0),
-            "Stage 3": raw_ever_counts.get("Stage 3", 0),
-            "Stage 4": raw_ever_counts.get("Stage 4", 0),
-            "Archived": raw_ever_counts.get("Archived", 0),
-        }
+        stage_ever_counts = {stage: raw_ever_counts.get(stage, 0) for stage in VALID_RECRUITMENT_STAGES}
 
         result = {
             "window_start": window_start.isoformat(),
@@ -16277,6 +16270,8 @@ def get_stage_movement_analytics(
                 "archived_from_stage_1": int(row.get("ARCHIVED_FROM_STAGE_1") or 0),
                 "archived_from_stage_2": int(row.get("ARCHIVED_FROM_STAGE_2") or 0),
                 "archived_from_stage_3": int(row.get("ARCHIVED_FROM_STAGE_3") or 0),
+                "moved_stage_4_to_5": int(row.get("MOVED_STAGE_4_TO_5") or 0),
+                "archived_from_stage_5": int(row.get("ARCHIVED_FROM_STAGE_5") or 0),
                 "archived_from_stage_4": int(row.get("ARCHIVED_FROM_STAGE_4") or 0),
             },
             "stage_counts": stage_counts,
@@ -16976,7 +16971,7 @@ class PlayerListReorder(BaseModel):
 
 
 class PlayerStageUpdate(BaseModel):
-    stage: str  # New stage value (Stage 1-4, Archived)
+    stage: str  # New stage value (Stage 1-5, Archived)
     reason: Optional[str] = None  # Required for Stage 1 and Archived
     description: Optional[str] = None  # Optional description for stage change
 
@@ -18762,7 +18757,7 @@ async def update_player_stage(
         )
 
     # Validate stage value
-    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"]
+    valid_stages = VALID_RECRUITMENT_STAGES
     if stage_data.stage not in valid_stages:
         raise HTTPException(
             status_code=400, detail=f"Stage must be one of: {', '.join(valid_stages)}"
@@ -18849,7 +18844,7 @@ async def update_player_stage(
         conn.commit()
 
         # Invalidate cache after updating stage
-        invalidate_cache("player_lists_all")
+        invalidate_cache_by_prefix(["player_lists_all", "analytics_stage_movements_"])
 
         return {"message": "Player stage updated successfully", "stage": stage_data.stage}
 
@@ -18880,7 +18875,7 @@ async def bulk_update_player_stages(
     if not bulk_data.updates:
         raise HTTPException(status_code=400, detail="No stage updates provided")
 
-    valid_stages = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Archived"]
+    valid_stages = VALID_RECRUITMENT_STAGES
     start_time = datetime.utcnow()
     failures = []
     updated_count = 0
@@ -19039,7 +19034,7 @@ async def bulk_update_player_stages(
         conn.commit()
 
         # Invalidate cache once for batch
-        invalidate_cache("player_lists_all")
+        invalidate_cache_by_prefix(["player_lists_all", "analytics_stage_movements_"])
 
         requested_count = len(bulk_data.updates)
         failed_count = len(failures)
@@ -19166,7 +19161,7 @@ async def update_stage_history_reason(
         elif new_stage == "Archived":
             valid_reasons = ARCHIVED_REASONS
         else:
-            # Stage 2/3/4 records that were auto-advanced — allow Stage 1 reasons
+            # Stage 2–5 records that were auto-advanced — allow Stage 1 reasons
             valid_reasons = STAGE_1_REASONS
 
         if update_data.reason not in valid_reasons:

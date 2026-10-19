@@ -32,6 +32,12 @@ export const stageColors = {
     light: "#22c55e",
     border: "#15803d",
   },
+  "Stage 5": {
+    bg: "#7c3aed", // Purple
+    text: "#ffffff",
+    light: "#a78bfa",
+    border: "#6d28d9",
+  },
   "Archived": {
     bg: "#9ca3af", // Gray (matching archived reports)
     text: "#ffffff",
