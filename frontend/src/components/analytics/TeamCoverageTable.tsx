@@ -3,6 +3,7 @@ import { Card, Table, Form, InputGroup, Button } from "react-bootstrap";
 
 interface TeamCoverageData {
   team_name: string;
+  unique_fixtures?: number;
   total_times_covered: number;
   total_reports: number;
   scout_breakdown: {
@@ -31,7 +32,9 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
     const scoutSet = new Set<string>();
     safeData.forEach((team) => {
       if (team && team.scout_breakdown) {
-        Object.keys(team.scout_breakdown).forEach((scout) => scoutSet.add(scout));
+        Object.keys(team.scout_breakdown).forEach((scout) =>
+          scoutSet.add(scout),
+        );
       }
     });
     return Array.from(scoutSet).sort();
@@ -50,7 +53,8 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
       // Scout filter
       const matchesScouts =
         selectedScouts.length === 0 ||
-        (team.scout_breakdown && selectedScouts.some((scout) => scout in team.scout_breakdown));
+        (team.scout_breakdown &&
+          selectedScouts.some((scout) => scout in team.scout_breakdown));
 
       return matchesSearch && matchesScouts;
     });
@@ -58,9 +62,7 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
 
   const toggleScout = (scout: string) => {
     setSelectedScouts((prev) =>
-      prev.includes(scout)
-        ? prev.filter((s) => s !== scout)
-        : [...prev, scout]
+      prev.includes(scout) ? prev.filter((s) => s !== scout) : [...prev, scout],
     );
   };
 
@@ -73,7 +75,10 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
   };
 
   return (
-    <Card className="shadow-sm" style={{ border: "1px solid #e5e7eb", borderRadius: "8px" }}>
+    <Card
+      className="shadow-sm"
+      style={{ border: "1px solid #e5e7eb", borderRadius: "8px" }}
+    >
       <Card.Header
         style={{
           backgroundColor: "#212529",
@@ -86,6 +91,15 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
         </h5>
       </Card.Header>
 
+      <p
+        className="px-3 pt-3 mb-0"
+        style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}
+      >
+        Fixtures counts each match once per team. Scout visits counts each
+        scout’s attendance separately, so two scouts at one fixture count as two
+        visits. Manually added fixtures are included when a team name is
+        recorded.
+      </p>
       {/* Search and Filter Section */}
       <Card.Body className="pb-2">
         <InputGroup className="mb-3">
@@ -100,13 +114,22 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
           />
         </InputGroup>
 
-        <div className="d-flex align-items-center justify-content-between flex-wrap mb-2" style={{ gap: "0.5rem" }}>
+        <div
+          className="d-flex align-items-center justify-content-between flex-wrap mb-2"
+          style={{ gap: "0.5rem" }}
+        >
           <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
-            <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Scout Filter:</span>
+            <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+              Scout Filter:
+            </span>
             <Button size="sm" variant="outline-dark" onClick={handleSelectAll}>
               Select All
             </Button>
-            <Button size="sm" variant="outline-secondary" onClick={handleClearAll}>
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={handleClearAll}
+            >
               Clear
             </Button>
           </div>
@@ -115,7 +138,11 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
               <Button
                 key={scout}
                 size="sm"
-                variant={selectedScouts.includes(scout) ? "primary" : "outline-secondary"}
+                variant={
+                  selectedScouts.includes(scout)
+                    ? "primary"
+                    : "outline-secondary"
+                }
                 onClick={() => toggleScout(scout)}
                 style={{ fontSize: "0.75rem" }}
               >
@@ -127,7 +154,10 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
       </Card.Body>
 
       <Card.Body className="p-0">
-        <div className="table-responsive" style={{ maxHeight: "600px", overflowY: "auto" }}>
+        <div
+          className="table-responsive"
+          style={{ maxHeight: "600px", overflowY: "auto" }}
+        >
           <Table hover striped className="table-compact table-sm mb-0">
             <thead
               className="table-dark"
@@ -135,9 +165,17 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
             >
               <tr>
                 <th style={{ minWidth: "150px" }}>Team</th>
-                <th style={{ textAlign: "center", minWidth: "80px" }}>Times Seen</th>
+                <th style={{ textAlign: "center", minWidth: "80px" }}>
+                  Fixtures
+                </th>
+                <th style={{ textAlign: "center", minWidth: "80px" }}>
+                  Scout visits
+                </th>
                 {allScouts.map((scout) => (
-                  <th key={scout} style={{ textAlign: "center", minWidth: "80px" }}>
+                  <th
+                    key={scout}
+                    style={{ textAlign: "center", minWidth: "80px" }}
+                  >
                     {scout}
                   </th>
                 ))}
@@ -147,7 +185,7 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
               {filteredTeams.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={2 + allScouts.length}
+                    colSpan={3 + allScouts.length}
                     className="text-center text-muted py-4"
                   >
                     No teams found
@@ -158,6 +196,9 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
                   <tr key={idx}>
                     <td>
                       <strong>{team.team_name}</strong>
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {team.unique_fixtures ?? "—"}
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <span className="badge bg-primary">
@@ -171,31 +212,66 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
                           key={scout}
                           style={{
                             textAlign: "center",
-                            backgroundColor: scoutData ? "rgba(13, 110, 253, 0.05)" : "transparent",
+                            backgroundColor: scoutData
+                              ? "rgba(13, 110, 253, 0.05)"
+                              : "transparent",
                             padding: "0.5rem 0.25rem",
                           }}
                         >
                           {scoutData ? (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", alignItems: "center" }}>
-                              <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "0.25rem",
+                                alignItems: "center",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "0.25rem",
+                                  alignItems: "center",
+                                }}
+                              >
                                 <span
                                   className="badge badge-accent-live"
-                                  style={{ fontSize: "0.7rem", minWidth: "20px" }}
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    minWidth: "20px",
+                                  }}
                                   title={`Seen live ${scoutData.live_matches} time(s)`}
                                 >
                                   {scoutData.live_matches}
                                 </span>
-                                <span style={{ fontSize: "0.7rem", color: "#666" }}>L</span>
+                                <span
+                                  style={{ fontSize: "0.7rem", color: "#666" }}
+                                >
+                                  L
+                                </span>
                               </div>
-                              <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "0.25rem",
+                                  alignItems: "center",
+                                }}
+                              >
                                 <span
                                   className="badge badge-accent-video"
-                                  style={{ fontSize: "0.7rem", minWidth: "20px" }}
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    minWidth: "20px",
+                                  }}
                                   title={`Seen video ${scoutData.video_matches} time(s)`}
                                 >
                                   {scoutData.video_matches}
                                 </span>
-                                <span style={{ fontSize: "0.7rem", color: "#666" }}>V</span>
+                                <span
+                                  style={{ fontSize: "0.7rem", color: "#666" }}
+                                >
+                                  V
+                                </span>
                               </div>
                             </div>
                           ) : (
@@ -217,7 +293,9 @@ const TeamCoverageTable: React.FC<TeamCoverageTableProps> = ({ data }) => {
         Showing {filteredTeams.length} of {safeData.length} teams
         {selectedScouts.length > 0 && (
           <span className="ms-2 text-muted">
-            (filtered by {selectedScouts.length} scout{selectedScouts.length !== 1 && "s"})
+            (teams reported on by {selectedScouts.length} selected scout
+            {selectedScouts.length !== 1 && "s"}; all scout columns remain
+            visible)
           </span>
         )}
       </Card.Footer>
