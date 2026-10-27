@@ -56,11 +56,17 @@ export default function ShortlistPitch({ lists, stages, onStagesChange, getPlaye
   }, [compact, showClubs]);
   const [focused, setFocused] = useState(false);
   const focusButton = useRef<HTMLButtonElement>(null);
+  const wasFocused = useRef(false);
   const focusSurface = useRef<HTMLElement>(null);
   const [focusHost] = useState(() => document.createElement("div"));
 
   useEffect(() => {
-    if (!focused) return;
+    if (!focused) {
+      if (wasFocused.current) focusButton.current?.focus();
+      wasFocused.current = false;
+      return;
+    }
+    wasFocused.current = true;
     document.body.appendChild(focusHost);
     const previousOverflow = document.body.style.overflow;
     const siblings = Array.from(document.body.children).filter(element => element !== focusHost);
@@ -83,7 +89,6 @@ export default function ShortlistPitch({ lists, stages, onStagesChange, getPlaye
       siblings.forEach((element, index) => { if (!previousInert[index]) element.removeAttribute("inert"); });
       document.body.style.overflow = previousOverflow;
       focusHost.remove();
-      focusButton.current?.focus();
     };
   }, [focused, focusHost]);
 
