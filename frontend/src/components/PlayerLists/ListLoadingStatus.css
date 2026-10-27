@@ -1,0 +1,7 @@
+.list-loading-status { min-height: 28px; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; color: var(--color-text-muted, #5b6169); font: 400 .75rem/1.5 var(--font-body, "IBM Plex Sans", Arial, sans-serif); }
+.list-loading-status > span { display: inline-flex; align-items: center; gap: .5rem; }
+.list-loading-status__indicator { width: 12px; height: 12px; flex: 0 0 12px; border: 2px solid var(--color-border, #dde1e6); border-top-color: #b91c1c; border-radius: 50%; animation: list-loading-turn 900ms linear infinite; }
+.list-loading-status button { min-height: 36px; padding: .25rem .625rem; border: 1px solid var(--color-border, #dde1e6); border-radius: 4px; background: var(--color-surface, #fff); color: var(--color-text, #1c1f24); font: inherit; cursor: pointer; }
+.list-loading-status button:focus-visible { outline: 2px solid #b91c1c; outline-offset: 2px; }
+@keyframes list-loading-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .list-loading-status__indicator { animation: none; border-color: #b91c1c; } }

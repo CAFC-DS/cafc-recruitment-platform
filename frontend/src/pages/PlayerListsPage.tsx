@@ -36,6 +36,7 @@ import MultiListBadges from "../components/PlayerLists/MultiListBadges";
 import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
 import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
+import ListLoadingStatus from "../components/PlayerLists/ListLoadingStatus";
 import ShortlistPitch from "../components/PlayerLists/ShortlistPitch";
 import "./PlayerListsPage.css";
 import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
@@ -1465,64 +1466,34 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   // Loading state
   if (userLoading || (loading && lists.length === 0)) {
     return (
-      <Container className="mt-4 page-lists-cafc lists-workspace">
-        <div className="agent-portal-card mb-3">
-          <div className="agent-portal-card-body">
-            <div className="agent-portal-section-title">{headerTitle}</div>
-            <div className="agent-portal-section-copy">{headerCopy}</div>
+      <Container className="mt-4 page-lists-cafc lists-workspace" aria-label="Loading recruitment lists">
+        <header className="lists-workspace__header"><h1>{headerTitle}</h1><p>{headerCopy}</p></header>
+        <ListLoadingStatus loading initial />
+        <div className="lists-workspace__body lists-workspace__skeleton" aria-hidden="true">
+          <aside className="lists-workspace__sidebar">
+            <div className="lists-workspace__placeholder lists-workspace__placeholder--search" />
+            {Array.from({ length: 11 }, (_, index) => <div key={index} className="lists-workspace__placeholder lists-workspace__placeholder--list" />)}
+          </aside>
+          <div className="lists-workspace__main">
+            <div className="lists-workspace__placeholder lists-workspace__placeholder--toolbar" />
+            <div className="lists-workspace__skeleton-table">
+              {Array.from({ length: 9 }, (_, row) => <div key={row} className="lists-workspace__skeleton-row">
+                {Array.from({ length: 5 }, (_, column) => <span key={column} className="lists-workspace__placeholder" />)}
+              </div>)}
+            </div>
           </div>
-        </div>
-        <div className="mb-3 d-flex gap-2">
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="shimmer-line"
-              style={{ width: "90px", height: "28px", borderRadius: "14px" }}
-            />
-          ))}
-        </div>
-        <div className="table-responsive">
-          <Table responsive hover className="table-compact table-sm">
-            <thead className="table-dark">
-              <tr>
-                <th>Player</th>
-                <th>Age</th>
-                <th>Club</th>
-                <th>Stage</th>
-                <th>Lists</th>
-                <th>Score</th>
-                <th>Reports</th>
-                <th>Last Report</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: 10 }).map((_, idx) => (
-                <tr key={idx}>
-                  <td><div className="shimmer-line" style={{ width: "140px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "100px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "70px", height: "20px", borderRadius: "10px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "90px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "36px", height: "20px", borderRadius: "10px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "80px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "60px", height: "24px" }} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
         </div>
       </Container>
     );
   }
 
   return (
-    <Container className="mt-4 page-lists-cafc lists-workspace" aria-busy={loading}>
+    <Container className="mt-4 page-lists-cafc lists-workspace">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
           {error}
+          {fetchError && <Button size="sm" variant="outline-danger" className="ms-3" onClick={() => { setError(null); void refetch(); }}>Try again</Button>}
         </Alert>
       )}
 
@@ -1550,28 +1521,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       ) : (
         <div className="lists-workspace__body">
 
-          <aside className="lists-workspace__sidebar" aria-label="Shortlist selection and filters">
-          {/* Advanced Filters */}
-          <AdvancedFilters
-            compact
-            pitchView={showShortlistPitch}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onClearFilters={handleClearFilters}
-            showArchived={showArchived}
-            onShowArchivedChange={setShowArchived}
-            includeArchivedReports={includeArchivedReports}
-            onIncludeArchivedReportsChange={setIncludeArchivedReports}
-            includeFlagReports={includeFlagReports}
-            onIncludeFlagReportsChange={setIncludeFlagReports}
-            competitionOptions={competitionOptions}
-            archivedReasonOptions={archivedReasonOptions}
-            initialReasonOptions={stage1ReasonOptions}
-            stageCounts={stageCounts}
-          />
-
+          <aside className="lists-workspace__sidebar" aria-label="Shortlist selection">
           {/* List Selection */}
           <div className="lists-workspace__selection">
             <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
@@ -1651,6 +1601,28 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           </aside>
 
           <section className="lists-workspace__main" aria-label="Recruitment lists workspace">
+
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            compact
+            pitchView={showShortlistPitch}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            showArchived={showArchived}
+            onShowArchivedChange={setShowArchived}
+            includeArchivedReports={includeArchivedReports}
+            onIncludeArchivedReportsChange={setIncludeArchivedReports}
+            includeFlagReports={includeFlagReports}
+            onIncludeFlagReportsChange={setIncludeFlagReports}
+            competitionOptions={competitionOptions}
+            archivedReasonOptions={archivedReasonOptions}
+            initialReasonOptions={stage1ReasonOptions}
+            stageCounts={stageCounts}
+          />
+
 
           {/* Actions Container */}
           <div className="lists-workspace__actions">
@@ -1769,7 +1741,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
               )}
             </div>
 
-            {loading && <p className="lists-workspace__updating" role="status">Updating results…</p>}
+            {!showShortlistPitch && <ListLoadingStatus loading={loading} error={fetchError} onRetry={() => { setError(null); void refetch(); }} />}
             {visibleListIds.size > 0 && !currentList && !showShortlistPitch && (
               <div className="mt-2 text-muted" style={{ fontSize: "0.875rem" }}>
                 Stage history is available for each of a player’s lists from their Actions menu. List edit and delete require one selected list.
@@ -1780,6 +1752,22 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           {showShortlistPitch && (
             <ShortlistPitch
               lists={visibleLists}
+              loading={loading}
+              loadingError={fetchError}
+              onRetry={() => { setError(null); void refetch(); }}
+              filterSummary={[
+                filters.playerName && `Name: ${filters.playerName}`,
+                filters.position && `Position: ${filters.position}`,
+                filters.club && `Club: ${filters.club}`,
+                filters.competition.length > 0 && `Competitions: ${filters.competition.join(", ")}`,
+                filters.performanceScores.length > 0 && `Scores: ${Math.min(...filters.performanceScores)}–${Math.max(...filters.performanceScores)}`,
+                (filters.minAge || filters.maxAge) && `Age: ${filters.minAge || "Any"}–${filters.maxAge || "Any"}`,
+                (filters.minReports || filters.maxReports) && `Reports: ${filters.minReports || "Any"}–${filters.maxReports || "Any"}`,
+                filters.recencyMonths && `Last ${filters.recencyMonths} months`,
+                filters.initialReasons.length > 0 && `Initial reasons: ${filters.initialReasons.join(", ")}`,
+                includeArchivedReports && "Archived reports included",
+                includeFlagReports && "Flag reports included",
+              ].filter((value): value is string => typeof value === "string" && value.length > 0)}
               stages={filters.stages}
               onStagesChange={(stages) => handleFilterChange({ stages })}
               getPlayerPath={getPlayerPath}

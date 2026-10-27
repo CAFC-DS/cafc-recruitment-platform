@@ -43,3 +43,18 @@ Persona checks: a staff member comparing full-back coverage can scan aligned gro
 - Signed-in application verification completed on 27 October using actual lists on port 3002: 82 positional entries across Stages 4 and 5, no overlapping groups, no groups outside the pitch and both full-back groups exactly at halfway. Stage 5 alone showed 8 entries; restoring Stages 4 and 5 restored all 82. Phone verification retained all 82 names with no hidden rows or horizontal overflow. No authentication bypass, recruitment-data modification, production deployment or analytics-checkout edits occurred.
 
 Questions skipped for settled layout constraints. The user explicitly confirmed keeping every player name visible at once and completed sign-in. All names remain rendered without expansion controls; larger shortlists grow vertically rather than shrinking the type or hiding entries.
+
+
+## Compact workspace and focus mode
+
+Implemented the two selected preview directions: Compact as the default pitch density, with an optional Comfortable density and Club names toggle; Focus moves the same filtered pitch into a viewport-filling workspace. All player names and stage controls remain available. Escape and Exit focus return to the main workspace, restoring keyboard focus and page scrolling. Background controls are inert while focused. Desktop uses responsive columns rather than scaling typography; mobile retains 44px touch rows. At the current desktop viewport, the signed-in 82-entry shortlist fits in Focus. Larger datasets and narrower screens retain natural scrolling.
+
+
+## Critique fixes
+
+Added selected-list and applied-filter context, persistent sorting/profile hints, consistent row-first ordering, quiet numbered stage badges, labelled Focus dialog semantics, complete focus-loop coverage for form controls, a position selector with Alt+J, live entry counts and locally saved display preferences. Empty groups identify unselected lists separately from no matching players. Preserved the accepted winger and centre-back offsets. Targeted coverage includes filter context, position-jump focus, display persistence and Focus cleanup.
+
+
+## Wide filter drawer
+
+Implemented the user's approved drawer concept. Filters moved out of the sidebar into a 560px right-hand Offcanvas with Player, Reports and Recruitment sections and fixed footer actions. Applied chips support individual removal and Reset all. Tested Apply batching and closing, draft reset, Enter submission, chip removal and view-specific controls. Browser verified applying a club filter then removing its chip, Escape dismissal and full-width mobile layout with visible footer and no horizontal overflow.

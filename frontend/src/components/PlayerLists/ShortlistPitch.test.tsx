@@ -15,6 +15,8 @@ const list = (id: number, name: string, players: PlayerInList[]): ListWithPlayer
   created_by_username: "test", created_by_firstname: null, created_by_lastname: null,
   player_count: players.length, avg_performance_score: null, players,
 });
+beforeEach(() => localStorage.clear());
+
 const baseProps = { stages: ["Stage 4", "Stage 5"], onStagesChange: jest.fn(), getPlayerPath: (id: string) => `/player/${id}` };
 
 test("shows current stages per positional membership and excludes archived and earlier stages", () => {
@@ -24,8 +26,8 @@ test("shows current stages per positional membership and excludes archived and e
   ]} /></MemoryRouter>);
   expect(screen.queryByText("Archived Player")).not.toBeInTheDocument();
   expect(screen.queryByText("Earlier Player")).not.toBeInTheDocument();
-  expect(within(screen.getByRole("region", { name: "LCB players" })).getByLabelText("Stage 4")).toHaveStyle({ backgroundColor: "#16a34a" });
-  expect(within(screen.getByRole("region", { name: "RCB players" })).getByLabelText("Stage 5")).toHaveStyle({ backgroundColor: "#7c3aed" });
+  expect(within(screen.getByRole("region", { name: "LCB players" })).getByLabelText("Stage 4")).toHaveStyle({ borderColor: "#16a34a" });
+  expect(within(screen.getByRole("region", { name: "RCB players" })).getByLabelText("Stage 5")).toHaveStyle({ borderColor: "#7c3aed" });
   expect(screen.getAllByRole("link", { name: /Shared Player/ })).toHaveLength(2);
 });
 
@@ -46,7 +48,7 @@ test("last selected stage stays selected until another stage is enabled", () => 
   fireEvent.click(screen.getByRole("button", { name: "Stage 5" }));
   expect(screen.getByRole("button", { name: "Stage 5" })).toBeDisabled();
   expect(onStagesChange).not.toHaveBeenCalled();
-  expect(screen.getByRole("status")).toHaveTextContent("No players match");
+  expect(screen.getByText(/No players match/)).toBeInTheDocument();
 });
 
 test("resetting stage filters restores all active stages and keeps archived players hidden", () => {
@@ -63,8 +65,8 @@ test("resetting stage filters restores all active stages and keeps archived play
   expect(screen.getByRole("link", { name: /Priority Target/ })).toBeInTheDocument();
   expect(screen.queryByText("Archived Target")).not.toBeInTheDocument();
   expect(screen.getByText(/2 positional entries shown/)).toBeInTheDocument();
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(5);
+  expect(screen.queryByText(/No players match/)).not.toBeInTheDocument();
+  expect(within(screen.getByLabelText("Stage totals")).getAllByRole("button", { pressed: true })).toHaveLength(5);
   expect(screen.getByLabelText("Stage totals")).toHaveTextContent("Stage 11");
 });
 
@@ -88,7 +90,7 @@ test("reserves a central CCB slot and counts positional entries across stages", 
     list(1, "LCB", [player(1, "Left Defender", "Stage 4")]),
     list(2, "RCB", [player(2, "Right Defender", "Stage 5")]),
   ]} /></MemoryRouter>);
-  expect(within(screen.getByRole("region", { name: "CCB players" })).getByText("No players")).toBeInTheDocument();
+  expect(within(screen.getByRole("region", { name: "CCB players" })).getByText("List not selected")).toBeInTheDocument();
   const totals = screen.getByLabelText("Stage totals");
   expect(totals).toHaveTextContent("Stage 41");
   expect(totals).toHaveTextContent("Stage 51");
@@ -114,4 +116,53 @@ test("formation reserves separate attack and defence halves with fullbacks first
   expect(within(defence as HTMLElement).getByRole('region', { name:'LB/LWB players' })).toBeInTheDocument();
   expect(within(defence as HTMLElement).getByRole('region', { name:'RB/RWB players' })).toBeInTheDocument();
   expect(within(defence as HTMLElement).queryByRole('region', { name:'DM/CM players' })).not.toBeInTheDocument();
+});
+
+
+test("focus keeps names, exits on Escape and restores keyboard focus", () => {
+  render(<MemoryRouter><ShortlistPitch {...baseProps} lists={[list(1, "CF", [player(1, "Focus Target", "Stage 4")])]} /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'Focus' }));
+  expect(screen.getByRole('button', { name: 'Exit focus' })).toHaveFocus();
+  expect(screen.getByRole('link', { name: /Focus Target/ })).toBeInTheDocument();
+  expect(document.body.style.overflow).toBe('hidden');
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(screen.queryByRole('button', { name: 'Exit focus' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Focus' })).toHaveFocus();
+  expect(document.body.style.overflow).toBe('');
+});
+
+test("club visibility and density change without hiding player names", () => {
+  render(<MemoryRouter><ShortlistPitch {...baseProps} lists={[list(1, "CF", [player(1, "Visible Target", "Stage 4")])]} /></MemoryRouter>);
+  expect(screen.queryByText('Test Club')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Club names' }));
+  expect(screen.getByText('Test Club')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Comfortable' }));
+  expect(screen.getByRole('button', { name: 'Comfortable' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('link', { name: /Visible Target/ })).toBeInTheDocument();
+});
+
+
+test("Focus announces filter context and position jump moves keyboard focus", () => {
+  render(<MemoryRouter><ShortlistPitch {...baseProps} filterSummary={["Age: 18–23"]} lists={[list(1, "CF", [player(1, "Target", "Stage 4")])]} /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'Focus' }));
+  const dialog = screen.getByRole('dialog', { name: 'Recruitment shortlist pitch map' });
+  expect(dialog).toHaveAttribute('aria-modal', 'true');
+  expect(within(dialog).getByText('Age: 18–23')).toBeInTheDocument();
+  const heading = within(screen.getByRole('region', { name: 'CF players' })).getByRole('heading');
+  heading.scrollIntoView = jest.fn();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Jump to position' }), { target: { value: 'CF' } });
+  expect(heading).toHaveFocus();
+  expect(heading.scrollIntoView).toHaveBeenCalled();
+});
+
+test("display preferences survive remount without losing names", () => {
+  const props = { ...baseProps, lists: [list(1, "CF", [player(1, "Saved Target", "Stage 4")])] };
+  const { unmount } = render(<MemoryRouter><ShortlistPitch {...props} /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'Comfortable' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Club names' }));
+  unmount();
+  render(<MemoryRouter><ShortlistPitch {...props} /></MemoryRouter>);
+  expect(screen.getByRole('button', { name: 'Comfortable' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('checkbox', { name: 'Club names' })).toBeChecked();
+  expect(screen.getByText('Saved Target')).toBeInTheDocument();
 });
