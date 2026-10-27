@@ -15099,6 +15099,55 @@ def get_my_reports(
             conn.close()
 
 
+@app.get("/analytics/recruitment")
+def get_recruitment_analytics(
+    current_user: User = Depends(get_current_user),
+    start_date: Optional[str] = None, end_date: Optional[str] = None,
+    stages: Optional[str] = None, competitions: Optional[str] = None,
+    countries: Optional[str] = None, positions: Optional[str] = None,
+    clubs: Optional[str] = None, scouts: Optional[str] = None,
+    mode: Optional[str] = None,
+):
+    from services.recruitment_analytics import aggregate, load_dataset, STAGES
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(status_code=403, detail="Analytics access required.")
+    try:
+        end = date.fromisoformat(end_date) if end_date else date.today()
+        start = date.fromisoformat(start_date) if start_date else end - timedelta(days=89)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Dates must use YYYY-MM-DD.")
+    if start > end or end > date.today():
+        raise HTTPException(status_code=400, detail="Choose a valid date range ending today or earlier.")
+    def values(value):
+        return [v.strip() for v in (value or '').split('|') if v.strip()]
+    selected_stages = values(stages)
+    if any(s not in STAGES + ['Archived', 'Unlisted', 'Unknown'] for s in selected_stages):
+        raise HTTPException(status_code=400, detail="Invalid recruitment stage.")
+    if mode not in (None, '', 'live', 'video'):
+        raise HTTPException(status_code=400, detail="Method must be live or video.")
+    filters = dict(stages=selected_stages, competitions=values(competitions),
+                   countries=values(countries), positions=values(positions),
+                   clubs=values(clubs), scouts=values(scouts), mode=mode)
+    # A short shared source cache avoids repeating the warehouse joins on every
+    # filter change. Never cache an error as a valid zero-valued dashboard.
+    source_key = 'recruitment_analytics_source_v2'
+    source = get_cache(source_key)
+    conn = None
+    try:
+        if source is None:
+            conn = get_snowflake_connection()
+            cursor = conn.cursor(snowflake.connector.DictCursor)
+            source = load_dataset(cursor, read_table, core_table, squad_current_competition_sql)
+            set_cache(source_key, source, expiry_minutes=2)
+        return aggregate(*source, start.isoformat(), end.isoformat(), filters)
+    except Exception:
+        logging.exception('Recruitment analytics failed')
+        raise HTTPException(status_code=500, detail="Recruitment analytics could not be loaded. Please retry.")
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.get("/analytics/players")
 @offload_read
 def get_player_analytics(
@@ -15566,7 +15615,8 @@ def get_player_analytics(
 @offload_read
 def get_match_team_analytics(
     current_user: User = Depends(get_current_user),
-    months: Optional[int] = None
+    months: Optional[int] = None,
+    refresh: bool = False
 ):
     """Get match and team-focused analytics data"""
     # Analytics access restricted to Admin, Senior Manager, and Manager
@@ -15576,11 +15626,11 @@ def get_match_team_analytics(
         )
 
     # Generate cache key based on parameters
-    cache_key = f"analytics_matches_teams_{months}"
+    cache_key = f"analytics_matches_teams_v2_{months}"
 
     # Check cache first
     cached_data = get_cache(cache_key)
-    if cached_data is not None:
+    if cached_data is not None and not refresh:
         return cached_data
 
     conn = None
@@ -15595,6 +15645,29 @@ def get_match_team_analytics(
         date_filter = ""
         if months:
             date_filter = f"AND sr.CREATED_AT >= DATEADD(month, -{months}, CURRENT_DATE())"
+
+        # Equi-join on a derived key: the OR form (external ID / internal
+        # CAFC_MATCH_ID) can't hash-join and times out against CAFC_DB.
+        matches_join = f"""INNER JOIN (
+                SELECT mm.*, IFF(mm.DATA_SOURCE = 'external', mm.ID,
+                                 IFF(mm.DATA_SOURCE = 'internal', mm.CAFC_MATCH_ID, NULL)) AS JOIN_MATCH_ID
+                FROM {read_table('matches')} mm
+            ) m ON sr.MATCH_ID = m.JOIN_MATCH_ID"""
+
+        # Warehouse names include new iterations; the static mapping is a fallback.
+        cursor.execute(f"""
+            SELECT ITERATIONID, MAX(COMPETITIONNAME) AS COMPETITION_NAME
+            FROM {read_table('players_base')}
+            WHERE ITERATIONID IS NOT NULL AND COMPETITIONNAME IS NOT NULL
+            GROUP BY ITERATIONID
+        """)
+        competition_names = {int(r['ITERATIONID']): r['COMPETITION_NAME'] for r in cursor.fetchall()}
+        cursor.execute(f"""
+            SELECT MAX(sr.CREATED_AT) AS LATEST_REPORT_AT
+            FROM {core_table('scout_reports')} sr
+            WHERE sr.MATCH_ID IS NOT NULL {date_filter}
+        """)
+        latest_report_at = (cursor.fetchone() or {}).get('LATEST_REPORT_AT')
 
         # 1. Team Coverage Stats - count reports by player's actual team
         cursor.execute(f"""
@@ -15688,10 +15761,7 @@ def get_match_team_analytics(
         cursor.execute(f"""
             SELECT COUNT(DISTINCT m.ITERATIONID) as unique_competitions
             FROM {core_table('scout_reports')} sr
-            INNER JOIN {read_table('matches')} m ON (
-                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
-                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
-            )
+            {matches_join}
             WHERE m.ITERATIONID IS NOT NULL
             {date_filter}
         """)
@@ -15730,10 +15800,7 @@ def get_match_team_analytics(
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'LIVE' THEN 1 ELSE 0 END), 0) as live_reports,
                 COALESCE(SUM(CASE WHEN UPPER(sr.SCOUTING_TYPE) = 'VIDEO' THEN 1 ELSE 0 END), 0) as video_reports
             FROM {core_table('scout_reports')} sr
-            INNER JOIN {read_table('matches')} m ON (
-                (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
-                (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
-            )
+            {matches_join}
             WHERE m.ITERATIONID IS NOT NULL {date_filter}
             GROUP BY m.ITERATIONID
             ORDER BY report_count DESC
@@ -15745,7 +15812,7 @@ def get_match_team_analytics(
             # Try to convert to int and lookup in mapping
             try:
                 iteration_id = int(iteration_id_str)
-                competition_name = ITERATION_MAPPING.get(iteration_id, f"ID {iteration_id}")
+                competition_name = competition_names.get(iteration_id) or ITERATION_MAPPING.get(iteration_id, f"ID {iteration_id}")
             except (ValueError, TypeError):
                 competition_name = iteration_id_str or "Unknown Competition"
 
@@ -15757,13 +15824,13 @@ def get_match_team_analytics(
             })
 
         # 9. Team Coverage - detailed per-team, per-scout breakdown with live/video split
-        # Include both external and internal matches, but only internal matches with squad IDs
+        # Include named teams in both external and manually added fixtures.
         # Combine home and away appearances for each team
         cursor.execute(f"""
             WITH match_reports AS (
                 SELECT
                     sr.ID as report_id,
-                    COALESCE(m.ID, m.CAFC_MATCH_ID) as match_id,
+                    CONCAT(m.DATA_SOURCE, ':', TO_VARCHAR(IFF(m.DATA_SOURCE = 'external', m.ID, m.CAFC_MATCH_ID))) as match_id,
                     m.HOMESQUADNAME,
                     m.HOMESQUADID,
                     m.AWAYSQUADNAME,
@@ -15772,13 +15839,9 @@ def get_match_team_analytics(
                     sr.SCOUTING_TYPE,
                     COALESCE(TRIM(CONCAT(u.FIRSTNAME, ' ', u.LASTNAME)), u.USERNAME, 'Unknown Scout') as scout_name
                 FROM {core_table('scout_reports')} sr
-                INNER JOIN {read_table('matches')} m ON (
-                    (sr.MATCH_ID = m.ID AND m.DATA_SOURCE = 'external') OR
-                    (sr.MATCH_ID = m.CAFC_MATCH_ID AND m.DATA_SOURCE = 'internal')
-                )
+                {matches_join}
                 LEFT JOIN {core_table('users')} u ON sr.USER_ID = u.ID
-                WHERE (m.DATA_SOURCE = 'external' OR
-                       (m.DATA_SOURCE = 'internal' AND (m.HOMESQUADID IS NOT NULL OR m.AWAYSQUADID IS NOT NULL)))
+                WHERE 1 = 1
                   {date_filter}
             ),
             team_scout_data AS (
@@ -15791,7 +15854,7 @@ def get_match_team_analytics(
                     scout_name
                 FROM match_reports
                 WHERE HOMESQUADNAME IS NOT NULL
-                  AND (DATA_SOURCE = 'external' OR (DATA_SOURCE = 'internal' AND HOMESQUADID IS NOT NULL))
+
 
                 UNION ALL
 
@@ -15804,18 +15867,24 @@ def get_match_team_analytics(
                     scout_name
                 FROM match_reports
                 WHERE AWAYSQUADNAME IS NOT NULL
-                  AND (DATA_SOURCE = 'external' OR (DATA_SOURCE = 'internal' AND AWAYSQUADID IS NOT NULL))
+
+            ),
+            team_totals AS (
+                SELECT team_name, COUNT(DISTINCT match_id) AS unique_fixtures
+                FROM team_scout_data GROUP BY team_name
             )
             SELECT
-                team_name,
-                scout_name,
+                ts.team_name,
+                ts.scout_name,
+                MAX(tt.unique_fixtures) AS unique_fixtures,
                 COUNT(DISTINCT match_id) as times_seen,
                 COUNT(DISTINCT report_id) as report_count,
                 COUNT(DISTINCT CASE WHEN UPPER(SCOUTING_TYPE) = 'LIVE' THEN match_id END) as live_matches,
                 COUNT(DISTINCT CASE WHEN UPPER(SCOUTING_TYPE) = 'VIDEO' THEN match_id END) as video_matches
-            FROM team_scout_data
-            GROUP BY team_name, scout_name
-            ORDER BY team_name, times_seen DESC
+            FROM team_scout_data ts
+            JOIN team_totals tt ON tt.team_name = ts.team_name
+            GROUP BY ts.team_name, ts.scout_name
+            ORDER BY ts.team_name, times_seen DESC
         """)
 
         # Build nested structure: team -> scout breakdown with live/video split
@@ -15827,6 +15896,7 @@ def get_match_team_analytics(
             if team_name not in team_scout_breakdown:
                 team_scout_breakdown[team_name] = {
                     "team_name": team_name,
+                    "unique_fixtures": int(row['UNIQUE_FIXTURES'] or 0),
                     "total_times_covered": 0,
                     "total_reports": 0,
                     "scout_breakdown": {}
@@ -15846,6 +15916,8 @@ def get_match_team_analytics(
         team_report_coverage.sort(key=lambda x: x["total_times_covered"], reverse=True)
 
         result = {
+            "generated_at": datetime.utcnow().isoformat() + 'Z',
+            "latest_report_at": latest_report_at.isoformat() if latest_report_at else None,
             "team_coverage": team_coverage,
             "formation_stats": formation_stats,
             "match_timeline": monthly_reports_timeline,

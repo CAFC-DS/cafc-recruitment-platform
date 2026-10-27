@@ -1,6 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
-import { Row, Col, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip, Form, InputGroup } from "react-bootstrap";
+import {
+  Row,
+  Col,
+  Card,
+  Alert,
+  Button,
+  ButtonGroup,
+  Table,
+  OverlayTrigger,
+  Tooltip,
+  Form,
+  InputGroup,
+} from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleStatsCard from "./SimpleStatsCard";
 import SimpleLineChart from "./SimpleLineChart";
@@ -9,6 +21,8 @@ import TeamCoverageTable from "./TeamCoverageTable";
 import AnalyticsDashboardShimmer from "./AnalyticsDashboardShimmer";
 
 interface MatchTeamAnalytics {
+  generated_at?: string;
+  latest_report_at?: string | null;
   total_reports: number;
   unique_competitions: number;
   unique_fixtures: number;
@@ -36,6 +50,7 @@ interface MatchTeamAnalytics {
   }>;
   team_report_coverage: Array<{
     team_name: string;
+    unique_fixtures?: number;
     total_times_covered: number;
     total_reports: number;
     scout_breakdown: {
@@ -61,31 +76,62 @@ const MatchTeamAnalyticsTab: React.FC = () => {
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [selectedScouts, setSelectedScouts] = useState<string[]>([]);
 
+  const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const requestRef = useRef<AbortController | null>(null);
+  const fetchData = useCallback(
+    async (force = false) => {
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
+      if (!force) setLoading(true);
+      setRefreshing(true);
+      setError("");
+      try {
+        const params: { months?: number; refresh?: boolean } = {};
+        if (monthFilter) params.months = monthFilter;
+        if (force) params.refresh = true;
+        const response = await axiosInstance.get("/analytics/matches-teams", {
+          params,
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) setData(response.data);
+      } catch (e) {
+        if (!controller.signal.aborted)
+          setError(
+            "Match and team analytics could not be refreshed. Please retry.",
+          );
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    },
+    [monthFilter],
+  );
   useEffect(() => {
     fetchData();
-  }, [monthFilter]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const params: any = {};
-      if (monthFilter) params.months = monthFilter;
-
-      const response = await axiosInstance.get("/analytics/matches-teams", { params });
-      setData(response.data);
-    } catch (error) {
-      console.error("Error fetching match/team analytics:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => requestRef.current?.abort();
+  }, [fetchData]);
 
   if (loading) {
     return <AnalyticsDashboardShimmer statCount={4} />;
   }
 
   if (!data) {
-    return <div className="text-center py-5">No data available</div>;
+    return (
+      <Alert variant="danger">
+        {error || "No match and team analytics available."}{" "}
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => fetchData(true)}
+        >
+          Retry
+        </Button>
+      </Alert>
+    );
   }
 
   // Prepare timeline data
@@ -97,52 +143,105 @@ const MatchTeamAnalyticsTab: React.FC = () => {
   const timelineDatasets = (data.match_timeline?.datasets || []).map((ds) => ({
     label: ds.label || "",
     data: ds.data || [],
-    borderColor: ds.label === "Live" ? theme.colors.pitch : ds.label === "Video" ? theme.colors.amber : undefined,
+    borderColor:
+      ds.label === "Live"
+        ? theme.colors.pitch
+        : ds.label === "Video"
+          ? theme.colors.amber
+          : undefined,
     backgroundColor: "transparent",
   }));
 
   // Prepare formation data
-  const formationLabels = (data.formation_stats || []).map((f) => f.formation || "Unknown");
+  const formationLabels = (data.formation_stats || []).map(
+    (f) => f.formation || "Unknown",
+  );
   const formationData = (data.formation_stats || []).map((f) => f.count || 0);
 
   return (
     <div>
+      {error && <Alert variant="danger">{error}</Alert>}
+      <div className="ra-coverage-freshness" role="status">
+        <div>
+          <span>
+            {data.generated_at
+              ? `Updated ${new Date(data.generated_at).toLocaleString("en-GB")}`
+              : "Updates may take up to 10 minutes to appear."}
+          </span>
+          {data.latest_report_at && (
+            <small>
+              Latest linked report in this period:{" "}
+              {new Date(data.latest_report_at).toLocaleString("en-GB")}
+            </small>
+          )}
+        </div>
+        <Button
+          size="sm"
+          variant="outline-secondary"
+          disabled={refreshing}
+          onClick={() => fetchData(true)}
+        >
+          {refreshing ? "Refreshing…" : "Refresh data"}
+        </Button>
+      </div>
       {/* Filters Section at Top */}
       <Row className="mb-4">
         <Col>
           <Card className="shadow-sm">
             <Card.Body className="py-3">
-              <div className="d-flex align-items-center justify-content-between flex-wrap" style={{ gap: "1rem" }}>
-                <div className="d-flex align-items-center" style={{ gap: "1rem" }}>
-                  <span className="text-muted" style={{ fontSize: "0.9rem", fontWeight: 500 }}>
+              <div
+                className="d-flex align-items-center justify-content-between flex-wrap"
+                style={{ gap: "1rem" }}
+              >
+                <div
+                  className="d-flex align-items-center"
+                  style={{ gap: "1rem" }}
+                >
+                  <span
+                    className="text-muted"
+                    style={{ fontSize: "0.9rem", fontWeight: 500 }}
+                  >
                     Filters:
                   </span>
-                  <div className="d-flex align-items-center" style={{ gap: "0.5rem" }}>
-                    <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>Time Period:</span>
+                  <div
+                    className="d-flex align-items-center"
+                    style={{ gap: "0.5rem" }}
+                  >
+                    <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
+                      Time Period:
+                    </span>
                     <ButtonGroup size="sm">
                       <Button
-                        variant={monthFilter === 3 ? 'dark' : 'outline-secondary'}
+                        variant={
+                          monthFilter === 3 ? "dark" : "outline-secondary"
+                        }
                         onClick={() => setMonthFilter(3)}
                         style={{ minWidth: "45px" }}
                       >
                         3M
                       </Button>
                       <Button
-                        variant={monthFilter === 6 ? 'dark' : 'outline-secondary'}
+                        variant={
+                          monthFilter === 6 ? "dark" : "outline-secondary"
+                        }
                         onClick={() => setMonthFilter(6)}
                         style={{ minWidth: "45px" }}
                       >
                         6M
                       </Button>
                       <Button
-                        variant={monthFilter === 9 ? 'dark' : 'outline-secondary'}
+                        variant={
+                          monthFilter === 9 ? "dark" : "outline-secondary"
+                        }
                         onClick={() => setMonthFilter(9)}
                         style={{ minWidth: "45px" }}
                       >
                         9M
                       </Button>
                       <Button
-                        variant={monthFilter === 12 ? 'dark' : 'outline-secondary'}
+                        variant={
+                          monthFilter === 12 ? "dark" : "outline-secondary"
+                        }
                         onClick={() => setMonthFilter(12)}
                         style={{ minWidth: "45px" }}
                       >
@@ -155,13 +254,19 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                   placement="left"
                   overlay={
                     <Tooltip id="filters-tooltip">
-                      Filters apply to all sections: Summary Stats, Timeline, Competition Reports, and Formation Stats
+                      The time period applies to all sections, including
+                      detailed team coverage. Team and scout searches narrow the
+                      tables.
                     </Tooltip>
                   }
                 >
                   <span
                     className="badge bg-light text-dark"
-                    style={{ cursor: 'help', fontSize: "0.75rem", padding: "0.4rem 0.6rem" }}
+                    style={{
+                      cursor: "help",
+                      fontSize: "0.75rem",
+                      padding: "0.4rem 0.6rem",
+                    }}
                   >
                     ℹ️ Filter Info
                   </span>
@@ -215,14 +320,39 @@ const MatchTeamAnalyticsTab: React.FC = () => {
       {/* Reports by Competition and Reports by Team - Side by Side */}
       <Row className="mb-4">
         <Col md={6}>
-          <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-            <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
-              <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>Reports by Competition</h5>
+          <Card
+            className="shadow-sm"
+            style={{ border: "1px solid #e5e7eb", borderRadius: "8px" }}
+          >
+            <Card.Header
+              style={{
+                backgroundColor: "#212529",
+                borderBottom: "2px solid #b91c1c",
+                padding: "1rem 1.25rem",
+              }}
+            >
+              <h5
+                className="mb-0"
+                style={{ color: "#ffffff", fontWeight: 600 }}
+              >
+                Reports by Competition
+              </h5>
             </Card.Header>
             <Card.Body className="p-0">
-              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <Table hover striped className="table-compact table-sm mb-0" style={{ textAlign: 'center' }}>
-                  <thead className="table-dark" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <div
+                className="table-responsive"
+                style={{ maxHeight: "500px", overflowY: "auto" }}
+              >
+                <Table
+                  hover
+                  striped
+                  className="table-compact table-sm mb-0"
+                  style={{ textAlign: "center" }}
+                >
+                  <thead
+                    className="table-dark"
+                    style={{ position: "sticky", top: 0, zIndex: 10 }}
+                  >
                     <tr>
                       <th>Competition</th>
                       <th>Total Reports</th>
@@ -240,15 +370,23 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                     ) : (
                       (data.competition_coverage || []).map((comp, idx) => (
                         <tr key={idx}>
-                          <td><strong>{comp.competition_name}</strong></td>
                           <td>
-                            <span className="badge bg-dark">{comp.report_count}</span>
+                            <strong>{comp.competition_name}</strong>
                           </td>
                           <td>
-                            <span className="badge badge-accent-live">{comp.live_reports}</span>
+                            <span className="badge bg-dark">
+                              {comp.report_count}
+                            </span>
                           </td>
                           <td>
-                            <span className="badge badge-accent-video">{comp.video_reports}</span>
+                            <span className="badge badge-accent-live">
+                              {comp.live_reports}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="badge badge-accent-video">
+                              {comp.video_reports}
+                            </span>
                           </td>
                         </tr>
                       ))
@@ -261,14 +399,39 @@ const MatchTeamAnalyticsTab: React.FC = () => {
         </Col>
 
         <Col md={6}>
-          <Card className="shadow-sm" style={{ border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-            <Card.Header style={{ backgroundColor: '#212529', borderBottom: '2px solid #b91c1c', padding: '1rem 1.25rem' }}>
-              <h5 className="mb-0" style={{ color: '#ffffff', fontWeight: 600 }}>Reports by Team</h5>
+          <Card
+            className="shadow-sm"
+            style={{ border: "1px solid #e5e7eb", borderRadius: "8px" }}
+          >
+            <Card.Header
+              style={{
+                backgroundColor: "#212529",
+                borderBottom: "2px solid #b91c1c",
+                padding: "1rem 1.25rem",
+              }}
+            >
+              <h5
+                className="mb-0"
+                style={{ color: "#ffffff", fontWeight: 600 }}
+              >
+                Reports by Team
+              </h5>
             </Card.Header>
             <Card.Body className="p-0">
-              <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                <Table hover striped className="table-compact table-sm mb-0" style={{ textAlign: 'center' }}>
-                  <thead className="table-dark" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <div
+                className="table-responsive"
+                style={{ maxHeight: "500px", overflowY: "auto" }}
+              >
+                <Table
+                  hover
+                  striped
+                  className="table-compact table-sm mb-0"
+                  style={{ textAlign: "center" }}
+                >
+                  <thead
+                    className="table-dark"
+                    style={{ position: "sticky", top: 0, zIndex: 10 }}
+                  >
                     <tr>
                       <th>Team</th>
                       <th>Total Reports</th>
@@ -286,15 +449,23 @@ const MatchTeamAnalyticsTab: React.FC = () => {
                     ) : (
                       (data.team_coverage || []).map((team, idx) => (
                         <tr key={idx}>
-                          <td><strong>{team.team_name}</strong></td>
                           <td>
-                            <span className="badge bg-dark">{team.total_reports}</span>
+                            <strong>{team.team_name}</strong>
                           </td>
                           <td>
-                            <span className="badge badge-accent-live">{team.live_reports}</span>
+                            <span className="badge bg-dark">
+                              {team.total_reports}
+                            </span>
                           </td>
                           <td>
-                            <span className="badge badge-accent-video">{team.video_reports}</span>
+                            <span className="badge badge-accent-live">
+                              {team.live_reports}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="badge badge-accent-video">
+                              {team.video_reports}
+                            </span>
                           </td>
                         </tr>
                       ))
