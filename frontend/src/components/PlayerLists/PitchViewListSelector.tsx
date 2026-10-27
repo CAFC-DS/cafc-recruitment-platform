@@ -202,7 +202,10 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
                 >
                   {list ? (
                     <Badge
+                      as="button"
+                      type="button"
                       bg=""
+                      aria-pressed={visibleListIds.has(list.id)}
                       onClick={() => onToggleList(list.id)}
                       style={{
                         ...badgeStyles.pill,
@@ -252,11 +255,15 @@ export const PitchViewListSelector: React.FC<PitchViewListSelectorProps> = ({
               const isVisible = visibleListIds.has(list.id);
               return (
                 <Badge
+                  as="button"
+                  type="button"
                   key={list.id}
                   bg=""
+                  aria-pressed={isVisible}
                   onClick={() => onToggleList(list.id)}
                   style={{
                     ...badgeStyles.pill,
+                    border: 0,
                     backgroundColor: isVisible ? colors.primary : colors.gray[300],
                     color: isVisible ? colors.white : colors.gray[600],
                     cursor: "pointer",
