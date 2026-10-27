@@ -45,12 +45,6 @@
 .lists-workspace__actions [aria-label="Player list view"] .btn-outline-dark { color: var(--bs-body-color); background: transparent; }
 .lists-workspace__actions > div > .btn, .lists-workspace__actions > div > .dropdown > .btn { font-size: .75rem; min-height: 36px; }
 .lists-workspace__updating { margin: .75rem 0 0; font-size: .75rem; }
-.lists-workspace .shortlist-pitch__toolbar { align-items: flex-end; }
-.lists-workspace .shortlist-pitch__toolbar p { min-width: 180px; }
-.lists-workspace .shortlist-pitch__toolbar p strong { display: block; font-weight: 600; font-size: .875rem; margin-bottom: .375rem; }
-.lists-workspace .shortlist-pitch__toolbar p > span { display: block; font-size: .6875rem; }
-.lists-workspace .shortlist-pitch__field { min-width: 0; padding: 2.5rem 2rem; }
-.lists-workspace .shortlist-pitch__layout { gap: 1.5rem 1rem; }
 @media (max-width: 1199px) {
   .lists-workspace { padding-inline: 1.25rem; }
   .lists-workspace__body { grid-template-columns: 216px minmax(0, 1fr); }
@@ -66,7 +60,6 @@
   .lists-workspace .list-filters--compact > .card-header { padding-top: .75rem; }
   .lists-workspace .list-filters__search { flex-basis: 240px; }
   .lists-workspace .list-filters--compact .card-header > div > div { width: auto; gap: 1rem !important; }
-  .lists-workspace .shortlist-pitch__field { min-width: 0; }
 }
 @media (max-width: 575px) {
   .lists-workspace { padding: 1rem .75rem 1.5rem; }
@@ -112,15 +105,11 @@
 .lists-workspace__selection button.badge[aria-pressed="true"] .lists-workspace__list-name { color: var(--color-text, #1c1f24); font-weight: 600; }
 .lists-workspace__selection .lists-workspace__list-options { gap: .25rem !important; }
 @media (max-width: 575px) {
-  .lists-workspace .shortlist-pitch__field { padding: .875rem; }
-  .lists-workspace .shortlist-pitch__layout { gap: .875rem; }
-  .shortlist-pitch__players { max-height: none; }
 }
 
 .lists-workspace__list-count { background: transparent; padding: 0; }
 .lists-workspace__selection button.badge[aria-pressed="true"] { background: transparent !important; }
 .lists-workspace__selection button.badge:hover { background: var(--color-surface, #fff) !important; }
-.lists-workspace .shortlist-pitch__caption { color: var(--color-text-muted, #5b6169); font-size: .6875rem; }
 
 .lists-workspace .list-filters--compact .range-inputs { display: flex; align-items: center; gap: .5rem; }
 .lists-workspace .list-filters--compact .range-inputs .form-control { min-width: 0; width: 0 !important; flex: 1; }
@@ -132,9 +121,6 @@
 .lists-workspace .list-filters--compact .filter-section-improved { background: transparent; border: 0; box-shadow: none; }
 
 @media(min-width:992px) {
-  .lists-workspace .shortlist-pitch__field { padding: 1.25rem 1.5rem; }
-  .lists-workspace .shortlist-pitch__layout { gap: .625rem 1rem; }
-  .lists-workspace .shortlist-pitch__toolbar { margin-bottom: .875rem; }
   .lists-workspace:has(.shortlist-pitch) .lists-workspace__header { margin-bottom: .75rem; padding-bottom: .75rem; }
   .lists-workspace:has(.shortlist-pitch) .lists-workspace__actions { margin-bottom: .75rem; padding-bottom: .75rem; }
 }

@@ -4,8 +4,8 @@ description: Existing staff interface for recruitment lists and positional short
 colors:
   primary: "#b91c1c"
   pitch-heading: "#d60000"
-  pitch-surface: "#171717"
-  pitch-panel: "#f7f7f5"
+  pitch-surface: "#234b3b"
+  pitch-panel: "#17382d"
   pitch-text: "#f5f5f7"
   stage-one: "#6b7280"
   stage-two: "#f59e0b"
@@ -40,7 +40,7 @@ This is a descriptive record of the existing implementation for live refinement,
 
 ## Colors
 
-Red identifies club and selected-list controls. Shared recruitment-stage colours carry the same meaning in tables and pitches; do not repurpose them as decoration. The shortlist pitch uses a neutral black field with white player panels and dark player names. The page inherits the shared site theme, including surface, text, border and form colours. The navigation carries the club crest; avoid repeating it inside the pitch. Recruitment-stage colours retain their meanings. Position labels remain light against the field.
+Red identifies club and selected-list controls. Shared recruitment-stage colours carry the same meaning in tables and pitches; do not repurpose them as decoration. The shortlist pitch uses restrained green field and panel tokens, white player names and pale green club labels. The page inherits the shared site theme, including surface, text, border and form colours. The navigation carries the club crest; avoid repeating it inside the pitch. Recruitment-stage colours retain their meanings. Position labels remain light against the field.
 
 ## Typography
 
@@ -48,7 +48,7 @@ Global display typography uses IBM Plex Sans Condensed; UI copy uses IBM Plex Sa
 
 ## Layout
 
-Internal Lists uses a desktop sidebar with name search and collapsible advanced filters above a vertical list selector, beside a wider table/pitch workspace. Stage selection and stage counts form one control group; there is no duplicate shortlist heading or date. The shortlist pitch is always portrait: attack at the top, a dedicated central midfield row, full-backs wide with their headers aligned to the halfway line, above the three centre-backs and goalkeeper at the bottom. Full-back groups use LB/LWB and RB/RWB labels on the outer edges of the defensive line. The field uses up to 1440px of width with compact player rows and content-driven height, retaining the vertical formation and goalkeeper at the bottom. Muted green mowing bands and white boundaries, centre circle and penalty areas establish the pitch. Dark green player strips carry white player names and pale green club names. All players remain visible without nested scrolling. Below 768px positions become two columns, and below 576px one column, retaining goalkeeper last. Compact filters provide one persistent search, one reset action, an active-category count, and explicit score-range inputs. Stage selection is shown above the pitch rather than duplicated in the sidebar. Keep the pitch and controls visible while filtered data refreshes.
+Internal Lists uses a desktop sidebar with name search and collapsible advanced filters above a vertical list selector, beside a wider table/pitch workspace. Stage selection and stage counts form one control group; there is no duplicate shortlist heading or date. The shortlist pitch keeps a vertical football formation with attack at the top and goalkeeper at the bottom. It uses two equal-height halves: the full-back groups start at the top of the defensive half, exactly at halfway, and reserve their full height in outer columns. Centre-backs sit below that line in inner columns and GK is centred below. No JavaScript positioning or translated full-back panels are used. The pitch uses a single coherent set of component rules, subdued grass bands, a truly circular centre marking and quiet outlines. Player names are 13px and clubs 11px; wide midfield groups use up to three columns. All names remain visible. Phones use an explicit reading layout, with CF, midfield and GK spanning the width; touch rows are at least 44px. Stage selection keeps at least one stage active and provides an explicit All stages reset. Compact filters provide one persistent search, one reset action, an active-category count, and explicit score-range inputs. Stage selection is shown above the pitch rather than duplicated in the sidebar. Keep the pitch and controls visible while filtered data refreshes.
 
 ## Elevation & Depth
 

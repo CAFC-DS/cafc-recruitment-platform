@@ -40,11 +40,12 @@ test("honours pending removals and stage changes without dropping custom lists",
   expect(within(custom).getByLabelText("Stage 5")).toBeInTheDocument();
 });
 
-test("clearing the last stage requests the shared all-stages filter", () => {
+test("last selected stage stays selected until another stage is enabled", () => {
   const onStagesChange = jest.fn();
   render(<MemoryRouter><ShortlistPitch {...baseProps} stages={["Stage 5"]} onStagesChange={onStagesChange} lists={[]} /></MemoryRouter>);
   fireEvent.click(screen.getByRole("button", { name: "Stage 5" }));
-  expect(onStagesChange).toHaveBeenCalledWith([]);
+  expect(screen.getByRole("button", { name: "Stage 5" })).toBeDisabled();
+  expect(onStagesChange).not.toHaveBeenCalled();
   expect(screen.getByRole("status")).toHaveTextContent("No players match");
 });
 
@@ -98,4 +99,19 @@ test("handles a missing player name without crashing the pitch", () => {
   const unnamed = { ...player(99, "", "Stage 4"), player_name: null } as unknown as PlayerInList;
   render(<MemoryRouter><ShortlistPitch {...baseProps} lists={[list(1, "CF", [unnamed, player(100, "Named player", "Stage 4")])]} /></MemoryRouter>);
   expect(screen.getByText("Unnamed player")).toBeInTheDocument();
+});
+
+test("All stages explicitly resets the shared stage filter", () => {
+  const onStagesChange = jest.fn();
+  render(<MemoryRouter><ShortlistPitch {...baseProps} lists={[]} onStagesChange={onStagesChange} /></MemoryRouter>);
+  fireEvent.click(screen.getByRole("button", { name: "All stages" }));
+  expect(onStagesChange).toHaveBeenCalledWith([]);
+});
+
+test("formation reserves separate attack and defence halves with fullbacks first in defence", () => {
+  const { container } = render(<MemoryRouter><ShortlistPitch {...baseProps} lists={[]} /></MemoryRouter>);
+  const defence = container.querySelector('.shortlist-pitch__half--defence')!;
+  expect(within(defence as HTMLElement).getByRole('region', { name:'LB/LWB players' })).toBeInTheDocument();
+  expect(within(defence as HTMLElement).getByRole('region', { name:'RB/RWB players' })).toBeInTheDocument();
+  expect(within(defence as HTMLElement).queryByRole('region', { name:'DM/CM players' })).not.toBeInTheDocument();
 });
