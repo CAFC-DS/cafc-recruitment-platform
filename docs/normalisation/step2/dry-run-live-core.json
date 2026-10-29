@@ -1,0 +1,22 @@
+{
+  "schema": "CAFC_DB.CORE",
+  "mode": "dry-run",
+  "reports": {
+    "PLAYER_STATUS": {
+      "resolved": 12545,
+      "unresolved": 7
+    },
+    "FIXTURE_STATUS": {
+      "ambiguous": 24,
+      "none": 1181,
+      "resolved": 11312,
+      "unresolved": 35
+    }
+  },
+  "list_items": {
+    "PLAYER_STATUS": {
+      "resolved": 3209,
+      "unresolved": 6
+    }
+  }
+}

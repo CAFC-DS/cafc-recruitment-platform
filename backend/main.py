@@ -18,7 +18,8 @@ from snowflake.connector.connection import SnowflakeConnection
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Any, Tuple, Union
+import time
 import calendar
 import datetime
 from passlib.context import CryptContext
@@ -251,6 +252,109 @@ def find_match_by_any_id(match_id: int, cursor):
         return result, "internal"
 
     return None, None
+
+
+# --- Canonical report/list keys -------------------------------------------
+# CORE.SCOUT_REPORTS / PLAYER_LIST_ITEMS keep their legacy PLAYER_ID +
+# CAFC_PLAYER_ID pair (CAFC_PLAYER_ID there means "internal player"). The
+# CANONICAL_* columns hold the universal player/fixture keys for every row.
+# They are written only once the columns exist in CORE, so this code can ship
+# before the DDL; a missing column is re-checked every few minutes.
+_CORE_COLUMN_CACHE: Dict[str, Tuple[set, float]] = {}
+_CORE_COLUMN_RECHECK_SECONDS = 300
+
+
+def core_table_has_columns(cursor, table_name: str, *column_names: str) -> bool:
+    cached = _CORE_COLUMN_CACHE.get(table_name)
+    now = time.time()
+    if cached and (set(column_names) <= cached[0] or now - cached[1] < _CORE_COLUMN_RECHECK_SECONDS):
+        return set(column_names) <= cached[0]
+    try:
+        cursor.execute(f"DESCRIBE TABLE {core_table(table_name)}")
+        columns = {str(row[0]).upper() for row in cursor.fetchall()}
+    except Exception:
+        logging.exception(f"Could not describe {table_name} for canonical keys")
+        columns = set()
+    _CORE_COLUMN_CACHE[table_name] = (columns, now)
+    return set(column_names) <= columns
+
+
+def canonical_player_key(player_data) -> Optional[int]:
+    """CAFC_PLAYER_ID from a players-read row (PLAYERID, CAFC_PLAYER_ID, ...)."""
+    if not player_data or player_data[1] is None:
+        return None
+    return int(player_data[1])
+
+
+def record_report_canonical_keys(cursor, report_id, player_data, match_id) -> None:
+    """Store canonical player/fixture keys on a report in the caller's transaction."""
+    if report_id is None or not core_table_has_columns(
+        cursor, "scout_reports", "CANONICAL_PLAYER_ID", "CANONICAL_FIXTURE_ID"
+    ):
+        return
+    canonical_fixture_id = None
+    if match_id:
+        match_data, _ = find_match_by_any_id(match_id, cursor)
+        if match_data and match_data[1] is not None:
+            canonical_fixture_id = int(match_data[1])
+        else:
+            logging.warning(f"Report {report_id}: match {match_id} has no canonical fixture")
+    canonical_player_id = canonical_player_key(player_data)
+    if player_data and canonical_player_id is None:
+        logging.warning(f"Report {report_id}: player has no canonical id")
+    try:
+        cursor.execute(
+            f"UPDATE {core_table('scout_reports')} SET CANONICAL_PLAYER_ID = %s, CANONICAL_FIXTURE_ID = %s WHERE ID = %s",
+            (canonical_player_id, canonical_fixture_id, report_id),
+        )
+    except Exception:
+        # Keys are derivable later by the backfill; never fail the user's save.
+        logging.exception(f"Report {report_id}: could not store canonical keys")
+
+
+def record_list_item_canonical_key(cursor, list_id, player_id, cafc_player_id) -> None:
+    """Store the canonical player key on a list membership just written."""
+    if not core_table_has_columns(cursor, "player_list_items", "CANONICAL_PLAYER_ID"):
+        return
+    try:
+        if player_id is not None:
+            cursor.execute(
+                f"SELECT CAFC_PLAYER_ID FROM {read_table('players')} WHERE PLAYERID = %s AND DATA_SOURCE = 'external'",
+                (player_id,),
+            )
+        else:
+            cursor.execute(
+                f"SELECT CAFC_PLAYER_ID FROM {read_table('players')} WHERE CAFC_PLAYER_ID = %s AND DATA_SOURCE = 'internal'",
+                (cafc_player_id,),
+            )
+        rows = cursor.fetchall()
+        canonical_player_id = int(rows[0][0]) if len(rows) == 1 and rows[0][0] is not None else None
+        if canonical_player_id is None:
+            logging.warning(f"List {list_id}: player {player_id or cafc_player_id} has no single canonical id")
+            return
+        if player_id is not None:
+            match_sql, match_params = "PLAYER_ID = %s", (player_id,)
+        else:
+            match_sql, match_params = "PLAYER_ID IS NULL AND CAFC_PLAYER_ID = %s", (cafc_player_id,)
+        cursor.execute(
+            f"UPDATE {core_table('player_list_items')} SET CANONICAL_PLAYER_ID = %s "
+            f"WHERE LIST_ID = %s AND {match_sql} AND CANONICAL_PLAYER_ID IS NULL",
+            (canonical_player_id, list_id, *match_params),
+        )
+    except Exception:
+        logging.exception(f"List {list_id}: could not store canonical player key")
+
+
+def repoint_canonical_player(cursor, remove_cafc_id, keep_cafc_id) -> None:
+    """After a player merge, move stored canonical keys to the kept player."""
+    if remove_cafc_id is None or keep_cafc_id is None or remove_cafc_id == keep_cafc_id:
+        return
+    for table in ("scout_reports", "player_list_items"):
+        if core_table_has_columns(cursor, table, "CANONICAL_PLAYER_ID"):
+            cursor.execute(
+                f"UPDATE {core_table(table)} SET CANONICAL_PLAYER_ID = %s WHERE CANONICAL_PLAYER_ID = %s",
+                (keep_cafc_id, remove_cafc_id),
+            )
 
 
 # Global schema cache - loaded on startup to avoid repeated DESCRIBE TABLE queries
@@ -819,6 +923,9 @@ def _create_new_connection():
         "login_timeout": 15,   # Fail fast on auth/network issues (was hanging indefinitely)
         "network_timeout": 30,  # Reduced from 60s so failures surface quickly
         "query_timeout": 300,  # 5 minutes
+        # Report saves hold row locks until commit; fail a blocked statement
+        # after a minute instead of Snowflake's 12-hour default.
+        "session_parameters": {"LOCK_TIMEOUT": 60},
     }
 
     # Disable SSL verification in Railway for certificate issues
@@ -865,23 +972,88 @@ class PooledSnowflakeConnection:
     """
     Wrapper for Snowflake connections that returns connection to pool on close.
     This allows existing code with conn.close() to work with pooling.
+
+    `conn.autocommit = False` starts a real transaction (BEGIN) on the session,
+    and `conn.autocommit = True` ends it. The connector's own `autocommit` is a
+    method, so plain assignment used to shadow it without issuing any SQL and
+    multi-statement writes were never atomic. A transaction still open at
+    close() is rolled back, and a session whose commit or rollback failed is
+    discarded, so neither can leak into the next borrower.
     """
 
     def __init__(self, real_conn, pool):
-        self._real_conn = real_conn
-        self._pool = pool
-        self._closed = False
+        object.__setattr__(self, "_real_conn", real_conn)
+        object.__setattr__(self, "_pool", pool)
+        object.__setattr__(self, "_closed", False)
+        object.__setattr__(self, "_in_transaction", False)
+        object.__setattr__(self, "_poisoned", False)
 
     def __getattr__(self, name):
         """Delegate all other methods to the real connection"""
         return getattr(self._real_conn, name)
+
+    def __setattr__(self, name, value):
+        if name == "autocommit":
+            if value:
+                self._end_transaction()
+            else:
+                self.begin()
+            return
+        object.__setattr__(self, name, value)
+
+    def begin(self):
+        if self._in_transaction:
+            return
+        with self._real_conn.cursor() as cursor:
+            cursor.execute("BEGIN")
+        object.__setattr__(self, "_in_transaction", True)
+
+    def commit(self):
+        try:
+            self._real_conn.commit()
+        except Exception:
+            # Unknown outcome: never hand this session to another request.
+            object.__setattr__(self, "_poisoned", True)
+            raise
+        object.__setattr__(self, "_in_transaction", False)
+
+    def rollback(self):
+        try:
+            self._real_conn.rollback()
+        except Exception:
+            object.__setattr__(self, "_poisoned", True)
+            raise
+        object.__setattr__(self, "_in_transaction", False)
+
+    def _end_transaction(self):
+        # Reached after commit()/rollback() on normal paths. An open transaction
+        # here means the caller never committed, so discard rather than persist.
+        # Runs from callers' `finally` blocks, so it must never raise.
+        if self._in_transaction and not self._poisoned:
+            try:
+                self.rollback()
+            except Exception:
+                logging.exception("Snowflake session transaction could not be rolled back")
 
     def close(self):
         """Return connection to pool instead of closing"""
         if self._closed:
             return
 
-        self._closed = True
+        object.__setattr__(self, "_closed", True)
+
+        if self._in_transaction and not self._poisoned:
+            try:
+                self.rollback()
+            except Exception:
+                logging.exception("Snowflake session transaction could not be rolled back")
+        if self._poisoned:
+            logging.warning("Discarding a Snowflake session after a failed commit/rollback")
+            try:
+                self._real_conn.close()
+            except Exception:
+                pass
+            return
 
         # Try to return to pool if not full
         try:
@@ -6231,6 +6403,7 @@ async def merge_players(
                 (keep_player_id, remove_player_id),
             )
         results.append(f"Updated {cursor.rowcount} rows in player_list_items")
+        repoint_canonical_player(cursor, remove_cafc_id, keep_cafc_id)
 
         # Reassign player_list_flags (keyed by UNIVERSAL_ID text, not a dual
         # column pair). Snowflake does not enforce a uniqueness constraint on
@@ -8025,6 +8198,7 @@ async def create_scout_report(
 
         report_id = report_id_row[0]
         print(f"🔍 DEBUG: Report created successfully with ID={report_id}")
+        record_report_canonical_keys(cursor, report_id, player_data if player_id else None, match_id)
 
         # Batch insert individual attribute scores for better performance
         if report_type == "Player Assessment" and report.attributeScores:
@@ -8242,6 +8416,7 @@ async def create_scout_reports_batch(
             if report_row:
                 report_id = report_row[0]
                 created_report_ids.append(report_id)
+                record_report_canonical_keys(cursor, report_id, player_data if player_id else None, match_id)
 
                 # Insert attribute scores if present
                 if report_type == "Player Assessment" and report.attributeScores:
@@ -8433,6 +8608,7 @@ async def update_scout_report(
         )
 
         cursor.execute(sql, values)
+        record_report_canonical_keys(cursor, report_id, player_data if player_id else None, match_id)
 
         # Delete existing attribute scores and insert new ones
         cursor.execute(
@@ -18503,6 +18679,7 @@ async def add_player_to_list(
                 player_data.stage or "Stage 1",
             ),
         )
+        record_list_item_canonical_key(cursor, list_id, player_data.player_id, player_data.cafc_player_id)
 
         # Get the ID of the newly created list item
         cursor.execute(
@@ -18705,6 +18882,7 @@ async def move_player_between_lists(
                 datetime.utcnow(),
             ),
         )
+        record_list_item_canonical_key(cursor, move_data.destination_list_id, player_id, cafc_player_id)
         # Snowflake does not provide a portable last-insert-id API, so resolve the
         # newly inserted membership using its unique player/list combination.
         cursor.execute(
@@ -19635,6 +19813,7 @@ async def bulk_add_players_to_list(
                 """,
                 (list_id, player_id, cafc_player_id, max_order + 1, current_user.id, stage, datetime.utcnow()),
             )
+            record_list_item_canonical_key(cursor, list_id, player_id, cafc_player_id)
 
             cursor.execute(
                 f"""
