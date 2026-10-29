@@ -36,7 +36,7 @@ test("holds multiple archive reasons and include options until Apply All", async
   expect(screen.getByLabelText("Scouting")).not.toBeChecked();
   expect(screen.getByRole("button", { name: "2 reasons selected" })).toHaveAttribute("aria-expanded", "true");
   await act(async () => {
-    fireEvent.click(screen.getByRole("button", { name: "None selected" }));
+    fireEvent.click(screen.getByRole("button", { name: "Include options" }));
   });
   fireEvent.click(screen.getByLabelText("Include archived players"));
   fireEvent.click(screen.getByLabelText("Include archived reports in counts"));

@@ -1,3 +1,4 @@
+import { applyListInclusions } from "../utils/listInclusions";
 /**
  * KanbanPage Component - REDESIGNED
  *
@@ -124,7 +125,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({ category });
 
   // Use the custom hook for data fetching
-  const { lists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
+  const { lists: sourceLists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
 
   // Local error state
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +204,13 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
   const [favoriteDetails, setFavoriteDetails] = useState<Record<string, FavoriteDetails>>({});
   const [playerDecisions, setPlayerDecisions] = useState<Set<string>>(new Set());
+  const lists = useMemo(
+    () => applyListInclusions(sourceLists, {
+      includeSummerTransfers: filters.includeSummerTransfers,
+      includeFavourites: filters.includeFavourites,
+    }, playerFavorites),
+    [sourceLists, filters.includeSummerTransfers, filters.includeFavourites, playerFavorites],
+  );
 
   // Stage change reason modal state
   const [showStageReasonModal, setShowStageReasonModal] = useState(false);

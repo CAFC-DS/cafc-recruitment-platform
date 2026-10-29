@@ -57,3 +57,28 @@ test('drawer Apply closes the editor and keeps staged criteria together', () => 
   expect(props.onFilterChange).toHaveBeenCalledWith({...filters,club:'Charlton',minAge:'18'});
   expect(props.setShowFilters).toHaveBeenCalledWith(false);
 });
+
+
+test('inclusion checkboxes start with favourites on and summer transfers off and apply together', () => {
+  render(<AdvancedFilters {...props} />);
+  expect(screen.getByLabelText('Include favourites')).toBeChecked();
+  expect(screen.getByLabelText('Include summer transfers')).not.toBeChecked();
+  fireEvent.click(screen.getByLabelText('Include favourites'));
+  fireEvent.click(screen.getByLabelText('Include summer transfers'));
+  expect(props.onFilterChange).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', {name:'Apply filters'}));
+  expect(props.onFilterChange).toHaveBeenCalledWith({...filters,includeFavourites:false,includeSummerTransfers:true});
+});
+
+test('reset restores default inclusions and applied inclusion chips can be removed', () => {
+  const view = render(<AdvancedFilters {...props} filters={{...filters,includeFavourites:false,includeSummerTransfers:true}} />);
+  fireEvent.click(screen.getByRole('button', {name:'Reset filters'}));
+  expect(screen.getByLabelText('Include favourites')).toBeChecked();
+  expect(screen.getByLabelText('Include summer transfers')).not.toBeChecked();
+  view.unmount();
+  render(<AdvancedFilters {...props} showFilters={false} filters={{...filters,includeFavourites:false,includeSummerTransfers:true}} />);
+  fireEvent.click(screen.getByRole('button', {name:'Remove filter Favourites excluded'}));
+  expect(props.onFilterChange).toHaveBeenCalledWith({includeFavourites:true});
+  fireEvent.click(screen.getByRole('button', {name:'Remove filter Summer transfers included'}));
+  expect(props.onFilterChange).toHaveBeenCalledWith({includeSummerTransfers:false});
+});
