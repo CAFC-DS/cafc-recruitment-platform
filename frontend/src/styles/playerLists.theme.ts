@@ -7,7 +7,7 @@
 
 // ========== Stage Colors ==========
 
-export const stageColors = {
+export const newStageColors = {
   "Stage 1": {
     bg: "#6b7280", // Gray
     text: "#ffffff",
@@ -15,22 +15,22 @@ export const stageColors = {
     border: "#4b5563",
   },
   "Stage 2": {
-    bg: "#f59e0b", // Amber
+    bg: "#a65d32", // Copper
     text: "#ffffff",
-    light: "#fbbf24",
-    border: "#d97706",
+    light: "#d99a72",
+    border: "#854725",
   },
   "Stage 3": {
-    bg: "#3b82f6", // Blue
+    bg: "#a44d70", // Muted rose
     text: "#ffffff",
-    light: "#60a5fa",
-    border: "#2563eb",
+    light: "#d68daa",
+    border: "#833b59",
   },
   "Stage 4": {
-    bg: "#16a34a", // Green
+    bg: "#674464", // Muted aubergine
     text: "#ffffff",
-    light: "#22c55e",
-    border: "#15803d",
+    light: "#ad88a8",
+    border: "#50344d",
   },
   "Stage 5": {
     bg: "#7c3aed", // Purple
@@ -45,6 +45,23 @@ export const stageColors = {
     border: "#6b7280",
   },
 };
+
+export const originalStageColors = {
+  ...newStageColors,
+  "Stage 2": { bg: "#f59e0b", text: "#ffffff", light: "#fbbf24", border: "#d97706" },
+  "Stage 3": { bg: "#3b82f6", text: "#ffffff", light: "#60a5fa", border: "#2563eb" },
+  "Stage 4": { bg: "#16a34a", text: "#ffffff", light: "#22c55e", border: "#15803d" },
+};
+
+// CSS variables update every stage surface immediately, including SVG charts.
+export const stageColors = Object.fromEntries(
+  Object.entries(originalStageColors).map(([stage, shades]) => [
+    stage,
+    Object.fromEntries(Object.entries(shades).map(([role, value]) => [
+      role, `var(--recruitment-${stage.toLowerCase().replace(/ /g, "-")}-${role}, ${value})`,
+    ])),
+  ]),
+) as typeof originalStageColors;
 
 export const getStageBgColor = (stage: string): string => {
   return stageColors[stage as keyof typeof stageColors]?.bg || stageColors["Stage 1"].bg;

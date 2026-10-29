@@ -215,7 +215,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
-  const { theme } = useTheme();
+  const { theme, useNewStageColours, toggleStageColours } = useTheme();
 
   // Advanced Filters State
   const [showFilters, setShowFilters] = useState(false);
@@ -1624,6 +1624,16 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             stageCounts={stageCounts}
           />
 
+
+          <div className="d-flex justify-content-end mb-3">
+            <Form.Check
+              type="switch"
+              id="new-stage-colours"
+              label="New stage colours"
+              checked={useNewStageColours}
+              onChange={toggleStageColours}
+            />
+          </div>
 
           {/* Actions Container */}
           <div className="lists-workspace__actions">
