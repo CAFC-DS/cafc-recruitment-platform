@@ -819,6 +819,9 @@ def _create_new_connection():
         "login_timeout": 15,   # Fail fast on auth/network issues (was hanging indefinitely)
         "network_timeout": 30,  # Reduced from 60s so failures surface quickly
         "query_timeout": 300,  # 5 minutes
+        # Report saves hold row locks until commit; fail a blocked statement
+        # after a minute instead of Snowflake's 12-hour default.
+        "session_parameters": {"LOCK_TIMEOUT": 60},
     }
 
     # Disable SSL verification in Railway for certificate issues
@@ -865,23 +868,88 @@ class PooledSnowflakeConnection:
     """
     Wrapper for Snowflake connections that returns connection to pool on close.
     This allows existing code with conn.close() to work with pooling.
+
+    `conn.autocommit = False` starts a real transaction (BEGIN) on the session,
+    and `conn.autocommit = True` ends it. The connector's own `autocommit` is a
+    method, so plain assignment used to shadow it without issuing any SQL and
+    multi-statement writes were never atomic. A transaction still open at
+    close() is rolled back, and a session whose commit or rollback failed is
+    discarded, so neither can leak into the next borrower.
     """
 
     def __init__(self, real_conn, pool):
-        self._real_conn = real_conn
-        self._pool = pool
-        self._closed = False
+        object.__setattr__(self, "_real_conn", real_conn)
+        object.__setattr__(self, "_pool", pool)
+        object.__setattr__(self, "_closed", False)
+        object.__setattr__(self, "_in_transaction", False)
+        object.__setattr__(self, "_poisoned", False)
 
     def __getattr__(self, name):
         """Delegate all other methods to the real connection"""
         return getattr(self._real_conn, name)
+
+    def __setattr__(self, name, value):
+        if name == "autocommit":
+            if value:
+                self._end_transaction()
+            else:
+                self.begin()
+            return
+        object.__setattr__(self, name, value)
+
+    def begin(self):
+        if self._in_transaction:
+            return
+        with self._real_conn.cursor() as cursor:
+            cursor.execute("BEGIN")
+        object.__setattr__(self, "_in_transaction", True)
+
+    def commit(self):
+        try:
+            self._real_conn.commit()
+        except Exception:
+            # Unknown outcome: never hand this session to another request.
+            object.__setattr__(self, "_poisoned", True)
+            raise
+        object.__setattr__(self, "_in_transaction", False)
+
+    def rollback(self):
+        try:
+            self._real_conn.rollback()
+        except Exception:
+            object.__setattr__(self, "_poisoned", True)
+            raise
+        object.__setattr__(self, "_in_transaction", False)
+
+    def _end_transaction(self):
+        # Reached after commit()/rollback() on normal paths. An open transaction
+        # here means the caller never committed, so discard rather than persist.
+        # Runs from callers' `finally` blocks, so it must never raise.
+        if self._in_transaction and not self._poisoned:
+            try:
+                self.rollback()
+            except Exception:
+                logging.exception("Snowflake session transaction could not be rolled back")
 
     def close(self):
         """Return connection to pool instead of closing"""
         if self._closed:
             return
 
-        self._closed = True
+        object.__setattr__(self, "_closed", True)
+
+        if self._in_transaction and not self._poisoned:
+            try:
+                self.rollback()
+            except Exception:
+                logging.exception("Snowflake session transaction could not be rolled back")
+        if self._poisoned:
+            logging.warning("Discarding a Snowflake session after a failed commit/rollback")
+            try:
+                self._real_conn.close()
+            except Exception:
+                pass
+            return
 
         # Try to return to pool if not full
         try:
