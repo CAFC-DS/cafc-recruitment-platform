@@ -4,6 +4,13 @@ import { MemoryRouter } from "react-router-dom";
 import ShortlistPitch, { getPitchPosition } from "./ShortlistPitch";
 import type { ListWithPlayers, PlayerInList } from "../../services/playerListsService";
 
+// jsdom cannot parse CSS variables in border colours; palette switching is
+// covered by ThemeContext tests and browser verification.
+jest.mock("../../styles/playerLists.theme", () => {
+  const actual = jest.requireActual("../../styles/playerLists.theme");
+  return { ...actual, getStageBgColor: (stage: string) => actual.originalStageColors[stage]?.bg || actual.originalStageColors["Stage 1"].bg };
+});
+
 const player = (id: number, name: string, stage: string): PlayerInList => ({
   item_id: id, player_id: id, cafc_player_id: id, universal_id: `external_${id}`,
   display_order: 0, notes: null, added_by: 1, created_at: "2026-10-20", player_name: name,
