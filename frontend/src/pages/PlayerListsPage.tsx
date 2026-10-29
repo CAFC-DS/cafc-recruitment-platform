@@ -13,6 +13,7 @@ import { favoriteTooltip } from "../utils/favoriteTooltip";
 
 import { ACTIVE_STAGES, emptyStageCounts } from "../constants/stages";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Container,
   Button,
@@ -2087,7 +2088,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             <td>
                               <Dropdown align="end">
                                 <Dropdown.Toggle size="sm" variant="outline-secondary">Actions</Dropdown.Toggle>
-                                <Dropdown.Menu>
+                                {/* Keep the menu outside the table's overflow clipping. */}
+                                {createPortal(<Dropdown.Menu popperConfig={{ strategy: "fixed" }}>
                                   <Dropdown.Item onClick={() => handleOpenNotesModal(player)}><StickyNote size={14} className="me-2" />Notes</Dropdown.Item>
                                   {currentList ? (
                                     <Dropdown.Item onClick={() => openStageHistory(player, activeMembership)}>
@@ -2123,7 +2125,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   >
                                     <Trash2 size={14} className="me-2" />{pendingRemoval ? "Removing…" : "Remove from list"}
                                   </Dropdown.Item>
-                                </Dropdown.Menu>
+                                </Dropdown.Menu>, document.body)}
                               </Dropdown>
                             </td>
                           </tr>
