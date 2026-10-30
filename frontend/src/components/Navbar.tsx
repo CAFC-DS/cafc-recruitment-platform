@@ -459,7 +459,7 @@ const AppNavbar: React.FC = () => {
                   </Nav.Link>
                 )}
                 {canAccessScoutApp && (
-                  <Nav.Link as={Link} to="/scout-app" className="d-flex align-items-center gap-1">
+                  <Nav.Link as={Link} to="/scout-app" className="d-flex align-items-center gap-1 text-nowrap">
                     <Radar size={16} /> Scout app
                   </Nav.Link>
                 )}
