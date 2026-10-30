@@ -31,6 +31,7 @@ import ExternalRecommendationsListPage from './pages/ExternalRecommendationsList
 import EmergingTalentListsPage from './pages/EmergingTalentListsPage';
 import EmergingTalentKanbanPage from './pages/EmergingTalentKanbanPage';
 import StyleTilePage from './pages/StyleTilePage';
+import ScoutAppPage from './pages/ScoutAppPage';
 
 interface AuthContextType {
   token: string | null;
@@ -353,6 +354,26 @@ const ExternalRecsRoute: React.FC<{ children: React.ReactElement }> = ({ childre
   return token && canAccessExternalRecs ? children : null;
 };
 
+// Scout app: admin and senior manager only (matches backend SCOUT_APP_ROLES).
+const ScoutAppRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { token } = useAuth();
+  const { canAccessScoutApp, loading, user } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: location.pathname } });
+    } else if (!loading && user?.role === 'agent') {
+      navigate('/agents/dashboard', { replace: true });
+    } else if (!loading && !canAccessScoutApp) {
+      navigate('/', { replace: true });
+    }
+  }, [token, canAccessScoutApp, loading, user, navigate, location]);
+
+  return token && canAccessScoutApp ? children : null;
+};
+
 // New wrapper component for LoginPage
 const LoginPageWrapper: React.FC = () => {
   const { login } = useAuth();
@@ -514,6 +535,14 @@ function App() {
                 <AdminRoute>
                   <AdminPage />
                 </AdminRoute>
+              }
+            />
+            <Route
+              path="/scout-app"
+              element={
+                <ScoutAppRoute>
+                  <ScoutAppPage />
+                </ScoutAppRoute>
               }
             />
             <Route

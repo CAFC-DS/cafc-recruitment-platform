@@ -41,6 +41,10 @@ import tempfile
 import os.path
 import csv
 import io
+import json
+import boto3
+from botocore.config import Config as BotoConfig
+from botocore.exceptions import BotoCoreError, ClientError
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
@@ -3362,6 +3366,65 @@ def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != ROLE_AGENT:
         raise HTTPException(status_code=403, detail="Agent access required")
     return current_user
+
+
+# --- Scout app (weekly-published HTML from the data-scoring scout-refresh job) ---
+# The job writes published/<run_id>/cafc_scout.html to the Railway bucket and
+# updates published/latest.json last. Staff get a short-lived presigned link.
+SCOUT_APP_LATEST_KEY = "published/latest.json"
+SCOUT_APP_LINK_EXPIRES_SECONDS = 600
+SCOUT_APP_BUCKET_ENV = ("BUCKET", "ENDPOINT", "REGION", "ACCESS_KEY_ID", "SECRET_ACCESS_KEY")
+SCOUT_APP_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER]
+
+
+def require_scout_app_user(current_user: User = Depends(require_internal_user)) -> User:
+    if current_user.role not in SCOUT_APP_ROLES:
+        raise HTTPException(status_code=403, detail="Scout app access required")
+    return current_user
+
+
+def scout_app_bucket_client():
+    return boto3.client(
+        "s3",
+        endpoint_url=os.getenv("ENDPOINT"),
+        region_name=os.getenv("REGION"),
+        aws_access_key_id=os.getenv("ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("SECRET_ACCESS_KEY"),
+        config=BotoConfig(s3={"addressing_style": "auto"}),
+    )
+
+
+@app.get("/scout-app/link")
+def get_scout_app_link(current_user: User = Depends(require_scout_app_user)):
+    """Presigned link to the latest published scout app. Never log the URL or keys."""
+    if not all(os.getenv(name) for name in SCOUT_APP_BUCKET_ENV):
+        raise HTTPException(status_code=503, detail="Scout app storage is not configured.")
+    bucket = os.getenv("BUCKET")
+    client = scout_app_bucket_client()
+    try:
+        latest = json.loads(client.get_object(Bucket=bucket, Key=SCOUT_APP_LATEST_KEY)["Body"].read())
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("NoSuchKey", "404"):
+            raise HTTPException(
+                status_code=503,
+                detail="The scout app has not been published yet. It refreshes weekly on Sundays.",
+            )
+        logging.error("Scout app: reading latest.json failed (%s)", code)
+        raise HTTPException(status_code=502, detail="Could not reach scout app storage.")
+    except (BotoCoreError, ValueError) as e:
+        logging.error("Scout app: reading latest.json failed (%s)", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Could not reach scout app storage.")
+
+    run_id = latest.get("run_id") if isinstance(latest, dict) else None
+    if not run_id:
+        raise HTTPException(status_code=503, detail="The scout app has not been published yet.")
+    url = client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": f"published/{run_id}/cafc_scout.html"},
+        ExpiresIn=SCOUT_APP_LINK_EXPIRES_SECONDS,
+    )
+    return {"url": url, "built_at": latest.get("built_at")}
 
 
 @app.post("/agents/register", response_model=AgentProfileResponse)

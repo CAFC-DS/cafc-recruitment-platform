@@ -37,6 +37,7 @@ import {
   LogOut,
   Pencil,
   Check,
+  Radar,
 } from "lucide-react";
 import { useAuth } from "../App"; // Import useAuth
 import { useTheme } from "../contexts/ThemeContext";
@@ -53,7 +54,7 @@ import HelpModal from "./HelpModal";
 const AppNavbar: React.FC = () => {
   const { token, logout } = useAuth(); // Use the auth hook
   const { theme, toggleDarkMode } = useTheme();
-  const { user, isAdmin, isSeniorManager, isManager, isIntelReviewer, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists } = useCurrentUser();
+  const { user, isAdmin, isSeniorManager, isManager, isIntelReviewer, canAccessAdmin, canAccessIntel, canAccessAnalytics, canAccessLists, canAccessScoutApp } = useCurrentUser();
   const navigate = useNavigate();
 
   // Search state
@@ -455,6 +456,11 @@ const AppNavbar: React.FC = () => {
                 {canAccessLists && (
                   <Nav.Link as={Link} to="/lists" className="d-flex align-items-center gap-1">
                     <ClipboardList size={16} /> Lists
+                  </Nav.Link>
+                )}
+                {canAccessScoutApp && (
+                  <Nav.Link as={Link} to="/scout-app" className="d-flex align-items-center gap-1 text-nowrap">
+                    <Radar size={16} /> Scout app
                   </Nav.Link>
                 )}
                 {canAccessAnalytics && (
