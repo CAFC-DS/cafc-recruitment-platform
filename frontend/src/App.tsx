@@ -354,7 +354,7 @@ const ExternalRecsRoute: React.FC<{ children: React.ReactElement }> = ({ childre
   return token && canAccessExternalRecs ? children : null;
 };
 
-// Scout app: internal staff only (agents and intel_reviewer excluded, as on the backend).
+// Scout app: admin and senior manager only (matches backend SCOUT_APP_ROLES).
 const ScoutAppRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
   const { canAccessScoutApp, loading, user } = useCurrentUser();

@@ -3374,6 +3374,13 @@ def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
 SCOUT_APP_LATEST_KEY = "published/latest.json"
 SCOUT_APP_LINK_EXPIRES_SECONDS = 600
 SCOUT_APP_BUCKET_ENV = ("BUCKET", "ENDPOINT", "REGION", "ACCESS_KEY_ID", "SECRET_ACCESS_KEY")
+SCOUT_APP_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER]
+
+
+def require_scout_app_user(current_user: User = Depends(require_internal_user)) -> User:
+    if current_user.role not in SCOUT_APP_ROLES:
+        raise HTTPException(status_code=403, detail="Scout app access required")
+    return current_user
 
 
 def scout_app_bucket_client():
@@ -3388,7 +3395,7 @@ def scout_app_bucket_client():
 
 
 @app.get("/scout-app/link")
-def get_scout_app_link(current_user: User = Depends(require_internal_user)):
+def get_scout_app_link(current_user: User = Depends(require_scout_app_user)):
     """Presigned link to the latest published scout app. Never log the URL or keys."""
     if not all(os.getenv(name) for name in SCOUT_APP_BUCKET_ENV):
         raise HTTPException(status_code=503, detail="Scout app storage is not configured.")

@@ -1,6 +1,7 @@
 """
-GET /scout-app/link: internal staff get a presigned link to the weekly
-scout app; agents are refused; nothing published yet is a clear 503.
+GET /scout-app/link: admins and senior managers get a presigned link to the
+weekly scout app; other roles and agents are refused; nothing published yet
+is a clear 503.
 
 The bucket client is mocked, and the user lookup is patched so no Snowflake
 connection is needed.
@@ -74,12 +75,16 @@ def test_agent_is_refused(client):
     make_bucket.assert_not_called()
 
 
-def test_intel_reviewer_is_refused(client):
-    assert client.get("/scout-app/link", headers=_auth("intel_reviewer")).status_code == 403
+@pytest.mark.parametrize("role", ["intel_reviewer", "manager", "loan_manager", "scout"])
+def test_other_roles_are_refused(client, role):
+    with patch.object(main, "scout_app_bucket_client") as make_bucket:
+        response = client.get("/scout-app/link", headers=_auth(role))
+    assert response.status_code == 403
+    make_bucket.assert_not_called()
 
 
-@pytest.mark.parametrize("role", ["admin", "senior_manager", "manager", "loan_manager", "scout"])
-def test_internal_user_gets_presigned_link(client, role):
+@pytest.mark.parametrize("role", ["admin", "senior_manager"])
+def test_scout_app_user_gets_presigned_link(client, role):
     latest = {"run_id": "20261101T0900Z", "built_at": "2026-11-01T09:42:00Z", "fit_id": "f1", "summary": {}}
     bucket = _bucket(latest)
     with patch.object(main, "scout_app_bucket_client", return_value=bucket):
@@ -96,7 +101,7 @@ def test_internal_user_gets_presigned_link(client, role):
 
 def test_nothing_published_is_503(client):
     with patch.object(main, "scout_app_bucket_client", return_value=_bucket(error_code="NoSuchKey")):
-        response = client.get("/scout-app/link", headers=_auth("scout"))
+        response = client.get("/scout-app/link", headers=_auth("senior_manager"))
     assert response.status_code == 503
     assert "not been published" in response.json()["detail"]
 
