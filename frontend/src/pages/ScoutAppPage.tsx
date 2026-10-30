@@ -56,7 +56,7 @@ const ScoutAppPage: React.FC = () => {
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, [link]);
+  }, [link, loading]);
 
   if (loading) {
     return (
