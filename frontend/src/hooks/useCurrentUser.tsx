@@ -69,6 +69,8 @@ export const useCurrentUser = () => {
     canAccessExternalRecs: isAdmin || isSeniorManager || isIntelReviewer,
     canAccessInternalRecs: isAdmin || isSeniorManager || isManager || isLoanManager || isScout || isIntelReviewer,
     canAccessRecommendations: isAdmin || isSeniorManager || isManager || isLoanManager || isScout,
+    // Scout app: internal staff only (matches backend INTERNAL_ROLES)
+    canAccessScoutApp: isAdmin || isSeniorManager || isManager || isLoanManager || isScout,
     canSeeAllReports: isAdmin || isSeniorManager || isManager,
     canSeeAllLoanReports: isAdmin || isSeniorManager || isManager || isLoanManager,
     canGenerateShareLinks: isAdmin || isSeniorManager || isManager,
