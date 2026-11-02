@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Form, Spinner } from "react-bootstrap";
-import { ArrowUp } from "lucide-react";
 import axiosInstance from "../../axiosInstance";
 import "./PlayerPositionPitchMap.css";
 
@@ -265,7 +264,6 @@ const PlayerPositionPitchMap: React.FC<{ playerId: string }> = ({ playerId }) =>
               </g>;
             })}
           </svg>
-          <figcaption><ArrowUp size={12} aria-hidden="true" />Attacking direction</figcaption>
         </figure>
 
         {showHeatmap && zoneShares ? (
