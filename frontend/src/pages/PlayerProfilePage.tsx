@@ -47,6 +47,7 @@ import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import ShimmerLoading from "../components/ShimmerLoading";
 
 import PlayerPositionPitchMap from "../components/player/PlayerPositionPitchMap";
+import PlayerDataScore from "../components/player/PlayerDataScore";
 import {
   Flag,
   Clapperboard,
@@ -1731,6 +1732,8 @@ const PlayerProfilePage: React.FC = () => {
                             </div>
                           </div>
                         )}
+
+                        {canSeeAllReports && actualPlayerId && <PlayerDataScore playerId={actualPlayerId} />}
 
                         {(playerStages.length > 0 || archiveInfo.length > 0) && (
                           <div className="info-row">
