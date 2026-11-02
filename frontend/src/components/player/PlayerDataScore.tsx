@@ -62,6 +62,7 @@ const PlayerDataScore: React.FC<{ playerId: string }> = ({ playerId }) => {
 
   const head = data?.available ? data.headline : null;
   if (!head) return null;
+  const hasCareer = head.rel != null; // no career score yet: headline that season's CH index instead
 
   const popover = (
     <Popover id="data-score-popover" className="data-score-popover">
@@ -100,11 +101,23 @@ const PlayerDataScore: React.FC<{ playerId: string }> = ({ playerId }) => {
     <div className="info-row">
       <span className="info-label">Data Score</span>
       <div className="d-flex align-items-center gap-2 flex-wrap">
-        <DataScoreBox value={head.rel} band={head.rel_band} />
-        <span className="data-score-band">{head.rel_band_name ?? "No career score"}</span>
-        <span className="data-score-context">
-          Career · {head.position}{head.relN != null ? ` · ${head.relN} season${head.relN === 1 ? "" : "s"}` : ""}
-        </span>
+        {hasCareer ? (
+          <>
+            <DataScoreBox value={head.rel} band={head.rel_band} />
+            <span className="data-score-band">{head.rel_band_name}</span>
+            <span className="data-score-context">
+              Career · {head.position}{head.relN != null ? ` · ${head.relN} season${head.relN === 1 ? "" : "s"}` : ""}
+            </span>
+          </>
+        ) : (
+          <>
+            <DataScoreBox value={head.ch} band={head.band} />
+            <span className="data-score-band">{head.band_name ?? "No current score"}</span>
+            <span className="data-score-context">
+              CH index · {head.position} · {head.season}{head.min != null ? ` · ${head.min} min` : ""}
+            </span>
+          </>
+        )}
         <OverlayTrigger placement="right" trigger={["hover", "focus"]} overlay={popover}>
           <span className="info-icon" tabIndex={0} aria-label="Data score detail">ⓘ</span>
         </OverlayTrigger>
