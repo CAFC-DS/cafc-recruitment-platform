@@ -10,6 +10,11 @@ interface PositionEntry {
   side: PositionSide;
   match_count: number;
   starts: number;
+  // How the player came into this slot, one per appearance. Older API
+  // responses omit these; they are never inferred from match_count - starts.
+  sub_appearances?: number;
+  moved_in?: number;
+  unknown_entry?: number;
   minutes: number;
   share_pct: number;
 }
@@ -72,10 +77,19 @@ const slotLabel = (item: PositionEntry) => {
   return base;
 };
 
-const slotTooltip = (item: PositionEntry) => {
-  const subs = item.match_count - item.starts;
-  return `${slotLabel(item)}: ${item.share_pct}% · ${item.minutes} min · ${item.match_count} apps (${item.starts} starts${subs ? `, ${subs} from bench` : ""})`;
-};
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+// "12 starts", "3 off bench", "2 moved in", "1 lineup unknown": only non-zero
+// parts, except starts, which always shows.
+const appearanceParts = (item: PositionEntry) => [
+  plural(item.starts, "start", "starts"),
+  item.sub_appearances ? `${item.sub_appearances} off bench` : null,
+  item.moved_in ? `${item.moved_in} moved in` : null,
+  item.unknown_entry ? `${item.unknown_entry} lineup unknown` : null,
+].filter((part): part is string => Boolean(part));
+
+const slotTooltip = (item: PositionEntry) =>
+  `${slotLabel(item)}: ${item.share_pct}% · ${item.minutes} min · ${plural(item.match_count, "app", "apps")} (${appearanceParts(item).join(", ")})`;
 
 // Heat ramp: amber (few actions) to brand-adjacent red (most actions). Drawn on
 // the muted heatmap pitch so neither end of the ramp mixes into the grass.
@@ -288,13 +302,12 @@ const PlayerPositionPitchMap: React.FC<{ playerId: string }> = ({ playerId }) =>
           <ul className="header-position-map-panel pitch-position-list" aria-label="Share of minutes by position">
             {positions.map((item) => {
               const key = slotKey(item);
-              const subs = item.match_count - item.starts;
               return (
                 <li key={key} className={`pitch-share-row${activeSlot === key ? " is-active" : ""}`}
                   onMouseEnter={() => setActiveSlot(key)} onMouseLeave={() => setActiveSlot(null)}>
                   <span className="pitch-share-label">
                     <strong>{slotLabel(item)}</strong>
-                    <small>{formatNumber(item.minutes)} min · {item.starts} {item.starts === 1 ? "start" : "starts"}{subs ? ` · ${subs} sub` : ""}</small>
+                    <small title={slotTooltip(item)}>{formatNumber(item.minutes)} min · {appearanceParts(item).join(" · ")}</small>
                   </span>
                   <span className="pitch-share-track" aria-hidden="true"><i style={{ width: `${(item.share_pct / maxShare) * 100}%` }} /></span>
                   <b>{item.share_pct}%</b>
@@ -308,7 +321,7 @@ const PlayerPositionPitchMap: React.FC<{ playerId: string }> = ({ playerId }) =>
         <p className="header-position-map-note">
           {showHeatmap
             ? `Based on ${formatNumber(heatmap?.total || 0)} on-ball actions.`
-            : "Some minutes are estimated from event data where lineups are missing."}
+            : "Lineups are missing for some matches, so their minutes are estimated from event data."}
         </p>
       )}
     </aside>

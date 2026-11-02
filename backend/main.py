@@ -11697,6 +11697,18 @@ PITCH_CENTRAL_POSITIONS = {
 }
 PITCH_HEATMAP_X_BINS = 12  # across the pitch (68m)
 PITCH_HEATMAP_Y_BINS = 16  # along the pitch (105m)
+# Actions where the player plays or wins the ball. Excludes RECEPTION (it sits
+# on exactly the same spot as the player's next pass/dribble, so it double
+# counts), ball-out/kick-off/whistle markers, fouls, cards, offsides and the
+# GOAL/OWN_GOAL rows that duplicate the shot.
+PITCH_HEATMAP_ACTION_TYPES = (
+    "PASS", "DRIBBLE", "SHOT", "LOOSE_BALL_REGAIN", "INTERCEPTION", "CLEARANCE",
+    "BLOCK", "THROW_IN", "FREE_KICK", "CORNER", "GOAL_KICK", "GK_CATCH", "GK_SAVE",
+)
+# How a player came to occupy a slot in a match, strongest first. A slot gets
+# the strongest entry seen that match (e.g. started at RW, moved, back to RW =
+# a RW start).
+PITCH_ENTRY_PRIORITY = ("start", "bench", "moved", "unknown")
 
 
 def _normalise_position_side(position: str, side: Optional[str]) -> Optional[str]:
@@ -11733,11 +11745,15 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
     RED_CARD). GAME_TIME_IN_SEC is offset per period, so time is only counted
     inside each period's [first event, last event] window.
 
-    Returns ({(position, side): seconds}, started) or (None, False) when the
-    player does not appear in the lineup data.
+    Returns ({(position, side): seconds}, {(position, side): entry}) or
+    (None, None) when the player does not appear in the lineup data. `entry`
+    says how the player came into that slot this match: "start" (starting
+    slot only), "bench" (came on as a substitute into it), "moved" (switched
+    into it from another slot on the pitch) or "unknown" (timeline without a
+    starting slot or a bench entry, i.e. incomplete lineup data).
     """
     if not periods:
-        return None, False
+        return None, None
     _, home_start, away_start, home_subs, away_subs = match_info_row
     starters = _parse_variant(home_start) + _parse_variant(away_start)
     changes = [
@@ -11747,17 +11763,22 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
     ]
     changes.sort(key=lambda entry: float(entry["gameTime"]["gameTimeInSec"]))
 
+    seconds = {}
+    entries = {}
+
+    def enter(slot, kind):
+        current = entries.get(slot)
+        if current is None or PITCH_ENTRY_PRIORITY.index(kind) < PITCH_ENTRY_PRIORITY.index(current):
+            entries[slot] = kind
+
     state = None
-    started = False
     for starter in starters:
         if starter.get("playerId") == source_player_id and starter.get("position"):
             state = (starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide")))
-            started = True
+            enter(state, "start")
             break
     if state is None and not changes:
-        return None, False
-
-    seconds = {}
+        return None, None
 
     def add(slot, start, end):
         for period_start, period_end in periods:
@@ -11774,11 +11795,14 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
         if not target or target == "BANK":
             state = None
         else:
+            from_bench = change.get("fromPosition") == "BANK" or change.get("substitutionType") == "SUB_ON"
+            kind = "bench" if from_bench else ("moved" if state else "unknown")
             state = (target, _normalise_position_side(target, change.get("positionSide")))
+            enter(state, kind)
         segment_start = at
     if state:
         add(state, segment_start, periods[-1][1])
-    return seconds, started
+    return seconds, entries
 
 
 @app.get("/players/{player_id}/position-history")
@@ -11818,7 +11842,7 @@ def get_player_position_history(
 
         selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
-        cache_key = f"player_position_history_v3_{source_player_id}_{competition}_{season}"
+        cache_key = f"player_position_history_v4_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
@@ -11875,29 +11899,34 @@ def get_player_position_history(
         totals = {}
         estimated_matches = 0
         for match_id in match_ids:
-            seconds, started = (None, False)
+            seconds, entries = (None, None)
             if match_id in lineups_by_match:
-                seconds, started = _replay_lineup_seconds(
+                seconds, entries = _replay_lineup_seconds(
                     lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, [])
                 )
             if not seconds:
-                seconds, started = event_spans[match_id], False
+                # No usable lineup: minutes come from event spans and how the
+                # player entered each slot is unknown, never inferred.
+                seconds, entries = event_spans[match_id], {}
                 estimated_matches += 1
             for slot, slot_seconds in seconds.items():
                 if slot_seconds <= 0:
                     continue
-                entry = totals.setdefault(slot, {"seconds": 0.0, "matches": 0, "starts": 0})
+                entry = totals.setdefault(slot, {"seconds": 0.0, "matches": 0, **{kind: 0 for kind in PITCH_ENTRY_PRIORITY}})
                 entry["seconds"] += slot_seconds
                 entry["matches"] += 1
-                if started:
-                    entry["starts"] += 1
+                entry[entries.get(slot, "unknown")] += 1
 
         total_seconds = sum(entry["seconds"] for entry in totals.values())
         positions = sorted(
             (
                 {
                     "position": position, "side": side,
-                    "match_count": entry["matches"], "starts": entry["starts"],
+                    "match_count": entry["matches"],
+                    "starts": entry["start"],
+                    "sub_appearances": entry["bench"],
+                    "moved_in": entry["moved"],
+                    "unknown_entry": entry["unknown"],
                     "minutes": round(entry["seconds"] / 60),
                     "share_pct": round(entry["seconds"] * 100 / total_seconds, 1) if total_seconds else 0,
                 }
@@ -11918,6 +11947,7 @@ def get_player_position_history(
                 JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
                 WHERE e.PLAYER_ID = %s
                   AND i."COMPETITION.NAME" = %s AND i.SEASON = %s
+                  AND e.ACTION_TYPE IN ({",".join(["%s"] * len(PITCH_HEATMAP_ACTION_TYPES))})
             )
             SELECT LEAST(GREATEST(FLOOR((Y + 34) / 68 * {PITCH_HEATMAP_X_BINS}), 0), {PITCH_HEATMAP_X_BINS - 1}) AS ACROSS_BIN,
                    LEAST(GREATEST(FLOOR((X + 52.5) / 105 * {PITCH_HEATMAP_Y_BINS}), 0), {PITCH_HEATMAP_Y_BINS - 1}) AS ALONG_BIN,
@@ -11926,7 +11956,7 @@ def get_player_position_history(
             WHERE X IS NOT NULL AND Y IS NOT NULL
             GROUP BY 1,2
             """,
-            (source_player_id, competition, season),
+            (source_player_id, competition, season, *PITCH_HEATMAP_ACTION_TYPES),
         )
         heatmap_cells = [
             {"across": int(row[0]), "along": int(row[1]), "count": int(row[2])}
