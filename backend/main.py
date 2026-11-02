@@ -11392,14 +11392,15 @@ async def get_player_position_history(
             return {"available": False, "message": "Position history is unavailable for this player.", "filters": {"available": []}, "positions": []}
 
         source_player_id = int(player_data[0])
+        # Positions come from Impect event data: every event carries the
+        # player's slot (PLAYER_POSITION), so coverage matches EVENTS itself.
         cursor.execute(
             """
-            SELECT DISTINCT c.COMPETITION_NAME, k.SEASON
-            FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
-            JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
-              ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
-            WHERE k.SOURCE_PLAYER_ID = %s AND k.PLAY_DURATION_SECONDS > 0
-            ORDER BY k.SEASON DESC, c.COMPETITION_NAME
+            SELECT DISTINCT i."COMPETITION.NAME", i.SEASON
+            FROM CAFC_DB.IMPECT_RAW.EVENTS e
+            JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+            WHERE e.PLAYER_ID = %s AND e.PLAYER_POSITION IS NOT NULL
+            ORDER BY i.SEASON DESC, i."COMPETITION.NAME"
             """,
             (source_player_id,),
         )
@@ -11412,26 +11413,28 @@ async def get_player_position_history(
             available_pairs[0],
         )
         competition, season = selected["competition"], selected["season"]
-        cache_key = f"player_position_history_v1_{source_player_id}_{competition}_{season}"
+        cache_key = f"player_position_history_v2_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
 
         cursor.execute(
             """
-            WITH player_matches AS (
-                SELECT k.SOURCE_FIXTURE_ID, k.POSITION_CODE,
-                       MAX(k.PLAY_DURATION_SECONDS) AS SECONDS
-                FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
-                JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
-                  ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
-                WHERE k.SOURCE_PLAYER_ID = %s
-                  AND c.COMPETITION_NAME = %s AND k.SEASON = %s
-                  AND k.PLAY_DURATION_SECONDS > 0 AND k.POSITION_CODE IS NOT NULL
-                GROUP BY 1,2
+            WITH position_spans AS (
+                -- Time in a slot = span between the player's first and last
+                -- event in that slot, per period (GAME_TIME_IN_SEC is offset
+                -- per period, so spans must not cross periods).
+                SELECT e.MATCH_ID, e.PERIOD_ID, e.PLAYER_POSITION,
+                       MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC) AS SECONDS
+                FROM CAFC_DB.IMPECT_RAW.EVENTS e
+                JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+                WHERE e.PLAYER_ID = %s
+                  AND i."COMPETITION.NAME" = %s AND i.SEASON = %s
+                  AND e.PLAYER_POSITION IS NOT NULL
+                GROUP BY 1,2,3
             )
-            SELECT POSITION_CODE, COUNT(DISTINCT SOURCE_FIXTURE_ID), SUM(SECONDS) / 60.0
-            FROM player_matches
+            SELECT PLAYER_POSITION, COUNT(DISTINCT MATCH_ID), SUM(SECONDS) / 60.0
+            FROM position_spans
             GROUP BY 1
             ORDER BY 3 DESC
             """,
