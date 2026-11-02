@@ -23,3 +23,10 @@
 @media (max-width:1180px) { .header-position-map { flex-basis:390px; width:390px; } .header-position-map-body { grid-template-columns:minmax(170px, 190px) 1fr; gap:.75rem; } }
 @media (max-width:900px) { .player-profile-page .profile-header-layout { flex-direction:column; } .header-position-map { flex-basis:auto; width:100%; } .header-position-map-body { grid-template-columns:minmax(210px, 260px) 1fr; } }
 @media (max-width:560px) { .header-position-map-body { grid-template-columns:1fr; } .header-position-map-body svg { width:min(100%, 250px); margin:0 auto; } .header-position-map-legend { display:grid; grid-template-columns:1fr 1fr; } }
+.header-position-map-title-actions { display:flex; align-items:center; gap:.5rem; }
+.header-position-map-toggle { display:inline-flex; padding:2px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-background); }
+.header-position-map-toggle button { padding:.15rem .55rem; border:0; border-radius:999px; background:transparent; color:var(--color-text-muted); font-size:.62rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; cursor:pointer; }
+.header-position-map-toggle button.active { background:var(--color-primary,#b91c1c); color:#fff; }
+.header-position-map-toggle button:focus-visible { outline:2px solid var(--color-primary,#b91c1c); outline-offset:1px; }
+.header-position-map .pitch-position-marker text.pitch-marker-label-long { font-size:3.6px; }
+.header-position-map-note { margin-top:.5rem; color:var(--color-text-muted); font-size:.68rem; }
