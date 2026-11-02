@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main
 from services.data_scores import DataScores, band, band_name, parse_page
 
-COLUMNS = ["id", "name", "club", "league", "season", "age", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi", "t"]
+COLUMNS = ["id", "name", "club", "league", "season", "age", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi", "t", "rel", "relN"]
 
 
 def blob(name, obj):
@@ -32,10 +32,10 @@ def page(positions):
 
 
 ROWS = {
-    "cb": [[7, "A", "Club A", "Championship", "24/25", 25, 3000, 110.4, 105, 115, 108, 100, 116, 2025.0],
-           [7, "A", "Club B", "Championship", "25/26", 26, 900, 103.2, 96, 110, 104, 97, 112, 2026.0],
-           [8, "B", "Club C", "League One", "25/26", 22, 2000, 91.5, 85, 98, 95, 88, 102, 2026.0]],
-    "dm": [[7, "A", "Club B", "Championship", "25/26", 26, 1800, 117.0, 110, 123, 115, 107, 122, 2026.0]],
+    "cb": [[7, "A", "Club A", "Championship", "24/25", 25, 3000, 110.4, 105, 115, 108, 100, 116, 2025.0, 109.0, 1],
+           [7, "A", "Club B", "Championship", "25/26", 26, 900, 103.2, 96, 110, 104, 97, 112, 2026.0, 107.6, 2],
+           [8, "B", "Club C", "League One", "25/26", 22, 2000, 91.5, 85, 98, 95, 88, 102, 2026.0, 93.0, 3]],
+    "dm": [[7, "A", "Club B", "Championship", "25/26", 26, 1800, 117.0, 110, 123, 115, 107, 122, 2026.0, 112.5, 1]],
 }
 
 
@@ -44,14 +44,15 @@ def test_parse_page_reads_column_major_blobs_by_embedded_column_names():
     assert sorted(index.by_player) == [7, 8]
     assert [(r["position"], r["season"], r["ch"]) for r in index.rows(7)] == [("CB", "24/25", 110.4), ("CB", "25/26", 103.2), ("DM", "25/26", 117.0)]
     assert index.rows(8) == [{"season": "25/26", "t": 2026.0, "league": "League One", "club": "Club C", "min": 2000, "ch": 91.5,
-                              "chLo": 85.0, "chHi": 98.0, "fc": 95.0, "fcLo": 88.0, "fcHi": 102.0, "position": "CB"}]
+                              "chLo": 85.0, "chHi": 98.0, "fc": 95.0, "fcLo": 88.0, "fcHi": 102.0, "rel": 93.0, "relN": 3,
+                              "position": "CB"}]
     assert index.rows(999) == []
 
 
 def test_missing_scores_come_back_as_none():
-    rows = {"cb": [[9, "C", "Club D", "Championship", "26/27", 19, 120, None, None, None, 97.0, 90, 104, 2027.0]]}
+    rows = {"cb": [[9, "C", "Club D", "Championship", "26/27", 19, 120, None, None, None, 97.0, 90, 104, 2027.0, None, None]]}
     row = parse_page(page(rows)).rows(9)[0]
-    assert row["ch"] is None and row["fc"] == 97.0
+    assert row["ch"] is None and row["fc"] == 97.0 and row["rel"] is None and row["relN"] is None
 
 
 def test_bands_match_the_scout_app_including_half_points():
@@ -68,6 +69,7 @@ def test_headline_is_the_latest_season_with_the_most_minutes(tmp_path):
     result = scores.for_player(7)
     assert result["available"] and result["headline"]["position"] == "DM"
     assert result["headline"]["band"] == 5 and result["headline"]["fc_band_name"] == "Strong starter"
+    assert result["headline"]["rel"] == 112.5 and result["headline"]["rel_band_name"] == "Strong starter"
     assert [(r["position"], r["season"]) for r in result["rows"]] == [("DM", "25/26"), ("CB", "25/26"), ("CB", "24/25")]
     assert scores.for_player(999)["available"] is False
 

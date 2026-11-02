@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 CHECK_SECONDS = 30 * 60  # how often latest.json is re-read; a weekly refresh shows up within this
 RETRY_SECONDS = 5 * 60  # after a failed read, so a broken bucket never stalls every profile request
 BLOB = re.compile(r'<script type="application/octet-stream" id="d-(\w+)">([^<]+)</script>')
-KEEP = ("season", "t", "league", "club", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi")
+KEEP = ("season", "t", "league", "club", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi", "rel", "relN")
 
 # The scout app's CH bands (data-scoring dashboard/scout/scout.js BANDS): fixed cut-offs at the Championship's
 # 20th/40th/60th/80th/95th percentiles. Index 5 is elite, 0 is below Championship level.
@@ -52,7 +52,7 @@ def _blob(text):
 class ScoreIndex:
     """Every player-season-position row, stored column by column (about 25 MB for 160k rows rather than 175 MB
     as dicts): numbers in float arrays with NaN for missing, text as codes into a shared list."""
-    NUMBERS = ("t", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi")
+    NUMBERS = ("t", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi", "rel", "relN")
     TEXT = ("season", "league", "club", "position")
 
     def __init__(self):
@@ -78,7 +78,8 @@ class ScoreIndex:
         out = []
         for i in self.by_player.get(player_id, ()):
             row = {k: (None if math.isnan(col[i]) else col[i]) for k, col in self.numbers.items()}
-            row["min"] = None if row["min"] is None else int(row["min"])
+            for k in ("min", "relN"):
+                row[k] = None if row[k] is None else int(row[k])
             row.update({k: self.words[col[i]] for k, col in self.text.items()})
             out.append(row)
         return out
@@ -162,7 +163,8 @@ class DataScores:
         if index is None:
             return {"available": False, "message": "Data scores are unavailable right now.", "run": None, "headline": None, "rows": []}
         rows = [dict(r, band=band(r["ch"]), band_name=band_name(band(r["ch"])),
-                     fc_band=band(r["fc"]), fc_band_name=band_name(band(r["fc"])))
+                     fc_band=band(r["fc"]), fc_band_name=band_name(band(r["fc"])),
+                     rel_band=band(r["rel"]), rel_band_name=band_name(band(r["rel"])))
                 for r in index.rows(int(impect_id))]
         rows.sort(key=lambda r: (-(r["t"] or 0), -(r["min"] or 0)))
         if not rows:

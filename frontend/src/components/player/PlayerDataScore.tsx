@@ -21,6 +21,10 @@ interface DataScoreRow {
   band_name: string | null;
   fc_band: number | null;
   fc_band_name: string | null;
+  rel: number | null;
+  relN: number | null;
+  rel_band: number | null;
+  rel_band_name: string | null;
 }
 
 interface DataScoreResponse {
@@ -63,11 +67,12 @@ const PlayerDataScore: React.FC<{ playerId: string }> = ({ playerId }) => {
     <Popover id="data-score-popover" className="data-score-popover">
       <Popover.Body>
         <div className="data-score-popover-note">
-          CH index: 100 is the Championship benchmark. Forecast is next season in an average Championship team.
+          Career weights each season by how reliable it is, age-adjusted. CH index is that season alone; 100 is the
+          Championship benchmark. Forecast is next season in an average Championship team.
         </div>
         <table className="data-score-table">
           <thead>
-            <tr><th>Season</th><th>Position</th><th>Club</th><th className="num">Min</th><th>CH</th><th>Forecast</th></tr>
+            <tr><th>Season</th><th>Position</th><th>Club</th><th className="num">Min</th><th>CH index</th><th>Forecast</th></tr>
           </thead>
           <tbody>
             {data!.rows.map((r, i) => (
@@ -95,10 +100,10 @@ const PlayerDataScore: React.FC<{ playerId: string }> = ({ playerId }) => {
     <div className="info-row">
       <span className="info-label">Data Score</span>
       <div className="d-flex align-items-center gap-2 flex-wrap">
-        <DataScoreBox value={head.ch} band={head.band} />
-        <span className="data-score-band">{head.band_name ?? "No current score"}</span>
+        <DataScoreBox value={head.rel} band={head.rel_band} />
+        <span className="data-score-band">{head.rel_band_name ?? "No career score"}</span>
         <span className="data-score-context">
-          {head.position} · {head.season}{head.min != null ? ` · ${head.min} min` : ""}
+          Career · {head.position}{head.relN != null ? ` · ${head.relN} season${head.relN === 1 ? "" : "s"}` : ""}
         </span>
         <OverlayTrigger placement="right" trigger={["hover", "focus"]} overlay={popover}>
           <span className="info-icon" tabIndex={0} aria-label="Data score detail">ⓘ</span>
