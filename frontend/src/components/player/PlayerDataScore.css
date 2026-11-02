@@ -1,0 +1,67 @@
+/* Box shape follows the data-scoring scout app's .bx; colours come from getDataScoreBandStyle. */
+.data-score-box {
+  display: inline-block;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.data-score-box-md {
+  min-width: 2.6em;
+  padding: 0.32rem 0.3rem;
+  font-size: 0.9rem;
+}
+
+.data-score-box-sm {
+  min-width: 2.2em;
+  padding: 0.2rem 0.2rem;
+  font-size: 0.75rem;
+}
+
+.data-score-band {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.data-score-context {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.data-score-popover {
+  max-width: 480px;
+}
+
+.data-score-popover-note,
+.data-score-popover-meta {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-bottom: 0.4rem;
+}
+
+.data-score-popover-meta {
+  margin: 0.4rem 0 0;
+}
+
+.data-score-table {
+  width: 100%;
+  font-size: 0.75rem;
+  border-collapse: collapse;
+}
+
+.data-score-table th {
+  font-weight: 600;
+  padding: 0 0.4rem 0.25rem 0;
+  white-space: nowrap;
+}
+
+.data-score-table td {
+  padding: 0.15rem 0.4rem 0.15rem 0;
+  white-space: nowrap;
+}
+
+.data-score-table .num {
+  text-align: right;
+}

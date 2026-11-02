@@ -53,6 +53,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from services.sql_generator import SQLGeneratorService
 from services.schema_service import SchemaService
 from services.club_moves import get_club_move
+from services.data_scores import data_scores
 from services.ollama_service import ollama_service
 
 # Import iteration mapping
@@ -12312,6 +12313,32 @@ def get_player_technical_metrics(
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching technical metrics: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/players/{player_id}/data-scores")
+@offload_read
+def get_player_data_scores(player_id: str, current_user: User = Depends(get_current_user)):
+    """The data-scoring app's weekly CH index for this player, read from its Railway bucket."""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+        raise HTTPException(status_code=403, detail="Not authorized to view data scores")
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+        if data_source != "external" or player_data[0] is None:
+            return {"available": False, "message": "Data scores are only available for external players.", "run": None, "headline": None, "rows": []}
+        return data_scores.for_player(int(player_data[0]))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching data scores: {e}")
     finally:
         if conn:
             conn.close()

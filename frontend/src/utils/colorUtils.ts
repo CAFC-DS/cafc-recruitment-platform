@@ -1,4 +1,5 @@
 // Unified color utility functions for consistent scoring colors across the platform
+import type { CSSProperties } from "react";
 
 /**
  * Get standardized performance score color (1-10 scale)
@@ -174,4 +175,34 @@ export const getGradeColor = (grade: string): string => {
 
   const scoreEquivalent = gradeMap[grade] || 1;
   return getPerformanceScoreColor(scoreEquivalent);
+};
+
+/**
+ * Data score (CH index) band colours, copied from the data-scoring scout app
+ * (dashboard/scout/scout.css --b2..--b5) so a score looks the same in both.
+ * Band 5 Elite … 2 Average are filled screens of one green; 1 Squad level is
+ * an outlined box; 0 Below Championship level is plain text. The backend
+ * assigns the band.
+ */
+const DATA_SCORE_BANDS: Record<"light" | "dark", Record<number, { bg: string; ink: string }>> = {
+  light: {
+    5: { bg: "#0B4A3B", ink: "#FFFFFF" },
+    4: { bg: "#2A7360", ink: "#FFFFFF" },
+    3: { bg: "#549A82", ink: "#151A1E" },
+    2: { bg: "#84BAA6", ink: "#151A1E" },
+  },
+  dark: {
+    5: { bg: "#A8E6D0", ink: "#0E1214" },
+    4: { bg: "#6DBBA1", ink: "#0E1214" },
+    3: { bg: "#47917A", ink: "#0E1214" },
+    2: { bg: "#2A5A4B", ink: "#E6EBE8" },
+  },
+};
+
+export const getDataScoreBandStyle = (band: number | null | undefined, isDark: boolean): CSSProperties => {
+  const filled = band == null ? undefined : DATA_SCORE_BANDS[isDark ? "dark" : "light"][band];
+  if (filled) return { backgroundColor: filled.bg, color: filled.ink, fontWeight: 700 };
+  const ink3 = isDark ? "#97A1A6" : "#646C72";
+  if (band === 1) return { boxShadow: `inset 0 0 0 1.5px ${ink3}`, fontWeight: 700 };
+  return { color: band == null ? ink3 : undefined, fontWeight: 500 };
 };
