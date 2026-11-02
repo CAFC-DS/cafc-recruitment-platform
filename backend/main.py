@@ -11754,6 +11754,120 @@ def select_metric_season(available_pairs, competition=None, season=None):
     )
 
 
+PITCH_CENTRAL_POSITIONS = {
+    "CENTRAL_DEFENDER", "DEFENSE_MIDFIELD", "CENTRAL_MIDFIELD",
+    "ATTACKING_MIDFIELD", "CENTER_FORWARD",
+}
+PITCH_HEATMAP_X_BINS = 12  # across the pitch (68m)
+PITCH_HEATMAP_Y_BINS = 16  # along the pitch (105m)
+# Actions where the player plays or wins the ball. Excludes RECEPTION (it sits
+# on exactly the same spot as the player's next pass/dribble, so it double
+# counts), ball-out/kick-off/whistle markers, fouls, cards, offsides and the
+# GOAL/OWN_GOAL rows that duplicate the shot.
+PITCH_HEATMAP_ACTION_TYPES = (
+    "PASS", "DRIBBLE", "SHOT", "LOOSE_BALL_REGAIN", "INTERCEPTION", "CLEARANCE",
+    "BLOCK", "THROW_IN", "FREE_KICK", "CORNER", "GOAL_KICK", "GK_CATCH", "GK_SAVE",
+)
+# How a player came to occupy a slot in a match, strongest first. A slot gets
+# the strongest entry seen that match (e.g. started at RW, moved, back to RW =
+# a RW start).
+PITCH_ENTRY_PRIORITY = ("start", "bench", "moved", "unknown")
+
+
+def _normalise_position_side(position: str, side: Optional[str]) -> Optional[str]:
+    """Central slots keep their left/centre/right split; wide slots and the
+    goalkeeper already encode their side in the position code."""
+    if position not in PITCH_CENTRAL_POSITIONS:
+        return None
+    if side in ("CENTRE_LEFT", "LEFT"):
+        return "CENTRE_LEFT"
+    if side in ("CENTRE_RIGHT", "RIGHT"):
+        return "CENTRE_RIGHT"
+    return "CENTRE"
+
+
+def _parse_variant(value):
+    import json
+
+    if value is None:
+        return []
+    if isinstance(value, str):
+        try:
+            return json.loads(value) or []
+        except ValueError:
+            return []
+    return value
+
+
+def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
+    """Replay Impect starting positions + substitution timeline for one match.
+
+    Every timeline entry for the player moves them to `toPosition` /
+    `positionSide` (SUB_ON, POSITION_CHANGE, POSITION_SIDE_CHANGE and untyped
+    side shuffles) or off the pitch when `toPosition` is BANK (SUB_OFF,
+    RED_CARD). GAME_TIME_IN_SEC is offset per period, so time is only counted
+    inside each period's [first event, last event] window.
+
+    Returns ({(position, side): seconds}, {(position, side): entry}) or
+    (None, None) when the player does not appear in the lineup data. `entry`
+    says how the player came into that slot this match: "start" (starting
+    slot only), "bench" (came on as a substitute into it), "moved" (switched
+    into it from another slot on the pitch) or "unknown" (timeline without a
+    starting slot or a bench entry, i.e. incomplete lineup data).
+    """
+    if not periods:
+        return None, None
+    _, home_start, away_start, home_subs, away_subs = match_info_row
+    starters = _parse_variant(home_start) + _parse_variant(away_start)
+    changes = [
+        entry for entry in _parse_variant(home_subs) + _parse_variant(away_subs)
+        if entry.get("playerId") == source_player_id
+        and (entry.get("gameTime") or {}).get("gameTimeInSec") is not None
+    ]
+    changes.sort(key=lambda entry: float(entry["gameTime"]["gameTimeInSec"]))
+
+    seconds = {}
+    entries = {}
+
+    def enter(slot, kind):
+        current = entries.get(slot)
+        if current is None or PITCH_ENTRY_PRIORITY.index(kind) < PITCH_ENTRY_PRIORITY.index(current):
+            entries[slot] = kind
+
+    state = None
+    for starter in starters:
+        if starter.get("playerId") == source_player_id and starter.get("position"):
+            state = (starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide")))
+            enter(state, "start")
+            break
+    if state is None and not changes:
+        return None, None
+
+    def add(slot, start, end):
+        for period_start, period_end in periods:
+            overlap = min(end, period_end) - max(start, period_start)
+            if overlap > 0:
+                seconds[slot] = seconds.get(slot, 0.0) + overlap
+
+    segment_start = periods[0][0]
+    for change in changes:
+        at = float(change["gameTime"]["gameTimeInSec"])
+        if state:
+            add(state, segment_start, at)
+        target = change.get("toPosition")
+        if not target or target == "BANK":
+            state = None
+        else:
+            from_bench = change.get("fromPosition") == "BANK" or change.get("substitutionType") == "SUB_ON"
+            kind = "bench" if from_bench else ("moved" if state else "unknown")
+            state = (target, _normalise_position_side(target, change.get("positionSide")))
+            enter(state, kind)
+        segment_start = at
+    if state:
+        add(state, segment_start, periods[-1][1])
+    return seconds, entries
+
+
 @app.get("/players/{player_id}/position-history")
 @offload_read
 def get_player_position_history(
@@ -11762,7 +11876,8 @@ def get_player_position_history(
     season: Optional[str] = None,
     current_user: User = Depends(get_current_user),
 ):
-    """Return authoritative seasonal position minutes for the profile header."""
+    """Seasonal position minutes (from Impect lineups) and a touch heatmap
+    (from Impect events) for the profile header pitch map."""
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -11771,66 +11886,160 @@ def get_player_position_history(
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
         if data_source != "external":
-            return {"available": False, "message": "Position history is unavailable for this player.", "filters": {"available": []}, "positions": []}
+            return {"available": False, "message": "Position history is unavailable for this player.", "filters": {"available": []}, "positions": [], "heatmap": None}
 
         source_player_id = int(player_data[0])
         cursor.execute(
             """
-            SELECT DISTINCT c.COMPETITION_NAME, k.SEASON
-            FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
-            JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
-              ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
-            WHERE k.SOURCE_PLAYER_ID = %s AND k.PLAY_DURATION_SECONDS > 0
-            ORDER BY k.SEASON DESC, c.COMPETITION_NAME
+            SELECT DISTINCT i."COMPETITION.NAME", i.SEASON
+            FROM CAFC_DB.IMPECT_RAW.EVENTS e
+            JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+            WHERE e.PLAYER_ID = %s AND e.PLAYER_POSITION IS NOT NULL
+            ORDER BY i.SEASON DESC, i."COMPETITION.NAME"
             """,
             (source_player_id,),
         )
         available_pairs = [{"competition": row[0], "season": row[1]} for row in cursor.fetchall()]
         if not available_pairs:
-            return {"available": False, "message": "No position history is available.", "filters": {"available": []}, "positions": []}
+            return {"available": False, "message": "No position history is available.", "filters": {"available": []}, "positions": [], "heatmap": None}
 
         selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
-        cache_key = f"player_position_history_v1_{source_player_id}_{competition}_{season}"
+        cache_key = f"player_position_history_v4_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
 
+        # Player's own event spans per slot: identifies the matches played and
+        # is the fallback estimate when a match has no usable lineup data.
         cursor.execute(
             """
-            WITH player_matches AS (
-                SELECT k.SOURCE_FIXTURE_ID, k.POSITION_CODE,
-                       MAX(k.PLAY_DURATION_SECONDS) AS SECONDS
-                FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
-                JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
-                  ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
-                WHERE k.SOURCE_PLAYER_ID = %s
-                  AND c.COMPETITION_NAME = %s AND k.SEASON = %s
-                  AND k.PLAY_DURATION_SECONDS > 0 AND k.POSITION_CODE IS NOT NULL
-                GROUP BY 1,2
-            )
-            SELECT POSITION_CODE, COUNT(DISTINCT SOURCE_FIXTURE_ID), SUM(SECONDS) / 60.0
-            FROM player_matches
-            GROUP BY 1
-            ORDER BY 3 DESC
+            SELECT e.MATCH_ID, e.PERIOD_ID, e.PLAYER_POSITION, e.PLAYER_POSITION_SIDE,
+                   MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC)
+            FROM CAFC_DB.IMPECT_RAW.EVENTS e
+            JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+            WHERE e.PLAYER_ID = %s
+              AND i."COMPETITION.NAME" = %s AND i.SEASON = %s
+              AND e.PLAYER_POSITION IS NOT NULL
+            GROUP BY 1,2,3,4
             """,
             (source_player_id, competition, season),
         )
-        rows = cursor.fetchall()
-        total_minutes = sum(float(row[2] or 0) for row in rows)
-        positions = [
-            {
-                "position": row[0], "match_count": int(row[1]),
-                "minutes": round(float(row[2] or 0)),
-                "share_pct": round(float(row[2] or 0) * 100 / total_minutes, 1) if total_minutes else 0,
-            }
-            for row in rows
+        event_spans = {}
+        for match_id, _period, position, side, span in cursor.fetchall():
+            slot = (position, _normalise_position_side(position, side))
+            match_spans = event_spans.setdefault(int(match_id), {})
+            match_spans[slot] = match_spans.get(slot, 0.0) + float(span or 0)
+        match_ids = sorted(event_spans)
+
+        periods_by_match = {}
+        lineups_by_match = {}
+        if match_ids:
+            placeholders = ",".join(["%s"] * len(match_ids))
+            cursor.execute(
+                f"""
+                SELECT MATCH_ID, PERIOD_ID, MIN(GAME_TIME_IN_SEC), MAX(GAME_TIME_IN_SEC)
+                FROM CAFC_DB.IMPECT_RAW.EVENTS
+                WHERE MATCH_ID IN ({placeholders}) AND GAME_TIME_IN_SEC IS NOT NULL
+                GROUP BY 1,2
+                ORDER BY 1,2
+                """,
+                match_ids,
+            )
+            for match_id, _period, start, end in cursor.fetchall():
+                periods_by_match.setdefault(int(match_id), []).append((float(start), float(end)))
+            cursor.execute(
+                f"""
+                SELECT MATCH_ID, HOME_STARTING_POSITIONS, AWAY_STARTING_POSITIONS,
+                       HOME_SUBSTITUTIONS, AWAY_SUBSTITUTIONS
+                FROM CAFC_DB.IMPECT_RAW.MATCH_INFO
+                WHERE MATCH_ID IN ({placeholders})
+                """,
+                match_ids,
+            )
+            lineups_by_match = {int(row[0]): row for row in cursor.fetchall()}
+
+        totals = {}
+        estimated_matches = 0
+        for match_id in match_ids:
+            seconds, entries = (None, None)
+            if match_id in lineups_by_match:
+                seconds, entries = _replay_lineup_seconds(
+                    lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, [])
+                )
+            if not seconds:
+                # No usable lineup: minutes come from event spans and how the
+                # player entered each slot is unknown, never inferred.
+                seconds, entries = event_spans[match_id], {}
+                estimated_matches += 1
+            for slot, slot_seconds in seconds.items():
+                if slot_seconds <= 0:
+                    continue
+                entry = totals.setdefault(slot, {"seconds": 0.0, "matches": 0, **{kind: 0 for kind in PITCH_ENTRY_PRIORITY}})
+                entry["seconds"] += slot_seconds
+                entry["matches"] += 1
+                entry[entries.get(slot, "unknown")] += 1
+
+        total_seconds = sum(entry["seconds"] for entry in totals.values())
+        positions = sorted(
+            (
+                {
+                    "position": position, "side": side,
+                    "match_count": entry["matches"],
+                    "starts": entry["start"],
+                    "sub_appearances": entry["bench"],
+                    "moved_in": entry["moved"],
+                    "unknown_entry": entry["unknown"],
+                    "minutes": round(entry["seconds"] / 60),
+                    "share_pct": round(entry["seconds"] * 100 / total_seconds, 1) if total_seconds else 0,
+                }
+                for (position, side), entry in totals.items()
+            ),
+            key=lambda item: item["minutes"],
+            reverse=True,
+        )
+
+        # Touch heatmap: Impect adjCoordinates are normalised so the player's
+        # team always attacks +x (105m long) and +y is the player's left (68m).
+        cursor.execute(
+            f"""
+            WITH touches AS (
+                SELECT TRY_TO_DOUBLE(TO_VARCHAR(e.START_DETAIL:adjCoordinates:x)) AS X,
+                       TRY_TO_DOUBLE(TO_VARCHAR(e.START_DETAIL:adjCoordinates:y)) AS Y
+                FROM CAFC_DB.IMPECT_RAW.EVENTS e
+                JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+                WHERE e.PLAYER_ID = %s
+                  AND i."COMPETITION.NAME" = %s AND i.SEASON = %s
+                  AND e.ACTION_TYPE IN ({",".join(["%s"] * len(PITCH_HEATMAP_ACTION_TYPES))})
+            )
+            SELECT LEAST(GREATEST(FLOOR((Y + 34) / 68 * {PITCH_HEATMAP_X_BINS}), 0), {PITCH_HEATMAP_X_BINS - 1}) AS ACROSS_BIN,
+                   LEAST(GREATEST(FLOOR((X + 52.5) / 105 * {PITCH_HEATMAP_Y_BINS}), 0), {PITCH_HEATMAP_Y_BINS - 1}) AS ALONG_BIN,
+                   COUNT(*)
+            FROM touches
+            WHERE X IS NOT NULL AND Y IS NOT NULL
+            GROUP BY 1,2
+            """,
+            (source_player_id, competition, season, *PITCH_HEATMAP_ACTION_TYPES),
+        )
+        heatmap_cells = [
+            {"across": int(row[0]), "along": int(row[1]), "count": int(row[2])}
+            for row in cursor.fetchall()
         ]
+        heatmap = {
+            "across_bins": PITCH_HEATMAP_X_BINS,
+            "along_bins": PITCH_HEATMAP_Y_BINS,
+            "total": sum(cell["count"] for cell in heatmap_cells),
+            "cells": heatmap_cells,
+        } if heatmap_cells else None
+
         response = {
             "available": bool(positions), "message": None if positions else "No position history is available.",
             "player_id": player_id,
             "filters": {"competition": competition, "season": season, "available": available_pairs},
             "positions": positions,
+            "minutes_source": "lineups" if not estimated_matches else ("estimated" if estimated_matches == len(match_ids) else "mixed"),
+            "estimated_matches": estimated_matches,
+            "heatmap": heatmap,
         }
         set_cache(cache_key, response, expiry_minutes=60)
         return response
