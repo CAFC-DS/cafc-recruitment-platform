@@ -52,6 +52,7 @@ interface KanbanColumnProps {
   playerFavorites?: Set<string>;
   favoriteDetails?: Record<string, FavoriteDetails>;
   playerDecisions?: Set<string>;
+  showSummerTransfers?: boolean;
   fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
 
@@ -97,6 +98,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
   playerFavorites,
   favoriteDetails,
   playerDecisions,
+  showSummerTransfers = true,
   fetchArchiveInfo,
 }) => {
   // Setup droppable area with @dnd-kit
@@ -285,6 +287,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = React.memo(({
                 isFavorited={playerFavorites?.has(player.universal_id) || false}
                 favoriteDetails={favoriteDetails?.[player.universal_id]}
                 isDecision={playerDecisions?.has(player.universal_id) || false}
+                showSummerTransfers={showSummerTransfers}
                 fetchArchiveInfo={fetchArchiveInfo}
               />
             ))

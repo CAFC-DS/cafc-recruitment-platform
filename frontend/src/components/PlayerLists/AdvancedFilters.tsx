@@ -18,8 +18,9 @@ export interface PlayerListFilters {
   archivedReasons: string[];
   initialReasons: string[];
   recencyMonths: string;
-  includeSummerTransfers?: boolean;
-  includeFavourites?: boolean;
+  // Display only: hide the favourite star / summer-transfer dot without removing players.
+  showSummerTransfers?: boolean;
+  showFavourites?: boolean;
 }
 
 interface AdvancedFiltersProps {
@@ -99,7 +100,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     filters.competition.length, filters.performanceScores.length,
     filters.minAge || filters.maxAge, filters.minReports || filters.maxReports,
     filters.stages.length, filters.recencyMonths, showArchived,
-    filters.includeSummerTransfers === true, filters.includeFavourites === false,
+    filters.showSummerTransfers === false, filters.showFavourites === false,
     includeArchivedReports, includeFlagReports, filters.initialReasons.length, filters.archivedReasons.length].filter(Boolean).length;
   const hasPendingChanges = JSON.stringify(filters) !== JSON.stringify(appliedFilters)
     || showArchived !== appliedShowArchived
@@ -109,7 +110,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     appliedFilters.competition.length, appliedFilters.performanceScores.length,
     appliedFilters.minAge || appliedFilters.maxAge, appliedFilters.minReports || appliedFilters.maxReports,
     appliedFilters.stages.length, appliedFilters.recencyMonths, appliedShowArchived,
-    appliedFilters.includeSummerTransfers === true, appliedFilters.includeFavourites === false,
+    appliedFilters.showSummerTransfers === false, appliedFilters.showFavourites === false,
     appliedIncludeArchivedReports, appliedIncludeFlagReports, appliedFilters.initialReasons.length,
     appliedFilters.archivedReasons.length].some(Boolean);
   const scoreMin = filters.performanceScores.length ? Math.min(...filters.performanceScores) : "";
@@ -130,8 +131,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     if (appliedFilters.initialReasons.length) addChip(`Initial reasons: ${appliedFilters.initialReasons.join(", ")}`, () => appliedOnFilterChange({ initialReasons: [] }));
     if (!pitchView && appliedFilters.archivedReasons.length) addChip(`Archived reasons: ${appliedFilters.archivedReasons.join(", ")}`, () => appliedOnFilterChange({ archivedReasons: [] }));
     if (!pitchView && appliedShowArchived) addChip("Archived players", () => appliedOnShowArchivedChange(false));
-    if (appliedFilters.includeSummerTransfers) addChip("Summer transfers included", () => appliedOnFilterChange({ includeSummerTransfers: false }));
-    if (appliedFilters.includeFavourites === false) addChip("Favourites excluded", () => appliedOnFilterChange({ includeFavourites: true }));
+    if (appliedFilters.showFavourites === false) addChip("Favourites hidden", () => appliedOnFilterChange({ showFavourites: true }));
+    if (appliedFilters.showSummerTransfers === false) addChip("Summer transfers hidden", () => appliedOnFilterChange({ showSummerTransfers: true }));
     if (appliedIncludeArchivedReports) addChip("Archived reports", () => appliedOnIncludeArchivedReportsChange(false));
     if (appliedIncludeFlagReports) addChip("Flag reports", () => appliedOnIncludeFlagReportsChange(false));
 
@@ -162,11 +163,14 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             <section aria-labelledby={`${filterId}-recruitment`}><h3 id={`${filterId}-recruitment`}>Recruitment</h3>
               {multiSelect("Initial reasons", "initialReasons", initialReasonOptions)}
               {!pitchView && <>{multiSelect("Stages", "stages", STAGE_OPTIONS)}{multiSelect("Archived reasons", "archivedReasons", archivedReasonOptions)}<Form.Check id={`${filterId}-archived`} label="Include archived players" checked={showArchived} onChange={event => onShowArchivedChange(event.target.checked)} /></>}
-              <Form.Check id={`${filterId}-summer-transfers`} label="Include summer transfers" checked={filters.includeSummerTransfers ?? false} onChange={event => onFilterChange({ includeSummerTransfers: event.target.checked })} />
-              <Form.Check id={`${filterId}-favourites`} label="Include favourites" checked={filters.includeFavourites ?? true} onChange={event => onFilterChange({ includeFavourites: event.target.checked })} />
               <Form.Check id={`${filterId}-archived-reports`} label="Include archived reports in counts" checked={includeArchivedReports} onChange={event => onIncludeArchivedReportsChange(event.target.checked)} />
               <Form.Check id={`${filterId}-flag-reports`} label="Include flag reports in counts" checked={includeFlagReports} onChange={event => onIncludeFlagReportsChange(event.target.checked)} />
               {pitchView && <p className="filter-drawer__hint">Choose stages above the pitch. Archived players are excluded.</p>}
+            </section>
+            <section aria-labelledby={`${filterId}-display`}><h3 id={`${filterId}-display`}>Display</h3>
+              <p className="filter-drawer__hint">Hides the marker only; players stay in the list.</p>
+              <Form.Check type="switch" id={`${filterId}-show-favourites`} label="Show favourites" checked={filters.showFavourites !== false} onChange={event => onFilterChange({ showFavourites: event.target.checked })} />
+              <Form.Check type="switch" id={`${filterId}-show-summer-transfers`} label="Show summer transfers" checked={filters.showSummerTransfers !== false} onChange={event => onFilterChange({ showSummerTransfers: event.target.checked })} />
             </section>
           </Offcanvas.Body>
           <footer className="filter-drawer__footer"><p role="status" aria-live="polite">{hasPendingChanges ? "Changes ready to apply" : "Adjust filters, then apply"}</p><div><Button type="submit" variant="primary">Apply filters</Button><Button type="button" variant="outline-secondary" disabled={!activeCount && !hasAppliedFilters && !hasPendingChanges} onClick={onClearFilters}>Reset filters</Button></div></footer>
@@ -471,18 +475,12 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                     size="sm"
                     className="w-100 text-start"
                   >
-                    {[showArchived && "Archived players", includeArchivedReports && "Archived reports", includeFlagReports && "Flag reports", filters.includeSummerTransfers && "Summer transfers", filters.includeFavourites !== false && "Favourites"].filter(Boolean).join(", ") || "None selected"}
+                    {[showArchived && "Archived players", includeArchivedReports && "Archived reports", includeFlagReports && "Flag reports"].filter(Boolean).join(", ") || "None selected"}
                   </Dropdown.Toggle>
                   <Dropdown.Menu popperConfig={{ strategy: "fixed" }}
                     className="p-2"
                     style={{ minWidth: "250px" }}
                   >
-                    <div className="px-2 py-1">
-                      <Form.Check id={`${filterId}-summer-transfers`} label="Include summer transfers" checked={filters.includeSummerTransfers ?? false} onChange={event => onFilterChange({ includeSummerTransfers: event.target.checked })} />
-                    </div>
-                    <div className="px-2 py-1">
-                      <Form.Check id={`${filterId}-favourites`} label="Include favourites" checked={filters.includeFavourites ?? true} onChange={event => onFilterChange({ includeFavourites: event.target.checked })} />
-                    </div>
                     <div className="px-2 py-1">
                       <Form.Check
                         type="checkbox"
@@ -510,6 +508,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
                         checked={includeFlagReports}
                         onChange={(e) => onIncludeFlagReportsChange(e.target.checked)}
                       />
+                    </div>
+                    <Dropdown.Divider />
+                    <div className="px-2 py-1">
+                      <Form.Check type="switch" id={`${filterId}-show-favourites`} label="Show favourites" checked={filters.showFavourites !== false} onChange={event => onFilterChange({ showFavourites: event.target.checked })} />
+                    </div>
+                    <div className="px-2 py-1">
+                      <Form.Check type="switch" id={`${filterId}-show-summer-transfers`} label="Show summer transfers" checked={filters.showSummerTransfers !== false} onChange={event => onFilterChange({ showSummerTransfers: event.target.checked })} />
                     </div>
                   </Dropdown.Menu>
                 </Dropdown>

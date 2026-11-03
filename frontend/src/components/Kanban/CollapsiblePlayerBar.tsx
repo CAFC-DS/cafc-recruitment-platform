@@ -52,6 +52,7 @@ interface CollapsiblePlayerBarProps {
   isFavorited?: boolean;
   favoriteDetails?: FavoriteDetails;
   isDecision?: boolean;
+  showSummerTransfers?: boolean;
   fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
 
@@ -119,6 +120,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
   isFavorited = false,
   favoriteDetails,
   isDecision = false,
+  showSummerTransfers = true,
   fetchArchiveInfo,
 }) => {
   const navigate = useNavigate();
@@ -238,7 +240,7 @@ const CollapsiblePlayerBar: React.FC<CollapsiblePlayerBarProps> = React.memo(({
             }}
           >
             {player.player_name}
-            <ClubMoveDot move={player.club_move} />
+            {showSummerTransfers && <ClubMoveDot move={player.club_move} />}
             {getPlayerNotes(player.universal_id) && (
               <span
                 style={{
