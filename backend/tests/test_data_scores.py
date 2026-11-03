@@ -97,16 +97,16 @@ def test_unconfigured_bucket_is_unavailable_not_an_error():
     assert result == {"available": False, "message": "Data scores are unavailable right now.", "run": None, "headline": None, "rows": []}
 
 
-@pytest.mark.parametrize("role", [main.ROLE_SCOUT, main.ROLE_LOAN_MANAGER, main.ROLE_INTEL_REVIEWER, main.ROLE_AGENT])
-def test_roles_without_analytics_access_are_refused(role):
+@pytest.mark.parametrize("role", [main.ROLE_MANAGER, main.ROLE_SCOUT, main.ROLE_LOAN_MANAGER, main.ROLE_INTEL_REVIEWER, main.ROLE_AGENT])
+def test_roles_below_senior_manager_are_refused(role):
     with patch.object(main, "get_snowflake_connection") as connect, pytest.raises(HTTPException) as refused:
         asyncio.run(main.get_player_data_scores("external_7", current_user=MagicMock(role=role)))
     assert refused.value.status_code == 403
     connect.assert_not_called()
 
 
-@pytest.mark.parametrize("role", [main.ROLE_ADMIN, main.ROLE_SENIOR_MANAGER, main.ROLE_MANAGER])
-def test_managers_get_scores_by_impect_id(role):
+@pytest.mark.parametrize("role", [main.ROLE_ADMIN, main.ROLE_SENIOR_MANAGER])
+def test_senior_managers_get_scores_by_impect_id(role):
     connection = MagicMock()
     with patch.object(main, "get_snowflake_connection", return_value=connection), \
          patch.object(main, "find_player_by_universal_or_legacy_id", return_value=((7, "c1", "A"), "external")), \
