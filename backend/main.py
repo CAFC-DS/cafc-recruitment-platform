@@ -12322,7 +12322,7 @@ def get_player_technical_metrics(
 @offload_read
 def get_player_data_scores(player_id: str, current_user: User = Depends(get_current_user)):
     """The data-scoring app's weekly CH index for this player, read from its Railway bucket."""
-    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]:
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:  # same audience as the scout app
         raise HTTPException(status_code=403, detail="Not authorized to view data scores")
     conn = None
     try:

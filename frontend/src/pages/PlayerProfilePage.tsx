@@ -555,7 +555,7 @@ const PlayerProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { viewMode, setViewMode } = useViewMode();
-  const { canGenerateShareLinks, canManageIntel, canSeeAllReports, canViewFlowHistory, isAdmin, isIntelReviewer, user } = useCurrentUser();
+  const { canAccessScoutApp, canGenerateShareLinks, canManageIntel, canSeeAllReports, canViewFlowHistory, isAdmin, isIntelReviewer, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -1733,7 +1733,7 @@ const PlayerProfilePage: React.FC = () => {
                           </div>
                         )}
 
-                        {canSeeAllReports && actualPlayerId && <PlayerDataScore playerId={actualPlayerId} />}
+                        {canAccessScoutApp && actualPlayerId && <PlayerDataScore playerId={actualPlayerId} />}
 
                         {(playerStages.length > 0 || archiveInfo.length > 0) && (
                           <div className="info-row">
