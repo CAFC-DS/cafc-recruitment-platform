@@ -1,4 +1,3 @@
-import { applyListInclusions } from "../utils/listInclusions";
 import { favoriteTooltip } from "../utils/favoriteTooltip";
 /**
  * PlayerListsPage Component - REDESIGNED
@@ -241,7 +240,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const [debouncedFilters, setDebouncedFilters] = useState<PlayerListFilters>({ category });
 
   // Use custom hook for data
-  const { lists: sourceLists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
+  const { lists, loading, error: fetchError, refetch } = usePlayerLists(debouncedFilters);
 
   // Local error
   const [error, setError] = useState<string | null>(null);
@@ -303,13 +302,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const [playerFavorites, setPlayerFavorites] = useState<Set<string>>(new Set());
   const [favoriteDetails, setFavoriteDetails] = useState<Record<string, FavoriteDetails>>({});
   const [playerDecisions, setPlayerDecisions] = useState<Set<string>>(new Set());
-  const lists = useMemo(
-    () => applyListInclusions(sourceLists, {
-      includeSummerTransfers: filters.includeSummerTransfers,
-      includeFavourites: filters.includeFavourites,
-    }, playerFavorites),
-    [sourceLists, filters.includeSummerTransfers, filters.includeFavourites, playerFavorites],
-  );
 
   // Remove player (currently using batch removal with pending state)
   // const [removingPlayerId, setRemovingPlayerId] = useState<number | null>(null);
@@ -1784,8 +1776,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 (filters.minReports || filters.maxReports) && `Reports: ${filters.minReports || "Any"}–${filters.maxReports || "Any"}`,
                 filters.recencyMonths && `Last ${filters.recencyMonths} months`,
                 filters.initialReasons.length > 0 && `Initial reasons: ${filters.initialReasons.join(", ")}`,
-                filters.includeSummerTransfers && "Summer transfers included",
-                filters.includeFavourites === false && "Favourites excluded",
+                filters.showFavourites === false && "Favourites hidden",
+                filters.showSummerTransfers === false && "Summer transfers hidden",
                 includeArchivedReports && "Archived reports included",
                 includeFlagReports && "Flag reports included",
               ].filter((value): value is string => typeof value === "string" && value.length > 0)}
@@ -1911,8 +1903,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 <strong>
                                   {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
                                 </strong>
-                                <ClubMoveDot move={player.club_move} />
-                                {playerFavorites.has(player.universal_id) && (
+                                {filters.showSummerTransfers !== false && <ClubMoveDot move={player.club_move} />}
+                                {filters.showFavourites !== false && playerFavorites.has(player.universal_id) && (
                                   <span
                                     className="ms-2 d-inline-flex align-items-center"
                                     title={favoriteTooltip(favoriteDetails[player.universal_id])}
