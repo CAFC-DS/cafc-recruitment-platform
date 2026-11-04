@@ -892,6 +892,8 @@ RECOMMENDATION_STATUSES = [
     "Archived Submission",
 ]
 
+NEEDS_DECISION_STATUSES = ["Submitted", "Under Review"]
+
 AGENT_STATUSES = [
     "Active",
     "No Longer Available",
@@ -4633,8 +4635,9 @@ def list_internal_recommendations(
     validate_recommendation_schema_ready()
     page = max(page, 1)
     page_size = min(max(page_size, 1), 100)
-    if status_filter:
-        validate_recommendation_status(status_filter)
+    statuses = [value.strip() for value in (status_filter or "").split(",") if value.strip()]
+    for value in statuses:
+        validate_recommendation_status(value)
     if age_min is not None and age_max is not None and age_min > age_max:
         raise HTTPException(status_code=400, detail="Minimum age cannot exceed maximum age")
 
@@ -4660,9 +4663,9 @@ def list_internal_recommendations(
         where_clauses = []
         params: List[Any] = []
 
-        if status_filter:
-            where_clauses.append("rec.STATUS = %s")
-            params.append(status_filter)
+        if statuses:
+            where_clauses.append(f"rec.STATUS IN ({', '.join(['%s'] * len(statuses))})")
+            params.extend(statuses)
         if agent_user_id:
             where_clauses.append("rec.SUBMITTED_BY_USER_ID = %s")
             params.append(agent_user_id)
@@ -4733,7 +4736,20 @@ def list_internal_recommendations(
             item = serialize_recommendation_for_viewer(row, current_user.role)
             item.data_score = recommendation_data_score(row, current_user.role)
             data.append(item)
-        return {"items": data, "page": page, "page_size": page_size, "total": total}
+        needs_decision_placeholders = ", ".join(["%s"] * len(NEEDS_DECISION_STATUSES))
+        cursor.execute(
+            f"""SELECT COUNT(*), COUNT_IF(STATUS IN ({needs_decision_placeholders}))
+            FROM {core_table('player_recommendations')}""",
+            NEEDS_DECISION_STATUSES,
+        )
+        all_count, needs_decision_count = cursor.fetchone()
+        return {
+            "items": data,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "queue_counts": {"needs_decision": needs_decision_count, "all": all_count},
+        }
     except Exception as e:
         logging.exception(f"Failed to fetch internal recommendations: {e}")
         raise HTTPException(status_code=500, detail="Failed to load recommendations")

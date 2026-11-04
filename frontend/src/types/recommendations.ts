@@ -135,6 +135,7 @@ export interface InternalRecommendationsResponse {
   page: number;
   page_size: number;
   total: number;
+  queue_counts?: { needs_decision: number; all: number };
 }
 
 export interface InternalRecommendationFiltersMeta {

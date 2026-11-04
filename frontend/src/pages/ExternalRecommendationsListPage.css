@@ -1,0 +1,493 @@
+/* Agent recommendations: a calm decision queue in the platform's existing look. */
+.rec-queue {
+  --rec-line: var(--color-border);
+  max-width: 1500px;
+  color: var(--color-text);
+}
+
+.rec-queue-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.rec-queue-heading h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-text);
+}
+
+.rec-queue-heading p {
+  margin: 0.1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-back {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.rec-queue-back:hover {
+  color: var(--color-primary);
+}
+
+.rec-queue-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.rec-queue-tabs {
+  display: inline-flex;
+  gap: 1.25rem;
+  border-bottom: 1px solid var(--rec-line);
+}
+
+.rec-queue-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: -1px;
+  padding: 0.35rem 0.1rem 0.5rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-tabs button span {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-queue-tabs button:hover {
+  color: var(--color-text);
+}
+
+.rec-queue-tabs button.is-active {
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.rec-queue-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rec-queue-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--rec-line);
+  border-radius: 6px;
+  background: var(--color-surface);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text);
+  text-decoration: none;
+  transition: border-color 120ms ease-out, background-color 120ms ease-out;
+}
+
+.rec-queue-tool:hover,
+.rec-queue-tool.is-open {
+  border-color: var(--color-text-muted);
+  background: var(--color-background);
+}
+
+.rec-queue-tool.is-action {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.rec-queue-tool-count {
+  min-width: 1.15rem;
+  border-radius: 999px;
+  background: var(--color-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.15rem;
+  text-align: center;
+  color: var(--color-surface);
+}
+
+.rec-queue-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.rec-queue-active-filters button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.5rem;
+  border: 1px solid var(--rec-line);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-size: 0.76rem;
+  color: var(--color-text);
+}
+
+.rec-queue-active-filters button:hover {
+  border-color: var(--color-text-muted);
+}
+
+.rec-queue-active-filters button.is-clear {
+  border-color: transparent;
+  background: none;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rec-queue-panel {
+  margin-bottom: 0.65rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--rec-line);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.rec-queue-panel .form-select,
+.rec-queue-panel .form-control {
+  border-radius: 6px;
+  border-width: 1px;
+}
+
+.rec-queue-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.5rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rec-queue-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--rec-line);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.rec-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  table-layout: fixed;
+}
+
+.rec-queue-table .col-select { width: 38px; }
+.rec-queue-table .col-player { width: 25%; }
+.rec-queue-table .col-position { width: 15%; }
+.rec-queue-table .col-submitted { width: 14%; }
+.rec-queue-table .col-cost { width: 19%; }
+.rec-queue-table .col-status { width: 16%; }
+.rec-queue-table .col-actions { width: 118px; }
+
+.rec-queue-table thead th {
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--rec-line);
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+.rec-queue-sort svg {
+  opacity: 0.45;
+}
+
+.rec-queue-sort:hover,
+.rec-queue-sort.is-active {
+  color: var(--color-text);
+}
+
+.rec-queue-sort.is-active svg {
+  opacity: 1;
+}
+
+.rec-queue-sort-pair {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 0.6rem;
+}
+
+.rec-queue-table tbody td {
+  height: 3.35rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--rec-line);
+  vertical-align: middle;
+  line-height: 1.35;
+}
+
+.rec-queue-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rec-queue-table tbody tr {
+  transition: background-color 120ms ease-out;
+}
+
+.rec-queue-table tbody tr:hover {
+  background: var(--color-background);
+}
+
+.rec-queue-table tbody tr.is-pending {
+  background: rgba(217, 119, 6, 0.08);
+}
+
+.rec-queue-table td.cell-select {
+  padding-right: 0;
+}
+
+.rec-queue-table td.cell-select .form-check {
+  min-height: 0;
+  margin: 0;
+}
+
+.rec-queue-player {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.rec-queue-player a,
+.rec-queue-player-name {
+  overflow: hidden;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.rec-queue-player a:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rec-queue-player .grade-chip,
+.rec-queue-player span[tabindex] {
+  flex-shrink: 0;
+}
+
+.rec-queue-resubmission {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+
+.rec-queue-resubmission:hover {
+  color: var(--color-primary);
+}
+
+.rec-queue-line,
+.rec-queue-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.rec-queue-sub {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-queue-table td.cell-cost,
+.rec-queue-table td.cell-cost .rec-queue-line {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.16rem 0.6rem;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.rec-queue-status.is-editable {
+  padding: 0;
+  transition: box-shadow 120ms ease-out;
+}
+
+.rec-queue-status.is-editable:hover,
+.rec-queue-status.is-editable:focus-within {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
+}
+
+.rec-queue-status.is-editable svg {
+  position: absolute;
+  right: 0.45rem;
+  pointer-events: none;
+}
+
+.rec-queue .rec-queue-status .form-select {
+  /* Keeps the pill to its label; browsers without it fall back to the full column. */
+  field-sizing: content;
+  width: auto;
+  max-width: 100%;
+  min-height: 0;
+  padding: 0.16rem 1.45rem 0.16rem 0.6rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
+  text-overflow: ellipsis;
+  color: inherit;
+  cursor: pointer;
+}
+
+.rec-queue .rec-queue-status .form-select:focus {
+  border: 0;
+  box-shadow: none;
+}
+
+.rec-queue .rec-queue-status .form-select:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.rec-queue .rec-queue-status .form-select option {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.rec-queue-unsaved {
+  margin-top: 0.1rem;
+  padding-left: 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-amber);
+}
+
+.rec-queue-table td.cell-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.rec-queue-review {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--color-text);
+  border-radius: 6px;
+  background: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text);
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.rec-queue-review:hover {
+  background: var(--color-text);
+  color: var(--color-surface);
+}
+
+.rec-queue-history {
+  display: inline-flex;
+  margin-left: 0.25rem;
+  padding: 0.28rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  vertical-align: middle;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-history:hover {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.rec-queue-table td.rec-queue-message {
+  height: 9rem;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.rec-queue-message button {
+  margin-left: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rec-queue-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.65rem;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.rec-queue button:focus-visible,
+.rec-queue a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

@@ -35,8 +35,7 @@ test("explains N/A on hover", async () => {
   expect(screen.getByRole("tooltip")).toHaveTextContent("Goalkeepers");
 });
 
-test("uses the caller's reason for N/A when given", async () => {
-  render(<ListDataScore score={null} emptyNote="Not linked to a player record." />);
-  fireEvent.mouseOver(screen.getByText("N/A"));
-  expect(await screen.findByRole("tooltip")).toHaveTextContent("Not linked to a player record.");
+test("can render the smaller box used beside a player name", () => {
+  render(<ListDataScore score={career} size="sm" />);
+  expect(screen.getByText("120")).toHaveClass("data-score-box-sm");
 });

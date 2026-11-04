@@ -3,11 +3,12 @@ import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import type { ListDataScore as ListDataScoreValue } from "../../services/playerListsService";
 import { DataScoreBox } from "../player/PlayerDataScore";
 
-const NO_SCORE = "Goalkeepers aren't in the data scores yet. Other players without a score have too little match data.";
-
-const explain = (score?: ListDataScoreValue | null, emptyNote = NO_SCORE): { title: string; lines: string[] } => {
+const explain = (score?: ListDataScoreValue | null): { title: string; lines: string[] } => {
   if (!score) {
-    return { title: "No data score", lines: [emptyNote] };
+    return {
+      title: "No data score",
+      lines: ["Goalkeepers aren't in the data scores yet. Other players without a score have too little match data."],
+    };
   }
   const band = score.band_name ? ` · ${score.band_name}` : "";
   if (score.kind === "career") {
@@ -29,9 +30,9 @@ const explain = (score?: ListDataScoreValue | null, emptyNote = NO_SCORE): { tit
 };
 
 /** A list row's data score: career, or that season's CH index marked "CH". The hover says which. */
-const ListDataScore: React.FC<{ score?: ListDataScoreValue | null; emptyNote?: string }> = ({ score, emptyNote }) => {
+const ListDataScore: React.FC<{ score?: ListDataScoreValue | null; size?: "sm" | "md" }> = ({ score, size = "md" }) => {
   const id = useId();
-  const { title, lines } = explain(score, emptyNote);
+  const { title, lines } = explain(score);
   return (
     <OverlayTrigger
       placement="top"
@@ -43,10 +44,10 @@ const ListDataScore: React.FC<{ score?: ListDataScoreValue | null; emptyNote?: s
         </Tooltip>
       }
     >
-      <span className="d-inline-flex align-items-center gap-1" tabIndex={0}>
+      <span className="d-inline-flex align-items-center gap-1 flex-shrink-0" tabIndex={0}>
         {score ? (
           <>
-            <DataScoreBox value={score.value} band={score.band} />
+            <DataScoreBox value={score.value} band={score.band} size={size} />
             {score.kind === "ch_index" && <small className="text-muted">CH</small>}
           </>
         ) : (
