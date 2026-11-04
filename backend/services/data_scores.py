@@ -45,6 +45,11 @@ def band_name(index):
     return None if index is None else BANDS[5 - index][1]
 
 
+def _headline_order(row):
+    """Latest season first, then the position with the most minutes."""
+    return -(row["t"] or 0), -(row["min"] or 0)
+
+
 def _blob(text):
     return json.loads(gzip.decompress(base64.b64decode(text)))
 
@@ -166,10 +171,26 @@ class DataScores:
                      fc_band=band(r["fc"]), fc_band_name=band_name(band(r["fc"])),
                      rel_band=band(r["rel"]), rel_band_name=band_name(band(r["rel"])))
                 for r in index.rows(int(impect_id))]
-        rows.sort(key=lambda r: (-(r["t"] or 0), -(r["min"] or 0)))
+        rows.sort(key=_headline_order)
         if not rows:
             return {"available": False, "message": "No data score for this player.", "run": run, "headline": None, "rows": []}
         return {"available": True, "message": None, "run": run, "headline": rows[0], "rows": rows}
+
+    def list_score(self, impect_id):
+        """One player's score for a list row: career, else that season's CH index, else None."""
+        if impect_id is None:
+            return None
+        _, index = self.current()
+        rows = index.rows(int(impect_id)) if index is not None else []
+        if not rows:
+            return None
+        head = min(rows, key=_headline_order)
+        kind = "career" if head["rel"] is not None else "ch_index"
+        value = head["rel"] if kind == "career" else head["ch"]
+        if value is None:
+            return None
+        return {"kind": kind, "value": value, "band": band(value), "band_name": band_name(band(value)),
+                "position": head["position"], "season": head["season"], "seasons": head["relN"], "min": head["min"]}
 
 
 data_scores = DataScores()

@@ -68,6 +68,7 @@ import {
   PlayerListFilters,
 } from "../services/playerListsService";
 import GradeChip from "../components/GradeChip";
+import ListDataScore from "../components/PlayerLists/ListDataScore";
 import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import {
   Goal,
@@ -121,7 +122,7 @@ interface PlayerList {
   avg_performance_score: number | null;
 }
 
-type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "lastReport" | "favorites" | "decisions";
+type SortField = "name" | "age" | "club" | "stage" | "score" | "dataScore" | "reports" | "lastReport" | "favorites" | "decisions";
 type SortDirection = "asc" | "desc";
 type SaveProgressState = "idle" | "saving" | "refetching" | "success" | "error";
 
@@ -640,6 +641,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         case "score":
           aVal = a.avg_performance_score || 0;
           bVal = b.avg_performance_score || 0;
+          break;
+        case "dataScore":
+          aVal = a.data_score?.value ?? 0;
+          bVal = b.data_score?.value ?? 0;
           break;
         case "reports":
           aVal = a.report_count;
@@ -1727,6 +1732,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     <option value="club">Club</option>
                     <option value="stage">Stage</option>
                     <option value="score">Score</option>
+                    <option value="dataScore">Data score</option>
                     <option value="reports">Reports</option>
                     <option value="favorites">Favorites</option>
                     <option value="decisions">Decisions</option>
@@ -1827,6 +1833,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                         <th>Lists</th>
                         <th onClick={() => handleSort("score")} style={{ cursor: "pointer" }}>
                           Score {sortField === "score" && (sortDirection === "asc" ? "↑" : "↓")}
+                        </th>
+                        <th onClick={() => handleSort("dataScore")} style={{ cursor: "pointer" }}>
+                          Data {sortField === "dataScore" && (sortDirection === "asc" ? "↑" : "↓")}
                         </th>
                         <th onClick={() => handleSort("reports")} style={{ cursor: "pointer" }}>
                           Reports {sortField === "reports" && (sortDirection === "asc" ? "↑" : "↓")}
@@ -2067,6 +2076,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                               ) : (
                                 <span className="text-muted">N/A</span>
                               )}
+                            </td>
+                            <td>
+                              <ListDataScore score={player.data_score} />
                             </td>
                             <td>
                               <div className="d-inline-flex align-items-center gap-2">

@@ -18199,6 +18199,7 @@ def get_all_lists_with_details(
                 "last_report_date": stats["last_report_date"].isoformat() if stats["last_report_date"] else None,
                 "intel_reports_count": intel_reports_count,
                 "club_move": get_club_move(row[17], category),
+                "data_score": data_scores.list_score(row[17]),
                 "recent_squad_change": squad_change_lookup.get((player_id, cafc_player_id))
                 or squad_change_name_lookup.get(str(row[9] or "").strip().casefold()),
             }

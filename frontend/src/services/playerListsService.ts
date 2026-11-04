@@ -30,8 +30,20 @@ export interface ClubMove {
   first_new_club_appearance: string | null;
 }
 
+export interface ListDataScore {
+  kind: "career" | "ch_index";
+  value: number;
+  band: number | null;
+  band_name: string | null;
+  position: string;
+  season: string;
+  seasons: number | null;
+  min: number | null;
+}
+
 export interface PlayerInList {
   club_move?: ClubMove | null;
+  data_score?: ListDataScore | null;
   item_id: number;
   player_id: number | null;
   cafc_player_id: number | null;
@@ -543,6 +555,8 @@ export const exportPlayersToCSV = (players: PlayerInList[], filename: string = "
     "Club",
     "Stage",
     "Avg Score",
+    "Data Score",
+    "Data Score Type",
     "Reports",
     "Live Reports",
     "Video Reports",
@@ -558,6 +572,8 @@ export const exportPlayersToCSV = (players: PlayerInList[], filename: string = "
     player.squad_name || "Unknown",
     player.stage,
     player.avg_performance_score?.toFixed(1) || "N/A",
+    player.data_score ? Math.round(player.data_score.value) : "N/A",
+    player.data_score ? (player.data_score.kind === "career" ? "Career" : "CH index") : "N/A",
     player.report_count,
     player.live_reports,
     player.video_reports,
