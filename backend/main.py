@@ -1534,6 +1534,7 @@ class RecommendationNoteHistoryResponse(BaseModel):
 
 
 class InternalRecommendationResponse(RecommendationResponse):
+    data_score: Optional[Dict[str, Any]] = None
     submitted_by_user_id: Optional[int] = None
     submitted_by_username: Optional[str] = None
     status_updated_by: Optional[int] = None
@@ -3280,6 +3281,13 @@ def build_recommendation_select():
     )
 
 
+def recommendation_data_score(row, role):
+    """The linked external player's data score, for the roles allowed to see data scores."""
+    if role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER] or row[48] != "external":
+        return None
+    return data_scores.list_score(row[46])
+
+
 def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
     submitted_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
     status_updated_by_name = " ".join(part for part in [row[40], row[41]] if part) or row[39]
@@ -4764,7 +4772,11 @@ def list_internal_recommendations(
             query_params,
         )
 
-        data = [serialize_recommendation_row(row, include_internal=True) for row in cursor.fetchall()]
+        data = []
+        for row in cursor.fetchall():
+            item = serialize_recommendation_row(row, include_internal=True)
+            item.data_score = recommendation_data_score(row, current_user.role)
+            data.append(item)
         return {"items": data, "page": page, "page_size": page_size, "total": total}
     except Exception as e:
         logging.exception(f"Failed to fetch internal recommendations: {e}")

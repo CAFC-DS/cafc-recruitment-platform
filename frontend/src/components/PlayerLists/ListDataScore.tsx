@@ -3,12 +3,11 @@ import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import type { ListDataScore as ListDataScoreValue } from "../../services/playerListsService";
 import { DataScoreBox } from "../player/PlayerDataScore";
 
-const explain = (score?: ListDataScoreValue | null): { title: string; lines: string[] } => {
+const NO_SCORE = "Goalkeepers aren't in the data scores yet. Other players without a score have too little match data.";
+
+const explain = (score?: ListDataScoreValue | null, emptyNote = NO_SCORE): { title: string; lines: string[] } => {
   if (!score) {
-    return {
-      title: "No data score",
-      lines: ["Goalkeepers aren't in the data scores yet. Other players without a score have too little match data."],
-    };
+    return { title: "No data score", lines: [emptyNote] };
   }
   const band = score.band_name ? ` · ${score.band_name}` : "";
   if (score.kind === "career") {
@@ -30,9 +29,9 @@ const explain = (score?: ListDataScoreValue | null): { title: string; lines: str
 };
 
 /** A list row's data score: career, or that season's CH index marked "CH". The hover says which. */
-const ListDataScore: React.FC<{ score?: ListDataScoreValue | null }> = ({ score }) => {
+const ListDataScore: React.FC<{ score?: ListDataScoreValue | null; emptyNote?: string }> = ({ score, emptyNote }) => {
   const id = useId();
-  const { title, lines } = explain(score);
+  const { title, lines } = explain(score, emptyNote);
   return (
     <OverlayTrigger
       placement="top"

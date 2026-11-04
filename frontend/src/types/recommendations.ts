@@ -1,3 +1,5 @@
+import type { ListDataScore } from "../services/playerListsService";
+
 export type RecommendationStatus =
   | 'Submitted'
   | 'Under Review'
@@ -90,6 +92,7 @@ export interface Recommendation {
   agent_email?: string;
   agent_number?: string;
   avg_performance_score?: number | null;
+  data_score?: ListDataScore | null;
   agent_status: AgentStatus;
   agent_status_updated_at?: string;
   shared_notes?: string;

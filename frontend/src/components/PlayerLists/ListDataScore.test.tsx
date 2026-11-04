@@ -32,4 +32,11 @@ test("explains N/A on hover", async () => {
   render(<ListDataScore score={null} />);
   fireEvent.mouseOver(screen.getByText("N/A"));
   expect(await screen.findByRole("tooltip")).toHaveTextContent("No data score");
+  expect(screen.getByRole("tooltip")).toHaveTextContent("Goalkeepers");
+});
+
+test("uses the caller's reason for N/A when given", async () => {
+  render(<ListDataScore score={null} emptyNote="Not linked to a player record." />);
+  fireEvent.mouseOver(screen.getByText("N/A"));
+  expect(await screen.findByRole("tooltip")).toHaveTextContent("Not linked to a player record.");
 });
