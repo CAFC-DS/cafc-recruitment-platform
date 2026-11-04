@@ -225,7 +225,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     position: "",
     club: "",
     competition: [],
-    performanceScores: [],
+    minScore: "",
+    maxScore: "",
+    minDataScore: "",
+    maxDataScore: "",
     minAge: "",
     maxAge: "",
     minReports: "",
@@ -448,12 +451,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
       if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
 
-      // Specific scores (copy before sorting: never mutate state in place)
-      if (filters.performanceScores.length > 0) {
-        apiFilters.performanceScores = [...filters.performanceScores]
-          .sort((a, b) => a - b)
-          .join(",");
-      }
+      if (filters.minScore) apiFilters.minScore = parseFloat(filters.minScore);
+      if (filters.maxScore) apiFilters.maxScore = parseFloat(filters.maxScore);
+      if (filters.minDataScore) apiFilters.minDataScore = parseFloat(filters.minDataScore);
+      if (filters.maxDataScore) apiFilters.maxDataScore = parseFloat(filters.maxDataScore);
 
       // Handle stages array
       if (filters.stages.length > 0) {
@@ -503,7 +504,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       position: "",
       club: "",
       competition: [],
-      performanceScores: [],
+      minScore: "",
+      maxScore: "",
+      minDataScore: "",
+      maxDataScore: "",
       minAge: "",
       maxAge: "",
       minReports: "",
@@ -1777,7 +1781,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 filters.position && `Position: ${filters.position}`,
                 filters.club && `Club: ${filters.club}`,
                 filters.competition.length > 0 && `Competitions: ${filters.competition.join(", ")}`,
-                filters.performanceScores.length > 0 && `Scores: ${Math.min(...filters.performanceScores)}–${Math.max(...filters.performanceScores)}`,
+                (filters.minScore || filters.maxScore) && `Performance score: ${filters.minScore || "Any"}–${filters.maxScore || "Any"}`,
+                (filters.minDataScore || filters.maxDataScore) && `Data score: ${filters.minDataScore || "Any"}–${filters.maxDataScore || "Any"}`,
                 (filters.minAge || filters.maxAge) && `Age: ${filters.minAge || "Any"}–${filters.maxAge || "Any"}`,
                 (filters.minReports || filters.maxReports) && `Reports: ${filters.minReports || "Any"}–${filters.maxReports || "Any"}`,
                 filters.recencyMonths && `Last ${filters.recencyMonths} months`,

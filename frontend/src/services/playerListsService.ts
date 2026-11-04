@@ -193,7 +193,8 @@ export interface PlayerListFilters {
   maxAge?: number;
   minScore?: number;
   maxScore?: number;
-  performanceScores?: string; // Comma-separated whole scores, e.g. "5,9"
+  minDataScore?: number;
+  maxDataScore?: number;
   minReports?: number;
   maxReports?: number;
   stages?: string; // Comma-separated
@@ -225,7 +226,8 @@ export const getAllListsWithDetails = async (
     if (filters.maxAge !== undefined) params.append("max_age", filters.maxAge.toString());
     if (filters.minScore !== undefined) params.append("min_score", filters.minScore.toString());
     if (filters.maxScore !== undefined) params.append("max_score", filters.maxScore.toString());
-    if (filters.performanceScores) params.append("performance_scores", filters.performanceScores);
+    if (filters.minDataScore !== undefined) params.append("min_data_score", filters.minDataScore.toString());
+    if (filters.maxDataScore !== undefined) params.append("max_data_score", filters.maxDataScore.toString());
     if (filters.minReports !== undefined) params.append("min_reports", filters.minReports.toString());
     if (filters.maxReports !== undefined) params.append("max_reports", filters.maxReports.toString());
     if (filters.stages) params.append("stages", filters.stages);

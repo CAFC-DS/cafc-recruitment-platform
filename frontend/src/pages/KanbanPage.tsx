@@ -108,7 +108,10 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     position: "",
     club: "",
     competition: [],
-    performanceScores: [],
+    minScore: "",
+    maxScore: "",
+    minDataScore: "",
+    maxDataScore: "",
     minAge: "",
     maxAge: "",
     minReports: "",
@@ -303,12 +306,10 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
       if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
 
-      // Handle performance scores array
-      if (filters.performanceScores.length > 0) {
-        const scores = filters.performanceScores.sort((a, b) => a - b);
-        apiFilters.minScore = scores[0];
-        apiFilters.maxScore = scores[scores.length - 1];
-      }
+      if (filters.minScore) apiFilters.minScore = parseFloat(filters.minScore);
+      if (filters.maxScore) apiFilters.maxScore = parseFloat(filters.maxScore);
+      if (filters.minDataScore) apiFilters.minDataScore = parseFloat(filters.minDataScore);
+      if (filters.maxDataScore) apiFilters.maxDataScore = parseFloat(filters.maxDataScore);
 
       // Handle stages array
       if (filters.stages.length > 0) {
@@ -349,7 +350,10 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       position: "",
       club: "",
       competition: [],
-      performanceScores: [],
+      minScore: "",
+      maxScore: "",
+      minDataScore: "",
+      maxDataScore: "",
       minAge: "",
       maxAge: "",
       minReports: "",
