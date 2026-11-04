@@ -393,10 +393,18 @@ def get_cached_username(user_id: int) -> Optional[str]:
     return USER_CACHE.get(user_id)
 
 
+def api_docs_settings(environment):
+    """Serve the API schema and docs pages only in local development."""
+    if environment == "development":
+        return {}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
 app = FastAPI(
     title="CAFC Recruitment Platform API",
     description="Football recruitment platform with role-based access control",
     version="1.0.0",
+    **api_docs_settings(os.getenv("ENVIRONMENT", "development")),
 )
 
 # Load table schemas and user cache on startup
