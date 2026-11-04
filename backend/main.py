@@ -1500,7 +1500,6 @@ class RecommendationResponse(BaseModel):
     agency: Optional[str] = None
     agent_email: Optional[str] = None
     agent_number: Optional[str] = None
-    avg_performance_score: Optional[float] = None
     agent_status: str = "Active"
     agent_status_updated_at: Optional[str] = None
     shared_notes: Optional[str] = None
@@ -1534,6 +1533,7 @@ class RecommendationNoteHistoryResponse(BaseModel):
 
 
 class InternalRecommendationResponse(RecommendationResponse):
+    avg_performance_score: Optional[float] = None
     submitted_by_user_id: Optional[int] = None
     submitted_by_username: Optional[str] = None
     status_updated_by: Optional[int] = None
@@ -3390,7 +3390,6 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agency": row[2],
         "agent_email": row[3],
         "agent_number": row[4],
-        "avg_performance_score": format_decimal(row[35]),
         "agent_status": row[44] or "Active",
         "agent_status_updated_at": serialize_datetime(row[45]),
         "shared_notes": row[28],
@@ -3406,6 +3405,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
 
     return InternalRecommendationResponse(
         **base_data,
+        avg_performance_score=format_decimal(row[35]),
         submitted_by_user_id=row[24],
         submitted_by_username=submitted_by_name,
         status_updated_by=row[27],
@@ -3456,7 +3456,17 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+# Agents are denied everything by default: only these paths accept an agent login,
+# so a new endpoint can never expose internal data to them by accident.
+AGENT_ALLOWED_PATHS = {"/users/me", "/auth/refresh"}
+AGENT_ALLOWED_PREFIX = "/agents/"
+
+
+def agent_may_access(path: str) -> bool:
+    return path in AGENT_ALLOWED_PATHS or path.startswith(AGENT_ALLOWED_PREFIX)
+
+
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -3475,6 +3485,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = await get_user(username)
     if user is None:
         raise credentials_exception
+    if user.role == ROLE_AGENT and not agent_may_access(request.scope["path"]):
+        raise HTTPException(status_code=403, detail="Not available to agent accounts")
     return User(
         id=user.id,
         username=user.username,
