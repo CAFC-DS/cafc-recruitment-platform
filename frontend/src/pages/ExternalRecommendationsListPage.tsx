@@ -167,6 +167,11 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const { isIntelReviewer, user } = useCurrentUser();
   const { theme } = useTheme();
   const canSelect = user?.role === 'admin';
+  const statusPillStyle = (status: RecommendationStatus) => {
+    const { color, darkColor } = getRecommendationStatusConfig(status);
+    const colors = theme.isDark ? darkColor : color;
+    return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
+  };
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
   const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
@@ -571,13 +576,8 @@ const ExternalRecommendationsListPage: React.FC = () => {
           <div className="rec-queue-panel rec-queue-key">
             {meta.statuses.map((status) => (
               <span key={status}>
-                <span
-                  className="rec-queue-key-dot"
-                  style={{ backgroundColor: theme.isDark ? getRecommendationStatusConfig(status).darkColor.text : getRecommendationStatusConfig(status).color.border }}
-                  aria-hidden="true"
-                />
-                <strong>{statusRowLabel(status)}</strong>
-                {statusRowLabel(status) !== getRecommendationStatusConfig(status).displayLabel ? ` ${getRecommendationStatusConfig(status).displayLabel}` : ''}
+                <span className="rec-queue-status" style={statusPillStyle(status)}>{statusRowLabel(status)}</span>
+                {statusRowLabel(status) !== getRecommendationStatusConfig(status).displayLabel ? <span>{getRecommendationStatusConfig(status).displayLabel}</span> : null}
               </span>
             ))}
           </div>
@@ -720,7 +720,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                 const queuedStatus = pendingStatusChanges.get(item.id);
                 const displayedStatus = queuedStatus || item.status;
                 const statusConfig = getRecommendationStatusConfig(displayedStatus);
-                const statusDot = theme.isDark ? statusConfig.darkColor.text : statusConfig.color.border;
+                const statusColors = statusPillStyle(displayedStatus);
                 const positions = formatRecommendedPositions(item.recommended_position);
                 const age = calculateAge(item.player_date_of_birth);
                 const dealAndFee = formatDealAndFee(item.potential_deal_type, formatTransferFeeAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee));
@@ -783,13 +783,11 @@ const ExternalRecommendationsListPage: React.FC = () => {
                     </td>
                     <td>
                       {isIntelReviewer ? (
-                        <div className="rec-queue-status is-readonly" title={statusConfig.displayLabel}>
-                          <span className="rec-queue-status-dot" style={{ backgroundColor: statusDot }} aria-hidden="true" />
+                        <span className="rec-queue-status" style={statusColors} title={statusConfig.displayLabel}>
                           {statusRowLabel(displayedStatus)}
-                        </div>
+                        </span>
                       ) : (
-                        <div className="rec-queue-status" title={statusConfig.displayLabel}>
-                          <span className="rec-queue-status-dot" style={{ backgroundColor: statusDot }} aria-hidden="true" />
+                        <div className="rec-queue-status is-editable" style={statusColors} title={statusConfig.displayLabel}>
                           <Form.Select
                             size="sm"
                             aria-label={`Review status for ${item.player_name}`}
@@ -799,6 +797,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
                           >
                             {meta.statuses.map((status) => <option key={status} value={status}>{statusRowLabel(status)}</option>)}
                           </Form.Select>
+                          <ChevronDown size={13} aria-hidden="true" />
                         </div>
                       )}
                       {queuedStatus ? <div className="rec-queue-unsaved">Unsaved</div> : null}

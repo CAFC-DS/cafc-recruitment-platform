@@ -186,17 +186,10 @@
   color: var(--color-text-muted);
 }
 
-.rec-queue-key-dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-right: 0.35rem;
-  border-radius: 50%;
-}
-
-.rec-queue-key strong {
-  font-weight: 600;
-  color: var(--color-text);
+.rec-queue-key > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .rec-queue-table-wrap {
@@ -214,11 +207,11 @@
 }
 
 .rec-queue-table .col-select { width: 38px; }
-.rec-queue-table .col-player { width: 27%; }
+.rec-queue-table .col-player { width: 25%; }
 .rec-queue-table .col-position { width: 15%; }
 .rec-queue-table .col-submitted { width: 14%; }
 .rec-queue-table .col-cost { width: 19%; }
-.rec-queue-table .col-status { width: 14%; }
+.rec-queue-table .col-status { width: 16%; }
 .rec-queue-table .col-actions { width: 118px; }
 
 .rec-queue-table thead th {
@@ -360,49 +353,59 @@
 
 .rec-queue-status {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  min-width: 0;
+  max-width: 100%;
+  padding: 0.16rem 0.6rem;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
-.rec-queue-status-dot {
+.rec-queue-status.is-editable {
+  padding: 0;
+  transition: box-shadow 120ms ease-out;
+}
+
+.rec-queue-status.is-editable:hover,
+.rec-queue-status.is-editable:focus-within {
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.22);
+}
+
+.rec-queue-status.is-editable svg {
   position: absolute;
-  left: 0.5rem;
-  z-index: 1;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
+  right: 0.45rem;
   pointer-events: none;
 }
 
 .rec-queue .rec-queue-status .form-select {
-  /* Keeps the arrow beside the label; browsers without it fall back to the full column. */
+  /* Keeps the pill to its label; browsers without it fall back to the full column. */
   field-sizing: content;
   width: auto;
   max-width: 100%;
-  padding: 0.18rem 1.5rem 0.18rem 1.3rem;
+  min-height: 0;
+  padding: 0.16rem 1.45rem 0.16rem 0.6rem;
   overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background-color: transparent;
-  background-position: right 0.35rem center;
-  font-size: 0.8rem;
-  font-weight: 500;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font: inherit;
   text-overflow: ellipsis;
-  color: var(--color-text);
+  color: inherit;
   cursor: pointer;
-  transition: border-color 120ms ease-out;
 }
 
-.rec-queue .rec-queue-status .form-select:hover,
 .rec-queue .rec-queue-status .form-select:focus {
-  border-color: var(--color-text-muted);
+  border: 0;
   box-shadow: none;
 }
 
 .rec-queue .rec-queue-status .form-select:focus-visible {
   outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .rec-queue .rec-queue-status .form-select option {
@@ -410,14 +413,9 @@
   color: var(--color-text);
 }
 
-.rec-queue-status.is-readonly {
-  padding-left: 1.3rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
 .rec-queue-unsaved {
-  padding-left: 1.3rem;
+  margin-top: 0.1rem;
+  padding-left: 0.6rem;
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--color-amber);
