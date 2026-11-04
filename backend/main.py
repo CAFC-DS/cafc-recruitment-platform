@@ -3416,6 +3416,14 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     )
 
 
+def serialize_recommendation_for_viewer(row, role, status_history=None):
+    """An internal recommendation as this role may read it: Intel Reviewers never get the scout average."""
+    item = serialize_recommendation_row(row, include_internal=True, status_history=status_history)
+    if role == ROLE_INTEL_REVIEWER:
+        item.avg_performance_score = None
+    return item
+
+
 def fetch_recommendation_detail(cursor, recommendation_id: int):
     cursor.execute(
         build_recommendation_select() + " WHERE pr.ID = %s",
@@ -3520,6 +3528,13 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 def require_internal_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role not in INTERNAL_ROLES:
         raise HTTPException(status_code=403, detail="Internal access required")
+    return current_user
+
+
+def require_scout_report_reader(current_user: User = Depends(get_current_user)) -> User:
+    """For routes that return scout report content: Intel Reviewers may not read it."""
+    if current_user.role == ROLE_INTEL_REVIEWER:
+        raise HTTPException(status_code=403, detail="Scout reports are not available to Intel Reviewers")
     return current_user
 
 
@@ -4776,7 +4791,7 @@ def list_internal_recommendations(
             query_params,
         )
 
-        data = [serialize_recommendation_row(row, include_internal=True) for row in cursor.fetchall()]
+        data = [serialize_recommendation_for_viewer(row, current_user.role) for row in cursor.fetchall()]
         return {"items": data, "page": page, "page_size": page_size, "total": total}
     except Exception as e:
         logging.exception(f"Failed to fetch internal recommendations: {e}")
@@ -4867,7 +4882,7 @@ def get_internal_recommendation_detail(
         if not row:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
-        return serialize_recommendation_row(row, include_internal=True, status_history=history)
+        return serialize_recommendation_for_viewer(row, current_user.role, status_history=history)
     finally:
         if conn:
             conn.close()
@@ -8599,7 +8614,7 @@ async def delete_scout_report(
 @app.get("/scout_reports/details/{report_id}")
 @offload_read
 def get_scout_report(
-    report_id: int, current_user: User = Depends(get_current_user)
+    report_id: int, current_user: User = Depends(require_scout_report_reader)
 ):
     conn = None
     try:
@@ -9727,7 +9742,7 @@ def get_all_scout_reports(
 @app.get("/scout_reports/recent")
 @offload_read
 def get_recent_scout_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_scout_report_reader),
     report_type: Optional[str] = None,  # "Player Assessment", "Flag", etc.
     limit: int = 20,
     offset: int = 0,
@@ -9936,7 +9951,7 @@ def get_recent_scout_reports(
 @app.get("/scout_reports/top-attributes")
 @offload_read
 def get_top_attribute_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_scout_report_reader),
     recency_days: Optional[int] = None,
     limit: int = 10,
 ):
@@ -10097,7 +10112,7 @@ def get_top_attribute_reports(
 @app.get("/scout_reports/{report_id}")
 @offload_read
 def get_single_scout_report(
-    report_id: int, current_user: User = Depends(get_current_user)
+    report_id: int, current_user: User = Depends(require_scout_report_reader)
 ):
     conn = None
     try:
@@ -12808,7 +12823,7 @@ def get_all_players(
 @app.get("/players/{player_id}/export-pdf")
 @offload_read
 def export_player_pdf(
-    player_id: str, current_user: User = Depends(get_current_user)
+    player_id: str, current_user: User = Depends(require_scout_report_reader)
 ):
     """Generate a printable HTML report for the player that can be converted to PDF"""
     try:
