@@ -13,7 +13,7 @@ import {
 
 export const internalRecommendationsService = {
   async list(params: {
-    status?: RecommendationStatus | '';
+    status?: string; // One status, or several separated by commas
     agent_user_id?: string;
     created_from?: string;
     created_to?: string;

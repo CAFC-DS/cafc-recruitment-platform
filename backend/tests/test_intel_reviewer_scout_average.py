@@ -21,7 +21,7 @@ def _row():
 @pytest.fixture
 def get_as():
     cursor = MagicMock()
-    cursor.fetchone.return_value = (1,)
+    cursor.fetchone.return_value = (1, 1)
     cursor.fetchall.return_value = [_row()]
     connection = MagicMock()
     connection.cursor.return_value = cursor
