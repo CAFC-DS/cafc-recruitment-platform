@@ -38,7 +38,7 @@ interface DataScoreResponse {
 const fmt = (v: number | null) => (v == null ? "—" : String(Math.round(v)));
 
 /** A CH score in its band colour, as the scout app draws it. */
-const DataScoreBox: React.FC<{ value: number | null; band: number | null; size?: "sm" | "md" }> = ({ value, band, size = "md" }) => {
+export const DataScoreBox: React.FC<{ value: number | null; band: number | null; size?: "sm" | "md" }> = ({ value, band, size = "md" }) => {
   const { theme } = useTheme();
   return (
     <span className={`data-score-box data-score-box-${size}`} style={getDataScoreBandStyle(band, theme.isDark)}>

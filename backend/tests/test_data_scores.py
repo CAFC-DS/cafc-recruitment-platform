@@ -74,6 +74,25 @@ def test_headline_is_the_latest_season_with_the_most_minutes(tmp_path):
     assert scores.for_player(999)["available"] is False
 
 
+def test_list_score_is_career_then_ch_index_then_none(tmp_path):
+    source = tmp_path / "cafc_scout.html"
+    rows = dict(ROWS, am=[[9, "C", "Club D", "Championship", "26/27", 19, 120, 96.4, 90, 102, 97.0, 90, 104, 2027.0, None, None],
+                          [10, "D", "Club E", "Championship", "26/27", 18, 30, None, None, None, None, None, None, 2027.0, None, None]])
+    source.write_text(page(rows))
+    scores = DataScores(env={"DATA_SCORES_FILE": str(source)})
+    assert scores.list_score(7) == {"kind": "career", "value": 112.5, "band": 4, "band_name": "Strong starter",
+                                    "position": "DM", "season": "25/26", "seasons": 1, "min": 1800}
+    assert scores.list_score(9) == {"kind": "ch_index", "value": 96.4, "band": 1, "band_name": "Squad level",
+                                    "position": "AM", "season": "26/27", "seasons": None, "min": 120}
+    assert scores.list_score(10) is None
+    assert scores.list_score(999) is None
+    assert scores.list_score(None) is None
+
+
+def test_list_score_is_none_when_the_bucket_is_unavailable():
+    assert DataScores(env={}).list_score(7) is None
+
+
 def test_bucket_failure_keeps_the_last_good_copy(tmp_path):
     source = tmp_path / "cafc_scout.html"
     source.write_text(page(ROWS))
