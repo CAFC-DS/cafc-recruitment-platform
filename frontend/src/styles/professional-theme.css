@@ -2978,6 +2978,7 @@ span.badge.badge-accent-video {
 }
 
 .external-recommendations-table .col-name { width: 15%; }
+.external-recommendations-table .col-data { width: 4.5%; }
 .external-recommendations-table .col-position { width: 6.5%; }
 .external-recommendations-table .col-age { width: 4%; }
 .external-recommendations-table .col-date { width: 6.5%; }

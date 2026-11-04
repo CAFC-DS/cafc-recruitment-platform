@@ -1,3 +1,5 @@
+import type { ListDataScore } from "../services/playerListsService";
+
 export type RecommendationStatus =
   | 'Submitted'
   | 'Under Review'
@@ -118,6 +120,7 @@ export interface RecommendationNoteHistory {
 
 export interface InternalRecommendation extends Recommendation {
   avg_performance_score?: number | null;
+  data_score?: ListDataScore | null;
   submitted_by_user_id?: number;
   submitted_by_username?: string;
   status_updated_by?: number;

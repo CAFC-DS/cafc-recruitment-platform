@@ -7,6 +7,7 @@ import RecommendationReviewModal from '../components/recommendations/Recommendat
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
 import { getRecommendationStatusConfig } from '../utils/agentRecommendationStatus';
 import GradeChip from '../components/GradeChip';
+import ListDataScore from '../components/PlayerLists/ListDataScore';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import {
   InternalRecommendation,
@@ -132,7 +133,8 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
 };
 
 const ExternalRecommendationsListPage: React.FC = () => {
-  const { isIntelReviewer, user } = useCurrentUser();
+  const { canAccessScoutApp, isIntelReviewer, user } = useCurrentUser();
+  const tableColumns = canAccessScoutApp ? 11 : 10;
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
   const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
@@ -333,7 +335,8 @@ const ExternalRecommendationsListPage: React.FC = () => {
   };
 
   const updateSelectedRecommendation = (updatedItem: InternalRecommendation) => {
-    setItems((current) => current.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem } : item)));
+    // Only the list endpoint carries data_score, so a single-item response must not blank it.
+    setItems((current) => current.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem, data_score: item.data_score } : item)));
     setSelectedRecommendation((current) => (current?.id === updatedItem.id ? { ...current, ...updatedItem } : current));
   };
 
@@ -764,6 +767,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
               <thead>
                 <tr>
                   <SortableHeader column="player_name" label="Player" className="col-name" />
+                  {canAccessScoutApp && <th className="col-data">Data</th>}
                   <SortableHeader column="position" label="Position" className="col-position" />
                   <th className="col-age">Age</th>
                   <SortableHeader column="date" label="Submitted" className="col-date" />
@@ -777,9 +781,9 @@ const ExternalRecommendationsListPage: React.FC = () => {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
+                  <tr><td colSpan={tableColumns} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
+                  <tr><td colSpan={tableColumns} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
                 ) : (
                   items.map((item) => {
                     const queuedStatus = pendingStatusChanges.get(item.id);
@@ -811,6 +815,14 @@ const ExternalRecommendationsListPage: React.FC = () => {
                           <div className="external-recommendations-pending-copy">Unsaved review status change</div>
                         ) : null}
                       </td>
+                      {canAccessScoutApp && (
+                        <td className="cell-data">
+                          <ListDataScore
+                            score={item.data_score}
+                            emptyNote={item.linked_universal_id ? undefined : "This recommendation isn't linked to a player record."}
+                          />
+                        </td>
+                      )}
                       <td className="cell-position" title={formatRecommendedPositions(item.recommended_position)}>
                         {formatRecommendedPositions(item.recommended_position)}
                       </td>

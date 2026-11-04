@@ -93,6 +93,38 @@ def test_list_score_is_none_when_the_bucket_is_unavailable():
     assert DataScores(env={}).list_score(7) is None
 
 
+def _recommendation_row(player_id, source):
+    row = [None] * 54
+    row[46], row[48] = player_id, source
+    return row
+
+
+@pytest.mark.parametrize("role", [main.ROLE_ADMIN, main.ROLE_SENIOR_MANAGER])
+def test_recommendation_score_uses_the_linked_external_player(role):
+    with patch.object(main.data_scores, "list_score", return_value={"value": 120}) as lookup:
+        assert main.recommendation_data_score(_recommendation_row(7, "external"), role) == {"value": 120}
+    lookup.assert_called_once_with(7)
+
+
+@pytest.mark.parametrize("role", [main.ROLE_MANAGER, main.ROLE_LOAN_MANAGER, main.ROLE_SCOUT, main.ROLE_INTEL_REVIEWER, main.ROLE_AGENT])
+def test_recommendation_score_is_withheld_below_senior_manager(role):
+    with patch.object(main.data_scores, "list_score") as lookup:
+        assert main.recommendation_data_score(_recommendation_row(7, "external"), role) is None
+    lookup.assert_not_called()
+
+
+def test_recommendation_score_skips_internal_and_unlinked_rows():
+    with patch.object(main.data_scores, "list_score") as lookup:
+        assert main.recommendation_data_score(_recommendation_row(None, "internal"), main.ROLE_ADMIN) is None
+        assert main.recommendation_data_score(_recommendation_row(None, None), main.ROLE_ADMIN) is None
+    lookup.assert_not_called()
+
+
+def test_agent_response_model_cannot_carry_data_scores():
+    assert "data_score" not in main.RecommendationResponse.model_fields
+    assert "data_score" in main.InternalRecommendationResponse.model_fields
+
+
 def test_bucket_failure_keeps_the_last_good_copy(tmp_path):
     source = tmp_path / "cafc_scout.html"
     source.write_text(page(ROWS))
