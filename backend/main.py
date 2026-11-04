@@ -393,10 +393,18 @@ def get_cached_username(user_id: int) -> Optional[str]:
     return USER_CACHE.get(user_id)
 
 
+def api_docs_settings(environment):
+    """Serve the API schema and docs pages only in local development."""
+    if environment == "development":
+        return {}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
 app = FastAPI(
     title="CAFC Recruitment Platform API",
     description="Football recruitment platform with role-based access control",
     version="1.0.0",
+    **api_docs_settings(os.getenv("ENVIRONMENT", "development")),
 )
 
 # Load table schemas and user cache on startup
@@ -418,85 +426,6 @@ async def startup_event():
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, _load_caches)
     print("✅ Application startup complete (cache loading running in background)")
-
-
-@app.get("/health/debug")
-@offload_read
-def debug_health():
-    """
-    Diagnostic endpoint - exposes env var presence (NOT values) and CORS config.
-    Safe to call publicly: only shows whether variables are set, never their contents.
-    Use this first when diagnosing Railway deployment issues.
-    """
-    def _present(val):
-        """Return 'SET' / 'MISSING' without leaking the value."""
-        return "SET" if val else "MISSING"
-
-    snowflake_key_raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "")
-    key_info = "MISSING"
-    if snowflake_key_raw:
-        has_header = "-----BEGIN" in snowflake_key_raw
-        # Check for literal \n vs real newlines (common Railway copy-paste mistake)
-        has_literal_backslash_n = r"\n" in snowflake_key_raw and "\n" not in snowflake_key_raw
-        if has_literal_backslash_n:
-            key_info = "SET but contains literal \\n instead of real newlines - WILL FAIL"
-        elif not has_header:
-            key_info = "SET but missing PEM header (-----BEGIN ...) - WILL FAIL"
-        else:
-            key_info = f"SET (length={len(snowflake_key_raw)}, has PEM header=True)"
-
-    cors_origins_raw = os.getenv("CORS_ORIGINS", "")
-    parsed_origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw else []
-
-    return {
-        "environment": ENVIRONMENT,
-        "snowflake": {
-            "account":   _present((os.getenv("SNOWFLAKE_PROD_ACCOUNT")   or os.getenv("SNOWFLAKE_ACCOUNT"))   if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
-            "username":  _present((os.getenv("SNOWFLAKE_PROD_USERNAME")  or os.getenv("SNOWFLAKE_USERNAME"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
-            "warehouse": _present((os.getenv("SNOWFLAKE_PROD_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE")) if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
-            "database":  _present((os.getenv("SNOWFLAKE_PROD_DATABASE")  or os.getenv("SNOWFLAKE_DATABASE"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
-            "schema":    _present((os.getenv("SNOWFLAKE_PROD_SCHEMA")    or os.getenv("SNOWFLAKE_SCHEMA"))    if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
-            "role":      _present((os.getenv("SNOWFLAKE_PROD_ROLE")      or os.getenv("SNOWFLAKE_ROLE"))      if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
-            "private_key": key_info,
-        },
-        "auth": {
-            "secret_key": _present(os.getenv("SECRET_KEY")),
-        },
-        "cors": {
-            "origins_env_var_set": bool(cors_origins_raw),
-            "parsed_origins": parsed_origins,
-        },
-        "connection_pool": {
-            "initialised": _connection_pool is not None,
-            "pool_size_approx": _connection_pool.qsize() if _connection_pool else 0,
-        },
-    }
-
-
-@app.get("/health/snowflake")
-@offload_read
-def test_snowflake_connection():
-    """Test Snowflake connection for debugging"""
-    import traceback
-
-    try:
-        print("Testing Snowflake connection...")
-        conn = get_snowflake_connection()
-        print("Connection established")
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        result = cursor.fetchone()
-        conn.close()
-        print("Connection test successful")
-        return {"status": "success", "result": result[0]}
-    except Exception as e:
-        error_details = {
-            "error_type": type(e).__name__,
-            "error_message": str(e),
-            "traceback": traceback.format_exc(),
-        }
-        print(f"Snowflake connection failed: {error_details}")
-        return {"status": "error", "error": error_details}
 
 
 # Environment-based CORS configuration
@@ -3424,6 +3353,14 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
     )
 
 
+def serialize_recommendation_for_viewer(row, role, status_history=None):
+    """An internal recommendation as this role may read it: Intel Reviewers never get the scout average."""
+    item = serialize_recommendation_row(row, include_internal=True, status_history=status_history)
+    if role == ROLE_INTEL_REVIEWER:
+        item.avg_performance_score = None
+    return item
+
+
 def fetch_recommendation_detail(cursor, recommendation_id: int):
     cursor.execute(
         build_recommendation_select() + " WHERE pr.ID = %s",
@@ -3528,6 +3465,13 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 def require_internal_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role not in INTERNAL_ROLES:
         raise HTTPException(status_code=403, detail="Internal access required")
+    return current_user
+
+
+def require_scout_report_reader(current_user: User = Depends(get_current_user)) -> User:
+    """For routes that return scout report content: Intel Reviewers may not read it."""
+    if current_user.role == ROLE_INTEL_REVIEWER:
+        raise HTTPException(status_code=403, detail="Scout reports are not available to Intel Reviewers")
     return current_user
 
 
@@ -4786,7 +4730,7 @@ def list_internal_recommendations(
 
         data = []
         for row in cursor.fetchall():
-            item = serialize_recommendation_row(row, include_internal=True)
+            item = serialize_recommendation_for_viewer(row, current_user.role)
             item.data_score = recommendation_data_score(row, current_user.role)
             data.append(item)
         return {"items": data, "page": page, "page_size": page_size, "total": total}
@@ -4879,7 +4823,7 @@ def get_internal_recommendation_detail(
         if not row:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
-        return serialize_recommendation_row(row, include_internal=True, status_history=history)
+        return serialize_recommendation_for_viewer(row, current_user.role, status_history=history)
     finally:
         if conn:
             conn.close()
@@ -5398,6 +5342,90 @@ def get_analytics_timeline_daily(
     finally:
         if conn:
             conn.close()
+
+
+@app.get("/health/debug")
+@offload_read
+def debug_health(current_user: User = Depends(get_current_user)):
+    """
+    Diagnostic endpoint (admin only) - exposes env var presence (NOT values) and CORS config.
+    Use this first when diagnosing Railway deployment issues.
+    """
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    def _present(val):
+        """Return 'SET' / 'MISSING' without leaking the value."""
+        return "SET" if val else "MISSING"
+
+    snowflake_key_raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "")
+    key_info = "MISSING"
+    if snowflake_key_raw:
+        has_header = "-----BEGIN" in snowflake_key_raw
+        # Check for literal \n vs real newlines (common Railway copy-paste mistake)
+        has_literal_backslash_n = r"\n" in snowflake_key_raw and "\n" not in snowflake_key_raw
+        if has_literal_backslash_n:
+            key_info = "SET but contains literal \\n instead of real newlines - WILL FAIL"
+        elif not has_header:
+            key_info = "SET but missing PEM header (-----BEGIN ...) - WILL FAIL"
+        else:
+            key_info = f"SET (length={len(snowflake_key_raw)}, has PEM header=True)"
+
+    cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+    parsed_origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw else []
+
+    return {
+        "environment": ENVIRONMENT,
+        "snowflake": {
+            "account":   _present((os.getenv("SNOWFLAKE_PROD_ACCOUNT")   or os.getenv("SNOWFLAKE_ACCOUNT"))   if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
+            "username":  _present((os.getenv("SNOWFLAKE_PROD_USERNAME")  or os.getenv("SNOWFLAKE_USERNAME"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
+            "warehouse": _present((os.getenv("SNOWFLAKE_PROD_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE")) if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
+            "database":  _present((os.getenv("SNOWFLAKE_PROD_DATABASE")  or os.getenv("SNOWFLAKE_DATABASE"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
+            "schema":    _present((os.getenv("SNOWFLAKE_PROD_SCHEMA")    or os.getenv("SNOWFLAKE_SCHEMA"))    if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
+            "role":      _present((os.getenv("SNOWFLAKE_PROD_ROLE")      or os.getenv("SNOWFLAKE_ROLE"))      if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
+            "private_key": key_info,
+        },
+        "auth": {
+            "secret_key": _present(os.getenv("SECRET_KEY")),
+        },
+        "cors": {
+            "origins_env_var_set": bool(cors_origins_raw),
+            "parsed_origins": parsed_origins,
+        },
+        "connection_pool": {
+            "initialised": _connection_pool is not None,
+            "pool_size_approx": _connection_pool.qsize() if _connection_pool else 0,
+        },
+    }
+
+
+@app.get("/health/snowflake")
+@offload_read
+def test_snowflake_connection(current_user: User = Depends(get_current_user)):
+    """Test Snowflake connection for debugging (admin only: failures include a traceback)"""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    import traceback
+
+    try:
+        print("Testing Snowflake connection...")
+        conn = get_snowflake_connection()
+        print("Connection established")
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        conn.close()
+        print("Connection test successful")
+        return {"status": "success", "result": result[0]}
+    except Exception as e:
+        error_details = {
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "traceback": traceback.format_exc(),
+        }
+        print(f"Snowflake connection failed: {error_details}")
+        return {"status": "error", "error": error_details}
 
 
 @app.get("/debug/scout_reports")
@@ -8611,7 +8639,7 @@ async def delete_scout_report(
 @app.get("/scout_reports/details/{report_id}")
 @offload_read
 def get_scout_report(
-    report_id: int, current_user: User = Depends(get_current_user)
+    report_id: int, current_user: User = Depends(require_scout_report_reader)
 ):
     conn = None
     try:
@@ -9739,7 +9767,7 @@ def get_all_scout_reports(
 @app.get("/scout_reports/recent")
 @offload_read
 def get_recent_scout_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_scout_report_reader),
     report_type: Optional[str] = None,  # "Player Assessment", "Flag", etc.
     limit: int = 20,
     offset: int = 0,
@@ -9948,7 +9976,7 @@ def get_recent_scout_reports(
 @app.get("/scout_reports/top-attributes")
 @offload_read
 def get_top_attribute_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_scout_report_reader),
     recency_days: Optional[int] = None,
     limit: int = 10,
 ):
@@ -10109,7 +10137,7 @@ def get_top_attribute_reports(
 @app.get("/scout_reports/{report_id}")
 @offload_read
 def get_single_scout_report(
-    report_id: int, current_user: User = Depends(get_current_user)
+    report_id: int, current_user: User = Depends(require_scout_report_reader)
 ):
     conn = None
     try:
@@ -12820,7 +12848,7 @@ def get_all_players(
 @app.get("/players/{player_id}/export-pdf")
 @offload_read
 def export_player_pdf(
-    player_id: str, current_user: User = Depends(get_current_user)
+    player_id: str, current_user: User = Depends(require_scout_report_reader)
 ):
     """Generate a printable HTML report for the player that can be converted to PDF"""
     try:
@@ -14590,8 +14618,11 @@ async def create_test_users(current_user: User = Depends(get_current_user)):
 
 @app.get("/database/metadata")
 @offload_read
-def get_database_metadata():
-    """Get database metadata including counts and recent data info"""
+def get_database_metadata(current_user: User = Depends(require_internal_user)):
+    """Get database metadata including counts and recent data info.
+
+    Internal roles only, not admin only: the home page shows these counts to all staff.
+    """
     conn = None
     try:
         conn = get_snowflake_connection()
