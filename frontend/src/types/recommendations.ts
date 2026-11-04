@@ -91,8 +91,6 @@ export interface Recommendation {
   agency?: string;
   agent_email?: string;
   agent_number?: string;
-  avg_performance_score?: number | null;
-  data_score?: ListDataScore | null;
   agent_status: AgentStatus;
   agent_status_updated_at?: string;
   shared_notes?: string;
@@ -121,6 +119,8 @@ export interface RecommendationNoteHistory {
 }
 
 export interface InternalRecommendation extends Recommendation {
+  avg_performance_score?: number | null;
+  data_score?: ListDataScore | null;
   submitted_by_user_id?: number;
   submitted_by_username?: string;
   status_updated_by?: number;
