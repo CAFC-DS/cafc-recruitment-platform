@@ -133,8 +133,7 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
 };
 
 const ExternalRecommendationsListPage: React.FC = () => {
-  const { canAccessScoutApp, isIntelReviewer, user } = useCurrentUser();
-  const tableColumns = canAccessScoutApp ? 11 : 10;
+  const { isIntelReviewer, user } = useCurrentUser();
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
   const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
@@ -767,7 +766,6 @@ const ExternalRecommendationsListPage: React.FC = () => {
               <thead>
                 <tr>
                   <SortableHeader column="player_name" label="Player" className="col-name" />
-                  {canAccessScoutApp && <th className="col-data">Data</th>}
                   <SortableHeader column="position" label="Position" className="col-position" />
                   <th className="col-age">Age</th>
                   <SortableHeader column="date" label="Submitted" className="col-date" />
@@ -781,9 +779,9 @@ const ExternalRecommendationsListPage: React.FC = () => {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={tableColumns} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={tableColumns} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
+                  <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
                 ) : (
                   items.map((item) => {
                     const queuedStatus = pendingStatusChanges.get(item.id);
@@ -810,19 +808,12 @@ const ExternalRecommendationsListPage: React.FC = () => {
                           {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
                             <GradeChip score={item.avg_performance_score} decimals={1} size="sm" />
                           ) : null}
+                          {item.data_score ? <ListDataScore score={item.data_score} size="sm" /> : null}
                         </div>
                         {hasPendingStatusChange ? (
                           <div className="external-recommendations-pending-copy">Unsaved review status change</div>
                         ) : null}
                       </td>
-                      {canAccessScoutApp && (
-                        <td className="cell-data">
-                          <ListDataScore
-                            score={item.data_score}
-                            emptyNote={item.linked_universal_id ? undefined : "This recommendation isn't linked to a player record."}
-                          />
-                        </td>
-                      )}
                       <td className="cell-position" title={formatRecommendedPositions(item.recommended_position)}>
                         {formatRecommendedPositions(item.recommended_position)}
                       </td>

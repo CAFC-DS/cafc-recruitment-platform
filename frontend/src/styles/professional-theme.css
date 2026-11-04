@@ -2845,13 +2845,20 @@ span.badge.badge-accent-video {
   white-space: nowrap;
 }
 
+.external-recommendations-table .cell-money {
+  min-width: 90px;
+  white-space: normal;
+}
+
 .external-recommendations-table .cell-date {
   color: #334155;
   font-weight: 600;
 }
 
+/* Long notes and position lists wrap so the table fits a laptop screen. */
 .external-recommendations-table .cell-name {
-  min-width: 0;
+  min-width: 220px;
+  white-space: normal;
 }
 
 .deal-type-badge-neutral {
@@ -2966,6 +2973,7 @@ span.badge.badge-accent-video {
 
 .external-recommendations-player-cell .fw-bold {
   min-width: 0;
+  white-space: nowrap;
 }
 
 .external-recommendations-pending-copy {
@@ -2978,7 +2986,6 @@ span.badge.badge-accent-video {
 }
 
 .external-recommendations-table .col-name { width: 15%; }
-.external-recommendations-table .col-data { width: 4.5%; }
 .external-recommendations-table .col-position { width: 6.5%; }
 .external-recommendations-table .col-age { width: 4%; }
 .external-recommendations-table .col-date { width: 6.5%; }
@@ -2990,9 +2997,8 @@ span.badge.badge-accent-video {
 
 .external-recommendations-table .cell-position,
 .external-recommendations-table .cell-agent {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 90px;
+  white-space: normal;
 }
 
 .external-recommendations-table .cell-age {
