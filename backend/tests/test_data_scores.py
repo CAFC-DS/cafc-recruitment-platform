@@ -39,6 +39,14 @@ ROWS = {
 }
 
 
+def test_parse_page_ignores_blobs_that_are_not_position_tables():
+    # The scout page gained a d-physical blob (a plain dict) on 2026-11-04; future blobs must not break the read.
+    html = page(ROWS).replace("</html>", blob("physical", {"meta": {"players": 1}, "rows": [[7, 1]]}) + blob("something_new", [1, 2, 3]) + "</html>")
+    index = parse_page(html)
+    assert sorted(index.by_player) == [7, 8]
+    assert {row["position"] for row in index.rows(7)} == {"CB", "DM"}
+
+
 def test_parse_page_reads_column_major_blobs_by_embedded_column_names():
     index = parse_page(page(ROWS))
     assert sorted(index.by_player) == [7, 8]
@@ -141,6 +149,13 @@ def test_failed_reads_back_off_instead_of_retrying_every_request():
         scores.for_player(7)
         scores.for_player(7)
     assert latest.call_count == 1
+
+
+def test_a_failed_read_is_logged_as_an_error_so_it_shows_in_production(caplog):
+    # Production logs at ERROR, so anything quieter disappears.
+    with caplog.at_level("ERROR"):
+        DataScores(env={}).for_player(7)
+    assert "data scores: refresh failed" in caplog.text
 
 
 def test_unconfigured_bucket_is_unavailable_not_an_error():
