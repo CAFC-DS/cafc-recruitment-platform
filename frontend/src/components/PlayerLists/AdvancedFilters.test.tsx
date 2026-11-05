@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { AdvancedFilters, PlayerListFilters } from "./AdvancedFilters";
 
 const emptyFilters: PlayerListFilters = {
-  playerName: "", position: "", club: "", competition: [], performanceScores: [],
+  playerName: "", position: "", club: "", competition: [], minScore: "", maxScore: "", minDataScore: "", maxDataScore: "",
   minAge: "", maxAge: "", minReports: "", maxReports: "", stages: [],
   archivedReasons: [], initialReasons: [], recencyMonths: "",
 };

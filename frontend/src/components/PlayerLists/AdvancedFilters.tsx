@@ -9,7 +9,11 @@ export interface PlayerListFilters {
   position: string;
   club: string;
   competition: string[];
-  performanceScores: number[];
+  // Average performance score (1-10, decimals allowed) and data score ranges.
+  minScore: string;
+  maxScore: string;
+  minDataScore: string;
+  maxDataScore: string;
   minAge: string;
   maxAge: string;
   minReports: string;
@@ -22,6 +26,11 @@ export interface PlayerListFilters {
   showSummerTransfers?: boolean;
   showFavourites?: boolean;
 }
+
+type ScoreKey = "minScore" | "maxScore" | "minDataScore" | "maxDataScore";
+type ScoreLimits = { min?: number; max?: number; step: number; placeholder: string };
+
+const SCORE_HINT = "Players without that score are hidden while its range is set.";
 
 interface AdvancedFiltersProps {
   compact?: boolean;
@@ -75,7 +84,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   const onClearFilters = () => {
     setDraftFilters({
       playerName: "", position: "", club: "", competition: [],
-      performanceScores: [], minAge: "", maxAge: "", minReports: "",
+      minScore: "", maxScore: "", minDataScore: "", maxDataScore: "", minAge: "", maxAge: "", minReports: "",
       maxReports: "", stages: [], archivedReasons: [], initialReasons: [],
       recencyMonths: "",
     });
@@ -85,7 +94,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     if (compact) appliedOnClearFilters();
   };
   const applyAllFilters = () => {
-    appliedOnFilterChange({ ...filters, performanceScores: [...filters.performanceScores] });
+    appliedOnFilterChange({ ...filters });
     appliedOnShowArchivedChange(showArchived);
     appliedOnIncludeArchivedReportsChange(includeArchivedReports);
     appliedOnIncludeFlagReportsChange(includeFlagReports);
@@ -97,7 +106,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   useEffect(() => { onIncludeFlagReportsChange(appliedIncludeFlagReports); }, [appliedIncludeFlagReports]);
   const filterId = useId();
   const activeCount = [filters.playerName, filters.position, filters.club,
-    filters.competition.length, filters.performanceScores.length,
+    filters.competition.length, filters.minScore || filters.maxScore, filters.minDataScore || filters.maxDataScore,
     filters.minAge || filters.maxAge, filters.minReports || filters.maxReports,
     filters.stages.length, filters.recencyMonths, showArchived,
     filters.showSummerTransfers === false, filters.showFavourites === false,
@@ -107,15 +116,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     || includeArchivedReports !== appliedIncludeArchivedReports
     || includeFlagReports !== appliedIncludeFlagReports;
   const hasAppliedFilters = [appliedFilters.playerName, appliedFilters.position, appliedFilters.club,
-    appliedFilters.competition.length, appliedFilters.performanceScores.length,
+    appliedFilters.competition.length, appliedFilters.minScore || appliedFilters.maxScore,
+    appliedFilters.minDataScore || appliedFilters.maxDataScore,
     appliedFilters.minAge || appliedFilters.maxAge, appliedFilters.minReports || appliedFilters.maxReports,
     appliedFilters.stages.length, appliedFilters.recencyMonths, appliedShowArchived,
     appliedFilters.showSummerTransfers === false, appliedFilters.showFavourites === false,
     appliedIncludeArchivedReports, appliedIncludeFlagReports, appliedFilters.initialReasons.length,
     appliedFilters.archivedReasons.length].some(Boolean);
-  const scoreMin = filters.performanceScores.length ? Math.min(...filters.performanceScores) : "";
-  const scoreMax = filters.performanceScores.length ? Math.max(...filters.performanceScores) : "";
-  const scoreRange = (low: number, high: number) => Array.from({ length: Math.max(0, high - low + 1) }, (_, i) => low + i);
   if (compact) {
     const chips: { label: string; clear: () => void }[] = [];
     const addChip = (label: string, clear: () => void) => chips.push({ label, clear });
@@ -124,7 +131,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     if (appliedFilters.club) addChip(`Club: ${appliedFilters.club}`, () => appliedOnFilterChange({ club: "" }));
     appliedFilters.competition.forEach(value => addChip(value, () => appliedOnFilterChange({ competition: appliedFilters.competition.filter(item => item !== value) })));
     if (appliedFilters.minAge || appliedFilters.maxAge) addChip(`Age ${appliedFilters.minAge || "Any"}–${appliedFilters.maxAge || "Any"}`, () => appliedOnFilterChange({ minAge: "", maxAge: "" }));
-    if (appliedFilters.performanceScores.length) addChip(`Score ${Math.min(...appliedFilters.performanceScores)}–${Math.max(...appliedFilters.performanceScores)}`, () => appliedOnFilterChange({ performanceScores: [] }));
+    if (appliedFilters.minScore || appliedFilters.maxScore) addChip(`Performance score ${appliedFilters.minScore || "Any"}–${appliedFilters.maxScore || "Any"}`, () => appliedOnFilterChange({ minScore: "", maxScore: "" }));
+    if (appliedFilters.minDataScore || appliedFilters.maxDataScore) addChip(`Data score ${appliedFilters.minDataScore || "Any"}–${appliedFilters.maxDataScore || "Any"}`, () => appliedOnFilterChange({ minDataScore: "", maxDataScore: "" }));
     if (appliedFilters.minReports || appliedFilters.maxReports) addChip(`Reports ${appliedFilters.minReports || "Any"}–${appliedFilters.maxReports || "Any"}`, () => appliedOnFilterChange({ minReports: "", maxReports: "" }));
     if (appliedFilters.recencyMonths) addChip(`Last ${appliedFilters.recencyMonths} months`, () => appliedOnFilterChange({ recencyMonths: "" }));
     if (!pitchView && appliedFilters.stages.length) addChip(appliedFilters.stages.join(", "), () => appliedOnFilterChange({ stages: [] }));
@@ -136,6 +144,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     if (appliedIncludeArchivedReports) addChip("Archived reports", () => appliedOnIncludeArchivedReportsChange(false));
     if (appliedIncludeFlagReports) addChip("Flag reports", () => appliedOnIncludeFlagReportsChange(false));
 
+    const scoreField = (label: string, minKey: ScoreKey, maxKey: ScoreKey, limits: ScoreLimits) => <fieldset className="filter-drawer__range"><legend>{label}</legend><div>{([minKey, maxKey] as const).map((key, index) => <label key={key}>{index ? "Maximum" : "Minimum"}<Form.Control type="number" {...limits} aria-label={`${index ? "Maximum" : "Minimum"} ${label.toLowerCase()}`} value={filters[key]} onChange={event => onFilterChange({ [key]: event.target.value })} /></label>)}</div></fieldset>;
     const textField = (label: string, key: "playerName" | "position" | "club") => <label className="filter-drawer__field">{label}<Form.Control type={key === "playerName" ? "search" : "text"} aria-label={label} value={filters[key]} placeholder={key === "playerName" ? "Search players by name…" : `Any ${label.toLowerCase()}`} onChange={event => onFilterChange({ [key]: event.target.value })} /></label>;
     const rangeField = (label: string, minKey: "minAge" | "minReports", maxKey: "maxAge" | "maxReports") => <fieldset className="filter-drawer__range"><legend>{label}</legend><div>{([minKey, maxKey] as const).map((key, index) => <label key={key}>{index ? "Maximum" : "Minimum"}<Form.Control type="number" min={minKey === "minAge" ? 16 : 0} max={minKey === "minAge" ? 50 : undefined} aria-label={`${index ? "Maximum" : "Minimum"} ${label === "Age" ? "age" : "report count"}`} placeholder="Any" value={filters[key]} onChange={event => onFilterChange({ [key]: event.target.value })} /></label>)}</div></fieldset>;
     const multiSelect = (label: string, key: "competition" | "stages" | "initialReasons" | "archivedReasons", options: readonly string[]) => <div className="filter-drawer__field"><span id={`${filterId}-${key}`}>{label}</span><Dropdown autoClose="outside"><Dropdown.Toggle variant="outline-secondary" aria-labelledby={`${filterId}-${key}`} className="w-100 text-start">{filters[key].length ? `${filters[key].length} selected` : "Any"}</Dropdown.Toggle><Dropdown.Menu className="filter-drawer__menu">{options.length ? options.map((value, index) => <Form.Check key={value} id={`${filterId}-${key}-${index}`} label={key === "stages" ? `${value} (${stageCounts[value] ?? 0})` : value} checked={filters[key].includes(value)} onChange={event => onFilterChange({ [key]: event.target.checked ? [...filters[key], value] : filters[key].filter(item => item !== value) })} />) : <p className="mb-0">No options available</p>}</Dropdown.Menu></Dropdown></div>;
@@ -155,8 +164,12 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               {multiSelect("Competition", "competition", competitionOptions)}
               {rangeField("Age", "minAge", "maxAge")}
             </section>
+            <section aria-labelledby={`${filterId}-scores`}><h3 id={`${filterId}-scores`}>Scores</h3>
+              {scoreField("Performance score", "minScore", "maxScore", { min: 1, max: 10, step: 0.1, placeholder: "Any" })}
+              {scoreField("Data score", "minDataScore", "maxDataScore", { step: 1, placeholder: "Any" })}
+              <p className="filter-drawer__hint">{SCORE_HINT}</p>
+            </section>
             <section aria-labelledby={`${filterId}-reports`}><h3 id={`${filterId}-reports`}>Reports</h3>
-              <fieldset className="filter-drawer__range"><legend>Performance score</legend><div><label>Minimum<Form.Control type="number" min={1} max={10} aria-label="Minimum performance score" placeholder="Any" value={scoreMin} onChange={event => onFilterChange({ performanceScores: event.target.value ? scoreRange(Number(event.target.value), scoreMax === "" ? 10 : Number(scoreMax)) : scoreMax === "" ? [] : scoreRange(1, Number(scoreMax)) })} /></label><label>Maximum<Form.Control type="number" min={1} max={10} aria-label="Maximum performance score" placeholder="Any" value={scoreMax} onChange={event => onFilterChange({ performanceScores: event.target.value ? scoreRange(scoreMin === "" ? 1 : Number(scoreMin), Number(event.target.value)) : scoreMin === "" ? [] : scoreRange(Number(scoreMin), 10) })} /></label></div></fieldset>
               {rangeField("Report count", "minReports", "maxReports")}
               <label className="filter-drawer__field">Last reported<Form.Select aria-label="Last reported" value={filters.recencyMonths} onChange={event => onFilterChange({ recencyMonths: event.target.value })}><option value="">Any time</option>{[1,3,6,12].map(months => <option key={months} value={months}>Last {months} {months === 1 ? "month" : "months"}</option>)}</Form.Select></label>
             </section>
@@ -299,53 +312,22 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
           <Row className="mb-3">
             <Col md={4}>
               <Form.Group>
-                <Form.Label className="small fw-bold">
-                  {compact ? "Score range" : "Performance Score"}
-                </Form.Label>
-                {compact ? <div className="range-inputs">
-                  <Form.Control size="sm" type="number" min={1} max={10} aria-label="Minimum performance score" placeholder="Min" value={scoreMin}
-                    onChange={e => onFilterChange({ performanceScores: e.target.value ? scoreRange(Number(e.target.value), scoreMax !== "" ? Number(scoreMax) : 10) : scoreMax !== "" ? scoreRange(1, Number(scoreMax)) : [] })} />
+                <Form.Label className="small fw-bold">Performance Score</Form.Label>
+                <div className="range-inputs">
+                  <Form.Control size="sm" type="number" min={1} max={10} step={0.1} aria-label="Minimum performance score" placeholder="Min" value={filters.minScore} onChange={e => onFilterChange({ minScore: e.target.value })} />
                   <span className="range-separator">to</span>
-                  <Form.Control size="sm" type="number" min={1} max={10} aria-label="Maximum performance score" placeholder="Max" value={scoreMax}
-                    onChange={e => onFilterChange({ performanceScores: e.target.value ? scoreRange(scoreMin === "" ? 1 : Number(scoreMin), Number(e.target.value)) : scoreMin !== "" ? scoreRange(Number(scoreMin), 10) : [] })} />
-                </div> : (                <Dropdown autoClose="outside">
-                  <Dropdown.Toggle
-                    variant="outline-secondary"
-                    size="sm"
-                    className="w-100 text-start"
-                  >
-                    {filters.performanceScores.length > 0
-                      ? `${filters.performanceScores.length} score${filters.performanceScores.length > 1 ? "s" : ""} selected`
-                      : "Select scores"}
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu popperConfig={{ strategy: "fixed" }}
-                    className="p-2"
-                    style={{ minWidth: "200px" }}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                      <div key={score} className="px-2 py-1">
-                        <Form.Check
-                          type="checkbox"
-                          id={`perf-${score}`}
-                          label={`${score}`}
-                          checked={filters.performanceScores.includes(score)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              onFilterChange({
-                                performanceScores: [...filters.performanceScores, score],
-                              });
-                            } else {
-                              onFilterChange({
-                                performanceScores: filters.performanceScores.filter((s) => s !== score),
-                              });
-                            }
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </Dropdown.Menu>
-                </Dropdown>)}
-
+                  <Form.Control size="sm" type="number" min={1} max={10} step={0.1} aria-label="Maximum performance score" placeholder="Max" value={filters.maxScore} onChange={e => onFilterChange({ maxScore: e.target.value })} />
+                </div>
+              </Form.Group>
+            </Col>
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="small fw-bold">Data Score</Form.Label>
+                <div className="range-inputs">
+                  <Form.Control size="sm" type="number" step={1} aria-label="Minimum data score" placeholder="Min" value={filters.minDataScore} onChange={e => onFilterChange({ minDataScore: e.target.value })} />
+                  <span className="range-separator">to</span>
+                  <Form.Control size="sm" type="number" step={1} aria-label="Maximum data score" placeholder="Max" value={filters.maxDataScore} onChange={e => onFilterChange({ maxDataScore: e.target.value })} />
+                </div>
               </Form.Group>
             </Col>
             <Col md={4}>

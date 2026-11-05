@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AdvancedFilters, PlayerListFilters } from './AdvancedFilters';
-const filters: PlayerListFilters = { playerName: '', position: '', club: '', competition: [], performanceScores: [], minAge: '', maxAge: '', minReports: '', maxReports: '', stages: [], archivedReasons: [], initialReasons: [], recencyMonths: '' };
+const filters: PlayerListFilters = { playerName: '', position: '', club: '', competition: [], minScore: '', maxScore: '', minDataScore: '', maxDataScore: '', minAge: '', maxAge: '', minReports: '', maxReports: '', stages: [], archivedReasons: [], initialReasons: [], recencyMonths: '' };
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', { writable: true, value: jest.fn().mockImplementation(query => ({ matches: false, media: query, onchange: null, addListener: jest.fn(), removeListener: jest.fn(), addEventListener: jest.fn(), removeEventListener: jest.fn(), dispatchEvent: jest.fn() })) });
 });
@@ -14,10 +14,10 @@ test('compact filters provide one search and one reset with an explicit score ra
   expect(screen.queryByPlaceholderText('Enter player name')).not.toBeInTheDocument();
   expect(screen.getAllByRole('button', {name:'Reset filters'})).toHaveLength(1);
   expect(screen.getByRole('button', {name:'Reset filters'})).toBeDisabled();
-  fireEvent.change(screen.getByLabelText('Minimum performance score'), {target:{value:'6'}});
+  fireEvent.change(screen.getByLabelText('Minimum performance score'), {target:{value:'6.5'}});
   expect(props.onFilterChange).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', {name:'Apply filters'}));
-  expect(props.onFilterChange).toHaveBeenCalledWith({...filters, performanceScores:[6,7,8,9,10]});
+  expect(props.onFilterChange).toHaveBeenCalledWith({...filters, minScore:'6.5'});
 });
 test('pitch filters defer stages to the pitch and show active criteria when collapsed', () => {
   render(<AdvancedFilters {...props} pitchView showFilters={false} filters={{...filters, club:'Charlton'}} />);
@@ -81,4 +81,16 @@ test('reset turns the display switches back on and hidden-marker chips can be re
   expect(props.onFilterChange).toHaveBeenCalledWith({showFavourites:true});
   fireEvent.click(screen.getByRole('button', {name:'Remove filter Summer transfers hidden'}));
   expect(props.onFilterChange).toHaveBeenCalledWith({showSummerTransfers:true});
+});
+
+test('the score ranges accept decimals and a data score, and show as removable filters', () => {
+  const onFilterChange = jest.fn();
+  render(<AdvancedFilters {...props} onFilterChange={onFilterChange} showFilters filters={{...filters, minScore:'6.5', maxScore:'8.2', minDataScore:'100'}} />);
+  expect(screen.getByLabelText('Minimum performance score')).toHaveAttribute('step','0.1');
+  expect(screen.getByLabelText('Maximum performance score')).toHaveAttribute('max','10');
+  expect(screen.getByLabelText('Minimum data score')).toHaveValue(100);
+  fireEvent.click(screen.getByRole('button', {name:'Remove filter Performance score 6.5–8.2'}));
+  expect(onFilterChange).toHaveBeenCalledWith({minScore:'', maxScore:''});
+  fireEvent.click(screen.getByRole('button', {name:'Remove filter Data score 100–Any'}));
+  expect(onFilterChange).toHaveBeenCalledWith({minDataScore:'', maxDataScore:''});
 });

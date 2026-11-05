@@ -17712,6 +17712,16 @@ def get_all_player_lists(
             conn.close()
 
 
+def score_in_range(value, low: Optional[float], high: Optional[float]) -> bool:
+    """A player with no score never matches an active range."""
+    if low is None and high is None:
+        return True
+    if value is None:
+        return False
+    value = float(value)
+    return (low is None or value >= low) and (high is None or value <= high)
+
+
 @app.get("/player-lists/all-with-details")
 @offload_read
 def get_all_lists_with_details(
@@ -17721,9 +17731,11 @@ def get_all_lists_with_details(
     competition: Optional[str] = None,
     min_age: Optional[int] = None,
     max_age: Optional[int] = None,
-    min_score: Optional[int] = None,
-    max_score: Optional[int] = None,
+    min_score: Optional[float] = None,  # Average performance score, to one decimal place
+    max_score: Optional[float] = None,
     performance_scores: Optional[str] = None,  # Comma-separated whole scores: "5,9" (matches the rounded average)
+    min_data_score: Optional[float] = None,  # Data score as shown in the table: a whole number
+    max_data_score: Optional[float] = None,
     min_reports: Optional[int] = None,
     max_reports: Optional[int] = None,
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
@@ -18213,16 +18225,23 @@ def get_all_lists_with_details(
 
             # Apply filters based on stats
             # Performance score filter
-            if min_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] < min_score):
-                continue
-            if max_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] > max_score):
+            if not score_in_range(stats["avg_performance_score"], min_score, max_score):
                 continue
             # Specific scores (can be non-contiguous, e.g. 5 and 9): a player
             # matches when their average rounds to one of the selected scores
             if score_set is not None:
                 avg = stats["avg_performance_score"]
-                if avg is None or int(avg + 0.5) not in score_set:
+                if avg is None or int(float(avg) + 0.5) not in score_set:
                     continue
+
+            # Data score filter: compares the whole number shown in the table
+            data_score = data_scores.list_score(row[17])
+            if not score_in_range(
+                math.floor(data_score["value"] + 0.5) if data_score else None,
+                min_data_score,
+                max_data_score,
+            ):
+                continue
 
             # Report count filter
             if min_reports is not None and stats["report_count"] < min_reports:
@@ -18270,7 +18289,7 @@ def get_all_lists_with_details(
                 "last_report_date": stats["last_report_date"].isoformat() if stats["last_report_date"] else None,
                 "intel_reports_count": intel_reports_count,
                 "club_move": get_club_move(row[17], category),
-                "data_score": data_scores.list_score(row[17]),
+                "data_score": data_score,
                 "recent_squad_change": squad_change_lookup.get((player_id, cafc_player_id))
                 or squad_change_name_lookup.get(str(row[9] or "").strip().casefold()),
             }
