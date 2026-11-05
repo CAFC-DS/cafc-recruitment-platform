@@ -21,6 +21,7 @@ import {
 } from "react-bootstrap";
 import { ArrowRight, X } from "lucide-react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { usePersistentState } from "../hooks/usePersistentState";
 import axiosInstance from "../axiosInstance";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import PipelineChart from "../components/analytics/recruitment/PipelineChart";
@@ -149,6 +150,16 @@ const FILTERS = [
   "scouts",
   "mode",
 ];
+/** The filters and section to reopen on: not drilldowns, nor rolling default dates. */
+const rememberedSearch = (params: URLSearchParams) => {
+  const dates = defaults() as Record<string, string>;
+  const kept = new URLSearchParams();
+  [...FILTERS, "section"].forEach((key) => {
+    const value = params.get(key);
+    if (value && value !== dates[key]) kept.set(key, value);
+  });
+  return kept.toString();
+};
 const dateLabel = (value: string) =>
   new Date(`${value.slice(0, 10)}T12:00:00`).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -1328,11 +1339,27 @@ export default function AnalyticsPage() {
     ? sectionParams.get("section")!
     : "overview";
   const [visited, setVisited] = useState<string[]>([section]);
+  // Filters live in the URL, which a navbar link drops: reopen the last view when
+  // arriving with none. A link that carries its own filters takes precedence.
+  const [savedSearch, setSavedSearch] = usePersistentState("analytics:search", "");
+  const [restoring, setRestoring] = useState(
+    () => !sectionParams.toString() && Boolean(savedSearch),
+  );
+  useEffect(() => {
+    if (!restoring) return;
+    // Hold the dashboard back until the URL has them, or it fetches unfiltered first.
+    if (sectionParams.toString()) setRestoring(false);
+    else setSectionParams(new URLSearchParams(savedSearch), { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoring, sectionParams]);
+  useEffect(() => {
+    if (!restoring) setSavedSearch(rememberedSearch(sectionParams));
+  }, [restoring, sectionParams, setSavedSearch]);
   useEffect(() => {
     setVisited((prev) => (prev.includes(section) ? prev : [...prev, section]));
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [section]);
-  if (loading)
+  if (loading || restoring)
     return (
       <Container className="py-5">
         <Spinner animation="border" role="status">

@@ -265,6 +265,30 @@ const HomePageWrapper: React.FC = () => {
   return token && user && user.role !== 'agent' && user.role !== 'intel_reviewer' ? <HomePage /> : null;
 };
 
+// The scout app holds its filters inside its iframe and can't save them (it runs in
+// an opaque-origin sandbox), so stay mounted and only hide it on other tabs: leaving
+// would otherwise reload it and lose them. ScoutAppRoute still guards the route.
+const ScoutAppKeepAlive: React.FC = () => {
+  const { pathname } = useLocation();
+  const { token } = useAuth();
+  const { canAccessScoutApp, user } = useCurrentUser();
+  const allowed = Boolean(token) && canAccessScoutApp;
+  const active = pathname === '/scout-app';
+  const [visited, setVisited] = useState(false);
+
+  useEffect(() => {
+    if (!allowed) setVisited(false);
+    else if (active) setVisited(true);
+  }, [allowed, active]);
+
+  if (!allowed || !(active || visited)) return null;
+  return (
+    <div hidden={!active}>
+      <ScoutAppPage key={user?.id} active={active} />
+    </div>
+  );
+};
+
 // Conditional navbar wrapper - only show navbar if not on shared report page
 const ConditionalNavbar: React.FC = () => {
   const location = useLocation();
@@ -397,7 +421,7 @@ function App() {
               path="/scout-app"
               element={
                 <ScoutAppRoute>
-                  <ScoutAppPage />
+                  <></>
                 </ScoutAppRoute>
               }
             />
@@ -426,6 +450,7 @@ function App() {
               }
             />
           </Routes>
+          <ScoutAppKeepAlive />
             </Suspense>
             </CurrentUserProvider>
           </AuthProvider>

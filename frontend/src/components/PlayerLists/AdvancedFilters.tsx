@@ -2,6 +2,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 import "./AdvancedFiltersDrawer.css";
 import { ALL_STAGES } from "../../constants/stages";
 import React, { useEffect, useId, useState } from "react";
+import { ActiveFilterBadge, ClearFiltersButton } from "../FilterHeaderControls";
 import { Card, Collapse, Button, Row, Col, Form, Dropdown, Offcanvas } from "react-bootstrap";
 
 export interface PlayerListFilters {
@@ -93,6 +94,13 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     onIncludeFlagReportsChange(false);
     if (compact) appliedOnClearFilters();
   };
+  const clearAppliedFilters = () => {
+    onClearFilters();
+    appliedOnClearFilters();
+    appliedOnShowArchivedChange(false);
+    appliedOnIncludeArchivedReportsChange(false);
+    appliedOnIncludeFlagReportsChange(false);
+  };
   const applyAllFilters = () => {
     appliedOnFilterChange({ ...filters });
     appliedOnShowArchivedChange(showArchived);
@@ -115,14 +123,15 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     || showArchived !== appliedShowArchived
     || includeArchivedReports !== appliedIncludeArchivedReports
     || includeFlagReports !== appliedIncludeFlagReports;
-  const hasAppliedFilters = [appliedFilters.playerName, appliedFilters.position, appliedFilters.club,
+  const appliedFilterCount = [appliedFilters.playerName, appliedFilters.position, appliedFilters.club,
     appliedFilters.competition.length, appliedFilters.minScore || appliedFilters.maxScore,
     appliedFilters.minDataScore || appliedFilters.maxDataScore,
     appliedFilters.minAge || appliedFilters.maxAge, appliedFilters.minReports || appliedFilters.maxReports,
     appliedFilters.stages.length, appliedFilters.recencyMonths, appliedShowArchived,
     appliedFilters.showSummerTransfers === false, appliedFilters.showFavourites === false,
     appliedIncludeArchivedReports, appliedIncludeFlagReports, appliedFilters.initialReasons.length,
-    appliedFilters.archivedReasons.length].some(Boolean);
+    appliedFilters.archivedReasons.length].filter(Boolean).length;
+  const hasAppliedFilters = appliedFilterCount > 0;
   if (compact) {
     const chips: { label: string; clear: () => void }[] = [];
     const addChip = (label: string, clear: () => void) => chips.push({ label, clear });
@@ -204,9 +213,9 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               value={filters.playerName}
               onChange={(e) => onFilterChange({ playerName: e.target.value })}
             />
-          ) : <h6 className="mb-0 text-white">🔍 Advanced Filters</h6>}
-          <div className="d-flex align-items-center gap-2">
-
+          ) : <h6 className="mb-0 text-white">🔍 Advanced Filters<ActiveFilterBadge count={appliedFilterCount} /></h6>}
+          <div className="d-flex align-items-center gap-3 ms-auto text-nowrap">
+          {!compact && <ClearFiltersButton count={appliedFilterCount} onClear={clearAppliedFilters} />}
           <Button
             type="button"
             variant="outline-secondary"

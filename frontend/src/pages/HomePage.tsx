@@ -12,6 +12,7 @@ import {
   Tooltip,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { usePersistentState } from "../hooks/usePersistentState";
 import axiosInstance from "../axiosInstance";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -59,7 +60,7 @@ const HomePage: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [loadingReportId, setLoadingReportId] = useState<number | null>(null);
   const [databaseMetadata, setDatabaseMetadata] = useState<any>(null);
-  const [recencyFilter, setRecencyFilter] = useState("7"); // Default to 7 days
+  const [recencyFilter, setRecencyFilter] = usePersistentState("home:recency", "7"); // Default to 7 days
 
   // Infinite scroll state for Scout Reports
   const [scoutReportsOffset, setScoutReportsOffset] = useState(0);

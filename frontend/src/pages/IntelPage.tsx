@@ -23,6 +23,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { useViewMode } from "../contexts/ViewModeContext";
 import { getPlayerProfilePath } from "../utils/playerNavigation";
 import { getRecommendationColor, getContrastTextColor } from "../utils/colorUtils";
+import { usePersistentState } from "../hooks/usePersistentState";
+import { ActiveFilterBadge, ClearFiltersButton } from "../components/FilterHeaderControls";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -69,17 +71,33 @@ const IntelPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
   const [itemsPerPage] = useState(20);
-  const [recencyFilter, setRecencyFilter] = useState<string>("7");
+  const [recencyFilter, setRecencyFilter] = usePersistentState<string>("intel:recency", "7");
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = usePersistentState("intel:showFilters", false);
 
   // Advanced filters
-  const [recommendationFilter, setRecommendationFilter] = useState("");
-  const [contactNameFilter, setContactNameFilter] = useState("");
-  const [playerNameFilter, setPlayerNameFilter] = useState("");
-  const [dateFromFilter, setDateFromFilter] = useState("");
-  const [dateToFilter, setDateToFilter] = useState("");
+  const [recommendationFilter, setRecommendationFilter] = usePersistentState("intel:recommendationFilter", "");
+  const [contactNameFilter, setContactNameFilter] = usePersistentState("intel:contactNameFilter", "");
+  const [playerNameFilter, setPlayerNameFilter] = usePersistentState("intel:playerNameFilter", "");
+  const [dateFromFilter, setDateFromFilter] = usePersistentState("intel:dateFromFilter", "");
+  const [dateToFilter, setDateToFilter] = usePersistentState("intel:dateToFilter", "");
+
+  const activeFilterCount = [
+    recommendationFilter,
+    contactNameFilter,
+    playerNameFilter,
+    dateFromFilter,
+    dateToFilter,
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setRecommendationFilter("");
+    setContactNameFilter("");
+    setPlayerNameFilter("");
+    setDateFromFilter("");
+    setDateToFilter("");
+  };
 
   // Intel report viewing
   const [showIntelReportModal, setShowIntelReportModal] = useState(false);
@@ -541,16 +559,22 @@ const IntelPage: React.FC = () => {
       {/* Advanced Filters */}
       <Card className="mb-3">
         <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
-          <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0 text-white">Advanced Filters</h6>
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              style={{ color: "white", borderColor: "white" }}
-            >
-              {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
-            </Button>
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h6 className="mb-0 text-white">
+              Advanced Filters
+              <ActiveFilterBadge count={activeFilterCount} />
+            </h6>
+            <div className="d-flex align-items-center gap-3 ms-auto text-nowrap">
+              <ClearFiltersButton count={activeFilterCount} onClear={clearAllFilters} />
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                style={{ color: "white", borderColor: "white" }}
+              >
+                {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
+              </Button>
+            </div>
           </div>
         </Card.Header>
         <Collapse in={showFilters}>
@@ -640,13 +664,7 @@ const IntelPage: React.FC = () => {
                   <Button
                     variant="outline-secondary"
                     size="sm"
-                    onClick={() => {
-                      setRecommendationFilter("");
-                      setContactNameFilter("");
-                      setPlayerNameFilter("");
-                      setDateFromFilter("");
-                      setDateToFilter("");
-                    }}
+                    onClick={clearAllFilters}
                     className="w-100"
                   >
                     Clear All Filters

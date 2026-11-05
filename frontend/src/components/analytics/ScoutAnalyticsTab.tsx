@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import { Row, Col, Form, Card, Button, ButtonGroup, Table, OverlayTrigger, Tooltip } from "react-bootstrap";
 import axiosInstance from "../../axiosInstance";
 import SimpleLineChart from "./SimpleLineChart";
@@ -35,8 +36,8 @@ interface ScoutAnalytics {
 const ScoutAnalyticsTab: React.FC = () => {
   const [data, setData] = useState<ScoutAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [monthFilter, setMonthFilter] = useState<number>(6);
-  const [selectedPosition, setSelectedPosition] = useState<string>("");
+  const [monthFilter, setMonthFilter] = usePersistentState<number>("analytics:scouts:months", 6);
+  const [selectedPosition, setSelectedPosition] = usePersistentState<string>("analytics:scouts:position", "");
   const [selectedScouts, setSelectedScouts] = useState<string[]>([]);
   const [comparisonScouts, setComparisonScouts] = useState<string[]>([]);
 

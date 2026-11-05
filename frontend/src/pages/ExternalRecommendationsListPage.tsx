@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { Button, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
 import { ArrowLeft, ChevronDown, ChevronsUpDown, ChevronUp, CircleHelp, History, ListFilter, Mail, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -173,14 +174,16 @@ const ExternalRecommendationsListPage: React.FC = () => {
     return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
   };
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
-  const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
+  const [filters, setFilters] = usePersistentState<RecommendationFilterState>('external-recs:filters', defaultFilters, {
+    restore: (saved) => ({ ...saved, page: 1 }),
+  });
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
   const [queueCounts, setQueueCounts] = useState<{ needs_decision: number; all: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingReview, setSavingReview] = useState<number | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = usePersistentState('external-recs:showFilters', false);
   const [showStatusKey, setShowStatusKey] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<InternalRecommendation | null>(null);
   const [historyRecommendation, setHistoryRecommendation] = useState<InternalRecommendation | null>(null);

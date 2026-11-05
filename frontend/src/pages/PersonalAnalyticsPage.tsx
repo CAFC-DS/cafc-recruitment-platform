@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { usePersistentState } from "../hooks/usePersistentState";
 import {
   Alert,
   Button,
@@ -52,12 +53,13 @@ const PersonalAnalyticsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [months, setMonths] = useState<number>(6);
-  const [position, setPosition] = useState("");
+  const [months, setMonths] = usePersistentState<number>("me:months", 6);
+  const [position, setPosition] = usePersistentState("me:position", "");
   const [reportOffset, setReportOffset] = useState(0);
   const [reportSortBy, setReportSortBy] =
-    useState<PersonalAnalyticsReportSortBy>("created_at");
-  const [reportSortDirection, setReportSortDirection] = useState<"asc" | "desc">(
+    usePersistentState<PersonalAnalyticsReportSortBy>("me:reportSortBy", "created_at");
+  const [reportSortDirection, setReportSortDirection] = usePersistentState<"asc" | "desc">(
+    "me:reportSortDirection",
     "desc",
   );
   const [selectedReport, setSelectedReport] = useState<any>(null);
