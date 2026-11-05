@@ -2,7 +2,8 @@
 
 The weekly scout refresh publishes one self-contained page, published/<run_id>/cafc_scout.html, and points
 published/latest.json at it. The scores sit inside that page as gzip + base64 blobs (data-scoring
-python/package_scout.py): d-meta holds the column names, d-<position> holds that position's rows column by column.
+python/package_scout.py): d-meta holds the column names and positions, d-<position> holds that position's rows column
+by column. Other blobs (league_view, physical, ...) belong to the scout app and are ignored.
 Temporary until the scores land in Snowflake.
 
 Variables: DATA_SCORES_BUCKET, DATA_SCORES_ENDPOINT, DATA_SCORES_ACCESS_KEY_ID, DATA_SCORES_SECRET_ACCESS_KEY,
@@ -97,13 +98,14 @@ def parse_page(html):
     """A ScoreIndex from a packaged scout page, keeping only the fields the profile shows."""
     blobs = dict(BLOB.findall(html))
     meta = _blob(blobs.pop("meta"))
-    blobs.pop("league_view", None)
     columns = {name: i for i, name in enumerate(meta["columns"])}
     missing = [k for k in ("id",) + KEEP if k not in columns]
     if missing:
         raise ValueError(f"data scores: page is missing columns {missing}")
     index = ScoreIndex()
-    for position in list(blobs):  # one position at a time keeps the peak small
+    for position in meta["positions"]:  # one position at a time keeps the peak small
+        if position not in blobs:  # listed but not packaged, like goalkeepers
+            continue
         cols = _blob(blobs.pop(position))
         label = meta["positions"].get(position, {}).get("label", position)
         ids, kept = cols[columns["id"]], {k: cols[columns[k]] for k in KEEP}
@@ -156,10 +158,11 @@ class DataScores:
                     if self.run is None or self.run["run_id"] != run_id:
                         self.index = parse_page(load())
                         self.run = {"run_id": run_id, "built_at": built_at}
-                        logger.info("data scores: loaded run %s (%d players)", run_id, len(self.index))
+                        # print, because production only logs errors: this line confirms the read worked.
+                        print(f"data scores: loaded run {run_id} ({len(self.index)} players)", flush=True)
                     self.next_check = time.monotonic() + CHECK_SECONDS
                 except Exception as e:  # keep serving the last good copy
-                    logger.warning("data scores: refresh failed: %s: %s", type(e).__name__, e)
+                    logger.error("data scores: refresh failed: %s: %s", type(e).__name__, e)
                     self.next_check = time.monotonic() + RETRY_SECONDS
             return self.run, self.index
 
