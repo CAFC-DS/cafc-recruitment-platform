@@ -1,15 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePersistentState } from '../hooks/usePersistentState';
-import { ActiveFilterBadge, ClearFiltersButton } from '../components/FilterHeaderControls';
-import { Button, Card, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
+import { Button, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
+import { ArrowLeft, ChevronDown, ChevronsUpDown, ChevronUp, CircleHelp, History, ListFilter, Mail, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
-import DealTypeBadges from '../components/recommendations/DealTypeBadges';
+import { dealTypeShortLabel } from '../components/recommendations/DealTypeBadges';
 import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
 import { internalRecommendationsService } from '../services/internalRecommendationsService';
 import { getRecommendationStatusConfig } from '../utils/agentRecommendationStatus';
 import GradeChip from '../components/GradeChip';
+import ListDataScore from '../components/PlayerLists/ListDataScore';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useTheme } from '../contexts/ThemeContext';
+import './ExternalRecommendationsListPage.css';
 import {
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
@@ -17,7 +20,18 @@ import {
   RecommendationStatusHistory,
 } from '../types/recommendations';
 
+type RecommendationQueue = 'needs_decision' | 'all';
+
+interface ActiveFilter {
+  key: string;
+  label: string;
+  clear: Partial<RecommendationFilterState>;
+}
+
+const NEEDS_DECISION_STATUSES: RecommendationStatus[] = ['Submitted', 'Under Review'];
+
 interface RecommendationFilterState {
+  queue: RecommendationQueue;
   status: RecommendationStatus | '';
   agent_user_id: string;
   created_from: string;
@@ -38,6 +52,7 @@ interface RecommendationFilterState {
 }
 
 const defaultFilters: RecommendationFilterState = {
+  queue: 'needs_decision',
   status: '',
   agent_user_id: '',
   created_from: '',
@@ -55,6 +70,22 @@ const defaultFilters: RecommendationFilterState = {
   page_size: 25,
   sort_by: 'created_at',
   sort_order: 'desc',
+};
+
+// The queue is a view of the status filter: an explicit status always wins.
+const toListRequest = ({ queue, ...filters }: RecommendationFilterState) => ({
+  ...filters,
+  status: filters.status || (queue === 'needs_decision' ? NEEDS_DECISION_STATUSES.join(',') : ''),
+});
+
+const statusRowLabel = (status: RecommendationStatus) => (
+  status === 'Under Review' ? 'Under Review' : getRecommendationStatusConfig(status).shortLabel
+);
+
+const formatDealAndFee = (dealTypes: string | undefined, fee: string) => {
+  const deals = (dealTypes || '').split(',').map((type) => type.trim()).filter(Boolean).map(dealTypeShortLabel).join(', ');
+  const parts = [deals, fee === '-' ? '' : fee].filter(Boolean);
+  return parts.length ? parts.join(' · ') : '-';
 };
 
 const formatNumberToken = (value: string) => {
@@ -135,6 +166,13 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
 
 const ExternalRecommendationsListPage: React.FC = () => {
   const { isIntelReviewer, user } = useCurrentUser();
+  const { theme } = useTheme();
+  const canSelect = user?.role === 'admin';
+  const statusPillStyle = (status: RecommendationStatus) => {
+    const { color, darkColor } = getRecommendationStatusConfig(status);
+    const colors = theme.isDark ? darkColor : color;
+    return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
+  };
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
   const [filters, setFilters] = usePersistentState<RecommendationFilterState>('external-recs:filters', defaultFilters, {
     restore: (saved) => ({ ...saved, page: 1 }),
@@ -142,6 +180,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
+  const [queueCounts, setQueueCounts] = useState<{ needs_decision: number; all: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingReview, setSavingReview] = useState<number | null>(null);
   const [showFilters, setShowFilters] = usePersistentState('external-recs:showFilters', false);
@@ -161,7 +200,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastVariant, setToastVariant] = useState<'success' | 'danger'>('success');
   const hasLoadedOnce = useRef(false);
-  const previousListControlKey = useRef(`${filters.page}|${filters.sort_by}|${filters.sort_order}`);
+  const previousListControlKey = useRef(`${filters.queue}|${filters.page}|${filters.sort_by}|${filters.sort_order}`);
   const pendingFilterEdit = useRef(false);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / filters.page_size)), [total, filters.page_size]);
@@ -188,9 +227,10 @@ const ExternalRecommendationsListPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const listResponse = await internalRecommendationsService.list(nextFilters);
+      const listResponse = await internalRecommendationsService.list(toListRequest(nextFilters));
       setItems(listResponse.items);
       setTotal(listResponse.total);
+      setQueueCounts(listResponse.queue_counts || null);
     } catch (err) {
       console.error(err);
       setError('Failed to load external recommendations');
@@ -237,11 +277,12 @@ const ExternalRecommendationsListPage: React.FC = () => {
         setError(null);
         const [metaResponse, listResponse] = await Promise.all([
           internalRecommendationsService.getFiltersMeta(),
-          internalRecommendationsService.list(filters),
+          internalRecommendationsService.list(toListRequest(filters)),
         ]);
         setMeta(metaResponse);
         setItems(listResponse.items);
         setTotal(listResponse.total);
+        setQueueCounts(listResponse.queue_counts || null);
       } catch (err) {
         console.error(err);
         setError('Failed to load external recommendations');
@@ -258,7 +299,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
   useEffect(() => {
     if (!hasLoadedOnce.current) return;
 
-    const currentListControlKey = `${filters.page}|${filters.sort_by}|${filters.sort_order}`;
+    const currentListControlKey = `${filters.queue}|${filters.page}|${filters.sort_by}|${filters.sort_order}`;
     const listControlsChanged = previousListControlKey.current !== currentListControlKey;
     previousListControlKey.current = currentListControlKey;
 
@@ -275,6 +316,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
     return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    filters.queue,
     filters.status,
     filters.agent_user_id,
     filters.created_from,
@@ -297,12 +339,17 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const clearFilters = () => {
     const nextFilters = {
       ...defaultFilters,
+      queue: filters.queue,
       page_size: filters.page_size,
       sort_by: filters.sort_by,
       sort_order: filters.sort_order,
     };
     pendingFilterEdit.current = true;
     setFilters(nextFilters);
+  };
+
+  const selectQueue = (queue: RecommendationQueue) => {
+    setFilters((current) => ({ ...current, queue, status: '', page: 1 }));
   };
 
   const handleSort = (column: string) => {
@@ -337,7 +384,8 @@ const ExternalRecommendationsListPage: React.FC = () => {
   };
 
   const updateSelectedRecommendation = (updatedItem: InternalRecommendation) => {
-    setItems((current) => current.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem } : item)));
+    // Only the list endpoint carries data_score, so a single-item response must not blank it.
+    setItems((current) => current.map((item) => (item.id === updatedItem.id ? { ...item, ...updatedItem, data_score: item.data_score } : item)));
     setSelectedRecommendation((current) => (current?.id === updatedItem.id ? { ...current, ...updatedItem } : current));
   };
 
@@ -448,462 +496,342 @@ const ExternalRecommendationsListPage: React.FC = () => {
     }
   };
 
-  const SortableHeader: React.FC<{ column: string; label: string; className?: string }> = ({ column, label, className }) => {
-    const isActive = filters.sort_by === column;
+  const renderSort = (column: string, label: string) => {
+    const isActive = filters.sort_by === column || (column === 'date' && filters.sort_by === 'created_at');
+    const Icon = !isActive ? ChevronsUpDown : filters.sort_order === 'asc' ? ChevronUp : ChevronDown;
     return (
-      <th className={className} onClick={() => handleSort(column)}>
-        <div className="external-recommendations-sort-header">
-          <span>{label}</span>
-          {isActive ? (
-            filters.sort_order === 'asc' ? (
-              <i className="bi bi-chevron-up"></i>
-            ) : (
-              <i className="bi bi-chevron-down"></i>
-            )
-          ) : (
-            <i className="bi bi-chevron-expand text-muted"></i>
-          )}
-        </div>
-      </th>
+      <button
+        type="button"
+        className={`rec-queue-sort${isActive ? ' is-active' : ''}`}
+        onClick={() => handleSort(column)}
+        aria-label={`Sort by ${label}`}
+      >
+        {label}
+        <Icon size={13} aria-hidden="true" />
+      </button>
     );
   };
 
-  return (
-    <div className="page-reports-cafc container-fluid py-4 page-lists-cafc external-recommendations-page">
-      <div className="agent-portal-card mb-4">
-        <div className="agent-portal-card-body">
-          <div className="agent-portal-inline-actions" style={{ justifyContent: 'space-between' }}>
-            <div>
-              <div className="agent-portal-section-title">External Recommendations</div>
-              <div className="agent-portal-section-copy">
-                Agent-submitted player recommendations with comprehensive details and review workflow.
-              </div>
-            </div>
-            <div className="agent-portal-inline-actions">
-              <Link to="/lists" className="agent-portal-button-secondary">Back to Lists</Link>
-            </div>
-          </div>
-        </div>
-      </div>
+  const activeFilters = ([
+    filters.player_name ? { key: 'player', label: `Player: ${filters.player_name}`, clear: { player_name: '' } } : null,
+    filters.status ? { key: 'status', label: getRecommendationStatusConfig(filters.status).displayLabel, clear: { status: '' } } : null,
+    filters.agent_user_id ? { key: 'agent', label: meta.agents.find((agent) => String(agent.user_id) === filters.agent_user_id)?.label || 'Agent', clear: { agent_user_id: '' } } : null,
+    filters.position ? { key: 'position', label: `Position: ${filters.position}`, clear: { position: '' } } : null,
+    filters.deal_type ? { key: 'deal', label: filters.deal_type, clear: { deal_type: '' } } : null,
+    filters.age_min || filters.age_max ? { key: 'age', label: `Age ${filters.age_min || 'any'} to ${filters.age_max || 'any'}`, clear: { age_min: '', age_max: '' } } : null,
+    filters.created_from || filters.created_to ? { key: 'date', label: `Submitted ${filters.created_from || 'any'} to ${filters.created_to || 'any'}`, clear: { created_from: '', created_to: '' } } : null,
+    filters.transfer_fee_min || filters.transfer_fee_max ? { key: 'fee', label: `Fee ${filters.transfer_fee_min || 'any'} to ${filters.transfer_fee_max || 'any'}`, clear: { transfer_fee_min: '', transfer_fee_max: '' } } : null,
+    filters.expected_salary_min || filters.expected_salary_max ? { key: 'salary', label: `Salary ${filters.expected_salary_min || 'any'} to ${filters.expected_salary_max || 'any'}`, clear: { expected_salary_min: '', expected_salary_max: '' } } : null,
+  ] as Array<ActiveFilter | null>).filter((entry): entry is ActiveFilter => entry !== null);
 
-      {user?.role === 'admin' && <div className="mb-3"><Link to={`/admin/email${ncucSelected.length ? '?ids=' + ncucSelected.join(',') : ''}`}>Email users / mark {ncucSelected.length || 'selected'} recommendations NCUC</Link></div>}
+  const columnCount = canSelect ? 7 : 6;
+
+  return (
+    <div className="page-reports-cafc container-fluid py-3 page-lists-cafc rec-queue">
+      <header className="rec-queue-heading">
+        <div>
+          <h1>External Recommendations</h1>
+          <p>Players agents have put forward for review.</p>
+        </div>
+        <Link to="/lists" className="rec-queue-back"><ArrowLeft size={15} aria-hidden="true" />Back to Lists</Link>
+      </header>
+
       {banner ? <div className="alert alert-success alert-dismissible fade show"><i className="bi bi-check-circle me-2"></i>{banner}<button type="button" className="btn-close" onClick={() => setBanner(null)}></button></div> : null}
       {error ? <div className="alert alert-danger alert-dismissible fade show"><i className="bi bi-exclamation-triangle me-2"></i>{error}<button type="button" className="btn-close" onClick={() => setError(null)}></button></div> : null}
 
-      <div className="agent-portal-card">
-        <div className="agent-portal-card-body">
-          <div className="external-recommendations-toolbar">
-            <div>
-              <div className="external-recommendations-result-title">Recommendation shortlist</div>
-              <div className="external-recommendations-result-copy">
-                {total} total recommendation{total !== 1 ? 's' : ''} • Page {filters.page} of {totalPages}
-              </div>
-            </div>
+      <div className="rec-queue-toolbar">
+        <div className="rec-queue-tabs" role="group" aria-label="Which recommendations to show">
+          <button type="button" className={filters.queue === 'needs_decision' ? 'is-active' : ''} aria-pressed={filters.queue === 'needs_decision'} onClick={() => selectQueue('needs_decision')}>
+            Needs decision{queueCounts ? <span>{queueCounts.needs_decision}</span> : null}
+          </button>
+          <button type="button" className={filters.queue === 'all' ? 'is-active' : ''} aria-pressed={filters.queue === 'all'} onClick={() => selectQueue('all')}>
+            All{queueCounts ? <span>{queueCounts.all}</span> : null}
+          </button>
+        </div>
+        <div className="rec-queue-tools">
+          {canSelect && ncucSelected.length > 0 ? (
+            <Link className="rec-queue-tool is-action" to={`/admin/email?ids=${ncucSelected.join(',')}`}>
+              <Mail size={15} aria-hidden="true" />Email users / mark {ncucSelected.length} NCUC
+            </Link>
+          ) : null}
+          <button type="button" className={`rec-queue-tool${showStatusKey ? ' is-open' : ''}`} aria-expanded={showStatusKey} onClick={() => setShowStatusKey(!showStatusKey)}>
+            <CircleHelp size={15} aria-hidden="true" />Status key
+          </button>
+          <button type="button" className={`rec-queue-tool${showFilters ? ' is-open' : ''}`} aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>
+            <ListFilter size={15} aria-hidden="true" />Filters{activeFilterCount > 0 ? <span className="rec-queue-tool-count">{activeFilterCount}</span> : null}
+          </button>
+        </div>
+      </div>
+
+      {activeFilters.length > 0 ? (
+        <div className="rec-queue-active-filters">
+          {activeFilters.map((entry) => (
+            <button type="button" key={entry.key} onClick={() => updateFilters(entry.clear)} aria-label={`Remove filter ${entry.label}`}>
+              {entry.label}<X size={13} aria-hidden="true" />
+            </button>
+          ))}
+          <button type="button" className="is-clear" onClick={clearFilters}>Clear all</button>
+        </div>
+      ) : null}
+
+      <Collapse in={showStatusKey}>
+        <div>
+          <div className="rec-queue-panel rec-queue-key">
+            {meta.statuses.map((status) => (
+              <span key={status}>
+                <span className="rec-queue-status" style={statusPillStyle(status)}>{statusRowLabel(status)}</span>
+                {statusRowLabel(status) !== getRecommendationStatusConfig(status).displayLabel ? <span>{getRecommendationStatusConfig(status).displayLabel}</span> : null}
+              </span>
+            ))}
           </div>
+        </div>
+      </Collapse>
 
-          <Card className="mb-3">
-            <Card.Header className="external-recommendations-legend-toggle">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="mb-0 text-white external-recommendations-legend-label">Review status key</h6>
-                  <div className="external-recommendations-legend-subcopy">Shorthand used in the shortlist table</div>
-                </div>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={() => setShowStatusKey(!showStatusKey)}
-                  className="external-recommendations-legend-button"
-                >
-                  {showStatusKey ? '▲ Hide key' : '▼ Show key'}
-                </Button>
-              </div>
-            </Card.Header>
-            <Collapse in={showStatusKey}>
-              <Card.Body className="external-recommendations-legend">
-                <div className="external-recommendations-legend-grid">
-                  {meta.statuses.map((status) => (
-                    <span key={status} className="external-recommendations-legend-item">
-                      <SubmissionStatusBadge status={status} short />
-                      <span className="external-recommendations-legend-copy">
-                        {getRecommendationStatusConfig(status).displayLabel}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              </Card.Body>
-            </Collapse>
-          </Card>
-
-          <Card className="mb-3">
-            <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
-              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <h6 className="mb-0 text-white">
-                  Advanced Filters
-                  <ActiveFilterBadge count={activeFilterCount} />
-                </h6>
-                <div className="d-flex align-items-center gap-3 ms-auto text-nowrap">
-                  <ClearFiltersButton count={activeFilterCount} onClear={clearFilters} />
-                  <Button
-                    variant="outline-secondary"
+      <Collapse in={showFilters}>
+        <div>
+          <div className="rec-queue-panel">
+            <Row className="g-3">
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Player Name</Form.Label>
+                  <Form.Control size="sm" type="text" value={filters.player_name} onChange={(event) => updateFilters({ player_name: event.target.value })} placeholder="Enter player name" />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Review Status</Form.Label>
+                  <Form.Select
                     size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    style={{ color: 'white', borderColor: 'white' }}
+                    value={filters.status}
+                    onChange={(event) => updateFilters({ status: event.target.value as RecommendationStatus | '', queue: event.target.value ? 'all' : filters.queue })}
                   >
-                    {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
-                  </Button>
-                </div>
-              </div>
-            </Card.Header>
-            <Collapse in={showFilters}>
-              <Card.Body className="filter-section-improved">
-                <Row className="mb-3">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Player Name</Form.Label>
-                      <Form.Control
-                        size="sm"
-                        type="text"
-                        value={filters.player_name}
-                        onChange={(event) => updateFilters({ player_name: event.target.value })}
-                        placeholder="Enter player name"
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Review Status</Form.Label>
-                      <Form.Select
-                        size="sm"
-                        value={filters.status}
-                        onChange={(event) => updateFilters({ status: event.target.value as RecommendationStatus | '' })}
-                      >
-                        <option value="">All statuses</option>
-                        {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).displayLabel}</option>)}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Recommended By</Form.Label>
-                      <Form.Select
-                        size="sm"
-                        value={filters.agent_user_id}
-                        onChange={(event) => updateFilters({ agent_user_id: event.target.value })}
-                      >
-                        <option value="">All agents</option>
-                        {meta.agents.map((agent) => <option key={agent.user_id} value={agent.user_id}>{agent.label}</option>)}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                </Row>
+                    <option value="">All statuses</option>
+                    {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).displayLabel}</option>)}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Recommended By</Form.Label>
+                  <Form.Select size="sm" value={filters.agent_user_id} onChange={(event) => updateFilters({ agent_user_id: event.target.value })}>
+                    <option value="">All agents</option>
+                    {meta.agents.map((agent) => <option key={agent.user_id} value={agent.user_id}>{agent.label}</option>)}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Position</Form.Label>
+                  <Form.Control size="sm" type="text" value={filters.position} onChange={(event) => updateFilters({ position: event.target.value })} placeholder="e.g. CM, RW" />
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Deal Type</Form.Label>
+                  <Form.Select size="sm" value={filters.deal_type} onChange={(event) => updateFilters({ deal_type: event.target.value })}>
+                    <option value="">All deal types</option>
+                    <option value="Free">Free</option>
+                    <option value="Permanent Transfer">Permanent Transfer</option>
+                    <option value="Loan">Loan</option>
+                    <option value="Loan with Option">Loan with Option</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Age</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control size="sm" type="number" min="0" max="100" value={filters.age_min} onChange={(event) => updateFilters({ age_min: event.target.value })} placeholder="Min" aria-label="Minimum age" />
+                    <span className="range-separator">to</span>
+                    <Form.Control size="sm" type="number" min="0" max="100" value={filters.age_max} onChange={(event) => updateFilters({ age_max: event.target.value })} placeholder="Max" aria-label="Maximum age" />
+                  </div>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Date Range</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control size="sm" type="date" value={filters.created_from} onChange={(event) => updateFilters({ created_from: event.target.value })} aria-label="Submitted from" />
+                    <span className="range-separator">to</span>
+                    <Form.Control size="sm" type="date" value={filters.created_to} onChange={(event) => updateFilters({ created_to: event.target.value })} aria-label="Submitted to" />
+                  </div>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Transfer Fee</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control size="sm" type="number" min="0" step="1000" value={filters.transfer_fee_min} onChange={(event) => updateFilters({ transfer_fee_min: event.target.value })} placeholder="Min" aria-label="Minimum transfer fee" />
+                    <span className="range-separator">to</span>
+                    <Form.Control size="sm" type="number" min="0" step="1000" value={filters.transfer_fee_max} onChange={(event) => updateFilters({ transfer_fee_max: event.target.value })} placeholder="Max" aria-label="Maximum transfer fee" />
+                  </div>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Expected Salary</Form.Label>
+                  <div className="range-inputs">
+                    <Form.Control size="sm" type="number" min="0" step="1000" value={filters.expected_salary_min} onChange={(event) => updateFilters({ expected_salary_min: event.target.value })} placeholder="Min p/w" aria-label="Minimum salary per week" />
+                    <span className="range-separator">to</span>
+                    <Form.Control size="sm" type="number" min="0" step="1000" value={filters.expected_salary_max} onChange={(event) => updateFilters({ expected_salary_max: event.target.value })} placeholder="Max p/w" aria-label="Maximum salary per week" />
+                  </div>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
+                <Form.Group>
+                  <Form.Label className="small fw-bold">Page Size</Form.Label>
+                  <Form.Select size="sm" value={filters.page_size} onChange={(event) => updateFilters({ page_size: Number(event.target.value) })}>
+                    {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+          </div>
+        </div>
+      </Collapse>
 
-                <Row className="mb-3">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Position</Form.Label>
-                      <Form.Control
-                        size="sm"
-                        type="text"
-                        value={filters.position}
-                        onChange={(event) => updateFilters({ position: event.target.value })}
-                        placeholder="e.g. CM, RW"
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Deal Type</Form.Label>
-                      <Form.Select
-                        size="sm"
-                        value={filters.deal_type}
-                        onChange={(event) => updateFilters({ deal_type: event.target.value })}
-                      >
-                        <option value="">All deal types</option>
-                        <option value="Free">Free</option>
-                        <option value="Permanent Transfer">Permanent Transfer</option>
-                        <option value="Loan">Loan</option>
-                        <option value="Loan with Option">Loan with Option</option>
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Age</Form.Label>
-                      <div className="range-inputs">
-                        <Form.Control
-                          size="sm"
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={filters.age_min}
-                          onChange={(event) => updateFilters({ age_min: event.target.value })}
-                          placeholder="Min"
-                          aria-label="Minimum age"
+      <div className="rec-queue-table-wrap">
+        <table className="rec-queue-table">
+          <thead>
+            <tr>
+              {canSelect ? <th className="col-select"><span className="visually-hidden">Select</span></th> : null}
+              <th className="col-player">{renderSort('player_name', 'Player')}</th>
+              <th className="col-position">{renderSort('position', 'Position')}</th>
+              <th className="col-submitted"><span className="rec-queue-sort-pair">{renderSort('agent_name', 'Agent')}{renderSort('date', 'Submitted')}</span></th>
+              <th className="col-cost">Deal &amp; cost</th>
+              <th className="col-status">{renderSort('status', 'Status')}</th>
+              <th className="col-actions"><span className="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={columnCount} className="rec-queue-message"><Spinner animation="border" size="sm" className="me-2" />Loading recommendations...</td></tr>
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={columnCount} className="rec-queue-message">
+                  {activeFilterCount > 0 ? (
+                    <>No recommendations match these filters.<button type="button" onClick={clearFilters}>Clear filters</button></>
+                  ) : filters.queue === 'needs_decision' ? (
+                    <>Nothing is waiting for a decision.<button type="button" onClick={() => selectQueue('all')}>See all recommendations</button></>
+                  ) : (
+                    'No recommendations yet.'
+                  )}
+                </td>
+              </tr>
+            ) : (
+              items.map((item) => {
+                const queuedStatus = pendingStatusChanges.get(item.id);
+                const displayedStatus = queuedStatus || item.status;
+                const statusConfig = getRecommendationStatusConfig(displayedStatus);
+                const statusColors = statusPillStyle(displayedStatus);
+                const positions = formatRecommendedPositions(item.recommended_position);
+                const age = calculateAge(item.player_date_of_birth);
+                const dealAndFee = formatDealAndFee(item.potential_deal_type, formatTransferFeeAmount(item.transfer_fee_amount, item.transfer_fee_currency, item.transfer_fee));
+                const salary = formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis);
+                const profilePath = getPlayerProfilePath(item);
+                return (
+                  <tr key={item.id} className={queuedStatus ? 'is-pending' : undefined}>
+                    {canSelect ? (
+                      <td className="cell-select">
+                        <Form.Check
+                          aria-label={`Select ${item.player_name} for NCUC`}
+                          checked={ncucSelected.includes(item.id)}
+                          onChange={(event) => setNcucSelected(event.target.checked ? [...ncucSelected, item.id] : ncucSelected.filter((id) => id !== item.id))}
                         />
-                        <span className="range-separator">to</span>
-                        <Form.Control
-                          size="sm"
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={filters.age_max}
-                          onChange={(event) => updateFilters({ age_max: event.target.value })}
-                          placeholder="Max"
-                          aria-label="Maximum age"
-                        />
-                      </div>
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Row className="mb-3">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Date Range</Form.Label>
-                      <div className="range-inputs">
-                        <Form.Control
-                          size="sm"
-                          type="date"
-                          value={filters.created_from}
-                          onChange={(event) => updateFilters({ created_from: event.target.value })}
-                        />
-                        <span className="range-separator">to</span>
-                        <Form.Control
-                          size="sm"
-                          type="date"
-                          value={filters.created_to}
-                          onChange={(event) => updateFilters({ created_to: event.target.value })}
-                        />
-                      </div>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Transfer Fee</Form.Label>
-                      <div className="range-inputs">
-                        <Form.Control
-                          size="sm"
-                          type="number"
-                          min="0"
-                          step="1000"
-                          value={filters.transfer_fee_min}
-                          onChange={(event) => updateFilters({ transfer_fee_min: event.target.value })}
-                          placeholder="Min"
-                        />
-                        <span className="range-separator">to</span>
-                        <Form.Control
-                          size="sm"
-                          type="number"
-                          min="0"
-                          step="1000"
-                          value={filters.transfer_fee_max}
-                          onChange={(event) => updateFilters({ transfer_fee_max: event.target.value })}
-                          placeholder="Max"
-                        />
-                      </div>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Expected Salary</Form.Label>
-                      <div className="range-inputs">
-                        <Form.Control
-                          size="sm"
-                          type="number"
-                          min="0"
-                          step="1000"
-                          value={filters.expected_salary_min}
-                          onChange={(event) => updateFilters({ expected_salary_min: event.target.value })}
-                          placeholder="Min p/w"
-                        />
-                        <span className="range-separator">to</span>
-                        <Form.Control
-                          size="sm"
-                          type="number"
-                          min="0"
-                          step="1000"
-                          value={filters.expected_salary_max}
-                          onChange={(event) => updateFilters({ expected_salary_max: event.target.value })}
-                          placeholder="Max p/w"
-                        />
-                      </div>
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Row className="mb-3">
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Placeholder</Form.Label>
-                      <Button variant="outline-secondary" size="sm" onClick={clearFilters} className="w-100">
-                        Clear All Filters
-                      </Button>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold">Page Size</Form.Label>
-                      <Form.Select
-                        size="sm"
-                        value={filters.page_size}
-                        onChange={(event) => updateFilters({ page_size: Number(event.target.value) })}
-                      >
-                        {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                  <Col md={4}>
-                    <Form.Group>
-                      <Form.Label className="small fw-bold" style={{ visibility: 'hidden' }}>Results</Form.Label>
-                      <div className="text-muted small">
-                        Showing {items.length} on this page ({total} total results)
-                        {activeFilterCount > 0 ? ` • ${activeFilterCount} active filter${activeFilterCount > 1 ? 's' : ''}` : ''}
-                      </div>
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </Card.Body>
-            </Collapse>
-          </Card>
-
-          <div className="external-recommendations-table-wrap">
-            <table className="table table-hover align-middle mb-0 external-recommendations-table">
-              <thead>
-                <tr>
-                  <SortableHeader column="player_name" label="Player" className="col-name" />
-                  <SortableHeader column="position" label="Position" className="col-position" />
-                  <th className="col-age">Age</th>
-                  <SortableHeader column="date" label="Submitted" className="col-date" />
-                  <SortableHeader column="agent_name" label="Agent" className="col-agent" />
-                  <SortableHeader column="status" label="Review Status" className="col-review-status" />
-                  <th className="col-deal">Deal Type</th>
-                  <th className="col-money">Transfer Fee</th>
-                  <th className="col-money">Expected Salary</th>
-                  <th className="col-actions">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">Loading external recommendations...</td></tr>
-                ) : items.length === 0 ? (
-                  <tr><td colSpan={10} className="text-center py-5 text-muted">No external recommendations found.</td></tr>
-                ) : (
-                  items.map((item) => {
-                    const queuedStatus = pendingStatusChanges.get(item.id);
-                    const displayedStatus = queuedStatus || item.status;
-                    const hasPendingStatusChange = Boolean(queuedStatus);
-                    const statusConfig = getRecommendationStatusConfig(displayedStatus);
-                    return (
-                    <tr
-                      key={item.id}
-                      className={hasPendingStatusChange ? 'external-recommendations-row-pending' : undefined}
-                    >
-                      <td className="cell-name">
-                        {user?.role === 'admin' && <Form.Check aria-label={`Select ${item.player_name} for NCUC`} checked={ncucSelected.includes(item.id)} onChange={e => setNcucSelected(e.target.checked ? [...ncucSelected, item.id] : ncucSelected.filter(id => id !== item.id))} />}
-                        {item.previous_recommendation_id && <div><span className="badge bg-info text-dark">Resubmission</span>{' '}<Button variant="link" size="sm" onClick={() => internalRecommendationsService.getDetail(item.previous_recommendation_id!).then(openReviewModal).catch(() => setError('Could not load previous submission'))}>Previous #{item.previous_recommendation_id}</Button></div>}
-                        {item.resubmission_changes && <div className="small">What's changed: {item.resubmission_changes}</div>}
-                        <div className="external-recommendations-player-cell">
-                          {getPlayerProfilePath(item) ? (
-                            <Link className="fw-bold text-truncate" to={getPlayerProfilePath(item) || '#'} title="Open player profile">
-                              {item.player_name}
-                            </Link>
-                          ) : (
-                            <span className="fw-bold text-truncate">{item.player_name}</span>
-                          )}
-                          {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
-                            <GradeChip score={item.avg_performance_score} decimals={1} size="sm" />
-                          ) : null}
-                        </div>
-                        {hasPendingStatusChange ? (
-                          <div className="external-recommendations-pending-copy">Unsaved review status change</div>
-                        ) : null}
                       </td>
-                      <td className="cell-position" title={formatRecommendedPositions(item.recommended_position)}>
-                        {formatRecommendedPositions(item.recommended_position)}
-                      </td>
-                      <td className="cell-age">{calculateAge(item.player_date_of_birth)}</td>
-                      <td className="cell-date">{formatDate(item.submission_date)}</td>
-                      <td className="cell-agent" title={item.agent_name || '-'}>
-                        {item.agent_name || '-'}
-                      </td>
-                      <td className="cell-review-status">
-                        <Form.Select
-                          size="sm"
-                          value={displayedStatus}
-                          onChange={(event) => queueStatusChange(item.id, item.status, event.target.value as RecommendationStatus)}
-                          disabled={savingPendingStatusChanges || isIntelReviewer}
-                          className="external-recommendations-status-select"
-                          style={{
-                            backgroundColor: statusConfig.color.bg,
-                            color: statusConfig.color.text,
-                            borderColor: hasPendingStatusChange ? '#f59e0b' : statusConfig.color.border,
-                            borderWidth: hasPendingStatusChange ? '2px' : '1px',
-                          }}
-                        >
-                          {meta.statuses.map((status) => <option key={status} value={status}>{getRecommendationStatusConfig(status).shortLabel}</option>)}
-                        </Form.Select>
-                      </td>
-                      <td><DealTypeBadges dealTypes={item.potential_deal_type || ''} /></td>
-                      <td className="cell-money">
-                        {formatTransferFeeAmount(
-                          item.transfer_fee_amount,
-                          item.transfer_fee_currency,
-                          item.transfer_fee,
+                    ) : null}
+                    <td>
+                      <div className="rec-queue-player">
+                        {profilePath ? (
+                          <Link to={profilePath} title="Open player profile">{item.player_name}</Link>
+                        ) : (
+                          <span className="rec-queue-player-name">{item.player_name}</span>
                         )}
-                      </td>
-                      <td className="cell-money">{formatWeeklyAmount(item.expected_wages_per_week, item.expected_wages_currency, item.wage_basis || item.expected_wages_basis)}</td>
-                      <td className="cell-actions">
-                        <div className="external-recommendations-action-stack">
-                          <OverlayTrigger
-                            placement="top"
-                            overlay={<Tooltip id={`review-tooltip-${item.id}`}>Review</Tooltip>}
+                        {item.avg_performance_score !== null && item.avg_performance_score !== undefined ? (
+                          <GradeChip score={item.avg_performance_score} decimals={1} size="sm" />
+                        ) : null}
+                        {item.data_score ? <ListDataScore score={item.data_score} size="sm" /> : null}
+                      </div>
+                      {item.previous_recommendation_id ? (
+                        <OverlayTrigger
+                          placement="top"
+                          overlay={(
+                            <Tooltip id={`resubmission-${item.id}`}>
+                              {item.resubmission_changes ? <div><strong>What's changed:</strong> {item.resubmission_changes}</div> : null}
+                              <div>Open previous submission #{item.previous_recommendation_id}</div>
+                            </Tooltip>
+                          )}
+                        >
+                          <button
+                            type="button"
+                            className="rec-queue-resubmission"
+                            onClick={() => internalRecommendationsService.getDetail(item.previous_recommendation_id!).then(openReviewModal).catch(() => setError('Could not load previous submission'))}
                           >
-                            <Button
-                              size="sm"
-                              onClick={() => openReviewModal(item)}
-                              className="btn-action-circle btn-action-view"
-                              aria-label={`Review ${item.player_name}`}
-                              title="Review"
-                            >
-                              📝
-                            </Button>
-                          </OverlayTrigger>
-                          <OverlayTrigger
-                            placement="top"
-                            overlay={<Tooltip id={`history-tooltip-${item.id}`}>History</Tooltip>}
+                            Resubmission
+                          </button>
+                        </OverlayTrigger>
+                      ) : null}
+                    </td>
+                    <td>
+                      <div className="rec-queue-line" title={positions}>{positions}</div>
+                      <div className="rec-queue-sub">{age === '-' ? 'Age unknown' : `Age ${age}`}</div>
+                    </td>
+                    <td>
+                      <div className="rec-queue-line" title={item.agent_name || undefined}>{item.agent_name || '-'}</div>
+                      <div className="rec-queue-sub">{formatDate(item.submission_date)}</div>
+                    </td>
+                    <td className="cell-cost">
+                      <div className="rec-queue-line" title={dealAndFee}>{dealAndFee}</div>
+                      <div className="rec-queue-sub" title={salary}>{salary}</div>
+                    </td>
+                    <td>
+                      {isIntelReviewer ? (
+                        <span className="rec-queue-status" style={statusColors} title={statusConfig.displayLabel}>
+                          {statusRowLabel(displayedStatus)}
+                        </span>
+                      ) : (
+                        <div className="rec-queue-status is-editable" style={statusColors} title={statusConfig.displayLabel}>
+                          <Form.Select
+                            size="sm"
+                            aria-label={`Review status for ${item.player_name}`}
+                            value={displayedStatus}
+                            onChange={(event) => queueStatusChange(item.id, item.status, event.target.value as RecommendationStatus)}
+                            disabled={savingPendingStatusChanges}
                           >
-                            <Button
-                              size="sm"
-                              onClick={() => openHistoryModal(item)}
-                              className="btn-action-circle external-recommendations-history-action"
-                              aria-label={`Open history for ${item.player_name}`}
-                              title="History"
-                            >
-                              🕘
-                            </Button>
-                          </OverlayTrigger>
+                            {meta.statuses.map((status) => <option key={status} value={status}>{statusRowLabel(status)}</option>)}
+                          </Form.Select>
+                          <ChevronDown size={13} aria-hidden="true" />
                         </div>
-                      </td>
-                    </tr>
-                  )})
-                )}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                      {queuedStatus ? <div className="rec-queue-unsaved">Unsaved</div> : null}
+                    </td>
+                    <td className="cell-actions">
+                      <button type="button" className="rec-queue-review" onClick={() => openReviewModal(item)} aria-label={`${isIntelReviewer ? 'View' : 'Review'} ${item.player_name}`}>
+                        {isIntelReviewer ? 'View' : 'Review'}
+                      </button>
+                      <OverlayTrigger placement="top" overlay={<Tooltip id={`history-tooltip-${item.id}`}>Status history</Tooltip>}>
+                        <button type="button" className="rec-queue-history" onClick={() => openHistoryModal(item)} aria-label={`Open history for ${item.player_name}`}>
+                          <History size={15} aria-hidden="true" />
+                        </button>
+                      </OverlayTrigger>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
 
-          <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
-            <span className="text-muted small">
-              Showing {items.length} on this page ({total} total)
-            </span>
-            <div className="btn-group">
-              <Button variant="outline-secondary" size="sm" disabled={filters.page === 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}>
-                <i className="bi bi-chevron-left"></i> Previous
-              </Button>
-              <Button variant="outline-secondary" size="sm" disabled={filters.page >= totalPages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>
-                Next <i className="bi bi-chevron-right"></i>
-              </Button>
-            </div>
-          </div>
+      <div className="rec-queue-footer">
+        <span>{loading ? 'Loading...' : `${total} recommendation${total !== 1 ? 's' : ''} · Page ${filters.page} of ${totalPages}`}</span>
+        <div className="btn-group">
+          <Button variant="outline-secondary" size="sm" disabled={filters.page === 1} onClick={() => setFilters((current) => ({ ...current, page: current.page - 1 }))}>
+            Previous
+          </Button>
+          <Button variant="outline-secondary" size="sm" disabled={filters.page >= totalPages} onClick={() => setFilters((current) => ({ ...current, page: current.page + 1 }))}>
+            Next
+          </Button>
         </div>
       </div>
 

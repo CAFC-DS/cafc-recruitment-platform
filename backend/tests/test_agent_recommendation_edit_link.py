@@ -322,7 +322,7 @@ def test_endpoint_skips_resolve_and_reuses_link_when_manual_entry_unchanged():
     # have produced.
     update_calls = [
         call for call in fake_cursor.execute.call_args_list
-        if "UPDATE player_recommendations" in call.args[0]
+        if call.args[0].lstrip().startswith("UPDATE") and "player_recommendations" in call.args[0]
     ]
     assert len(update_calls) == 1
     sql, params = update_calls[0].args
@@ -347,7 +347,7 @@ def test_endpoint_still_resolves_when_manual_entry_name_changed():
 
     update_calls = [
         call for call in fake_cursor.execute.call_args_list
-        if "UPDATE player_recommendations" in call.args[0]
+        if call.args[0].lstrip().startswith("UPDATE") and "player_recommendations" in call.args[0]
     ]
     assert len(update_calls) == 1
     sql, params = update_calls[0].args

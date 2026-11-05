@@ -30,8 +30,20 @@ export interface ClubMove {
   first_new_club_appearance: string | null;
 }
 
+export interface ListDataScore {
+  kind: "career" | "ch_index";
+  value: number;
+  band: number | null;
+  band_name: string | null;
+  position: string;
+  season: string;
+  seasons: number | null;
+  min: number | null;
+}
+
 export interface PlayerInList {
   club_move?: ClubMove | null;
+  data_score?: ListDataScore | null;
   item_id: number;
   player_id: number | null;
   cafc_player_id: number | null;
@@ -181,7 +193,8 @@ export interface PlayerListFilters {
   maxAge?: number;
   minScore?: number;
   maxScore?: number;
-  performanceScores?: string; // Comma-separated whole scores, e.g. "5,9"
+  minDataScore?: number;
+  maxDataScore?: number;
   minReports?: number;
   maxReports?: number;
   stages?: string; // Comma-separated
@@ -213,7 +226,8 @@ export const getAllListsWithDetails = async (
     if (filters.maxAge !== undefined) params.append("max_age", filters.maxAge.toString());
     if (filters.minScore !== undefined) params.append("min_score", filters.minScore.toString());
     if (filters.maxScore !== undefined) params.append("max_score", filters.maxScore.toString());
-    if (filters.performanceScores) params.append("performance_scores", filters.performanceScores);
+    if (filters.minDataScore !== undefined) params.append("min_data_score", filters.minDataScore.toString());
+    if (filters.maxDataScore !== undefined) params.append("max_data_score", filters.maxDataScore.toString());
     if (filters.minReports !== undefined) params.append("min_reports", filters.minReports.toString());
     if (filters.maxReports !== undefined) params.append("max_reports", filters.maxReports.toString());
     if (filters.stages) params.append("stages", filters.stages);
@@ -543,6 +557,8 @@ export const exportPlayersToCSV = (players: PlayerInList[], filename: string = "
     "Club",
     "Stage",
     "Avg Score",
+    "Data Score",
+    "Data Score Type",
     "Reports",
     "Live Reports",
     "Video Reports",
@@ -558,6 +574,8 @@ export const exportPlayersToCSV = (players: PlayerInList[], filename: string = "
     player.squad_name || "Unknown",
     player.stage,
     player.avg_performance_score?.toFixed(1) || "N/A",
+    player.data_score ? Math.round(player.data_score.value) : "N/A",
+    player.data_score ? (player.data_score.kind === "career" ? "Career" : "CH index") : "N/A",
     player.report_count,
     player.live_reports,
     player.video_reports,

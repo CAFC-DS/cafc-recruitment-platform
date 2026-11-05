@@ -47,6 +47,7 @@ import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import ShimmerLoading from "../components/ShimmerLoading";
 
 import PlayerPositionPitchMap from "../components/player/PlayerPositionPitchMap";
+import PlayerDataScore from "../components/player/PlayerDataScore";
 import {
   Flag,
   Clapperboard,
@@ -554,7 +555,7 @@ const PlayerProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { viewMode, setViewMode } = useViewMode();
-  const { canGenerateShareLinks, canManageIntel, canSeeAllReports, canViewFlowHistory, isAdmin, isIntelReviewer, user } = useCurrentUser();
+  const { canAccessScoutApp, canGenerateShareLinks, canManageIntel, canSeeAllReports, canViewFlowHistory, isAdmin, isIntelReviewer, user } = useCurrentUser();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [attributes, setAttributes] = useState<PlayerAttributes | null>(null);
   const [scoutReportsData, setScoutReportsData] =
@@ -1731,6 +1732,8 @@ const PlayerProfilePage: React.FC = () => {
                             </div>
                           </div>
                         )}
+
+                        {canAccessScoutApp && actualPlayerId && <PlayerDataScore playerId={actualPlayerId} />}
 
                         {(playerStages.length > 0 || archiveInfo.length > 0) && (
                           <div className="info-row">

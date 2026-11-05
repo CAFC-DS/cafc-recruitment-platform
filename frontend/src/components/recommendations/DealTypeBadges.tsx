@@ -4,6 +4,16 @@ interface DealTypeBadgesProps {
   dealTypes: string;
 }
 
+const SHORT_LABELS: { [key: string]: string } = {
+  'Free': 'Free',
+  'Permanent Transfer': 'Perm',
+  'Perm': 'Perm',
+  'Loan': 'Loan',
+  'Loan with Option': 'Loan+',
+};
+
+export const dealTypeShortLabel = (type: string) => SHORT_LABELS[type] || type;
+
 const DealTypeBadges: React.FC<DealTypeBadgesProps> = ({ dealTypes }) => {
   if (!dealTypes) return <span className="text-muted">-</span>;
 
@@ -17,14 +27,6 @@ const DealTypeBadges: React.FC<DealTypeBadgesProps> = ({ dealTypes }) => {
     'Loan with Option': 'badge bg-warning bg-opacity-10 text-warning border border-warning',
   };
 
-  const shortLabels: { [key: string]: string } = {
-    'Free': 'Free',
-    'Permanent Transfer': 'Perm',
-    'Perm': 'Perm',
-    'Loan': 'Loan',
-    'Loan with Option': 'Loan+',
-  };
-
   return (
     <div className="d-flex flex-wrap gap-1">
       {types.map((type, index) => (
@@ -33,7 +35,7 @@ const DealTypeBadges: React.FC<DealTypeBadgesProps> = ({ dealTypes }) => {
           className={badgeStyles[type] || 'badge deal-type-badge-neutral'}
           style={{ fontSize: '0.7rem', fontWeight: 600 }}
         >
-          {shortLabels[type] || type}
+          {dealTypeShortLabel(type)}
         </span>
       ))}
     </div>

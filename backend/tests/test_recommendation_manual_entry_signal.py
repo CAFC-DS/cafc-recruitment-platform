@@ -223,7 +223,7 @@ def test_flag_duplicate_inserts_note_and_commits():
     fake_conn.commit.assert_called_once()
     insert_calls = [
         call for call in fake_cursor.execute.call_args_list
-        if "INSERT INTO recommendation_notes_history" in call.args[0]
+        if "INSERT INTO" in call.args[0] and "recommendation_notes_history" in call.args[0]
     ]
     assert len(insert_calls) == 1
     params = insert_calls[0].args[1]

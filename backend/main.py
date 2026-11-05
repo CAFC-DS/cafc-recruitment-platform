@@ -44,11 +44,16 @@ import tempfile
 import os.path
 import csv
 import io
+import json
+import boto3
+from botocore.config import Config as BotoConfig
+from botocore.exceptions import BotoCoreError, ClientError
 
 # Import chatbot services
 from services.sql_generator import SQLGeneratorService
 from services.schema_service import SchemaService
 from services.club_moves import get_club_move
+from services.data_scores import data_scores
 from services.ollama_service import ollama_service
 
 # Import iteration mapping
@@ -388,10 +393,18 @@ def get_cached_username(user_id: int) -> Optional[str]:
     return USER_CACHE.get(user_id)
 
 
+def api_docs_settings(environment):
+    """Serve the API schema and docs pages only in local development."""
+    if environment == "development":
+        return {}
+    return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+
 app = FastAPI(
     title="CAFC Recruitment Platform API",
     description="Football recruitment platform with role-based access control",
     version="1.0.0",
+    **api_docs_settings(os.getenv("ENVIRONMENT", "development")),
 )
 
 # Load table schemas and user cache on startup
@@ -413,85 +426,6 @@ async def startup_event():
     loop = asyncio.get_event_loop()
     loop.run_in_executor(None, _load_caches)
     print("✅ Application startup complete (cache loading running in background)")
-
-
-@app.get("/health/debug")
-@offload_read
-def debug_health():
-    """
-    Diagnostic endpoint - exposes env var presence (NOT values) and CORS config.
-    Safe to call publicly: only shows whether variables are set, never their contents.
-    Use this first when diagnosing Railway deployment issues.
-    """
-    def _present(val):
-        """Return 'SET' / 'MISSING' without leaking the value."""
-        return "SET" if val else "MISSING"
-
-    snowflake_key_raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "")
-    key_info = "MISSING"
-    if snowflake_key_raw:
-        has_header = "-----BEGIN" in snowflake_key_raw
-        # Check for literal \n vs real newlines (common Railway copy-paste mistake)
-        has_literal_backslash_n = r"\n" in snowflake_key_raw and "\n" not in snowflake_key_raw
-        if has_literal_backslash_n:
-            key_info = "SET but contains literal \\n instead of real newlines - WILL FAIL"
-        elif not has_header:
-            key_info = "SET but missing PEM header (-----BEGIN ...) - WILL FAIL"
-        else:
-            key_info = f"SET (length={len(snowflake_key_raw)}, has PEM header=True)"
-
-    cors_origins_raw = os.getenv("CORS_ORIGINS", "")
-    parsed_origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw else []
-
-    return {
-        "environment": ENVIRONMENT,
-        "snowflake": {
-            "account":   _present((os.getenv("SNOWFLAKE_PROD_ACCOUNT")   or os.getenv("SNOWFLAKE_ACCOUNT"))   if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
-            "username":  _present((os.getenv("SNOWFLAKE_PROD_USERNAME")  or os.getenv("SNOWFLAKE_USERNAME"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
-            "warehouse": _present((os.getenv("SNOWFLAKE_PROD_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE")) if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
-            "database":  _present((os.getenv("SNOWFLAKE_PROD_DATABASE")  or os.getenv("SNOWFLAKE_DATABASE"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
-            "schema":    _present((os.getenv("SNOWFLAKE_PROD_SCHEMA")    or os.getenv("SNOWFLAKE_SCHEMA"))    if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
-            "role":      _present((os.getenv("SNOWFLAKE_PROD_ROLE")      or os.getenv("SNOWFLAKE_ROLE"))      if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
-            "private_key": key_info,
-        },
-        "auth": {
-            "secret_key": _present(os.getenv("SECRET_KEY")),
-        },
-        "cors": {
-            "origins_env_var_set": bool(cors_origins_raw),
-            "parsed_origins": parsed_origins,
-        },
-        "connection_pool": {
-            "initialised": _connection_pool is not None,
-            "pool_size_approx": _connection_pool.qsize() if _connection_pool else 0,
-        },
-    }
-
-
-@app.get("/health/snowflake")
-@offload_read
-def test_snowflake_connection():
-    """Test Snowflake connection for debugging"""
-    import traceback
-
-    try:
-        print("Testing Snowflake connection...")
-        conn = get_snowflake_connection()
-        print("Connection established")
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        result = cursor.fetchone()
-        conn.close()
-        print("Connection test successful")
-        return {"status": "success", "result": result[0]}
-    except Exception as e:
-        error_details = {
-            "error_type": type(e).__name__,
-            "error_message": str(e),
-            "traceback": traceback.format_exc(),
-        }
-        print(f"Snowflake connection failed: {error_details}")
-        return {"status": "error", "error": error_details}
 
 
 # Environment-based CORS configuration
@@ -957,6 +891,8 @@ RECOMMENDATION_STATUSES = [
     "Not Currently under Consideration",
     "Archived Submission",
 ]
+
+NEEDS_DECISION_STATUSES = ["Submitted", "Under Review"]
 
 AGENT_STATUSES = [
     "Active",
@@ -1495,7 +1431,6 @@ class RecommendationResponse(BaseModel):
     agency: Optional[str] = None
     agent_email: Optional[str] = None
     agent_number: Optional[str] = None
-    avg_performance_score: Optional[float] = None
     agent_status: str = "Active"
     agent_status_updated_at: Optional[str] = None
     shared_notes: Optional[str] = None
@@ -1529,6 +1464,8 @@ class RecommendationNoteHistoryResponse(BaseModel):
 
 
 class InternalRecommendationResponse(RecommendationResponse):
+    avg_performance_score: Optional[float] = None
+    data_score: Optional[Dict[str, Any]] = None
     submitted_by_user_id: Optional[int] = None
     submitted_by_username: Optional[str] = None
     status_updated_by: Optional[int] = None
@@ -3275,6 +3212,13 @@ def build_recommendation_select():
     )
 
 
+def recommendation_data_score(row, role):
+    """The linked external player's data score, for the roles allowed to see data scores."""
+    if role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER] or row[48] != "external":
+        return None
+    return data_scores.list_score(row[46])
+
+
 def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
     submitted_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
     status_updated_by_name = " ".join(part for part in [row[40], row[41]] if part) or row[39]
@@ -3385,7 +3329,6 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         "agency": row[2],
         "agent_email": row[3],
         "agent_number": row[4],
-        "avg_performance_score": format_decimal(row[35]),
         "agent_status": row[44] or "Active",
         "agent_status_updated_at": serialize_datetime(row[45]),
         "shared_notes": row[28],
@@ -3401,6 +3344,7 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
 
     return InternalRecommendationResponse(
         **base_data,
+        avg_performance_score=format_decimal(row[35]),
         submitted_by_user_id=row[24],
         submitted_by_username=submitted_by_name,
         status_updated_by=row[27],
@@ -3409,6 +3353,14 @@ def serialize_recommendation_row(row, include_internal: bool = False, status_his
         supporting_file_size_bytes=row[34],
         status_history=status_history or [],
     )
+
+
+def serialize_recommendation_for_viewer(row, role, status_history=None):
+    """An internal recommendation as this role may read it: Intel Reviewers never get the scout average."""
+    item = serialize_recommendation_row(row, include_internal=True, status_history=status_history)
+    if role == ROLE_INTEL_REVIEWER:
+        item.avg_performance_score = None
+    return item
 
 
 def fetch_recommendation_detail(cursor, recommendation_id: int):
@@ -3451,7 +3403,17 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+# Agents are denied everything by default: only these paths accept an agent login,
+# so a new endpoint can never expose internal data to them by accident.
+AGENT_ALLOWED_PATHS = {"/users/me", "/auth/refresh"}
+AGENT_ALLOWED_PREFIX = "/agents/"
+
+
+def agent_may_access(path: str) -> bool:
+    return path in AGENT_ALLOWED_PATHS or path.startswith(AGENT_ALLOWED_PREFIX)
+
+
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -3470,6 +3432,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = await get_user(username)
     if user is None:
         raise credentials_exception
+    if user.role == ROLE_AGENT and not agent_may_access(request.scope["path"]):
+        raise HTTPException(status_code=403, detail="Not available to agent accounts")
     return User(
         id=user.id,
         username=user.username,
@@ -3506,6 +3470,13 @@ def require_internal_user(current_user: User = Depends(get_current_user)) -> Use
     return current_user
 
 
+def require_scout_report_reader(current_user: User = Depends(get_current_user)) -> User:
+    """For routes that return scout report content: Intel Reviewers may not read it."""
+    if current_user.role == ROLE_INTEL_REVIEWER:
+        raise HTTPException(status_code=403, detail="Scout reports are not available to Intel Reviewers")
+    return current_user
+
+
 def require_recs_viewer(current_user: User = Depends(get_current_user)) -> User:
     """Read access to recommendations: internal roles + the view-only intel_reviewer."""
     if current_user.role not in RECS_VIEW_ROLES:
@@ -3517,6 +3488,65 @@ def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != ROLE_AGENT:
         raise HTTPException(status_code=403, detail="Agent access required")
     return current_user
+
+
+# --- Scout app (weekly-published HTML from the data-scoring scout-refresh job) ---
+# The job writes published/<run_id>/cafc_scout.html to the Railway bucket and
+# updates published/latest.json last. Staff get a short-lived presigned link.
+SCOUT_APP_LATEST_KEY = "published/latest.json"
+SCOUT_APP_LINK_EXPIRES_SECONDS = 600
+SCOUT_APP_BUCKET_ENV = ("BUCKET", "ENDPOINT", "REGION", "ACCESS_KEY_ID", "SECRET_ACCESS_KEY")
+SCOUT_APP_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER]
+
+
+def require_scout_app_user(current_user: User = Depends(require_internal_user)) -> User:
+    if current_user.role not in SCOUT_APP_ROLES:
+        raise HTTPException(status_code=403, detail="Scout app access required")
+    return current_user
+
+
+def scout_app_bucket_client():
+    return boto3.client(
+        "s3",
+        endpoint_url=os.getenv("ENDPOINT"),
+        region_name=os.getenv("REGION"),
+        aws_access_key_id=os.getenv("ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("SECRET_ACCESS_KEY"),
+        config=BotoConfig(s3={"addressing_style": "auto"}),
+    )
+
+
+@app.get("/scout-app/link")
+def get_scout_app_link(current_user: User = Depends(require_scout_app_user)):
+    """Presigned link to the latest published scout app. Never log the URL or keys."""
+    if not all(os.getenv(name) for name in SCOUT_APP_BUCKET_ENV):
+        raise HTTPException(status_code=503, detail="Scout app storage is not configured.")
+    bucket = os.getenv("BUCKET")
+    client = scout_app_bucket_client()
+    try:
+        latest = json.loads(client.get_object(Bucket=bucket, Key=SCOUT_APP_LATEST_KEY)["Body"].read())
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("NoSuchKey", "404"):
+            raise HTTPException(
+                status_code=503,
+                detail="The scout app has not been published yet. It refreshes weekly on Sundays.",
+            )
+        logging.error("Scout app: reading latest.json failed (%s)", code)
+        raise HTTPException(status_code=502, detail="Could not reach scout app storage.")
+    except (BotoCoreError, ValueError) as e:
+        logging.error("Scout app: reading latest.json failed (%s)", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Could not reach scout app storage.")
+
+    run_id = latest.get("run_id") if isinstance(latest, dict) else None
+    if not run_id:
+        raise HTTPException(status_code=503, detail="The scout app has not been published yet.")
+    url = client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": f"published/{run_id}/cafc_scout.html"},
+        ExpiresIn=SCOUT_APP_LINK_EXPIRES_SECONDS,
+    )
+    return {"url": url, "built_at": latest.get("built_at")}
 
 
 @app.post("/agents/register", response_model=AgentProfileResponse)
@@ -4605,8 +4635,9 @@ def list_internal_recommendations(
     validate_recommendation_schema_ready()
     page = max(page, 1)
     page_size = min(max(page_size, 1), 100)
-    if status_filter:
-        validate_recommendation_status(status_filter)
+    statuses = [value.strip() for value in (status_filter or "").split(",") if value.strip()]
+    for value in statuses:
+        validate_recommendation_status(value)
     if age_min is not None and age_max is not None and age_min > age_max:
         raise HTTPException(status_code=400, detail="Minimum age cannot exceed maximum age")
 
@@ -4632,9 +4663,9 @@ def list_internal_recommendations(
         where_clauses = []
         params: List[Any] = []
 
-        if status_filter:
-            where_clauses.append("rec.STATUS = %s")
-            params.append(status_filter)
+        if statuses:
+            where_clauses.append(f"rec.STATUS IN ({', '.join(['%s'] * len(statuses))})")
+            params.extend(statuses)
         if agent_user_id:
             where_clauses.append("rec.SUBMITTED_BY_USER_ID = %s")
             params.append(agent_user_id)
@@ -4700,8 +4731,25 @@ def list_internal_recommendations(
             query_params,
         )
 
-        data = [serialize_recommendation_row(row, include_internal=True) for row in cursor.fetchall()]
-        return {"items": data, "page": page, "page_size": page_size, "total": total}
+        data = []
+        for row in cursor.fetchall():
+            item = serialize_recommendation_for_viewer(row, current_user.role)
+            item.data_score = recommendation_data_score(row, current_user.role)
+            data.append(item)
+        needs_decision_placeholders = ", ".join(["%s"] * len(NEEDS_DECISION_STATUSES))
+        cursor.execute(
+            f"""SELECT COUNT(*), COUNT_IF(STATUS IN ({needs_decision_placeholders}))
+            FROM {core_table('player_recommendations')}""",
+            NEEDS_DECISION_STATUSES,
+        )
+        all_count, needs_decision_count = cursor.fetchone()
+        return {
+            "items": data,
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+            "queue_counts": {"needs_decision": needs_decision_count, "all": all_count},
+        }
     except Exception as e:
         logging.exception(f"Failed to fetch internal recommendations: {e}")
         raise HTTPException(status_code=500, detail="Failed to load recommendations")
@@ -4791,7 +4839,7 @@ def get_internal_recommendation_detail(
         if not row:
             raise HTTPException(status_code=404, detail="Recommendation not found")
         history = fetch_recommendation_status_history(cursor, recommendation_id, include_actor_names=True)
-        return serialize_recommendation_row(row, include_internal=True, status_history=history)
+        return serialize_recommendation_for_viewer(row, current_user.role, status_history=history)
     finally:
         if conn:
             conn.close()
@@ -5310,6 +5358,90 @@ def get_analytics_timeline_daily(
     finally:
         if conn:
             conn.close()
+
+
+@app.get("/health/debug")
+@offload_read
+def debug_health(current_user: User = Depends(get_current_user)):
+    """
+    Diagnostic endpoint (admin only) - exposes env var presence (NOT values) and CORS config.
+    Use this first when diagnosing Railway deployment issues.
+    """
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    def _present(val):
+        """Return 'SET' / 'MISSING' without leaking the value."""
+        return "SET" if val else "MISSING"
+
+    snowflake_key_raw = os.getenv("SNOWFLAKE_PRIVATE_KEY", "")
+    key_info = "MISSING"
+    if snowflake_key_raw:
+        has_header = "-----BEGIN" in snowflake_key_raw
+        # Check for literal \n vs real newlines (common Railway copy-paste mistake)
+        has_literal_backslash_n = r"\n" in snowflake_key_raw and "\n" not in snowflake_key_raw
+        if has_literal_backslash_n:
+            key_info = "SET but contains literal \\n instead of real newlines - WILL FAIL"
+        elif not has_header:
+            key_info = "SET but missing PEM header (-----BEGIN ...) - WILL FAIL"
+        else:
+            key_info = f"SET (length={len(snowflake_key_raw)}, has PEM header=True)"
+
+    cors_origins_raw = os.getenv("CORS_ORIGINS", "")
+    parsed_origins = [o.strip() for o in cors_origins_raw.split(",")] if cors_origins_raw else []
+
+    return {
+        "environment": ENVIRONMENT,
+        "snowflake": {
+            "account":   _present((os.getenv("SNOWFLAKE_PROD_ACCOUNT")   or os.getenv("SNOWFLAKE_ACCOUNT"))   if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ACCOUNT")),
+            "username":  _present((os.getenv("SNOWFLAKE_PROD_USERNAME")  or os.getenv("SNOWFLAKE_USERNAME"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_USERNAME")),
+            "warehouse": _present((os.getenv("SNOWFLAKE_PROD_WAREHOUSE") or os.getenv("SNOWFLAKE_WAREHOUSE")) if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_WAREHOUSE")),
+            "database":  _present((os.getenv("SNOWFLAKE_PROD_DATABASE")  or os.getenv("SNOWFLAKE_DATABASE"))  if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_DATABASE")),
+            "schema":    _present((os.getenv("SNOWFLAKE_PROD_SCHEMA")    or os.getenv("SNOWFLAKE_SCHEMA"))    if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_SCHEMA")),
+            "role":      _present((os.getenv("SNOWFLAKE_PROD_ROLE")      or os.getenv("SNOWFLAKE_ROLE"))      if ENVIRONMENT == "production" else os.getenv("SNOWFLAKE_DEV_ROLE")),
+            "private_key": key_info,
+        },
+        "auth": {
+            "secret_key": _present(os.getenv("SECRET_KEY")),
+        },
+        "cors": {
+            "origins_env_var_set": bool(cors_origins_raw),
+            "parsed_origins": parsed_origins,
+        },
+        "connection_pool": {
+            "initialised": _connection_pool is not None,
+            "pool_size_approx": _connection_pool.qsize() if _connection_pool else 0,
+        },
+    }
+
+
+@app.get("/health/snowflake")
+@offload_read
+def test_snowflake_connection(current_user: User = Depends(get_current_user)):
+    """Test Snowflake connection for debugging (admin only: failures include a traceback)"""
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    import traceback
+
+    try:
+        print("Testing Snowflake connection...")
+        conn = get_snowflake_connection()
+        print("Connection established")
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+        conn.close()
+        print("Connection test successful")
+        return {"status": "success", "result": result[0]}
+    except Exception as e:
+        error_details = {
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "traceback": traceback.format_exc(),
+        }
+        print(f"Snowflake connection failed: {error_details}")
+        return {"status": "error", "error": error_details}
 
 
 @app.get("/debug/scout_reports")
@@ -8523,7 +8655,7 @@ async def delete_scout_report(
 @app.get("/scout_reports/details/{report_id}")
 @offload_read
 def get_scout_report(
-    report_id: int, current_user: User = Depends(get_current_user)
+    report_id: int, current_user: User = Depends(require_scout_report_reader)
 ):
     conn = None
     try:
@@ -9651,7 +9783,7 @@ def get_all_scout_reports(
 @app.get("/scout_reports/recent")
 @offload_read
 def get_recent_scout_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_scout_report_reader),
     report_type: Optional[str] = None,  # "Player Assessment", "Flag", etc.
     limit: int = 20,
     offset: int = 0,
@@ -9860,7 +9992,7 @@ def get_recent_scout_reports(
 @app.get("/scout_reports/top-attributes")
 @offload_read
 def get_top_attribute_reports(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_scout_report_reader),
     recency_days: Optional[int] = None,
     limit: int = 10,
 ):
@@ -10021,7 +10153,7 @@ def get_top_attribute_reports(
 @app.get("/scout_reports/{report_id}")
 @offload_read
 def get_single_scout_report(
-    report_id: int, current_user: User = Depends(get_current_user)
+    report_id: int, current_user: User = Depends(require_scout_report_reader)
 ):
     conn = None
     try:
@@ -11691,6 +11823,120 @@ def select_metric_season(available_pairs, competition=None, season=None):
     )
 
 
+PITCH_CENTRAL_POSITIONS = {
+    "CENTRAL_DEFENDER", "DEFENSE_MIDFIELD", "CENTRAL_MIDFIELD",
+    "ATTACKING_MIDFIELD", "CENTER_FORWARD",
+}
+PITCH_HEATMAP_X_BINS = 12  # across the pitch (68m)
+PITCH_HEATMAP_Y_BINS = 16  # along the pitch (105m)
+# Actions where the player plays or wins the ball. Excludes RECEPTION (it sits
+# on exactly the same spot as the player's next pass/dribble, so it double
+# counts), ball-out/kick-off/whistle markers, fouls, cards, offsides and the
+# GOAL/OWN_GOAL rows that duplicate the shot.
+PITCH_HEATMAP_ACTION_TYPES = (
+    "PASS", "DRIBBLE", "SHOT", "LOOSE_BALL_REGAIN", "INTERCEPTION", "CLEARANCE",
+    "BLOCK", "THROW_IN", "FREE_KICK", "CORNER", "GOAL_KICK", "GK_CATCH", "GK_SAVE",
+)
+# How a player came to occupy a slot in a match, strongest first. A slot gets
+# the strongest entry seen that match (e.g. started at RW, moved, back to RW =
+# a RW start).
+PITCH_ENTRY_PRIORITY = ("start", "bench", "moved", "unknown")
+
+
+def _normalise_position_side(position: str, side: Optional[str]) -> Optional[str]:
+    """Central slots keep their left/centre/right split; wide slots and the
+    goalkeeper already encode their side in the position code."""
+    if position not in PITCH_CENTRAL_POSITIONS:
+        return None
+    if side in ("CENTRE_LEFT", "LEFT"):
+        return "CENTRE_LEFT"
+    if side in ("CENTRE_RIGHT", "RIGHT"):
+        return "CENTRE_RIGHT"
+    return "CENTRE"
+
+
+def _parse_variant(value):
+    import json
+
+    if value is None:
+        return []
+    if isinstance(value, str):
+        try:
+            return json.loads(value) or []
+        except ValueError:
+            return []
+    return value
+
+
+def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
+    """Replay Impect starting positions + substitution timeline for one match.
+
+    Every timeline entry for the player moves them to `toPosition` /
+    `positionSide` (SUB_ON, POSITION_CHANGE, POSITION_SIDE_CHANGE and untyped
+    side shuffles) or off the pitch when `toPosition` is BANK (SUB_OFF,
+    RED_CARD). GAME_TIME_IN_SEC is offset per period, so time is only counted
+    inside each period's [first event, last event] window.
+
+    Returns ({(position, side): seconds}, {(position, side): entry}) or
+    (None, None) when the player does not appear in the lineup data. `entry`
+    says how the player came into that slot this match: "start" (starting
+    slot only), "bench" (came on as a substitute into it), "moved" (switched
+    into it from another slot on the pitch) or "unknown" (timeline without a
+    starting slot or a bench entry, i.e. incomplete lineup data).
+    """
+    if not periods:
+        return None, None
+    _, home_start, away_start, home_subs, away_subs = match_info_row
+    starters = _parse_variant(home_start) + _parse_variant(away_start)
+    changes = [
+        entry for entry in _parse_variant(home_subs) + _parse_variant(away_subs)
+        if entry.get("playerId") == source_player_id
+        and (entry.get("gameTime") or {}).get("gameTimeInSec") is not None
+    ]
+    changes.sort(key=lambda entry: float(entry["gameTime"]["gameTimeInSec"]))
+
+    seconds = {}
+    entries = {}
+
+    def enter(slot, kind):
+        current = entries.get(slot)
+        if current is None or PITCH_ENTRY_PRIORITY.index(kind) < PITCH_ENTRY_PRIORITY.index(current):
+            entries[slot] = kind
+
+    state = None
+    for starter in starters:
+        if starter.get("playerId") == source_player_id and starter.get("position"):
+            state = (starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide")))
+            enter(state, "start")
+            break
+    if state is None and not changes:
+        return None, None
+
+    def add(slot, start, end):
+        for period_start, period_end in periods:
+            overlap = min(end, period_end) - max(start, period_start)
+            if overlap > 0:
+                seconds[slot] = seconds.get(slot, 0.0) + overlap
+
+    segment_start = periods[0][0]
+    for change in changes:
+        at = float(change["gameTime"]["gameTimeInSec"])
+        if state:
+            add(state, segment_start, at)
+        target = change.get("toPosition")
+        if not target or target == "BANK":
+            state = None
+        else:
+            from_bench = change.get("fromPosition") == "BANK" or change.get("substitutionType") == "SUB_ON"
+            kind = "bench" if from_bench else ("moved" if state else "unknown")
+            state = (target, _normalise_position_side(target, change.get("positionSide")))
+            enter(state, kind)
+        segment_start = at
+    if state:
+        add(state, segment_start, periods[-1][1])
+    return seconds, entries
+
+
 @app.get("/players/{player_id}/position-history")
 @offload_read
 def get_player_position_history(
@@ -11699,7 +11945,8 @@ def get_player_position_history(
     season: Optional[str] = None,
     current_user: User = Depends(get_current_user),
 ):
-    """Return authoritative seasonal position minutes for the profile header."""
+    """Seasonal position minutes (from Impect lineups) and a touch heatmap
+    (from Impect events) for the profile header pitch map."""
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -11708,66 +11955,160 @@ def get_player_position_history(
         if not player_data:
             raise HTTPException(status_code=404, detail="Player not found")
         if data_source != "external":
-            return {"available": False, "message": "Position history is unavailable for this player.", "filters": {"available": []}, "positions": []}
+            return {"available": False, "message": "Position history is unavailable for this player.", "filters": {"available": []}, "positions": [], "heatmap": None}
 
         source_player_id = int(player_data[0])
         cursor.execute(
             """
-            SELECT DISTINCT c.COMPETITION_NAME, k.SEASON
-            FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
-            JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
-              ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
-            WHERE k.SOURCE_PLAYER_ID = %s AND k.PLAY_DURATION_SECONDS > 0
-            ORDER BY k.SEASON DESC, c.COMPETITION_NAME
+            SELECT DISTINCT i."COMPETITION.NAME", i.SEASON
+            FROM CAFC_DB.IMPECT_RAW.EVENTS e
+            JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+            WHERE e.PLAYER_ID = %s AND e.PLAYER_POSITION IS NOT NULL
+            ORDER BY i.SEASON DESC, i."COMPETITION.NAME"
             """,
             (source_player_id,),
         )
         available_pairs = [{"competition": row[0], "season": row[1]} for row in cursor.fetchall()]
         if not available_pairs:
-            return {"available": False, "message": "No position history is available.", "filters": {"available": []}, "positions": []}
+            return {"available": False, "message": "No position history is available.", "filters": {"available": []}, "positions": [], "heatmap": None}
 
         selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
-        cache_key = f"player_position_history_v1_{source_player_id}_{competition}_{season}"
+        cache_key = f"player_position_history_v4_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
 
+        # Player's own event spans per slot: identifies the matches played and
+        # is the fallback estimate when a match has no usable lineup data.
         cursor.execute(
             """
-            WITH player_matches AS (
-                SELECT k.SOURCE_FIXTURE_ID, k.POSITION_CODE,
-                       MAX(k.PLAY_DURATION_SECONDS) AS SECONDS
-                FROM CAFC_DB.CORE.CORE_PLAYER_FIXTURE_KPIS k
-                JOIN CAFC_DB.CORE.CORE_COMPETITIONS c
-                  ON c.CAFC_COMPETITION_ID = k.CAFC_COMPETITION_ID
-                WHERE k.SOURCE_PLAYER_ID = %s
-                  AND c.COMPETITION_NAME = %s AND k.SEASON = %s
-                  AND k.PLAY_DURATION_SECONDS > 0 AND k.POSITION_CODE IS NOT NULL
-                GROUP BY 1,2
-            )
-            SELECT POSITION_CODE, COUNT(DISTINCT SOURCE_FIXTURE_ID), SUM(SECONDS) / 60.0
-            FROM player_matches
-            GROUP BY 1
-            ORDER BY 3 DESC
+            SELECT e.MATCH_ID, e.PERIOD_ID, e.PLAYER_POSITION, e.PLAYER_POSITION_SIDE,
+                   MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC)
+            FROM CAFC_DB.IMPECT_RAW.EVENTS e
+            JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+            WHERE e.PLAYER_ID = %s
+              AND i."COMPETITION.NAME" = %s AND i.SEASON = %s
+              AND e.PLAYER_POSITION IS NOT NULL
+            GROUP BY 1,2,3,4
             """,
             (source_player_id, competition, season),
         )
-        rows = cursor.fetchall()
-        total_minutes = sum(float(row[2] or 0) for row in rows)
-        positions = [
-            {
-                "position": row[0], "match_count": int(row[1]),
-                "minutes": round(float(row[2] or 0)),
-                "share_pct": round(float(row[2] or 0) * 100 / total_minutes, 1) if total_minutes else 0,
-            }
-            for row in rows
+        event_spans = {}
+        for match_id, _period, position, side, span in cursor.fetchall():
+            slot = (position, _normalise_position_side(position, side))
+            match_spans = event_spans.setdefault(int(match_id), {})
+            match_spans[slot] = match_spans.get(slot, 0.0) + float(span or 0)
+        match_ids = sorted(event_spans)
+
+        periods_by_match = {}
+        lineups_by_match = {}
+        if match_ids:
+            placeholders = ",".join(["%s"] * len(match_ids))
+            cursor.execute(
+                f"""
+                SELECT MATCH_ID, PERIOD_ID, MIN(GAME_TIME_IN_SEC), MAX(GAME_TIME_IN_SEC)
+                FROM CAFC_DB.IMPECT_RAW.EVENTS
+                WHERE MATCH_ID IN ({placeholders}) AND GAME_TIME_IN_SEC IS NOT NULL
+                GROUP BY 1,2
+                ORDER BY 1,2
+                """,
+                match_ids,
+            )
+            for match_id, _period, start, end in cursor.fetchall():
+                periods_by_match.setdefault(int(match_id), []).append((float(start), float(end)))
+            cursor.execute(
+                f"""
+                SELECT MATCH_ID, HOME_STARTING_POSITIONS, AWAY_STARTING_POSITIONS,
+                       HOME_SUBSTITUTIONS, AWAY_SUBSTITUTIONS
+                FROM CAFC_DB.IMPECT_RAW.MATCH_INFO
+                WHERE MATCH_ID IN ({placeholders})
+                """,
+                match_ids,
+            )
+            lineups_by_match = {int(row[0]): row for row in cursor.fetchall()}
+
+        totals = {}
+        estimated_matches = 0
+        for match_id in match_ids:
+            seconds, entries = (None, None)
+            if match_id in lineups_by_match:
+                seconds, entries = _replay_lineup_seconds(
+                    lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, [])
+                )
+            if not seconds:
+                # No usable lineup: minutes come from event spans and how the
+                # player entered each slot is unknown, never inferred.
+                seconds, entries = event_spans[match_id], {}
+                estimated_matches += 1
+            for slot, slot_seconds in seconds.items():
+                if slot_seconds <= 0:
+                    continue
+                entry = totals.setdefault(slot, {"seconds": 0.0, "matches": 0, **{kind: 0 for kind in PITCH_ENTRY_PRIORITY}})
+                entry["seconds"] += slot_seconds
+                entry["matches"] += 1
+                entry[entries.get(slot, "unknown")] += 1
+
+        total_seconds = sum(entry["seconds"] for entry in totals.values())
+        positions = sorted(
+            (
+                {
+                    "position": position, "side": side,
+                    "match_count": entry["matches"],
+                    "starts": entry["start"],
+                    "sub_appearances": entry["bench"],
+                    "moved_in": entry["moved"],
+                    "unknown_entry": entry["unknown"],
+                    "minutes": round(entry["seconds"] / 60),
+                    "share_pct": round(entry["seconds"] * 100 / total_seconds, 1) if total_seconds else 0,
+                }
+                for (position, side), entry in totals.items()
+            ),
+            key=lambda item: item["minutes"],
+            reverse=True,
+        )
+
+        # Touch heatmap: Impect adjCoordinates are normalised so the player's
+        # team always attacks +x (105m long) and +y is the player's left (68m).
+        cursor.execute(
+            f"""
+            WITH touches AS (
+                SELECT TRY_TO_DOUBLE(TO_VARCHAR(e.START_DETAIL:adjCoordinates:x)) AS X,
+                       TRY_TO_DOUBLE(TO_VARCHAR(e.START_DETAIL:adjCoordinates:y)) AS Y
+                FROM CAFC_DB.IMPECT_RAW.EVENTS e
+                JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
+                WHERE e.PLAYER_ID = %s
+                  AND i."COMPETITION.NAME" = %s AND i.SEASON = %s
+                  AND e.ACTION_TYPE IN ({",".join(["%s"] * len(PITCH_HEATMAP_ACTION_TYPES))})
+            )
+            SELECT LEAST(GREATEST(FLOOR((Y + 34) / 68 * {PITCH_HEATMAP_X_BINS}), 0), {PITCH_HEATMAP_X_BINS - 1}) AS ACROSS_BIN,
+                   LEAST(GREATEST(FLOOR((X + 52.5) / 105 * {PITCH_HEATMAP_Y_BINS}), 0), {PITCH_HEATMAP_Y_BINS - 1}) AS ALONG_BIN,
+                   COUNT(*)
+            FROM touches
+            WHERE X IS NOT NULL AND Y IS NOT NULL
+            GROUP BY 1,2
+            """,
+            (source_player_id, competition, season, *PITCH_HEATMAP_ACTION_TYPES),
+        )
+        heatmap_cells = [
+            {"across": int(row[0]), "along": int(row[1]), "count": int(row[2])}
+            for row in cursor.fetchall()
         ]
+        heatmap = {
+            "across_bins": PITCH_HEATMAP_X_BINS,
+            "along_bins": PITCH_HEATMAP_Y_BINS,
+            "total": sum(cell["count"] for cell in heatmap_cells),
+            "cells": heatmap_cells,
+        } if heatmap_cells else None
+
         response = {
             "available": bool(positions), "message": None if positions else "No position history is available.",
             "player_id": player_id,
             "filters": {"competition": competition, "season": season, "available": available_pairs},
             "positions": positions,
+            "minutes_source": "lineups" if not estimated_matches else ("estimated" if estimated_matches == len(match_ids) else "mixed"),
+            "estimated_matches": estimated_matches,
+            "heatmap": heatmap,
         }
         set_cache(cache_key, response, expiry_minutes=60)
         return response
@@ -12040,6 +12381,32 @@ def get_player_technical_metrics(
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching technical metrics: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/players/{player_id}/data-scores")
+@offload_read
+def get_player_data_scores(player_id: str, current_user: User = Depends(get_current_user)):
+    """The data-scoring app's weekly CH index for this player, read from its Railway bucket."""
+    if current_user.role not in [ROLE_ADMIN, ROLE_SENIOR_MANAGER]:  # same audience as the scout app
+        raise HTTPException(status_code=403, detail="Not authorized to view data scores")
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        player_data, data_source = find_player_by_universal_or_legacy_id(player_id, cursor)
+        if not player_data:
+            raise HTTPException(status_code=404, detail="Player not found")
+        if data_source != "external" or player_data[0] is None:
+            return {"available": False, "message": "Data scores are only available for external players.", "run": None, "headline": None, "rows": []}
+        return data_scores.for_player(int(player_data[0]))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching data scores: {e}")
     finally:
         if conn:
             conn.close()
@@ -12497,7 +12864,7 @@ def get_all_players(
 @app.get("/players/{player_id}/export-pdf")
 @offload_read
 def export_player_pdf(
-    player_id: str, current_user: User = Depends(get_current_user)
+    player_id: str, current_user: User = Depends(require_scout_report_reader)
 ):
     """Generate a printable HTML report for the player that can be converted to PDF"""
     try:
@@ -14267,8 +14634,11 @@ async def create_test_users(current_user: User = Depends(get_current_user)):
 
 @app.get("/database/metadata")
 @offload_read
-def get_database_metadata():
-    """Get database metadata including counts and recent data info"""
+def get_database_metadata(current_user: User = Depends(require_internal_user)):
+    """Get database metadata including counts and recent data info.
+
+    Internal roles only, not admin only: the home page shows these counts to all staff.
+    """
     conn = None
     try:
         conn = get_snowflake_connection()
@@ -17342,6 +17712,16 @@ def get_all_player_lists(
             conn.close()
 
 
+def score_in_range(value, low: Optional[float], high: Optional[float]) -> bool:
+    """A player with no score never matches an active range."""
+    if low is None and high is None:
+        return True
+    if value is None:
+        return False
+    value = float(value)
+    return (low is None or value >= low) and (high is None or value <= high)
+
+
 @app.get("/player-lists/all-with-details")
 @offload_read
 def get_all_lists_with_details(
@@ -17351,9 +17731,11 @@ def get_all_lists_with_details(
     competition: Optional[str] = None,
     min_age: Optional[int] = None,
     max_age: Optional[int] = None,
-    min_score: Optional[int] = None,
-    max_score: Optional[int] = None,
+    min_score: Optional[float] = None,  # Average performance score, to one decimal place
+    max_score: Optional[float] = None,
     performance_scores: Optional[str] = None,  # Comma-separated whole scores: "5,9" (matches the rounded average)
+    min_data_score: Optional[float] = None,  # Data score as shown in the table: a whole number
+    max_data_score: Optional[float] = None,
     min_reports: Optional[int] = None,
     max_reports: Optional[int] = None,
     stages: Optional[str] = None,  # Comma-separated: "Stage 1,Stage 2"
@@ -17843,16 +18225,23 @@ def get_all_lists_with_details(
 
             # Apply filters based on stats
             # Performance score filter
-            if min_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] < min_score):
-                continue
-            if max_score is not None and (stats["avg_performance_score"] is None or stats["avg_performance_score"] > max_score):
+            if not score_in_range(stats["avg_performance_score"], min_score, max_score):
                 continue
             # Specific scores (can be non-contiguous, e.g. 5 and 9): a player
             # matches when their average rounds to one of the selected scores
             if score_set is not None:
                 avg = stats["avg_performance_score"]
-                if avg is None or int(avg + 0.5) not in score_set:
+                if avg is None or int(float(avg) + 0.5) not in score_set:
                     continue
+
+            # Data score filter: compares the whole number shown in the table
+            data_score = data_scores.list_score(row[17])
+            if not score_in_range(
+                math.floor(data_score["value"] + 0.5) if data_score else None,
+                min_data_score,
+                max_data_score,
+            ):
+                continue
 
             # Report count filter
             if min_reports is not None and stats["report_count"] < min_reports:
@@ -17900,6 +18289,7 @@ def get_all_lists_with_details(
                 "last_report_date": stats["last_report_date"].isoformat() if stats["last_report_date"] else None,
                 "intel_reports_count": intel_reports_count,
                 "club_move": get_club_move(row[17], category),
+                "data_score": data_score,
                 "recent_squad_change": squad_change_lookup.get((player_id, cafc_player_id))
                 or squad_change_name_lookup.get(str(row[9] or "").strip().casefold()),
             }

@@ -1,0 +1,87 @@
+{
+  "CORE.CORE_PLAYER_CURRENT_CONTEXT": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "last_altered": "2026-10-16 21:10:31.300000+01:00",
+    "count": 109005
+  },
+  "CORE.CORE_PLAYER_RECENT_POSITION": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "last_altered": "2026-10-16 21:10:47.045000+01:00",
+    "count": 94236
+  },
+  "CORE.CORE_PLAYER_ID_RESOLUTIONS": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "last_altered": "2026-10-16 21:10:28.711000+01:00",
+    "count": 123639
+  },
+  "APP_COMPAT.PLAYERS_BASE": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ]
+    ],
+    "last_altered": "2026-10-16 21:10:48.825000+01:00",
+    "count": 123515
+  },
+  "APP_COMPAT.PLAYERS": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ]
+    ],
+    "last_altered": "2026-10-16 21:10:49.469000+01:00",
+    "count": 123515
+  },
+  "native_minus_fallback": 0,
+  "fallback_minus_native": 0,
+  "native_validate": "Native player reads blocked: selected IMPECT identities disagree with the canonical resolver"
+}

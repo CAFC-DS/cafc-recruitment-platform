@@ -48,6 +48,7 @@ interface KanbanBoardProps {
   playerFavorites?: Set<string>;
   favoriteDetails?: Record<string, FavoriteDetails>;
   playerDecisions?: Set<string>;
+  showSummerTransfers?: boolean;
   fetchArchiveInfo?: (itemId: number) => Promise<any>;
 }
 
@@ -96,6 +97,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   playerFavorites,
   favoriteDetails,
   playerDecisions,
+  showSummerTransfers = true,
   fetchArchiveInfo,
 }) => {
   // Track the active player being dragged for the DragOverlay
@@ -376,6 +378,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
             playerFavorites={playerFavorites}
             favoriteDetails={favoriteDetails}
             playerDecisions={playerDecisions}
+            showSummerTransfers={showSummerTransfers}
             fetchArchiveInfo={fetchArchiveInfo}
           />
         ))}

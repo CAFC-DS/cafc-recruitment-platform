@@ -1,0 +1,97 @@
+{
+  "CORE.CORE_PLAYER_CURRENT_CONTEXT": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "type": "BASE TABLE",
+    "last_altered": "2026-09-30 13:16:48.034000+01:00",
+    "count": 109006
+  },
+  "CORE.CORE_PLAYER_RECENT_POSITION": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "type": "BASE TABLE",
+    "last_altered": "2026-09-30 13:16:59.544000+01:00",
+    "count": 44872
+  },
+  "CORE.CORE_PLAYER_ID_RESOLUTIONS": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "type": "VIEW",
+    "last_altered": "2026-09-15 09:49:30.930000+01:00",
+    "count": 123639
+  },
+  "APP_COMPAT.PLAYERS_BASE": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "type": "BASE TABLE",
+    "last_altered": "2026-10-12 14:11:18.661000+01:00",
+    "count": 123507
+  },
+  "APP_COMPAT.PLAYERS": {
+    "grants": [
+      [
+        "OWNERSHIP",
+        "DEV_ROLE"
+      ],
+      [
+        "SELECT",
+        "APP_ROLE"
+      ],
+      [
+        "SELECT",
+        "CLAUDE_MCP_ROLE"
+      ]
+    ],
+    "type": "VIEW",
+    "last_altered": "2026-09-15 10:15:12.222000+01:00",
+    "count": 123515
+  }
+}

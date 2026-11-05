@@ -13,6 +13,7 @@ import { favoriteTooltip } from "../utils/favoriteTooltip";
 
 import { ACTIVE_STAGES, emptyStageCounts } from "../constants/stages";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Container,
   Button,
@@ -37,6 +38,9 @@ import MultiListBadges from "../components/PlayerLists/MultiListBadges";
 import EmptyState from "../components/PlayerLists/EmptyState";
 import { AdvancedFilters, PlayerListFilters as AdvancedFiltersType } from "../components/PlayerLists/AdvancedFilters";
 import { PitchViewListSelector } from "../components/PlayerLists/PitchViewListSelector";
+import ListLoadingStatus from "../components/PlayerLists/ListLoadingStatus";
+import ShortlistPitch from "../components/PlayerLists/ShortlistPitch";
+import "./PlayerListsPage.css";
 import PlayerNotesModal from "../components/PlayerLists/PlayerNotesModal";
 import StageChangeReasonModal from "../components/PlayerLists/StageChangeReasonModal";
 import StageHistoryModal from "../components/PlayerLists/StageHistoryModal";
@@ -65,6 +69,7 @@ import {
   PlayerListFilters,
 } from "../services/playerListsService";
 import GradeChip from "../components/GradeChip";
+import ListDataScore from "../components/PlayerLists/ListDataScore";
 import ScoutingTypeBadge from "../components/ScoutingTypeBadge";
 import {
   Goal,
@@ -82,6 +87,7 @@ import {
   Circle,
   Info,
   ArrowRightLeft,
+  Check,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import {
@@ -117,7 +123,7 @@ interface PlayerList {
   avg_performance_score: number | null;
 }
 
-type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "lastReport" | "favorites" | "decisions";
+type SortField = "name" | "age" | "club" | "stage" | "score" | "dataScore" | "reports" | "lastReport" | "favorites" | "decisions";
 type SortDirection = "asc" | "desc";
 type SaveProgressState = "idle" | "saving" | "refetching" | "success" | "error";
 
@@ -206,21 +212,25 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   category = "first_team",
   kanbanPath = "/lists/internal/kanban",
   headerTitle = "Internal Lists",
-  headerCopy = "Manage Charlton recruitment lists with the existing table workflow.",
+  headerCopy = "Review recruitment coverage by position and stage.",
   headerAccessory = null,
 }) => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
-  const { theme } = useTheme();
+  const { theme, useNewStageColours, toggleStageColours } = useTheme();
 
   // Advanced Filters State
-  const [showFilters, setShowFilters] = usePersistentState(`lists:${category}:showFilters`, false);
+  // The filter drawer is modal, so it isn't remembered: it would reopen on every visit.
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = usePersistentState<AdvancedFiltersType>(`lists:${category}:filters`, {
     playerName: "",
     position: "",
     club: "",
     competition: [],
-    performanceScores: [],
+    minScore: "",
+    maxScore: "",
+    minDataScore: "",
+    maxDataScore: "",
     minAge: "",
     maxAge: "",
     minReports: "",
@@ -266,6 +276,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
 
   // Pitch view expanded toggle
   const [pitchViewExpanded, setPitchViewExpanded] = usePersistentState(`lists:${category}:pitchViewExpanded`, false);
+  const [showShortlistPitch, setShowShortlistPitch] = usePersistentState(`lists:${category}:showShortlistPitch`, false);
 
   // Modals
   const [showListModal, setShowListModal] = useState(false);
@@ -452,12 +463,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
       if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
 
-      // Specific scores (copy before sorting: never mutate state in place)
-      if (filters.performanceScores.length > 0) {
-        apiFilters.performanceScores = [...filters.performanceScores]
-          .sort((a, b) => a - b)
-          .join(",");
-      }
+      if (filters.minScore) apiFilters.minScore = parseFloat(filters.minScore);
+      if (filters.maxScore) apiFilters.maxScore = parseFloat(filters.maxScore);
+      if (filters.minDataScore) apiFilters.minDataScore = parseFloat(filters.minDataScore);
+      if (filters.maxDataScore) apiFilters.maxDataScore = parseFloat(filters.maxDataScore);
 
       // Handle stages array
       if (filters.stages.length > 0) {
@@ -507,7 +516,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       position: "",
       club: "",
       competition: [],
-      performanceScores: [],
+      minScore: "",
+      maxScore: "",
+      minDataScore: "",
+      maxDataScore: "",
       minAge: "",
       maxAge: "",
       minReports: "",
@@ -518,7 +530,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       recencyMonths: "",
     });
     setShowArchived(false);
-  }, [setFilters, setShowArchived]);
+    setIncludeArchivedReports(false);
+    setIncludeFlagReports(false);
+  }, [setFilters, setShowArchived, setIncludeArchivedReports, setIncludeFlagReports]);
 
   // Toggle list visibility
   const toggleListVisibility = (listId: number) => {
@@ -643,6 +657,10 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
         case "score":
           aVal = a.avg_performance_score || 0;
           bVal = b.avg_performance_score || 0;
+          break;
+        case "dataScore":
+          aVal = a.data_score?.value ?? 0;
+          bVal = b.data_score?.value ?? 0;
           break;
         case "reports":
           aVal = a.report_count;
@@ -1468,77 +1486,50 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   }, [playerSearchQuery]);
 
   // Loading state
-  if (userLoading || loading) {
+  if (userLoading || (loading && lists.length === 0)) {
     return (
-      <Container className="mt-4 page-lists-cafc">
-        <div className="agent-portal-card mb-3">
-          <div className="agent-portal-card-body">
-            <div className="agent-portal-section-title">{headerTitle}</div>
-            <div className="agent-portal-section-copy">{headerCopy}</div>
+      <Container className="mt-4 page-lists-cafc lists-workspace" aria-label="Loading recruitment lists">
+        <header className="lists-workspace__header"><h1>{headerTitle}</h1><p>{headerCopy}</p></header>
+        <ListLoadingStatus loading initial />
+        <div className="lists-workspace__body lists-workspace__skeleton" aria-hidden="true">
+          <aside className="lists-workspace__sidebar">
+            <div className="lists-workspace__placeholder lists-workspace__placeholder--search" />
+            {Array.from({ length: 11 }, (_, index) => <div key={index} className="lists-workspace__placeholder lists-workspace__placeholder--list" />)}
+          </aside>
+          <div className="lists-workspace__main">
+            <div className="lists-workspace__placeholder lists-workspace__placeholder--toolbar" />
+            <div className="lists-workspace__skeleton-table">
+              {Array.from({ length: 9 }, (_, row) => <div key={row} className="lists-workspace__skeleton-row">
+                {Array.from({ length: 5 }, (_, column) => <span key={column} className="lists-workspace__placeholder" />)}
+              </div>)}
+            </div>
           </div>
-        </div>
-        <div className="mb-3 d-flex gap-2">
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="shimmer-line"
-              style={{ width: "90px", height: "28px", borderRadius: "14px" }}
-            />
-          ))}
-        </div>
-        <div className="table-responsive">
-          <Table responsive hover className="table-compact table-sm">
-            <thead className="table-dark">
-              <tr>
-                <th>Player</th>
-                <th>Age</th>
-                <th>Club</th>
-                <th>Stage</th>
-                <th>Lists</th>
-                <th>Score</th>
-                <th>Reports</th>
-                <th>Last Report</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: 10 }).map((_, idx) => (
-                <tr key={idx}>
-                  <td><div className="shimmer-line" style={{ width: "140px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "100px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "70px", height: "20px", borderRadius: "10px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "90px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "36px", height: "20px", borderRadius: "10px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "24px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "80px", height: "16px" }} /></td>
-                  <td><div className="shimmer-line" style={{ width: "60px", height: "24px" }} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
         </div>
       </Container>
     );
   }
 
   return (
-    <Container className="mt-4 page-lists-cafc">
+    <Container className="mt-4 page-lists-cafc lists-workspace">
       {/* Error Alert */}
       {error && (
         <Alert variant="danger" dismissible onClose={() => setError(null)} className="mb-3">
           {error}
+          {fetchError && <Button size="sm" variant="outline-danger" className="ms-3" onClick={() => { setError(null); void refetch(); }}>Try again</Button>}
         </Alert>
       )}
 
       {/* Header */}
-      <div className="agent-portal-card mb-3">
-        <div className="agent-portal-card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div className="lists-workspace__header">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
           <div>
-            <div className="agent-portal-section-title">{headerTitle}</div>
-            <div className="agent-portal-section-copy">{headerCopy}</div>
+            <h1>{headerTitle}</h1>
+            <p>{headerCopy}</p>
           </div>
-          {headerAccessory}
+          <div className="lists-workspace__header-meta">
+            {headerAccessory}
+            <span>{visibleListIds.size} lists selected</span>
+          </div>
         </div>
       </div>
 
@@ -1550,30 +1541,29 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
           onAction={openCreateModal}
         />
       ) : (
-        <>
+        <div className="lists-workspace__body">
+
+          <aside className="lists-workspace__sidebar" aria-label="Shortlist selection">
           {/* List Selection */}
-          <div className="mb-3">
-            <div className="d-flex align-items-center gap-2 mb-2">
-              <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>
-                Lists:
-              </span>
+          <div className="lists-workspace__selection">
+            <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
+              <h2 className="lists-workspace__section-title">Lists</h2>
               <Button size="sm" variant="link" onClick={() => toggleAllLists(true)}>
                 All
               </Button>
-              <span>|</span>
               <Button size="sm" variant="link" onClick={() => toggleAllLists(false)}>
                 None
               </Button>
-              <span>|</span>
               <Button
                 size="sm"
                 variant="link"
                 onClick={() => setPitchViewExpanded(!pitchViewExpanded)}
+                aria-pressed={pitchViewExpanded}
                 style={{ fontWeight: pitchViewExpanded ? "bold" : "normal" }}
-                className="d-inline-flex align-items-center gap-1"
+                className="d-inline-flex align-items-center gap-1 lists-workspace__position-switch"
               >
                 <Goal size={14} />
-                {pitchViewExpanded ? "Hide Pitch" : "Show Pitch"}
+                Choose lists by position
               </Button>
             </div>
 
@@ -1585,7 +1575,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 onToggleList={toggleListVisibility}
               />
             ) : (
-              <div className="d-flex gap-2 flex-wrap align-items-center">
+              <div className="d-flex gap-2 flex-wrap align-items-center lists-workspace__list-options">
                 {[...lists].sort((a, b) => {
                   const getRank = (name: string) => {
                     const u = name.toUpperCase();
@@ -1607,18 +1597,22 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                   const isVisible = visibleListIds.has(list.id);
                   return (
                     <Badge
+                      as="button"
+                      type="button"
                       key={list.id}
                       bg=""
+                      aria-pressed={isVisible}
                       onClick={() => toggleListVisibility(list.id)}
                       style={{
                         ...badgeStyles.pill,
+                        border: 0,
                         backgroundColor: isVisible ? colors.primary : colors.gray[300],
                         color: isVisible ? colors.white : colors.gray[600],
                         cursor: "pointer",
                         transition: "all 0.2s ease",
                       }}
                     >
-                      {list.list_name} ({list.player_count})
+                      <span className="lists-workspace__list-check" aria-hidden="true">{isVisible && <Check size={12} />}</span><span className="lists-workspace__list-name">{list.list_name}</span><span className="lists-workspace__list-count">{list.player_count}</span>
                     </Badge>
                   );
                 })}
@@ -1626,8 +1620,14 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             )}
           </div>
 
+          </aside>
+
+          <section className="lists-workspace__main" aria-label="Recruitment lists workspace">
+
           {/* Advanced Filters */}
           <AdvancedFilters
+            compact
+            pitchView={showShortlistPitch}
             showFilters={showFilters}
             setShowFilters={setShowFilters}
             filters={filters}
@@ -1645,14 +1645,41 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             stageCounts={stageCounts}
           />
 
+
+          <div className="d-flex justify-content-end mb-3">
+            <Form.Check
+              type="switch"
+              id="new-stage-colours"
+              label="New stage colours"
+              checked={useNewStageColours}
+              onChange={toggleStageColours}
+            />
+          </div>
+
           {/* Actions Container */}
-          <div className="mb-3">
+          <div className="lists-workspace__actions">
             {/* Action Buttons */}
             <div className="d-flex align-items-center gap-2 flex-wrap">
+              <div role="group" aria-label="Player list view" className="d-inline-flex gap-1">
+                <Button size="sm" variant={showShortlistPitch ? "outline-dark" : "dark"} aria-pressed={!showShortlistPitch} onClick={() => setShowShortlistPitch(false)}>
+                  Table
+                </Button>
+                <Button
+                  size="sm"
+                  variant={showShortlistPitch ? "dark" : "outline-dark"}
+                  aria-pressed={showShortlistPitch}
+                  onClick={() => {
+                    if (!filters.stages.length) handleFilterChange({ stages: ["Stage 4", "Stage 5"] });
+                    setShowShortlistPitch(true);
+                  }}
+                >
+                  <Goal size={14} className="me-1" />Shortlist Pitch
+                </Button>
+              </div>
               {/* Create New List Pill - Always visible */}
               <Button
                 size="sm"
-                variant="dark"
+                variant="outline-secondary"
                 onClick={openCreateModal}
                 className="d-inline-flex align-items-center gap-1"
               >
@@ -1675,7 +1702,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
               {visibleListIds.size > 0 && (
                 <Dropdown>
                   <Dropdown.Toggle
-                    variant="dark"
+                    variant="outline-secondary"
                     size="sm"
                   >
                     <Settings size={14} className="me-1" />
@@ -1706,7 +1733,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 )}
 
               {/* Sort Controls */}
-              {visibleListIds.size > 0 && (
+              {visibleListIds.size > 0 && !showShortlistPitch && (
                 <>
                   <span className="text-muted">|</span>
                   <span className="fw-semibold" style={{ fontSize: "0.9rem" }}>Sort:</span>
@@ -1721,6 +1748,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                     <option value="club">Club</option>
                     <option value="stage">Stage</option>
                     <option value="score">Score</option>
+                    <option value="dataScore">Data score</option>
                     <option value="reports">Reports</option>
                     <option value="favorites">Favorites</option>
                     <option value="decisions">Decisions</option>
@@ -1746,14 +1774,52 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
               )}
             </div>
 
-            {visibleListIds.size > 0 && !currentList && (
+            {!showShortlistPitch && <ListLoadingStatus loading={loading} error={fetchError} onRetry={() => { setError(null); void refetch(); }} />}
+            {visibleListIds.size > 0 && !currentList && !showShortlistPitch && (
               <div className="mt-2 text-muted" style={{ fontSize: "0.875rem" }}>
                 Stage history is available for each of a player’s lists from their Actions menu. List edit and delete require one selected list.
               </div>
             )}
           </div>
 
-          {visibleListIds.size > 0 && (
+          {showShortlistPitch && (
+            <ShortlistPitch
+              lists={visibleLists}
+              loading={loading}
+              loadingError={fetchError}
+              onRetry={() => { setError(null); void refetch(); }}
+              filterSummary={[
+                filters.playerName && `Name: ${filters.playerName}`,
+                filters.position && `Position: ${filters.position}`,
+                filters.club && `Club: ${filters.club}`,
+                filters.competition.length > 0 && `Competitions: ${filters.competition.join(", ")}`,
+                (filters.minScore || filters.maxScore) && `Performance score: ${filters.minScore || "Any"}–${filters.maxScore || "Any"}`,
+                (filters.minDataScore || filters.maxDataScore) && `Data score: ${filters.minDataScore || "Any"}–${filters.maxDataScore || "Any"}`,
+                (filters.minAge || filters.maxAge) && `Age: ${filters.minAge || "Any"}–${filters.maxAge || "Any"}`,
+                (filters.minReports || filters.maxReports) && `Reports: ${filters.minReports || "Any"}–${filters.maxReports || "Any"}`,
+                filters.recencyMonths && `Last ${filters.recencyMonths} months`,
+                filters.initialReasons.length > 0 && `Initial reasons: ${filters.initialReasons.join(", ")}`,
+                filters.showFavourites === false && "Favourites hidden",
+                filters.showSummerTransfers === false && "Summer transfers hidden",
+                includeArchivedReports && "Archived reports included",
+                includeFlagReports && "Flag reports included",
+              ].filter((value): value is string => typeof value === "string" && value.length > 0)}
+              stages={filters.stages}
+              onStagesChange={(stages) => handleFilterChange({ stages })}
+              getPlayerPath={getPlayerPath}
+              pendingStageChanges={pendingStageChanges}
+              pendingRemovals={pendingRemovals}
+            />
+          )}
+
+          {!showShortlistPitch && visibleListIds.size === 0 && (
+            <div className="lists-workspace__start">
+              <h2>Select a list to start</h2>
+              <p>Choose one or more lists from the filters to review players in the table.</p>
+            </div>
+          )}
+
+          {visibleListIds.size > 0 && !showShortlistPitch && (
             <>
               {/* Content */}
               {sortedPlayers.length === 0 ? (
@@ -1784,6 +1850,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                         <th>Lists</th>
                         <th onClick={() => handleSort("score")} style={{ cursor: "pointer" }}>
                           Score {sortField === "score" && (sortDirection === "asc" ? "↑" : "↓")}
+                        </th>
+                        <th onClick={() => handleSort("dataScore")} style={{ cursor: "pointer" }}>
+                          Data {sortField === "dataScore" && (sortDirection === "asc" ? "↑" : "↓")}
                         </th>
                         <th onClick={() => handleSort("reports")} style={{ cursor: "pointer" }}>
                           Reports {sortField === "reports" && (sortDirection === "asc" ? "↑" : "↓")}
@@ -1860,8 +1929,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                 <strong>
                                   {player.player_name || `Unknown Player (ID: ${player.player_id || player.cafc_player_id})`}
                                 </strong>
-                                <ClubMoveDot move={player.club_move} />
-                                {playerFavorites.has(player.universal_id) && (
+                                {filters.showSummerTransfers !== false && <ClubMoveDot move={player.club_move} />}
+                                {filters.showFavourites !== false && playerFavorites.has(player.universal_id) && (
                                   <span
                                     className="ms-2 d-inline-flex align-items-center"
                                     title={favoriteTooltip(favoriteDetails[player.universal_id])}
@@ -2026,6 +2095,9 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                               )}
                             </td>
                             <td>
+                              <ListDataScore score={player.data_score} />
+                            </td>
+                            <td>
                               <div className="d-inline-flex align-items-center gap-2">
                                 <span>{player.report_count}</span>
                                 {player.live_reports > 0 && (
@@ -2057,7 +2129,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                             <td>
                               <Dropdown align="end">
                                 <Dropdown.Toggle size="sm" variant="outline-secondary">Actions</Dropdown.Toggle>
-                                <Dropdown.Menu>
+                                {/* Keep the menu outside the table's overflow clipping. */}
+                                {createPortal(<Dropdown.Menu popperConfig={{ strategy: "fixed" }}>
                                   <Dropdown.Item onClick={() => handleOpenNotesModal(player)}><StickyNote size={14} className="me-2" />Notes</Dropdown.Item>
                                   {currentList ? (
                                     <Dropdown.Item onClick={() => openStageHistory(player, activeMembership)}>
@@ -2093,7 +2166,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                                   >
                                     <Trash2 size={14} className="me-2" />{pendingRemoval ? "Removing…" : "Remove from list"}
                                   </Dropdown.Item>
-                                </Dropdown.Menu>
+                                </Dropdown.Menu>, document.body)}
                               </Dropdown>
                             </td>
                           </tr>
@@ -2105,7 +2178,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
               )}
             </>
           )}
-        </>
+          </section>
+        </div>
       )}
 
       {/* Create/Edit List Modal */}

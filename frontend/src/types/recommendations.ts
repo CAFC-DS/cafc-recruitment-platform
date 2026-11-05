@@ -1,3 +1,5 @@
+import type { ListDataScore } from "../services/playerListsService";
+
 export type RecommendationStatus =
   | 'Submitted'
   | 'Under Review'
@@ -89,7 +91,6 @@ export interface Recommendation {
   agency?: string;
   agent_email?: string;
   agent_number?: string;
-  avg_performance_score?: number | null;
   agent_status: AgentStatus;
   agent_status_updated_at?: string;
   shared_notes?: string;
@@ -118,6 +119,8 @@ export interface RecommendationNoteHistory {
 }
 
 export interface InternalRecommendation extends Recommendation {
+  avg_performance_score?: number | null;
+  data_score?: ListDataScore | null;
   submitted_by_user_id?: number;
   submitted_by_username?: string;
   status_updated_by?: number;
@@ -132,6 +135,7 @@ export interface InternalRecommendationsResponse {
   page: number;
   page_size: number;
   total: number;
+  queue_counts?: { needs_decision: number; all: number };
 }
 
 export interface InternalRecommendationFiltersMeta {

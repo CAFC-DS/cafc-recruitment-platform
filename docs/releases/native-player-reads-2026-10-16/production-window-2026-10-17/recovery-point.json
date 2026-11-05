@@ -1,0 +1,10 @@
+{
+  "recovery_timestamp": "2026-10-17 22:24:02.532000+01:00",
+  "backup_schema": "CAFC_DB.CORE_BACKUP_NATIVE_20261017",
+  "objects": 60,
+  "players_total_inactive": [
+    123555,
+    40
+  ],
+  "overrides": 81
+}
