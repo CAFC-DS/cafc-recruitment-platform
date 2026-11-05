@@ -18,7 +18,7 @@ const formatBuiltAt = (builtAt: string | null) => {
 // Shows the weekly-published scout app (data-scoring) in a full-height iframe.
 // The backend returns a presigned link that expires after 10 minutes; once loaded,
 // the app runs entirely in the browser, so the expiry only affects reloading the frame.
-const ScoutAppPage: React.FC = () => {
+const ScoutAppPage: React.FC<{ active?: boolean }> = ({ active = true }) => {
   const { token } = useAuth();
   const [link, setLink] = useState<ScoutAppLink | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +27,11 @@ const ScoutAppPage: React.FC = () => {
   const frameAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!token) return;
+    // Kept mounted across tabs: fetch once, and retry a failure on coming back.
+    if (!token || !active || link) return;
     let cancelled = false;
     setLoading(true);
+    setError(null);
     axiosInstance
       .get<ScoutAppLink>("/scout-app/link") // axiosInstance attaches the bearer token
       .then((response) => {
@@ -45,10 +47,12 @@ const ScoutAppPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, active]);
 
   // Fill the viewport below the navbar and the "Data as of" line.
   useLayoutEffect(() => {
+    if (!active) return;
     const resize = () => {
       const top = frameAreaRef.current?.getBoundingClientRect().top ?? 0;
       setHeight(Math.max(400, window.innerHeight - top));
@@ -56,7 +60,7 @@ const ScoutAppPage: React.FC = () => {
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, [link, loading]);
+  }, [link, loading, active]);
 
   if (loading) {
     return (

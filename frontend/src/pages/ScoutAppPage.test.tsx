@@ -34,3 +34,30 @@ test('explains when nothing has been published yet', async () => {
   expect(await screen.findByText('The scout app has not been published yet.')).toBeInTheDocument();
   expect(screen.queryByTitle('CAFC scout app')).not.toBeInTheDocument();
 });
+
+test('keeps the same iframe and link while hidden on another tab', async () => {
+  mockedGet.mockResolvedValue({ data: { url: 'https://storage.example.test/signed', built_at: null } });
+
+  const { rerender } = render(<ScoutAppPage active />);
+  const frame = await screen.findByTitle('CAFC scout app');
+
+  rerender(<ScoutAppPage active={false} />);
+  rerender(<ScoutAppPage active />);
+
+  expect(screen.getByTitle('CAFC scout app')).toBe(frame);
+  expect(mockedGet).toHaveBeenCalledTimes(1);
+});
+
+test('retries a failed link when coming back to the tab', async () => {
+  mockedGet.mockRejectedValueOnce({ response: { data: { detail: 'Not available yet.' } } });
+  mockedGet.mockResolvedValueOnce({ data: { url: 'https://storage.example.test/signed', built_at: null } });
+
+  const { rerender } = render(<ScoutAppPage active />);
+  await screen.findByText('Not available yet.');
+
+  rerender(<ScoutAppPage active={false} />);
+  rerender(<ScoutAppPage active />);
+
+  expect(await screen.findByTitle('CAFC scout app')).toBeInTheDocument();
+  expect(screen.queryByText('Not available yet.')).not.toBeInTheDocument();
+});
