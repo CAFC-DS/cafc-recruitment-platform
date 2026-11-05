@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
+import { ActiveFilterBadge, ClearFiltersButton } from '../components/FilterHeaderControls';
 import { Button, Card, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
@@ -134,13 +136,15 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
 const ExternalRecommendationsListPage: React.FC = () => {
   const { isIntelReviewer, user } = useCurrentUser();
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
-  const [filters, setFilters] = useState<RecommendationFilterState>(defaultFilters);
+  const [filters, setFilters] = usePersistentState<RecommendationFilterState>('external-recs:filters', defaultFilters, {
+    restore: (saved) => ({ ...saved, page: 1 }),
+  });
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingReview, setSavingReview] = useState<number | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = usePersistentState('external-recs:showFilters', false);
   const [showStatusKey, setShowStatusKey] = useState(false);
   const [selectedRecommendation, setSelectedRecommendation] = useState<InternalRecommendation | null>(null);
   const [historyRecommendation, setHistoryRecommendation] = useState<InternalRecommendation | null>(null);
@@ -532,19 +536,22 @@ const ExternalRecommendationsListPage: React.FC = () => {
 
           <Card className="mb-3">
             <Card.Header style={{ backgroundColor: '#000000', color: 'white' }}>
-              <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
                 <h6 className="mb-0 text-white">
                   Advanced Filters
-                  {activeFilterCount > 0 ? <span className="badge bg-light text-dark ms-2">{activeFilterCount}</span> : null}
+                  <ActiveFilterBadge count={activeFilterCount} />
                 </h6>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  style={{ color: 'white', borderColor: 'white' }}
-                >
-                  {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
-                </Button>
+                <div className="d-flex align-items-center gap-3 ms-auto text-nowrap">
+                  <ClearFiltersButton count={activeFilterCount} onClear={clearFilters} />
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    style={{ color: 'white', borderColor: 'white' }}
+                  >
+                    {showFilters ? '▲ Hide Filters' : '▼ Show Filters'}
+                  </Button>
+                </div>
               </div>
             </Card.Header>
             <Collapse in={showFilters}>

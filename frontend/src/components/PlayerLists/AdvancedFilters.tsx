@@ -1,5 +1,6 @@
 import { ALL_STAGES } from "../../constants/stages";
 import React, { useState } from "react";
+import { ActiveFilterBadge, ClearFiltersButton } from "../FilterHeaderControls";
 import { Card, Collapse, Button, Row, Col, Form, Dropdown } from "react-bootstrap";
 
 export interface PlayerListFilters {
@@ -73,6 +74,24 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     onIncludeArchivedReportsChange(false);
     onIncludeFlagReportsChange(false);
   };
+  const activeFilterCount = [
+    ...Object.values(appliedFilters).map((value) => (Array.isArray(value) ? value.length > 0 : Boolean(value))),
+    appliedShowArchived,
+    appliedIncludeArchivedReports,
+    appliedIncludeFlagReports,
+  ].filter(Boolean).length;
+  const clearAppliedFilters = () => {
+    onClearFilters();
+    appliedOnFilterChange({
+      playerName: "", position: "", club: "", competition: [],
+      performanceScores: [], minAge: "", maxAge: "", minReports: "",
+      maxReports: "", stages: [], archivedReasons: [], initialReasons: [],
+      recencyMonths: "",
+    });
+    appliedOnShowArchivedChange(false);
+    appliedOnIncludeArchivedReportsChange(false);
+    appliedOnIncludeFlagReportsChange(false);
+  };
   const applyAllFilters = () => {
     appliedOnFilterChange({ ...filters, performanceScores: [...filters.performanceScores] });
     appliedOnShowArchivedChange(showArchived);
@@ -83,16 +102,22 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   return (
     <Card className="mb-3">
       <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
-        <div className="d-flex justify-content-between align-items-center">
-          <h6 className="mb-0 text-white">🔍 Advanced Filters</h6>
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            style={{ color: "white", borderColor: "white" }}
-          >
-            {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
-          </Button>
+        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <h6 className="mb-0 text-white">
+            🔍 Advanced Filters
+            <ActiveFilterBadge count={activeFilterCount} />
+          </h6>
+          <div className="d-flex align-items-center gap-3 ms-auto text-nowrap">
+            <ClearFiltersButton count={activeFilterCount} onClear={clearAppliedFilters} />
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              style={{ color: "white", borderColor: "white" }}
+            >
+              {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
+            </Button>
+          </div>
         </div>
       </Card.Header>
       <Collapse in={showFilters}>

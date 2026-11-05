@@ -29,6 +29,7 @@ import {
   Popover,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { usePersistentIdSet, usePersistentState } from "../hooks/usePersistentState";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePlayerLists } from "../hooks/usePlayerLists";
 import ClubMoveDot from "../components/PlayerLists/ClubMoveDot";
@@ -213,8 +214,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const { theme } = useTheme();
 
   // Advanced Filters State
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<AdvancedFiltersType>({
+  const [showFilters, setShowFilters] = usePersistentState(`lists:${category}:showFilters`, false);
+  const [filters, setFilters] = usePersistentState<AdvancedFiltersType>(`lists:${category}:filters`, {
     playerName: "",
     position: "",
     club: "",
@@ -241,20 +242,30 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Show archived state (not part of API filters)
-  const [showArchived, setShowArchived] = useState(false);
-  const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
-  const [includeFlagReports, setIncludeFlagReports] = useState(false);
+  const [showArchived, setShowArchived] = usePersistentState(`lists:${category}:showArchived`, false);
+  const [includeArchivedReports, setIncludeArchivedReports] = usePersistentState(`lists:${category}:includeArchivedReports`, false);
+  const [includeFlagReports, setIncludeFlagReports] = usePersistentState(`lists:${category}:includeFlagReports`, false);
   const [competitionOptions, setCompetitionOptions] = useState<string[]>([]);
 
   // Visible lists (multi-select)
-  const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
+  const [visibleListIds, setVisibleListIds] = usePersistentIdSet(`lists:${category}:visibleListIds`);
+  // Saved selections can name a list that has since been deleted.
+  useEffect(() => {
+    if (loading || fetchError || lists.length === 0) return;
+    const available = new Set(lists.map((list) => list.id));
+    setVisibleListIds((previous) => {
+      const kept = Array.from(previous).filter((id) => available.has(id));
+      return kept.length === previous.size ? previous : new Set(kept);
+    });
+  }, [lists, loading, fetchError, setVisibleListIds]);
+
 
   // Sorting
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortField, setSortField] = usePersistentState<SortField>(`lists:${category}:table:sortField`, "name");
+  const [sortDirection, setSortDirection] = usePersistentState<SortDirection>(`lists:${category}:table:sortDirection`, "asc");
 
   // Pitch view expanded toggle
-  const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
+  const [pitchViewExpanded, setPitchViewExpanded] = usePersistentState(`lists:${category}:pitchViewExpanded`, false);
 
   // Modals
   const [showListModal, setShowListModal] = useState(false);
@@ -488,7 +499,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
-  }, []);
+  }, [setFilters]);
 
   const handleClearFilters = useCallback(() => {
     setFilters({
@@ -507,7 +518,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       recencyMonths: "",
     });
     setShowArchived(false);
-  }, []);
+  }, [setFilters, setShowArchived]);
 
   // Toggle list visibility
   const toggleListVisibility = (listId: number) => {

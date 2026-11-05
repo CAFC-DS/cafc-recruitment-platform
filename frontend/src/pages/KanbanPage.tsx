@@ -25,6 +25,7 @@ import {
   Dropdown,
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { usePersistentIdSet, usePersistentState } from "../hooks/usePersistentState";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePlayerLists } from "../hooks/usePlayerLists";
 import KanbanBoard from "../components/Kanban/KanbanBoard";
@@ -102,8 +103,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
 
   // Advanced Filters State
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<AdvancedFiltersType>({
+  const [showFilters, setShowFilters] = usePersistentState(`lists:${category}:showFilters`, false);
+  const [filters, setFilters] = usePersistentState<AdvancedFiltersType>(`lists:${category}:filters`, {
     playerName: "",
     position: "",
     club: "",
@@ -130,19 +131,29 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Filter states
-  const [visibleListIds, setVisibleListIds] = useState<Set<number>>(new Set());
-  const [showArchived, setShowArchived] = useState(false);
-  const [includeArchivedReports, setIncludeArchivedReports] = useState(false);
-  const [includeFlagReports, setIncludeFlagReports] = useState(false);
+  const [visibleListIds, setVisibleListIds] = usePersistentIdSet(`lists:${category}:visibleListIds`);
+  // Saved selections can name a list that has since been deleted.
+  useEffect(() => {
+    if (loading || fetchError || lists.length === 0) return;
+    const available = new Set(lists.map((list) => list.id));
+    setVisibleListIds((previous) => {
+      const kept = Array.from(previous).filter((id) => available.has(id));
+      return kept.length === previous.size ? previous : new Set(kept);
+    });
+  }, [lists, loading, fetchError, setVisibleListIds]);
+
+  const [showArchived, setShowArchived] = usePersistentState(`lists:${category}:showArchived`, false);
+  const [includeArchivedReports, setIncludeArchivedReports] = usePersistentState(`lists:${category}:includeArchivedReports`, false);
+  const [includeFlagReports, setIncludeFlagReports] = usePersistentState(`lists:${category}:includeFlagReports`, false);
   const [competitionOptions, setCompetitionOptions] = useState<string[]>([]);
 
   // Pitch view expanded toggle
-  const [pitchViewExpanded, setPitchViewExpanded] = useState(false);
+  const [pitchViewExpanded, setPitchViewExpanded] = usePersistentState(`lists:${category}:pitchViewExpanded`, false);
 
   // Sort state
   type SortField = "name" | "age" | "club" | "stage" | "score" | "reports" | "favorites" | "decisions";
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = usePersistentState<SortField>(`lists:${category}:kanban:sortField`, "name");
+  const [sortDirection, setSortDirection] = usePersistentState<"asc" | "desc">(`lists:${category}:kanban:sortDirection`, "asc");
 
   // Batch save mode for stage changes and removals
   const [pendingStageChanges, setPendingStageChanges] = useState<Map<number, { fromStage: string; toStage: string; listId: number }>>(new Map());
@@ -341,7 +352,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
   // Filter handlers
   const handleFilterChange = useCallback((newFilters: Partial<AdvancedFiltersType>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
-  }, []);
+  }, [setFilters]);
 
   const handleClearFilters = useCallback(() => {
     setFilters({
@@ -360,7 +371,7 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       recencyMonths: "",
     });
     setShowArchived(false);
-  }, []);
+  }, [setFilters, setShowArchived]);
 
   // Get visible lists
   const visibleLists = useMemo(() => {

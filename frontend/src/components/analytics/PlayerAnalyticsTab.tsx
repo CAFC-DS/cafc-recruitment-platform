@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import {
   Row, Col, Spinner, Form, Card, Table,
   Button, ButtonGroup, OverlayTrigger, Tooltip
@@ -84,15 +85,15 @@ const PlayerAnalyticsTab: React.FC = () => {
 
   // Applied filters (these drive the data fetch). The matching pending* values
   // hold the draft selection until the user clicks "Apply Filters".
-  const [monthFilter, setMonthFilter] = useState<number>(6);
-  const [pendingMonthFilter, setPendingMonthFilter] = useState<number>(6);
-  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
-  const [pendingPositions, setPendingPositions] = useState<string[]>([]);
+  const [monthFilter, setMonthFilter] = usePersistentState<number>("analytics:players:months", 6);
+  const [pendingMonthFilter, setPendingMonthFilter] = useState<number>(monthFilter);
+  const [selectedPositions, setSelectedPositions] = usePersistentState<string[]>("analytics:players:positions", []);
+  const [pendingPositions, setPendingPositions] = useState<string[]>(selectedPositions);
 
-  const [minPerformance, setMinPerformance] = useState<string>("");
-  const [maxPerformance, setMaxPerformance] = useState<string>("");
-  const [minAttribute, setMinAttribute] = useState<string>("");
-  const [maxAttribute, setMaxAttribute] = useState<string>("");
+  const [minPerformance, setMinPerformance] = usePersistentState<string>("analytics:players:minPerformance", "");
+  const [maxPerformance, setMaxPerformance] = usePersistentState<string>("analytics:players:maxPerformance", "");
+  const [minAttribute, setMinAttribute] = usePersistentState<string>("analytics:players:minAttribute", "");
+  const [maxAttribute, setMaxAttribute] = usePersistentState<string>("analytics:players:maxAttribute", "");
 
   const [scoreFilteredPlayers, setScoreFilteredPlayers] = useState<PlayerByScore[]>([]);
   const [loadingScoreFilter, setLoadingScoreFilter] = useState(false);

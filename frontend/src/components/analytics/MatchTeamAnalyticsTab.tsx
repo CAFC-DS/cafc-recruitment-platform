@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import { useTheme } from "../../contexts/ThemeContext";
 import {
   Row,
@@ -72,7 +73,7 @@ const MatchTeamAnalyticsTab: React.FC = () => {
   const { theme } = useTheme();
   const [data, setData] = useState<MatchTeamAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [monthFilter, setMonthFilter] = useState<number>(6);
+  const [monthFilter, setMonthFilter] = usePersistentState<number>("analytics:matches:months", 6);
   const [teamSearchTerm, setTeamSearchTerm] = useState("");
   const [selectedScouts, setSelectedScouts] = useState<string[]>([]);
 

@@ -230,3 +230,51 @@ it("opens a stage's players without changing the overview's stage filter", async
     }),
   );
 });
+
+describe("remembering the last view", () => {
+  const token = `header.${btoa(JSON.stringify({ sub: "a", user_id: 1 }))}.signature`;
+  const SAVED = "persisted:v1:1:analytics:search";
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem("token", token);
+  });
+  afterEach(() => localStorage.clear());
+  const lastParams = () => get.mock.calls[get.mock.calls.length - 1][1].params;
+
+  it("reopens saved filters when arriving from the navbar with none", async () => {
+    localStorage.setItem(SAVED, JSON.stringify("competitions=League"));
+    render(
+      <MemoryRouter initialEntries={["/analytics"]}>
+        <AnalyticsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByRole("heading", { name: "Recruitment analytics" });
+    expect(get.mock.calls.every(([, c]) => c.params.competitions === "League")).toBe(true);
+  });
+
+  it("lets a link with its own filters win and does not save drilldowns", async () => {
+    localStorage.setItem(SAVED, JSON.stringify("competitions=League"));
+    render(
+      <MemoryRouter initialEntries={["/analytics?positions=CM&detail=players"]}>
+        <AnalyticsPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(lastParams().positions).toBe("CM"));
+    expect(lastParams().competitions).toBeUndefined();
+    await waitFor(() =>
+      expect(localStorage.getItem(SAVED)).toBe(JSON.stringify("positions=CM")),
+    );
+  });
+
+  it("forgets the saved view on Reset", async () => {
+    localStorage.setItem(SAVED, JSON.stringify("competitions=League"));
+    render(
+      <MemoryRouter initialEntries={["/analytics"]}>
+        <AnalyticsPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(localStorage.getItem(SAVED)).toBeNull());
+    await waitFor(() => expect(lastParams().competitions).toBeUndefined());
+  });
+});

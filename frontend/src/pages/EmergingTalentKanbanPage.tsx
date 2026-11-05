@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import KanbanPage from "./KanbanPage";
+import { usePersistentState } from "../hooks/usePersistentState";
 import AgeGroupToggle, { AgeGroup } from "../components/PlayerLists/AgeGroupToggle";
 
 /**
@@ -11,7 +12,9 @@ import AgeGroupToggle, { AgeGroup } from "../components/PlayerLists/AgeGroupTogg
  */
 const EmergingTalentKanbanPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const age: AgeGroup = searchParams.get("age") === "u18" ? "u18" : "u21";
+  const [savedAge, setSavedAge] = usePersistentState<AgeGroup>("lists:emerging-talent:age", "u21");
+  const age: AgeGroup = (searchParams.get("age") ?? savedAge) === "u18" ? "u18" : "u21";
+  useEffect(() => setSavedAge(age), [age, setSavedAge]);
   const category = `emerging_talent_${age}`;
 
   return (

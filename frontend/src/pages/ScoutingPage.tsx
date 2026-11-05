@@ -23,6 +23,8 @@ import AddPlayerToListModal from "../components/AddPlayerToListModal";
 import ShimmerLoading from "../components/ShimmerLoading";
 import { useAuth } from "../contexts/AuthContext";
 import { useViewMode } from "../contexts/ViewModeContext";
+import { usePersistentState } from "../hooks/usePersistentState";
+import { ActiveFilterBadge, ClearFiltersButton } from "../components/FilterHeaderControls";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useTheme } from "../contexts/ThemeContext";
 import {
@@ -92,26 +94,26 @@ const ScoutingPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalReports, setTotalReports] = useState(0);
   const [itemsPerPage] = useState(20);
-  const [recencyFilter, setRecencyFilter] = useState<string>("7");
+  const [recencyFilter, setRecencyFilter] = usePersistentState<string>("scouting:recency", "7");
   const [loading, setLoading] = useState(false);
   const [errorReports, setErrorReports] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = usePersistentState("scouting:showFilters", false);
 
   // Advanced filters
-  const [performanceScores, setPerformanceScores] = useState<number[]>([]);
-  const [scoutNameFilter, setScoutNameFilter] = useState("");
-  const [minAge, setMinAge] = useState("");
-  const [maxAge, setMaxAge] = useState("");
-  const [playerNameFilter, setPlayerNameFilter] = useState("");
-  const [dateFromFilter, setDateFromFilter] = useState(""); // Report creation date
-  const [dateToFilter, setDateToFilter] = useState(""); // Report creation date
-  const [fixtureDateFromFilter, setFixtureDateFromFilter] = useState(""); // Match/fixture date
-  const [fixtureDateToFilter, setFixtureDateToFilter] = useState(""); // Match/fixture date
-  const [reportTypeFilter, setReportTypeFilter] = useState("");
-  const [scoutingTypeFilter, setScoutingTypeFilter] = useState("");
-  const [positionFilter, setPositionFilter] = useState("");
-  const [fixtureFilter, setFixtureFilter] = useState("");
-  const [fixtureQuery, setFixtureQuery] = useState("");
+  const [performanceScores, setPerformanceScores] = usePersistentState<number[]>("scouting:performanceScores", []);
+  const [scoutNameFilter, setScoutNameFilter] = usePersistentState("scouting:scoutNameFilter", "");
+  const [minAge, setMinAge] = usePersistentState("scouting:minAge", "");
+  const [maxAge, setMaxAge] = usePersistentState("scouting:maxAge", "");
+  const [playerNameFilter, setPlayerNameFilter] = usePersistentState("scouting:playerNameFilter", "");
+  const [dateFromFilter, setDateFromFilter] = usePersistentState("scouting:dateFromFilter", ""); // Report creation date
+  const [dateToFilter, setDateToFilter] = usePersistentState("scouting:dateToFilter", ""); // Report creation date
+  const [fixtureDateFromFilter, setFixtureDateFromFilter] = usePersistentState("scouting:fixtureDateFromFilter", ""); // Match/fixture date
+  const [fixtureDateToFilter, setFixtureDateToFilter] = usePersistentState("scouting:fixtureDateToFilter", ""); // Match/fixture date
+  const [reportTypeFilter, setReportTypeFilter] = usePersistentState("scouting:reportTypeFilter", "");
+  const [scoutingTypeFilter, setScoutingTypeFilter] = usePersistentState("scouting:scoutingTypeFilter", "");
+  const [positionFilter, setPositionFilter] = usePersistentState("scouting:positionFilter", "");
+  const [fixtureFilter, setFixtureFilter] = usePersistentState("scouting:fixtureFilter", "");
+  const [fixtureQuery, setFixtureQuery] = usePersistentState("scouting:fixtureQuery", "");
   const [fixtureOptions, setFixtureOptions] = useState<any[]>([]);
   const [loadingFixtures, setLoadingFixtures] = useState(false);
   const [positions, setPositions] = useState<string[]>([]);
@@ -139,6 +141,39 @@ const ScoutingPage: React.FC = () => {
   // mutually exclusive), so the dropdown shows "Custom range" while one is set.
   const dateRangeActive = Boolean(dateFromFilter || dateToFilter);
   const recencyDisplay = dateRangeActive ? "custom" : recencyFilter;
+
+  const activeFilterCount = [
+    performanceScores.length > 0,
+    scoutNameFilter,
+    minAge,
+    maxAge,
+    playerNameFilter,
+    dateFromFilter,
+    dateToFilter,
+    fixtureDateFromFilter,
+    fixtureDateToFilter,
+    reportTypeFilter,
+    scoutingTypeFilter,
+    positionFilter,
+    fixtureFilter,
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setPerformanceScores([]);
+    setMinAge("");
+    setMaxAge("");
+    setScoutNameFilter("");
+    setPlayerNameFilter("");
+    setDateFromFilter("");
+    setDateToFilter("");
+    setFixtureDateFromFilter("");
+    setFixtureDateToFilter("");
+    setReportTypeFilter("");
+    setScoutingTypeFilter("");
+    setPositionFilter("");
+    setFixtureFilter("");
+    setFixtureQuery("");
+  };
 
   // Only the most recent request may update the page: an older, slower request
   // (typically "All Time") must never overwrite the results of a newer filter.
@@ -365,8 +400,13 @@ const ScoutingPage: React.FC = () => {
     }
   }, [token]);
 
+  // A chosen fixture's label isn't a new search: don't reopen its suggestions,
+  // whether it was just picked or restored on arrival.
+  const chosenFixtureLabel = useRef(fixtureFilter ? fixtureQuery : null);
+
   // Fetch fixture autocomplete results when user types
   useEffect(() => {
+    if (fixtureQuery === chosenFixtureLabel.current) return;
     const fetchFixtures = async () => {
       if (!fixtureQuery || fixtureQuery.length < 2) {
         setFixtureOptions([]);
@@ -789,19 +829,23 @@ const ScoutingPage: React.FC = () => {
       {/* Advanced Filters */}
       <Card className="mb-3">
         <Card.Header style={{ backgroundColor: "#000000", color: "white" }}>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
             <h6 className="mb-0 text-white d-flex align-items-center gap-2">
               <SlidersHorizontal size={16} />
               Advanced Filters
+              <ActiveFilterBadge count={activeFilterCount} />
             </h6>
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={() => setShowFilters(!showFilters)}
-              style={{ color: "white", borderColor: "white" }}
-            >
-              {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
-            </Button>
+            <div className="d-flex align-items-center gap-3 ms-auto text-nowrap">
+              <ClearFiltersButton count={activeFilterCount} onClear={clearAllFilters} />
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                style={{ color: "white", borderColor: "white" }}
+              >
+                {showFilters ? "▲ Hide Filters" : "▼ Show Filters"}
+              </Button>
+            </div>
           </div>
         </Card.Header>
         <Collapse in={showFilters}>
@@ -989,7 +1033,8 @@ const ScoutingPage: React.FC = () => {
                               className="px-3 py-2 cursor-pointer hover-bg-light"
                               style={{ cursor: 'pointer' }}
                               onClick={() => {
-                                setFixtureFilter(fixture.match_id);
+                                chosenFixtureLabel.current = fixture.display_label;
+                                setFixtureFilter(String(fixture.match_id));
                                 setFixtureQuery(fixture.display_label);
                                 setFixtureOptions([]);
                               }}
@@ -1095,22 +1140,7 @@ const ScoutingPage: React.FC = () => {
                   <Button
                     variant="outline-secondary"
                     size="sm"
-                    onClick={() => {
-                      setPerformanceScores([]);
-                      setMinAge("");
-                      setMaxAge("");
-                      setScoutNameFilter("");
-                      setPlayerNameFilter("");
-                      setDateFromFilter("");
-                      setDateToFilter("");
-                      setFixtureDateFromFilter("");
-                      setFixtureDateToFilter("");
-                      setReportTypeFilter("");
-                      setScoutingTypeFilter("");
-                      setPositionFilter("");
-                      setFixtureFilter("");
-                      setFixtureQuery("");
-                    }}
+                    onClick={clearAllFilters}
                     className="w-100 d-flex align-items-center justify-content-center gap-1"
                   >
                     <RotateCcw size={15} />
