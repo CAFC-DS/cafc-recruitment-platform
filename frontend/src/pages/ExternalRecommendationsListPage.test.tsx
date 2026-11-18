@@ -150,3 +150,26 @@ test("a failed load shows an error", async () => {
   renderPage();
   expect(await screen.findByText("Failed to load external recommendations")).toBeInTheDocument();
 });
+
+test("list viewers see each player's furthest list stage", async () => {
+  respondWith([
+    row({ list_stage: "Stage 4", list_stage_lists: ["CF", "RW"] }),
+    row({ id: 2, player_name: "Ann Archived", list_stage: "Archived", list_stage_lists: ["LB"] }),
+    row({ id: 3, player_name: "Una Listed" }),
+  ]);
+  renderPage();
+  await screen.findByText("Jon Smith");
+  expect(screen.getByRole("columnheader", { name: "Stage" })).toBeInTheDocument();
+  const [, first, second, third] = screen.getAllByRole("row");
+  expect(first).toHaveTextContent("Stage 4");
+  expect(within(first).getByTitle("Stage 4 on CF · RW")).toBeInTheDocument();
+  expect(second).toHaveTextContent("Archived");
+  expect(third).toHaveTextContent("Not on a list");
+});
+
+test("roles without list access get no stage column", async () => {
+  mockRole = "scout";
+  renderPage();
+  await screen.findByText("Jon Smith");
+  expect(screen.queryByRole("columnheader", { name: "Stage" })).not.toBeInTheDocument();
+});

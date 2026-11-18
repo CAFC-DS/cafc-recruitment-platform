@@ -1466,6 +1466,9 @@ class RecommendationNoteHistoryResponse(BaseModel):
 class InternalRecommendationResponse(RecommendationResponse):
     avg_performance_score: Optional[float] = None
     data_score: Optional[Dict[str, Any]] = None
+    # The linked player's furthest first-team shortlist stage, for roles that can view lists.
+    list_stage: Optional[str] = None
+    list_stage_lists: Optional[List[str]] = None
     submitted_by_user_id: Optional[int] = None
     submitted_by_username: Optional[str] = None
     status_updated_by: Optional[int] = None
@@ -3219,6 +3222,69 @@ def recommendation_data_score(row, role):
     return data_scores.list_score(row[46])
 
 
+LIST_STAGE_VIEW_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER, ROLE_MANAGER]
+
+
+def attach_recommendation_list_stages(cursor, items, role):
+    """Set each linked player's furthest first-team list stage and the lists it holds that stage on.
+
+    Archived counts only when the player has no active stage on any list.
+    """
+    if role not in LIST_STAGE_VIEW_ROLES:
+        return
+
+    def player_key(item):
+        if item.linked_player_data_source == "internal" and item.linked_cafc_player_id:
+            return ("cafc", int(item.linked_cafc_player_id))
+        if item.linked_cafc_player_id and not item.linked_player_id:
+            return ("cafc", int(item.linked_cafc_player_id))
+        if item.linked_player_id:
+            return ("external", int(item.linked_player_id))
+        return None
+
+    keys = {item.id: player_key(item) for item in items}
+    external_ids = sorted({key[1] for key in keys.values() if key and key[0] == "external"})
+    cafc_ids = sorted({key[1] for key in keys.values() if key and key[0] == "cafc"})
+    if not external_ids and not cafc_ids:
+        return
+
+    conditions, params = [], []
+    if external_ids:
+        conditions.append(f"pli.PLAYER_ID IN ({', '.join(['%s'] * len(external_ids))})")
+        params.extend(external_ids)
+    if cafc_ids:
+        conditions.append(f"pli.CAFC_PLAYER_ID IN ({', '.join(['%s'] * len(cafc_ids))})")
+        params.extend(cafc_ids)
+
+    ensure_player_lists_category_column(cursor)
+    cursor.execute(
+        f"""SELECT pli.PLAYER_ID, pli.CAFC_PLAYER_ID, pli.STAGE, pl.LIST_NAME
+        FROM {core_table('player_list_items')} pli
+        JOIN {core_table('player_lists')} pl ON pli.LIST_ID = pl.ID
+        WHERE ({' OR '.join(conditions)}) AND pl.LIST_CATEGORY = 'first_team'""",
+        params,
+    )
+
+    stage_rank = {stage: index for index, stage in enumerate(VALID_RECRUITMENT_STAGES)}
+    stage_rank["Archived"] = -1
+    memberships: Dict[tuple, List[tuple]] = {}
+    for player_id, cafc_player_id, stage, list_name in cursor.fetchall():
+        if stage not in stage_rank:
+            continue
+        if player_id is not None and int(player_id) in external_ids:
+            memberships.setdefault(("external", int(player_id)), []).append((stage, list_name))
+        if cafc_player_id is not None and int(cafc_player_id) in cafc_ids:
+            memberships.setdefault(("cafc", int(cafc_player_id)), []).append((stage, list_name))
+
+    for item in items:
+        entries = memberships.get(keys[item.id])
+        if not entries:
+            continue
+        best = max(entries, key=lambda entry: stage_rank[entry[0]])[0]
+        item.list_stage = best
+        item.list_stage_lists = sorted({name for stage, name in entries if stage == best and name})
+
+
 def serialize_recommendation_row(row, include_internal: bool = False, status_history=None):
     submitted_by_name = " ".join(part for part in [row[37], row[38]] if part) or row[36]
     status_updated_by_name = " ".join(part for part in [row[40], row[41]] if part) or row[39]
@@ -4736,6 +4802,11 @@ def list_internal_recommendations(
             item = serialize_recommendation_for_viewer(row, current_user.role)
             item.data_score = recommendation_data_score(row, current_user.role)
             data.append(item)
+        try:
+            attach_recommendation_list_stages(cursor, data, current_user.role)
+        except Exception:
+            # Stage is supplementary; the queue must still load without it.
+            logging.exception("Failed to attach list stages to recommendations")
         needs_decision_placeholders = ", ".join(["%s"] * len(NEEDS_DECISION_STATUSES))
         cursor.execute(
             f"""SELECT COUNT(*), COUNT_IF(STATUS IN ({needs_decision_placeholders}))

@@ -213,6 +213,10 @@
 .rec-queue-table .col-cost { width: 19%; }
 .rec-queue-table .col-status { width: 16%; }
 .rec-queue-table .col-actions { width: 118px; }
+.rec-queue-table.has-stage .col-player { width: 22%; }
+.rec-queue-table.has-stage .col-stage { width: 11%; }
+.rec-queue-table.has-stage .col-position { width: 13%; }
+.rec-queue-table.has-stage .col-cost { width: 18%; }
 
 .rec-queue-table thead th {
   padding: 0.45rem 0.75rem;
@@ -349,6 +353,20 @@
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
+}
+
+.rec-queue-stage {
+  min-width: 0;
+}
+
+.rec-queue-stage .stage-badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.28rem 0.55rem;
+}
+
+.rec-queue-stage .rec-queue-sub {
+  margin-top: 0.15rem;
 }
 
 .rec-queue-status {

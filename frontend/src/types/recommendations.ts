@@ -121,6 +121,9 @@ export interface RecommendationNoteHistory {
 export interface InternalRecommendation extends Recommendation {
   avg_performance_score?: number | null;
   data_score?: ListDataScore | null;
+  /** Furthest first-team shortlist stage; only sent to roles that can view lists. */
+  list_stage?: string | null;
+  list_stage_lists?: string[] | null;
   submitted_by_user_id?: number;
   submitted_by_username?: string;
   status_updated_by?: number;
