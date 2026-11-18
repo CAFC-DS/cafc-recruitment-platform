@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import axiosInstance from '../axiosInstance';
 import ScoutAppPage from './ScoutAppPage';
 
@@ -60,4 +60,57 @@ test('retries a failed link when coming back to the tab', async () => {
 
   expect(await screen.findByTitle('CAFC scout app')).toBeInTheDocument();
   expect(screen.queryByText('Not available yet.')).not.toBeInTheDocument();
+});
+
+describe('saved scout app filters', () => {
+  const ORIGIN = 'https://storage.example.test';
+  const tokenFor = (userId: number) => `x.${btoa(JSON.stringify({ user_id: userId }))}.y`;
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('token', tokenFor(7));
+    mockedGet.mockResolvedValue({ data: { url: `${ORIGIN}/signed?X-Amz=1`, built_at: null } });
+  });
+  afterEach(() => localStorage.clear());
+
+  const frameWindow = async () => {
+    const frame = (await screen.findByTitle('CAFC scout app')) as HTMLIFrameElement;
+    const win = frame.contentWindow as Window;
+    const post = jest.spyOn(win, 'postMessage').mockImplementation(() => undefined);
+    return { win, post };
+  };
+  const send = (source: Window | null, data: unknown, origin = ORIGIN) =>
+    act(() => { window.dispatchEvent(new MessageEvent('message', { source, origin, data })); });
+
+  test('answers the frame with null before anything is saved', async () => {
+    render(<ScoutAppPage />);
+    const { win, post } = await frameWindow();
+    send(win, { type: 'cafc-scout:ready', version: 1 });
+    expect(post).toHaveBeenCalledWith({ type: 'cafc-scout:filters', version: 1, filters: null }, ORIGIN);
+  });
+
+  test('keeps filters the frame saves for the next load, per account', async () => {
+    const filters = { positions: ['winger'], minutes: 1500, leagues: ['Championship'] };
+    const { unmount } = render(<ScoutAppPage />);
+    const first = await frameWindow();
+    send(first.win, { type: 'cafc-scout:save', version: 1, filters });
+    expect(JSON.parse(localStorage.getItem('persisted:v1:7:scoutApp:filters') as string)).toEqual(filters);
+    unmount();
+
+    render(<ScoutAppPage />); // a reload
+    const second = await frameWindow();
+    send(second.win, { type: 'cafc-scout:ready', version: 1 });
+    expect(second.post).toHaveBeenCalledWith({ type: 'cafc-scout:filters', version: 1, filters }, ORIGIN);
+  });
+
+  test('ignores messages from other windows, other origins and bad payloads', async () => {
+    render(<ScoutAppPage />);
+    const { win, post } = await frameWindow();
+    send(window, { type: 'cafc-scout:save', filters: { minutes: 1 } });
+    send(win, { type: 'cafc-scout:save', filters: { minutes: 2 } }, 'https://evil.example');
+    send(win, { type: 'cafc-scout:save', filters: ['not', 'an', 'object'] });
+    send(win, { type: 'cafc-scout:ready' }, 'https://evil.example');
+    expect(localStorage.getItem('persisted:v1:7:scoutApp:filters')).toBeNull();
+    expect(post).not.toHaveBeenCalled();
+  });
 });

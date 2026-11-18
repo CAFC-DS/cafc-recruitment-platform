@@ -265,9 +265,10 @@ const HomePageWrapper: React.FC = () => {
   return token && user && user.role !== 'agent' && user.role !== 'intel_reviewer' ? <HomePage /> : null;
 };
 
-// The scout app holds its filters inside its iframe and can't save them (it runs in
-// an opaque-origin sandbox), so stay mounted and only hide it on other tabs: leaving
-// would otherwise reload it and lose them. ScoutAppRoute still guards the route.
+// The scout app keeps its filters in its iframe and only saves them to this account
+// as they change (see ScoutAppPage), so stay mounted and only hide it on other tabs:
+// leaving would reload it, which is slow and drops its scroll and open player sheet.
+// ScoutAppRoute still guards the route.
 const ScoutAppKeepAlive: React.FC = () => {
   const { pathname } = useLocation();
   const { token } = useAuth();
