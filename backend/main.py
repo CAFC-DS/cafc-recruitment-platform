@@ -18061,27 +18061,31 @@ def get_all_lists_with_details(
                     SELECT
                         pi.PLAYER_ID,
                         r.cafc_player_id AS CAFC_PLAYER_ID,
-                        COUNT(*) as intel_reports_count
+                        COUNT(DISTINCT pi.ID) as intel_reports_count,
+                        GROUPING(pi.PLAYER_ID) AS counted_by_cafc_id
                     FROM {core_table('player_information')} pi
                     LEFT JOIN {core_table('core_player_id_resolutions')} r
                       ON r.source_system = 'IMPECT' AND r.source_player_id = pi.PLAYER_ID::varchar
                     WHERE {" OR ".join(intel_conditions)}
-                    GROUP BY pi.PLAYER_ID, r.cafc_player_id
+                    GROUP BY GROUPING SETS ((pi.PLAYER_ID), (r.cafc_player_id))
                     """,
                     intel_params,
                 )
 
-                # Index counts by each ID separately rather than by the
-                # (PLAYER_ID, CAFC_PLAYER_ID) pair: the resolution join fills in
-                # a cafc_player_id for most intel rows, but list items are usually
-                # keyed by PLAYER_ID alone (CAFC_PLAYER_ID NULL), so an exact
-                # pair match silently dropped nearly every internal intel count.
+                # Count by each ID on its own rather than by the (PLAYER_ID,
+                # CAFC_PLAYER_ID) pair: the resolution join fills in a
+                # cafc_player_id for most intel rows, but list items are usually
+                # keyed by PLAYER_ID alone (CAFC_PLAYER_ID NULL), so an exact pair
+                # match silently dropped nearly every internal intel count.
+                # DISTINCT keeps a report counted once even if its IMPECT ID
+                # resolves to more than one CAFC ID.
                 for intel_row in cursor.fetchall():
-                    intel_pid, intel_cafc_id, intel_count = intel_row[0], intel_row[1], intel_row[2] or 0
-                    if intel_pid is not None:
-                        intel_count_by_player_id[intel_pid] = intel_count_by_player_id.get(intel_pid, 0) + intel_count
-                    if intel_cafc_id is not None:
-                        intel_count_by_cafc_id[intel_cafc_id] = intel_count_by_cafc_id.get(intel_cafc_id, 0) + intel_count
+                    intel_pid, intel_cafc_id, intel_count, counted_by_cafc_id = intel_row[0], intel_row[1], intel_row[2] or 0, intel_row[3]
+                    if counted_by_cafc_id:
+                        if intel_cafc_id is not None:
+                            intel_count_by_cafc_id[intel_cafc_id] = intel_count
+                    elif intel_pid is not None:
+                        intel_count_by_player_id[intel_pid] = intel_count
 
                 # Add counts from agent recommendations
                 # Query player_recommendations directly using LINKED_UNIVERSAL_ID (backfilled)

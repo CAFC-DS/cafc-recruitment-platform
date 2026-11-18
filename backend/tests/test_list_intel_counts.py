@@ -28,8 +28,8 @@ def test_internal_intel_counted_when_resolution_adds_cafc_id(monkeypatch, list_p
         if "ORDER BY pli.LIST_ID, pli.DISPLAY_ORDER" in query:
             return players
         if "intel_reports_count" in query:
-            # Resolution join fills in the CAFC ID for this external intel row.
-            return [(207061, 1351345, 2)]
+            # Grouping sets: one row counted by PLAYER_ID, one by the resolved CAFC ID.
+            return [(207061, None, 2, 0), (None, 1351345, 2, 1)]
         return []
 
     cursor.fetchall.side_effect = fetch
