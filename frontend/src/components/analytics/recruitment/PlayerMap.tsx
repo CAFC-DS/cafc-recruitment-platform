@@ -13,8 +13,12 @@ const aliases: Record<string, string> = {
   Serbia: "Republic of Serbia",
   "Hong Kong": "Hong Kong S.A.R.",
 };
-/** Home nations and states too small for an outline in the boundary file. */
+/**
+ * Home nations, states too small for an outline in the boundary file, and
+ * countries whose bounding-box centre falls outside their own borders.
+ */
 const points: Record<string, [number, number]> = {
+  Norway: [9, 61.5],
   England: [-1.5, 52.5],
   Scotland: [-4, 57],
   Wales: [-3.7, 52.2],
