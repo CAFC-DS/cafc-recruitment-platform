@@ -12,6 +12,7 @@ import GradeChip from '../components/GradeChip';
 import ListDataScore from '../components/PlayerLists/ListDataScore';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useTheme } from '../contexts/ThemeContext';
+import { getStageBgColor, getStageTextColor } from '../styles/playerLists.theme';
 import './ExternalRecommendationsListPage.css';
 import {
   InternalRecommendation,
@@ -164,8 +165,26 @@ const getPlayerProfilePath = (item: InternalRecommendation) => {
   return null;
 };
 
+// The same solid stage badge used on Lists and the player profile.
+const RecommendationListStage: React.FC<{ stage?: string | null; lists?: string[] | null }> = ({ stage, lists }) => {
+  if (!stage) {
+    return <span className="rec-queue-sub">Not on a list</span>;
+  }
+  const listNames = (lists || []).join(' · ');
+  return (
+    <div className="rec-queue-stage" title={listNames ? `${stage} on ${listNames}` : stage}>
+      <span className="badge stage-badge" style={{ backgroundColor: getStageBgColor(stage), color: getStageTextColor(stage) }}>
+        {stage}
+      </span>
+      {listNames ? <div className="rec-queue-sub">{listNames}</div> : null}
+    </div>
+  );
+};
+
 const ExternalRecommendationsListPage: React.FC = () => {
   const { isIntelReviewer, user } = useCurrentUser();
+  // Matches the backend: only roles with list access receive a stage.
+  const canSeeStage = ['admin', 'senior_manager', 'manager'].includes(user?.role || '');
   const { theme } = useTheme();
   const canSelect = user?.role === 'admin';
   const statusPillStyle = (status: RecommendationStatus) => {
@@ -524,7 +543,7 @@ const ExternalRecommendationsListPage: React.FC = () => {
     filters.expected_salary_min || filters.expected_salary_max ? { key: 'salary', label: `Salary ${filters.expected_salary_min || 'any'} to ${filters.expected_salary_max || 'any'}`, clear: { expected_salary_min: '', expected_salary_max: '' } } : null,
   ] as Array<ActiveFilter | null>).filter((entry): entry is ActiveFilter => entry !== null);
 
-  const columnCount = canSelect ? 7 : 6;
+  const columnCount = 6 + (canSelect ? 1 : 0) + (canSeeStage ? 1 : 0);
 
   return (
     <div className="page-reports-cafc container-fluid py-3 page-lists-cafc rec-queue">
@@ -691,14 +710,15 @@ const ExternalRecommendationsListPage: React.FC = () => {
       </Collapse>
 
       <div className="rec-queue-table-wrap">
-        <table className="rec-queue-table">
+        <table className={`rec-queue-table${canSeeStage ? ' has-stage' : ''}`}>
           <thead>
             <tr>
               {canSelect ? <th className="col-select"><span className="visually-hidden">Select</span></th> : null}
               <th className="col-player">{renderSort('player_name', 'Player')}</th>
+              {canSeeStage ? <th className="col-stage" title="Furthest stage on the first-team lists">Stage</th> : null}
               <th className="col-position">{renderSort('position', 'Position')}</th>
-              <th className="col-submitted"><span className="rec-queue-sort-pair">{renderSort('agent_name', 'Agent')}{renderSort('date', 'Submitted')}</span></th>
               <th className="col-cost">Deal &amp; cost</th>
+              <th className="col-submitted"><span className="rec-queue-sort-pair">{renderSort('agent_name', 'Agent')}{renderSort('date', 'Submitted')}</span></th>
               <th className="col-status">{renderSort('status', 'Status')}</th>
               <th className="col-actions"><span className="visually-hidden">Actions</span></th>
             </tr>
@@ -772,17 +792,22 @@ const ExternalRecommendationsListPage: React.FC = () => {
                         </OverlayTrigger>
                       ) : null}
                     </td>
+                    {canSeeStage ? (
+                      <td>
+                        <RecommendationListStage stage={item.list_stage} lists={item.list_stage_lists} />
+                      </td>
+                    ) : null}
                     <td>
                       <div className="rec-queue-line" title={positions}>{positions}</div>
                       <div className="rec-queue-sub">{age === '-' ? 'Age unknown' : `Age ${age}`}</div>
                     </td>
-                    <td>
-                      <div className="rec-queue-line" title={item.agent_name || undefined}>{item.agent_name || '-'}</div>
-                      <div className="rec-queue-sub">{formatDate(item.submission_date)}</div>
-                    </td>
                     <td className="cell-cost">
                       <div className="rec-queue-line" title={dealAndFee}>{dealAndFee}</div>
                       <div className="rec-queue-sub" title={salary}>{salary}</div>
+                    </td>
+                    <td>
+                      <div className="rec-queue-line" title={item.agent_name || undefined}>{item.agent_name || '-'}</div>
+                      <div className="rec-queue-sub">{formatDate(item.submission_date)}</div>
                     </td>
                     <td>
                       {isIntelReviewer ? (
