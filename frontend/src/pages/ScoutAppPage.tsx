@@ -2,11 +2,31 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Alert, Spinner } from "react-bootstrap";
 import axiosInstance from "../axiosInstance";
 import { useAuth } from "../App";
+import { usePersistentState } from "../hooks/usePersistentState";
 
 interface ScoutAppLink {
   url: string;
   built_at: string | null;
 }
+
+// Messages to and from the scout app (data-scoring dashboard/scout/scout.js). It runs on
+// the bucket's origin, where its own storage can't tell our accounts apart, so it asks
+// us for its filters on load and sends them back as they change.
+const SCOUT_MSG = "cafc-scout";
+const MAX_SAVED_FILTERS_CHARS = 50_000;
+type ScoutFilters = Record<string, unknown>;
+
+const isScoutFilters = (value: unknown): value is ScoutFilters =>
+  typeof value === "object" && value !== null && !Array.isArray(value) &&
+  JSON.stringify(value).length <= MAX_SAVED_FILTERS_CHARS;
+
+const originOf = (url: string) => {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+};
 
 const formatBuiltAt = (builtAt: string | null) => {
   if (!builtAt) return "unknown";
@@ -25,6 +45,10 @@ const ScoutAppPage: React.FC<{ active?: boolean }> = ({ active = true }) => {
   const [loading, setLoading] = useState(true);
   const [height, setHeight] = useState<number>(600);
   const frameAreaRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const [savedFilters, setSavedFilters] = usePersistentState<ScoutFilters | null>("scoutApp:filters", null);
+  const savedFiltersRef = useRef(savedFilters);
+  savedFiltersRef.current = savedFilters;
 
   useEffect(() => {
     // Kept mounted across tabs: fetch once, and retry a failure on coming back.
@@ -49,6 +73,25 @@ const ScoutAppPage: React.FC<{ active?: boolean }> = ({ active = true }) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, active]);
+
+  // Only our own frame, loaded from the link we were given, may read or save filters.
+  useEffect(() => {
+    const frameOrigin = link ? originOf(link.url) : null;
+    if (!frameOrigin) return;
+    const onMessage = (event: MessageEvent) => {
+      const frame = frameRef.current?.contentWindow;
+      if (!frame || event.source !== frame || event.origin !== frameOrigin) return;
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === `${SCOUT_MSG}:ready`) {
+        frame.postMessage({ type: `${SCOUT_MSG}:filters`, version: 1, filters: savedFiltersRef.current }, frameOrigin);
+      } else if (data.type === `${SCOUT_MSG}:save` && isScoutFilters(data.filters)) {
+        setSavedFilters(data.filters);
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [link, setSavedFilters]);
 
   // Fill the viewport below the navbar and the "Data as of" line.
   useLayoutEffect(() => {
@@ -83,6 +126,7 @@ const ScoutAppPage: React.FC<{ active?: boolean }> = ({ active = true }) => {
       <div className="px-3 py-1 small text-muted">Data as of {formatBuiltAt(link.built_at)}</div>
       <div ref={frameAreaRef}>
         <iframe
+          ref={frameRef}
           title="CAFC scout app"
           src={link.url}
           style={{ width: "100%", height, border: 0, display: "block" }}
