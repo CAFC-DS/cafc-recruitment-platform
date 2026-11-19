@@ -24,6 +24,10 @@ import {
 } from "../utils/colorUtils";
 import { extractVSSScore } from "../utils/reportUtils";
 import { useTheme } from "../contexts/ThemeContext";
+import {
+  getAttributeGroup as getAttributeGroupFor,
+  getAttributeGroupColor as getAttributeGroupColorFor,
+} from "../utils/attributeGroups";
 
 // Chart label/grid colors for the light (on-screen light mode, and forced for PDF export) vs
 // dark (on-screen dark mode) surfaces -- PDF export always renders on a forced white page
@@ -308,139 +312,13 @@ const PlayerReportModal: React.FC<PlayerReportModalProps> = ({
     }
   };
 
-  // Group-based color mapping using Red, Blue, Orange palette
-  const getAttributeGroupColor = (attributeName: string) => {
-    // Define attribute groups and their colors - Professional Teal/Coral/Purple palette
-    const groupColors = {
-      "PHYSICAL / PSYCHOLOGICAL": "#009FB7", // Light blue   - calm, balanced
-      ATTACKING: "#9370DB", // Purple - energetic, forward-thinking
-      DEFENDING: "#7FC8F8", // Brown - strong, protective
-    };
+  // Group comes from the backend's per-position map (report.attribute_groups);
+  // see utils/attributeGroups.ts for why the name alone isn't enough.
+  const getAttributeGroupColor = (attributeName: string) =>
+    getAttributeGroupColorFor(attributeName, report?.attribute_groups);
 
-    // Map attributes to groups (this would ideally come from backend)
-    const physicalPsychological = [
-      "Athleticism & Pace",
-      "Stamina & Work Rate",
-      "Strength & Physicality",
-      "Size & Physicality",
-      "Proactive",
-      "Movement",
-      "Communication, Leadership & Organisation",
-      "Technical Ability",
-    ];
-
-    const attacking = [
-      "Distribution",
-      "Attacking Transitions & Impact",
-      "Crossing",
-      "Ball Progression",
-      "Composure",
-      "Starting & Building Attacks",
-      "Receiving & Ball Carrying",
-      "Attacking Movement",
-      "Attacking Creativity",
-      "Finishing",
-      "Ball Carrying",
-      "Ball Carrying & Attacking 1v1",
-      "Final Third Movement",
-      "Chance Creation",
-      "Link Play / Ball Retention",
-      "Hold-Up Play / Ball Retention",
-      "Aerial Ability",
-      "Distribution - Short / Building Attacks",
-      "Distribution – Long / Starting Attacks",
-    ];
-
-    const defending = [
-      "Aerial & Defending The Box",
-      "Defensive Positioning & Anticipation",
-      "Defending In Wide Areas",
-      "Defensive Transitions & Recovery",
-      "Aggressive & Front Footed",
-      "Defensive Positioning",
-      "Anticipation / Sense of Danger",
-      "Defending The Box",
-      "Starting Position",
-      "Command of The Box",
-      "Shot Stopping",
-      "Handling",
-      "Defensive Transitions & Impact",
-    ];
-
-    if (physicalPsychological.some((attr) => attributeName.includes(attr))) {
-      return groupColors["PHYSICAL / PSYCHOLOGICAL"];
-    } else if (attacking.some((attr) => attributeName.includes(attr))) {
-      return groupColors["ATTACKING"];
-    } else if (defending.some((attr) => attributeName.includes(attr))) {
-      return groupColors["DEFENDING"];
-    }
-
-    // Default to orange if no match
-    return groupColors["PHYSICAL / PSYCHOLOGICAL"];
-  };
-
-  // Colors are now generated in the sorted section above
-
-  // Sort data by attribute group for logical ordering
-  const getAttributeGroup = (attributeName: string) => {
-    const physicalPsychological = [
-      "Athleticism & Pace",
-      "Stamina & Work Rate",
-      "Strength & Physicality",
-      "Size & Physicality",
-      "Proactive",
-      "Movement",
-      "Communication, Leadership & Organisation",
-      "Technical Ability",
-    ];
-
-    const attacking = [
-      "Distribution",
-      "Attacking Transitions & Impact",
-      "Crossing",
-      "Ball Progression",
-      "Composure",
-      "Starting & Building Attacks",
-      "Receiving & Ball Carrying",
-      "Attacking Movement",
-      "Attacking Creativity",
-      "Finishing",
-      "Ball Carrying",
-      "Ball Carrying & Attacking 1v1",
-      "Final Third Movement",
-      "Chance Creation",
-      "Link Play / Ball Retention",
-      "Hold-Up Play / Ball Retention",
-      "Aerial Ability",
-      "Distribution - Short / Building Attacks",
-      "Distribution – Long / Starting Attacks",
-    ];
-
-    const defending = [
-      "Aerial & Defending The Box",
-      "Defensive Positioning & Anticipation",
-      "Defending In Wide Areas",
-      "Defensive Transitions & Recovery",
-      "Aggressive & Front Footed",
-      "Defensive Positioning",
-      "Anticipation / Sense of Danger",
-      "Defending The Box",
-      "Starting Position",
-      "Command of The Box",
-      "Shot Stopping",
-      "Handling",
-      "Defensive Transitions & Impact",
-    ];
-
-    if (physicalPsychological.some((attr) => attributeName.includes(attr))) {
-      return { group: "PHYSICAL / PSYCHOLOGICAL", order: 1 };
-    } else if (attacking.some((attr) => attributeName.includes(attr))) {
-      return { group: "ATTACKING", order: 2 };
-    } else if (defending.some((attr) => attributeName.includes(attr))) {
-      return { group: "DEFENDING", order: 3 };
-    }
-    return { group: "PHYSICAL / PSYCHOLOGICAL", order: 1 }; // Default
-  };
+  const getAttributeGroup = (attributeName: string) =>
+    getAttributeGroupFor(attributeName, report?.attribute_groups);
 
   const sortedAttributes = report.individual_attribute_scores
     ? Object.entries(report.individual_attribute_scores)
