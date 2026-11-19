@@ -87,6 +87,20 @@ def normalize_text(text: str) -> str:
     ).lower()
 
 
+# Letters that are distinct base letters in Unicode (not accents), so the
+# NORMALIZE_TEXT_UDF accent-strip leaves them alone: "Mikołajewski" would never
+# match a typed "Mikolajewski". Search SQL wraps the UDF in the same TRANSLATE.
+# Search only - exact name linking keeps the stricter normalize_text.
+SEARCH_FOLD_FROM = "łđøħı"
+SEARCH_FOLD_TO = "ldohi"
+_SEARCH_FOLD = str.maketrans(SEARCH_FOLD_FROM, SEARCH_FOLD_TO)
+
+
+def search_text(text: str) -> str:
+    """normalize_text plus the letter folding used by player/club search SQL."""
+    return normalize_text(text or "").translate(_SEARCH_FOLD)
+
+
 # Universal ID helper functions for mixed data sources
 def _universal_id_num(value):
     """Normalize an id for a universal-id string. Canonical APP_COMPAT views
@@ -3819,7 +3833,7 @@ def search_agent_players(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         safe_limit = min(max(limit, 1), 20)
-        normalized_search = normalize_text(normalized_query)
+        normalized_search = search_text(normalized_query)
         search_pattern = f"%{normalized_search}%"
         player_columns = get_table_columns("players")
         player_name_column = "PLAYERNAME" if "PLAYERNAME" in player_columns else None
@@ -3836,7 +3850,7 @@ def search_agent_players(
         select_birthdate_expr = (
             f"p.{player_birthdate_column}" if player_birthdate_column else "NULL"
         )
-        search_name_expr = f"NORMALIZE_TEXT_UDF(p.{player_name_column})"
+        search_name_expr = f"TRANSLATE(NORMALIZE_TEXT_UDF(p.{player_name_column}), 'łđøħı', 'ldohi')"
 
         select_cafc_id_expr = (
             f"MIN(p.{player_cafc_id_column})" if player_cafc_id_column else "NULL"
@@ -6978,10 +6992,10 @@ def check_player_duplicates(
             f"""
             SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, SQUADNAME, DATA_SOURCE
             FROM {read_table('players')}
-            WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+            WHERE TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s
             ORDER BY PLAYERNAME
             """,
-            (f"%{name}%",)
+            (f"%{search_text(name)}%",)
         )
 
         players = cursor.fetchall()
@@ -7056,11 +7070,11 @@ def internal_player_audit(
         params = []
         internal_filters = ["CAFC_PLAYER_ID IS NOT NULL", "PLAYERID IS NULL"]
         if name:
-            internal_filters.append("NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s")
-            params.append(f"%{name}%")
+            internal_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s")
+            params.append(f"%{search_text(name)}%")
         if squad:
-            internal_filters.append("NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')) ILIKE %s")
-            params.append(f"%{squad}%")
+            internal_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')), 'łđøħı', 'ldohi') ILIKE %s")
+            params.append(f"%{search_text(squad)}%")
 
         cursor.execute(
             f"""
@@ -7085,11 +7099,11 @@ def internal_player_audit(
         external_params = []
         external_filters = ["PLAYERID IS NOT NULL", "COALESCE(DATA_SOURCE, 'external') = 'external'"]
         if name:
-            external_filters.append("NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s")
-            external_params.append(f"%{name}%")
+            external_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s")
+            external_params.append(f"%{search_text(name)}%")
         if squad:
-            external_filters.append("NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')) ILIKE %s")
-            external_params.append(f"%{squad}%")
+            external_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')), 'łđøħı', 'ldohi') ILIKE %s")
+            external_params.append(f"%{search_text(squad)}%")
 
         cursor.execute(
             f"""
@@ -7871,7 +7885,7 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
             return []
 
         # Normalize search term client-side to match UDF behavior
-        normalized_query = normalize_text(query)
+        normalized_query = search_text(query)
         search_pattern = f"%{normalized_query}%"
 
         # Use Snowflake's NORMALIZE_TEXT_UDF() for accent-insensitive matching
@@ -7885,11 +7899,11 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
                 f"""
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
                 FROM {read_table('players')}
-                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+                WHERE TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') = %s THEN 1
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME, CAFC_PLAYER_ID, PLAYERID
@@ -7902,11 +7916,11 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
                 f"""
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
                 FROM {read_table('players')}
-                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+                WHERE TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') = %s THEN 1
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME, PLAYERID
@@ -9014,7 +9028,7 @@ def parse_fixture_search_query(query: str) -> dict:
     - team1, team2: for both_teams mode
     - query: for single_team mode
     """
-    normalized = normalize_text(query).strip()
+    normalized = search_text(query).strip()
 
     # Try splitting on common delimiters (order matters - try longer patterns first)
     delimiters = [' vs ', ' v ', ' - ', ' vs', ' v']
@@ -9074,9 +9088,9 @@ def search_matches(
                     'external' as id_type
                 FROM {read_table('matches')}
                 WHERE (
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                     OR
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                 )
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND ID IS NOT NULL
@@ -9093,9 +9107,9 @@ def search_matches(
                     'manual' as id_type
                 FROM {read_table('matches')}
                 WHERE (
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                     OR
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                 )
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND CAFC_MATCH_ID IS NOT NULL
@@ -9121,8 +9135,8 @@ def search_matches(
                     DATA_SOURCE,
                     'external' as id_type
                 FROM {read_table('matches')}
-                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                WHERE (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s
+                       OR TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND ID IS NOT NULL
                   AND DATA_SOURCE = 'external'
@@ -9137,8 +9151,8 @@ def search_matches(
                     DATA_SOURCE,
                     'manual' as id_type
                 FROM {read_table('matches')}
-                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                WHERE (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s
+                       OR TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND CAFC_MATCH_ID IS NOT NULL
                   AND DATA_SOURCE = 'internal'
@@ -12924,9 +12938,9 @@ def get_all_players(
 
         if search:
             where_conditions.append(
-                "(NORMALIZE_TEXT_UDF(p.PLAYERNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.FIRSTNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.LASTNAME) ILIKE %s)"
+                "(TRANSLATE(NORMALIZE_TEXT_UDF(p.PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s OR TRANSLATE(NORMALIZE_TEXT_UDF(p.FIRSTNAME), 'łđøħı', 'ldohi') ILIKE %s OR TRANSLATE(NORMALIZE_TEXT_UDF(p.LASTNAME), 'łđøħı', 'ldohi') ILIKE %s)"
             )
-            search_param = f"%{search}%"
+            search_param = f"%{search_text(search)}%"
             params.extend([search_param, search_param, search_param])
 
         if position:
@@ -18051,13 +18065,13 @@ def get_all_lists_with_details(
 
         # Position filter (with accent-insensitive collation)
         if position:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)) ILIKE %s)")
-            filter_params.append(f"%{position}%")
+            filter_conditions.append("(TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)), 'łđøħı', 'ldohi') ILIKE %s)")
+            filter_params.append(f"%{search_text(position)}%")
 
         # Club filter
         if club:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)) ILIKE %s)")
-            filter_params.append(f"%{club}%")
+            filter_conditions.append("(TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)), 'łđøħı', 'ldohi') ILIKE %s)")
+            filter_params.append(f"%{search_text(club)}%")
 
         # Competition filter (supports comma-separated multi-select from UI)
         if competition:
@@ -18089,8 +18103,8 @@ def get_all_lists_with_details(
 
         # Player name filter (with accent-insensitive collation)
         if player_name:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)) ILIKE %s)")
-            filter_params.append(f"%{player_name}%")
+            filter_conditions.append("(TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)), 'łđøħı', 'ldohi') ILIKE %s)")
+            filter_params.append(f"%{search_text(player_name)}%")
 
         where_clause = ""
         if filter_conditions:
