@@ -1,12 +1,13 @@
+import { stageColors } from "../../../styles/playerLists.theme";
 export const STAGES = ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Stage 5"];
 export const COLORS: Record<string, string> = {
   "New entrants": "#64748b",
   "List additions": "#4f8a9c",
   "Stage 1": "#6b7280",
-  "Stage 2": "var(--recruitment-analytics-stage-2-bg, #b7790b)",
-  "Stage 3": "var(--recruitment-analytics-stage-3-bg, #2563eb)",
-  "Stage 4": "var(--recruitment-analytics-stage-4-bg, #15803d)",
-  "Stage 5": "#7c3aed",
+  "Stage 2": stageColors["Stage 2"].bg,
+  "Stage 3": stageColors["Stage 3"].bg,
+  "Stage 4": stageColors["Stage 4"].bg,
+  "Stage 5": stageColors["Stage 5"].bg,
   Archived: "#b91c1c",
 };
 export interface PlayerRow {

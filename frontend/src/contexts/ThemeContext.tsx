@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-import { newStageColors, originalStageColors } from "../styles/playerLists.theme";
 
 interface ThemeColors {
   // Brand colors (from screenshots)
@@ -82,8 +81,6 @@ const darkTheme: ThemeColors = {
 interface ThemeContextType {
   theme: Theme;
   toggleDarkMode: () => void;
-  useNewStageColours: boolean;
-  toggleStageColours: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -95,34 +92,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     const saved = localStorage.getItem("darkMode");
     return saved ? JSON.parse(saved) : false;
   });
-
-  const [useNewStageColours, setUseNewStageColours] = useState(() => {
-    try { return localStorage.getItem("recruitmentStageColours") === "new"; }
-    catch { return false; }
-  });
-
-  const toggleStageColours = () => setUseNewStageColours(current => !current);
-
-  useEffect(() => {
-    const palette = useNewStageColours ? newStageColors : originalStageColors;
-    Object.entries(palette).forEach(([stage, shades]) => {
-      Object.entries(shades).forEach(([role, value]) => {
-        document.documentElement.style.setProperty(
-          `--recruitment-${stage.toLowerCase().replace(/ /g, "-")}-${role}`, value,
-        );
-      });
-    });
-    // Preserve the incumbent chart shades when the original palette is selected.
-    const originalAnalytics = { "Stage 2": "#b7790b", "Stage 3": "#2563eb", "Stage 4": "#15803d" };
-    Object.entries(originalAnalytics).forEach(([stage, original]) => {
-      document.documentElement.style.setProperty(
-        `--recruitment-analytics-${stage.toLowerCase().replace(/ /g, "-")}-bg`,
-        useNewStageColours ? newStageColors[stage as keyof typeof newStageColors].bg : original,
-      );
-    });
-    try { localStorage.setItem("recruitmentStageColours", useNewStageColours ? "new" : "original"); }
-    catch { /* The setting still works for this visit when storage is unavailable. */ }
-  }, [useNewStageColours]);
 
   const theme: Theme = {
     isDark,
@@ -214,7 +183,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleDarkMode, useNewStageColours, toggleStageColours }}>
+    <ThemeContext.Provider value={{ theme, toggleDarkMode }}>
       {children}
     </ThemeContext.Provider>
   );

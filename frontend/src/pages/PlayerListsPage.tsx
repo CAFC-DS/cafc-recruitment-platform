@@ -217,7 +217,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
 }) => {
   const navigate = useNavigate();
   const { user: currentUser, loading: userLoading, canAccessLists } = useCurrentUser();
-  const { theme, useNewStageColours, toggleStageColours } = useTheme();
+  const { theme } = useTheme();
 
   // Advanced Filters State
   // The filter drawer is modal, so it isn't remembered: it would reopen on every visit.
@@ -1645,16 +1645,6 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
             stageCounts={stageCounts}
           />
 
-
-          <div className="d-flex justify-content-end mb-3">
-            <Form.Check
-              type="switch"
-              id="new-stage-colours"
-              label="New stage colours"
-              checked={useNewStageColours}
-              onChange={toggleStageColours}
-            />
-          </div>
 
           {/* Actions Container */}
           <div className="lists-workspace__actions">

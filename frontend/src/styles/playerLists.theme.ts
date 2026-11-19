@@ -7,7 +7,7 @@
 
 // ========== Stage Colors ==========
 
-export const newStageColors = {
+export const stageColors = {
   "Stage 1": {
     bg: "#6b7280", // Gray
     text: "#ffffff",
@@ -15,28 +15,28 @@ export const newStageColors = {
     border: "#4b5563",
   },
   "Stage 2": {
-    bg: "#a65d32", // Copper
-    text: "#ffffff",
-    light: "#d99a72",
-    border: "#854725",
+    bg: "#20d9ea", // Cyan
+    text: "#083344", // Dark text: white is unreadable on cyan
+    light: "#7ee8f2",
+    border: "#17aebb",
   },
   "Stage 3": {
-    bg: "#a44d70", // Muted rose
+    bg: "#0087eb", // Blue
     text: "#ffffff",
-    light: "#d68daa",
-    border: "#833b59",
+    light: "#5cb3f3",
+    border: "#006cbc",
   },
   "Stage 4": {
-    bg: "#674464", // Muted aubergine
+    bg: "#e100e2", // Magenta
     text: "#ffffff",
-    light: "#ad88a8",
-    border: "#50344d",
+    light: "#ee66ee",
+    border: "#b400b5",
   },
   "Stage 5": {
-    bg: "#7c3aed", // Purple
+    bg: "#7b3aec", // Purple
     text: "#ffffff",
     light: "#a78bfa",
-    border: "#6d28d9",
+    border: "#6228c9",
   },
   "Archived": {
     bg: "#9ca3af", // Gray (matching archived reports)
@@ -45,23 +45,6 @@ export const newStageColors = {
     border: "#6b7280",
   },
 };
-
-export const originalStageColors = {
-  ...newStageColors,
-  "Stage 2": { bg: "#f59e0b", text: "#ffffff", light: "#fbbf24", border: "#d97706" },
-  "Stage 3": { bg: "#3b82f6", text: "#ffffff", light: "#60a5fa", border: "#2563eb" },
-  "Stage 4": { bg: "#16a34a", text: "#ffffff", light: "#22c55e", border: "#15803d" },
-};
-
-// CSS variables update every stage surface immediately, including SVG charts.
-export const stageColors = Object.fromEntries(
-  Object.entries(originalStageColors).map(([stage, shades]) => [
-    stage,
-    Object.fromEntries(Object.entries(shades).map(([role, value]) => [
-      role, `var(--recruitment-${stage.toLowerCase().replace(/ /g, "-")}-${role}, ${value})`,
-    ])),
-  ]),
-) as typeof originalStageColors;
 
 export const getStageBgColor = (stage: string): string => {
   return stageColors[stage as keyof typeof stageColors]?.bg || stageColors["Stage 1"].bg;

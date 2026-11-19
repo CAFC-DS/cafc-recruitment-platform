@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form, Spinner } from "react-bootstrap";
+import { getStageBorderColor } from "../../styles/playerLists.theme";
 
 interface StageChangeReasonModalProps {
   show: boolean;
@@ -118,7 +119,7 @@ const StageChangeReasonModal: React.FC<StageChangeReasonModalProps> = ({
             {stagePlacementNote && (
               <Form.Text
                 style={{
-                  color: effectiveStage === "Stage 2" ? "#f59e0b" : "#6b7280",
+                  color: effectiveStage === "Stage 2" ? getStageBorderColor("Stage 2") : "#6b7280",
                   fontWeight: 500,
                 }}
               >
