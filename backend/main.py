@@ -9260,6 +9260,78 @@ def get_matches_by_date(
             conn.close()
 
 
+# Map specific positions to attribute groups for assessment forms
+POSITION_TO_ATTRIBUTE_GROUP = {
+    # Goalkeeper
+    "GK": "GOALKEEPER",
+    # Full Backs (store as RB/LB, use FULL BACK attributes)
+    "RB": "FULL BACK",
+    "LB": "FULL BACK",
+    # Wing Backs (store as RWB/LWB, use WINGBACK attributes)
+    "RWB": "WINGBACK",
+    "LWB": "WINGBACK",
+    # Centre Backs - Wide (store specific positions, use WIDE CB attributes)
+    "RCB(3)": "WIDE CB",  # Right CB in back 3
+    "LCB(3)": "WIDE CB",  # Left CB in back 3
+    "RCB(2)": "CENTRAL CB",  # Right CB in back 2
+    "LCB(2)": "CENTRAL CB",  # Left CB in back 2
+    # Centre Backs - Central (store as CCB(3), use CENTRAL CB attributes)
+    "CCB(3)": "CENTRAL CB",  # Central CB in back 3
+    # Midfielders (store as DM/CM/AM/RAM/LAM, use respective attributes)
+    "DM": "DEFENSIVE MIDFIELDER",
+    "CM": "CENTRAL MIDFIELDER",
+    "AM": "ATTACKING MIDFIELDER",
+    "RAM": "ATTACKING MIDFIELDER",
+    "LAM": "ATTACKING MIDFIELDER",
+    # Wingers (store as RW/LW, use WINGER attributes)
+    "RW": "WINGER",
+    "LW": "WINGER",
+    # Centre Forwards (store as Target Man CF/In Behind CF, use respective attributes)
+    "Target Man CF": "TARGET CF",
+    "In Behind CF": "IN BEHIND CF",
+}
+
+
+# POSITION_ATTRIBUTES.ATTRIBUTE_GROUP values -> the three chart groups the
+# report screens colour and order by.
+_ATTRIBUTE_GROUP_SHORT_NAMES = {
+    "PHYSICAL / PSYCHOLOGICAL": "PHYSICAL / PSYCHOLOGICAL",
+    "ATTACKING // IN POSSESSION": "ATTACKING",
+    "DEFENDING // OUT OF POSSESSION": "DEFENDING",
+}
+
+_attribute_groups_cache = {}
+
+
+def get_attribute_groups_for_position(cursor, position):
+    """Map each attribute of a report position (e.g. "RCB(2)") to its chart
+    group ("PHYSICAL / PSYCHOLOGICAL", "ATTACKING" or "DEFENDING"), read from
+    POSITION_ATTRIBUTES. The same attribute name can sit in different groups
+    for different positions (Aerial Ability is defending for a centre back but
+    attacking for a target CF), so the group must come from the position."""
+    if not position:
+        return {}
+    if position in _attribute_groups_cache:
+        return _attribute_groups_cache[position]
+    attribute_group = POSITION_TO_ATTRIBUTE_GROUP.get(position, position)
+    cursor.execute(
+        f"""
+        SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP
+        FROM {core_table('position_attributes')}
+        WHERE POSITION = %s
+        """,
+        (attribute_group,),
+    )
+    groups = {
+        name: _ATTRIBUTE_GROUP_SHORT_NAMES.get(
+            (group or "").upper(), (group or "").upper()
+        )
+        for name, group in cursor.fetchall()
+    }
+    _attribute_groups_cache[position] = groups
+    return groups
+
+
 # Simple in-memory cache for position attributes (they rarely change)
 _attributes_cache = {}
 
@@ -9274,39 +9346,9 @@ def get_attributes_by_position(
 
     conn = None
     try:
-        # Map specific positions to attribute groups for assessment forms
-        position_to_attribute_group = {
-            # Goalkeeper
-            "GK": "GOALKEEPER",
-            # Full Backs (store as RB/LB, use FULL BACK attributes)
-            "RB": "FULL BACK",
-            "LB": "FULL BACK",
-            # Wing Backs (store as RWB/LWB, use WINGBACK attributes)
-            "RWB": "WINGBACK",
-            "LWB": "WINGBACK",
-            # Centre Backs - Wide (store specific positions, use WIDE CB attributes)
-            "RCB(3)": "WIDE CB",  # Right CB in back 3
-            "LCB(3)": "WIDE CB",  # Left CB in back 3
-            "RCB(2)": "CENTRAL CB",  # Right CB in back 2
-            "LCB(2)": "CENTRAL CB",  # Left CB in back 2
-            # Centre Backs - Central (store as CCB(3), use CENTRAL CB attributes)
-            "CCB(3)": "CENTRAL CB",  # Central CB in back 3
-            # Midfielders (store as DM/CM/AM/RAM/LAM, use respective attributes)
-            "DM": "DEFENSIVE MIDFIELDER",
-            "CM": "CENTRAL MIDFIELDER",
-            "AM": "ATTACKING MIDFIELDER",
-            "RAM": "ATTACKING MIDFIELDER",
-            "LAM": "ATTACKING MIDFIELDER",
-            # Wingers (store as RW/LW, use WINGER attributes)
-            "RW": "WINGER",
-            "LW": "WINGER",
-            # Centre Forwards (store as Target Man CF/In Behind CF, use respective attributes)
-            "Target Man CF": "TARGET CF",
-            "In Behind CF": "IN BEHIND CF",
-        }
 
         # Get the attribute group for this position
-        attribute_group = position_to_attribute_group.get(position, position)
+        attribute_group = POSITION_TO_ATTRIBUTE_GROUP.get(position, position)
 
         conn = get_snowflake_connection()
         cursor = conn.cursor()
@@ -9329,6 +9371,26 @@ def get_attributes_by_position(
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching attributes: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/attribute_groups/{position}")
+@offload_read
+def get_attribute_groups_by_position(
+    position: str, current_user: User = Depends(get_current_user)
+):
+    """{attribute name: chart group} for a report position."""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        return get_attribute_groups_for_position(conn.cursor(), position)
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching attribute groups: {e}"
+        )
     finally:
         if conn:
             conn.close()
@@ -10357,6 +10419,9 @@ def get_single_scout_report(
             "clip_category": report_data[24],
             "birth_date": str(report_data[2]) if report_data[2] else None,
             "individual_attribute_scores": individual_attribute_scores,
+            "attribute_groups": get_attribute_groups_for_position(
+                cursor, report_data[6]
+            ),
             "average_attribute_score": round(average_attribute_score, 2),
         }
 
@@ -10620,6 +10685,9 @@ def get_public_report(token: str):
             "player_position": report_data[24],
             "squad_name": report_data[25],
             "individual_attribute_scores": individual_attribute_scores,
+            "attribute_groups": get_attribute_groups_for_position(
+                cursor, report_data[6]
+            ),
             "average_attribute_score": round(average_attribute_score, 2),
             "is_shared_view": True  # Flag to indicate this is a public/shared view
         }
