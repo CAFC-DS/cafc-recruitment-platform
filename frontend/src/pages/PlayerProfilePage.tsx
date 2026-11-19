@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Container,
@@ -48,6 +48,7 @@ import ShimmerLoading from "../components/ShimmerLoading";
 
 import PlayerPositionPitchMap from "../components/player/PlayerPositionPitchMap";
 import PlayerDataScore from "../components/player/PlayerDataScore";
+import "../components/player/TechnicalDataSection.css";
 import {
   Flag,
   Clapperboard,
@@ -70,6 +71,9 @@ import {
   PlayerFlowHistoryResponse,
   FlowHistoryEvent,
 } from "../types/Player";
+
+// Loaded only when the Technical data tab is opened, so the Profile tab fetches and parses nothing extra.
+const TechnicalDataSection = lazy(() => import("../components/player/TechnicalDataSection"));
 
 ChartJS.register(
   RadialLinearScale,
@@ -632,6 +636,9 @@ const PlayerProfilePage: React.FC = () => {
   const [scoutingHistoryExpanded, setScoutingHistoryExpanded] = useState(true);
   const [intelExpanded, setIntelExpanded] = useState(true);
   const [attributeBreakdownExpanded, setAttributeBreakdownExpanded] = useState(true);
+  const [activeProfileTab, setActiveProfileTab] = useState<"profile" | "technical">(
+    () => new URLSearchParams(window.location.search).get("tab") === "technical" ? "technical" : "profile",
+  );
 
   // View mode for Intel section
   const [intelViewMode, setIntelViewMode] = useState<"cards" | "table">("cards");
@@ -1844,6 +1851,25 @@ const PlayerProfilePage: React.FC = () => {
         {actualPlayerId && <PlayerPositionPitchMap playerId={actualPlayerId} />}
         </div>
 
+        {canAccessScoutApp && actualPlayerId && (
+          <div className="profile-section-tabs" role="tablist" aria-label="Player profile sections">
+            <button type="button" role="tab" aria-selected={activeProfileTab === "profile"} className={activeProfileTab === "profile" ? "is-active" : ""} onClick={() => setActiveProfileTab("profile")}>
+              <ClipboardList size={16} aria-hidden="true" />
+              <span>Profile</span>
+            </button>
+            <button type="button" role="tab" aria-selected={activeProfileTab === "technical"} className={activeProfileTab === "technical" ? "is-active" : ""} onClick={() => setActiveProfileTab("technical")}>
+              <BarChart3 size={16} aria-hidden="true" />
+              <span>Technical data</span>
+            </button>
+          </div>
+        )}
+
+        {canAccessScoutApp && actualPlayerId && activeProfileTab === "technical" ? (
+          <Suspense fallback={<div role="status" className="td-shell td-state">Loading technical data…</div>}>
+            <TechnicalDataSection playerId={actualPlayerId} />
+          </Suspense>
+        ) : (
+        <>
         {/* Reports Sections - Full Width Stacked Layout */}
         <div className="mt-4 mb-4">
           {showScoutingContent && canViewFlowHistory && (
@@ -3639,6 +3665,8 @@ const PlayerProfilePage: React.FC = () => {
           </div>
           )}
         </div>
+        </>
+        )}
       </Container>
 
       {/* Add Note Modal */}

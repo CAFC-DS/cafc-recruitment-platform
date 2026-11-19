@@ -180,3 +180,110 @@ def test_senior_managers_get_scores_by_impect_id(role):
         assert asyncio.run(main.get_player_data_scores("external_7", current_user=MagicMock(role=role))) == {"available": True}
     lookup.assert_called_once_with(7)
     connection.close.assert_called_once()
+
+
+# --- Technical data tab: category and metric Championship scores ---------------------------------------------------
+
+TECH_COLUMNS = COLUMNS + ["catCh"]
+# d-metrics_<position> as data-scoring python/build_metric_breakdown.py writes it.
+BREAKDOWN_CATS = [{"key": "shot_threat", "metrics": [{"key": "non_pen_shot_xg_per90", "label": "Non-penalty xG per 90", "percent": False, "lower_better": False},
+                                                     {"key": "kpi_SHOT_AT_GOAL_NUMBER_p90", "label": "Shots per 90", "percent": False, "lower_better": False}]},
+                  {"key": "box_presence", "metrics": [{"key": "lab_ft_shot_share", "label": "First-time shot share", "percent": True, "lower_better": False}]}]
+
+
+def tech_page(rows, breakdown=None, columns=TECH_COLUMNS):
+    """rows: position rows; breakdown: one [value, reading, ...] cell per row, or None for a page without the blob."""
+    meta = {"columns": columns, "positions": {"striker": {"label": "Striker", "categories": ["shot_threat", "box_presence"]}}}
+    body = [blob("meta", meta), blob("striker", [[r[i] for r in rows] for i in range(len(columns))])]
+    if breakdown is not None:
+        body.append(blob("metrics_striker", {"categories": BREAKDOWN_CATS, "rows": breakdown}))
+    return "<html>" + "".join(body) + "</html>"
+
+
+BASE = [7, "A", "Club A", "League Two", "23/24", 25, 4626, 104.0, 98, 110, 103, 96, 110, 2024.0, 104.0, 1]
+NEW_ROW = BASE + [[113.2, 94.6]]
+NEW_CELL = [0.52, 122.0, 3.1, 104.4, 0.38, 94.6]
+
+
+def scores_for(tmp_path, html):
+    source = tmp_path / "cafc_scout.html"
+    source.write_text(html)
+    return DataScores(env={"DATA_SCORES_FILE": str(source)})
+
+
+def test_technical_data_reads_the_metric_breakdown_blob(tmp_path):
+    result = scores_for(tmp_path, tech_page([NEW_ROW], [NEW_CELL])).technical_for_player(7)
+    assert result["available"]
+    row = result["rows"][0]
+    assert (row["position"], row["position_key"], row["season"], row["min"], row["has_metrics"]) == ("Striker", "striker", "23/24", 4626, True)
+    shot, box = row["categories"]
+    assert (shot["key"], shot["label"], shot["ch"], shot["band_name"]) == ("shot_threat", "Shot threat", 113.2, "Strong starter")
+    assert [(m["label"], m["ch"], m["value"], m["percent"]) for m in shot["metrics"]] == [("Non-penalty xG per 90", 122.0, 0.52, False), ("Shots per 90", 104.4, 3.1, False)]
+    assert [(m["key"], m["ch"], m["value"], m["percent"], m["lower_better"]) for m in box["metrics"]] == [("lab_ft_shot_share", 94.6, 0.38, True, False)]
+
+
+def test_technical_data_from_a_page_without_the_breakdown_gives_categories_only(tmp_path):
+    # Pages published before 22 Nov 2026 have no d-metrics blobs: categories show, metrics are None.
+    result = scores_for(tmp_path, tech_page([NEW_ROW])).technical_for_player(7)
+    row = result["rows"][0]
+    assert [c["ch"] for c in row["categories"]] == [113.2, 94.6]
+    assert all(c["metrics"] is None for c in row["categories"]) and row["has_metrics"] is False
+
+
+def test_a_breakdown_that_does_not_line_up_is_ignored_not_fatal(tmp_path, caplog):
+    with caplog.at_level("ERROR"):
+        row = scores_for(tmp_path, tech_page([NEW_ROW], [NEW_CELL, NEW_CELL])).technical_for_player(7)["rows"][0]
+    assert row["has_metrics"] is False and [c["ch"] for c in row["categories"]] == [113.2, 94.6]
+    assert "ignoring metrics_striker" in caplog.text
+
+
+def test_technical_data_tolerates_a_page_without_category_scores(tmp_path):
+    result = scores_for(tmp_path, tech_page([BASE], columns=COLUMNS)).technical_for_player(7)
+    assert [c["ch"] for c in result["rows"][0]["categories"]] == [None, None]
+
+
+def test_technical_data_missing_metric_values_are_none(tmp_path):
+    row = BASE + [[113.2, None]]
+    cats = scores_for(tmp_path, tech_page([row], [[None, None, 3.1, 104.4, None, None]])).technical_for_player(7)["rows"][0]["categories"]
+    assert cats[1]["ch"] is None and cats[1]["band_name"] is None
+    assert [(m["ch"], m["value"]) for m in cats[0]["metrics"]] == [(None, None), (104.4, 3.1)]
+    assert [(m["ch"], m["value"]) for m in cats[1]["metrics"]] == [(None, None)]
+
+
+def test_technical_data_puts_the_headline_row_first(tmp_path):
+    later = [7, "A", "Club B", "Championship", "25/26", 27, 1471, 95.0, 90, 100, 96, 90, 102, 2026.0, 104.0, 2, [93.0, 87.9]]
+    rows = scores_for(tmp_path, tech_page([NEW_ROW, later], [NEW_CELL, NEW_CELL])).technical_for_player(7)["rows"]
+    assert [r["season"] for r in rows] == ["25/26", "23/24"]
+
+
+def test_technical_data_unknown_player_and_no_bucket(tmp_path):
+    assert scores_for(tmp_path, tech_page([NEW_ROW])).technical_for_player(999)["available"] is False
+    assert DataScores(env={}).technical_for_player(7) == {"available": False, "message": "Data scores are unavailable right now.", "run": None, "rows": []}
+
+
+@pytest.mark.parametrize("role", [main.ROLE_MANAGER, main.ROLE_SCOUT, main.ROLE_LOAN_MANAGER, main.ROLE_INTEL_REVIEWER, main.ROLE_AGENT])
+def test_technical_data_is_refused_below_senior_manager(role):
+    with patch.object(main, "get_snowflake_connection") as connect, pytest.raises(HTTPException) as refused:
+        asyncio.run(main.get_player_technical_data("external_7", current_user=MagicMock(role=role)))
+    assert refused.value.status_code == 403
+    connect.assert_not_called()
+
+
+@pytest.mark.parametrize("role", [main.ROLE_ADMIN, main.ROLE_SENIOR_MANAGER])
+def test_technical_data_reads_by_impect_id(role):
+    connection = MagicMock()
+    with patch.object(main, "get_snowflake_connection", return_value=connection), \
+         patch.object(main, "find_player_by_universal_or_legacy_id", return_value=((7, "c1", "A"), "external")), \
+         patch.object(main.data_scores, "technical_for_player", return_value={"available": True}) as lookup:
+        assert asyncio.run(main.get_player_technical_data("external_7", current_user=MagicMock(role=role))) == {"available": True}
+    lookup.assert_called_once_with(7)
+    connection.close.assert_called_once()
+
+
+def test_technical_data_is_not_offered_for_internal_players():
+    with patch.object(main, "get_snowflake_connection", return_value=MagicMock()), \
+         patch.object(main, "find_player_by_universal_or_legacy_id", return_value=((None, "c1", "A"), "internal")), \
+         patch.object(main.data_scores, "technical_for_player") as lookup:
+        result = asyncio.run(main.get_player_technical_data("internal_3", current_user=MagicMock(role=main.ROLE_ADMIN)))
+    assert result["available"] is False and "external" in result["message"]
+    lookup.assert_not_called()
