@@ -19,11 +19,11 @@ beforeEach(() => get.mockReset());
 test("position-map defaults do not trigger a duplicate request", async () => {
   get.mockResolvedValue({ data: positionData });
   render(<PlayerPositionPitchMap playerId="42" />);
-  await screen.findByRole("img", { name: "Pitch map for League A 2026" });
+  await screen.findByRole("img", { name: "Positions played in League A 2026" });
   await waitFor(() => expect(screen.queryByRole("status")).not.toBeInTheDocument());
   expect(get).toHaveBeenCalledTimes(1);
   get.mockResolvedValue({ data: { ...positionData, filters: { ...positionData.filters, competition: "League B" } } });
-  fireEvent.change(screen.getByLabelText("Position map competition"), { target: { value: "League B" } });
-  await screen.findByRole("img", { name: "Pitch map for League B 2026" });
+  fireEvent.change(screen.getByLabelText("Competition"), { target: { value: "League B" } });
+  await screen.findByRole("img", { name: "Positions played in League B 2026" });
   expect(get).toHaveBeenCalledTimes(2);
 });
