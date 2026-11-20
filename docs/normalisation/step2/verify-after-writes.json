@@ -1,0 +1,15 @@
+{
+  "schema": "CAFC_DB.CORE_DEV_CODEX_KEYS_10291709",
+  "mode": "verify",
+  "reports": {
+    "player_mismatch": 0,
+    "fixture_mismatch": 0,
+    "unresolved_left_null": 7,
+    "rows": 12552
+  },
+  "list_items": {
+    "player_mismatch": 0,
+    "rows": 3217
+  },
+  "passed": true
+}
