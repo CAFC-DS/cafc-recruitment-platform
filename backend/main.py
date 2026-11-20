@@ -87,6 +87,20 @@ def normalize_text(text: str) -> str:
     ).lower()
 
 
+# Letters that are distinct base letters in Unicode (not accents), so the
+# NORMALIZE_TEXT_UDF accent-strip leaves them alone: "Mikołajewski" would never
+# match a typed "Mikolajewski". Search SQL wraps the UDF in the same TRANSLATE.
+# Search only - exact name linking keeps the stricter normalize_text.
+SEARCH_FOLD_FROM = "łđøħı"
+SEARCH_FOLD_TO = "ldohi"
+_SEARCH_FOLD = str.maketrans(SEARCH_FOLD_FROM, SEARCH_FOLD_TO)
+
+
+def search_text(text: str) -> str:
+    """normalize_text plus the letter folding used by player/club search SQL."""
+    return normalize_text(text or "").translate(_SEARCH_FOLD)
+
+
 # Universal ID helper functions for mixed data sources
 def _universal_id_num(value):
     """Normalize an id for a universal-id string. Canonical APP_COMPAT views
@@ -3819,7 +3833,7 @@ def search_agent_players(
         conn = get_snowflake_connection()
         cursor = conn.cursor()
         safe_limit = min(max(limit, 1), 20)
-        normalized_search = normalize_text(normalized_query)
+        normalized_search = search_text(normalized_query)
         search_pattern = f"%{normalized_search}%"
         player_columns = get_table_columns("players")
         player_name_column = "PLAYERNAME" if "PLAYERNAME" in player_columns else None
@@ -3836,7 +3850,7 @@ def search_agent_players(
         select_birthdate_expr = (
             f"p.{player_birthdate_column}" if player_birthdate_column else "NULL"
         )
-        search_name_expr = f"NORMALIZE_TEXT_UDF(p.{player_name_column})"
+        search_name_expr = f"TRANSLATE(NORMALIZE_TEXT_UDF(p.{player_name_column}), 'łđøħı', 'ldohi')"
 
         select_cafc_id_expr = (
             f"MIN(p.{player_cafc_id_column})" if player_cafc_id_column else "NULL"
@@ -6978,10 +6992,10 @@ def check_player_duplicates(
             f"""
             SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, SQUADNAME, DATA_SOURCE
             FROM {read_table('players')}
-            WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+            WHERE TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s
             ORDER BY PLAYERNAME
             """,
-            (f"%{name}%",)
+            (f"%{search_text(name)}%",)
         )
 
         players = cursor.fetchall()
@@ -7056,11 +7070,11 @@ def internal_player_audit(
         params = []
         internal_filters = ["CAFC_PLAYER_ID IS NOT NULL", "PLAYERID IS NULL"]
         if name:
-            internal_filters.append("NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s")
-            params.append(f"%{name}%")
+            internal_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s")
+            params.append(f"%{search_text(name)}%")
         if squad:
-            internal_filters.append("NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')) ILIKE %s")
-            params.append(f"%{squad}%")
+            internal_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')), 'łđøħı', 'ldohi') ILIKE %s")
+            params.append(f"%{search_text(squad)}%")
 
         cursor.execute(
             f"""
@@ -7085,11 +7099,11 @@ def internal_player_audit(
         external_params = []
         external_filters = ["PLAYERID IS NOT NULL", "COALESCE(DATA_SOURCE, 'external') = 'external'"]
         if name:
-            external_filters.append("NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s")
-            external_params.append(f"%{name}%")
+            external_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s")
+            external_params.append(f"%{search_text(name)}%")
         if squad:
-            external_filters.append("NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')) ILIKE %s")
-            external_params.append(f"%{squad}%")
+            external_filters.append("TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(SQUADNAME, '')), 'łđøħı', 'ldohi') ILIKE %s")
+            external_params.append(f"%{search_text(squad)}%")
 
         cursor.execute(
             f"""
@@ -7871,7 +7885,7 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
             return []
 
         # Normalize search term client-side to match UDF behavior
-        normalized_query = normalize_text(query)
+        normalized_query = search_text(query)
         search_pattern = f"%{normalized_query}%"
 
         # Use Snowflake's NORMALIZE_TEXT_UDF() for accent-insensitive matching
@@ -7885,11 +7899,11 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
                 f"""
                 SELECT CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, DATA_SOURCE, BIRTHDATE
                 FROM {read_table('players')}
-                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+                WHERE TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') = %s THEN 1
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME, CAFC_PLAYER_ID, PLAYERID
@@ -7902,11 +7916,11 @@ def search_players(query: str, limit: int = 10, offset: int = 0, current_user: U
                 f"""
                 SELECT NULL as CAFC_PLAYER_ID, PLAYERID, PLAYERNAME, POSITION, SQUADNAME, 'external' as DATA_SOURCE, BIRTHDATE
                 FROM {read_table('players')}
-                WHERE NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s
+                WHERE TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s
                 ORDER BY
                     CASE
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) = %s THEN 1
-                        WHEN NORMALIZE_TEXT_UDF(PLAYERNAME) ILIKE %s THEN 2
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') = %s THEN 1
+                        WHEN TRANSLATE(NORMALIZE_TEXT_UDF(PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s THEN 2
                         ELSE 3
                     END,
                     PLAYERNAME, PLAYERID
@@ -9014,7 +9028,7 @@ def parse_fixture_search_query(query: str) -> dict:
     - team1, team2: for both_teams mode
     - query: for single_team mode
     """
-    normalized = normalize_text(query).strip()
+    normalized = search_text(query).strip()
 
     # Try splitting on common delimiters (order matters - try longer patterns first)
     delimiters = [' vs ', ' v ', ' - ', ' vs', ' v']
@@ -9074,9 +9088,9 @@ def search_matches(
                     'external' as id_type
                 FROM {read_table('matches')}
                 WHERE (
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                     OR
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                 )
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND ID IS NOT NULL
@@ -9093,9 +9107,9 @@ def search_matches(
                     'manual' as id_type
                 FROM {read_table('matches')}
                 WHERE (
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                     OR
-                    (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s AND NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                    (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s AND TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                 )
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND CAFC_MATCH_ID IS NOT NULL
@@ -9121,8 +9135,8 @@ def search_matches(
                     DATA_SOURCE,
                     'external' as id_type
                 FROM {read_table('matches')}
-                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                WHERE (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s
+                       OR TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND ID IS NOT NULL
                   AND DATA_SOURCE = 'external'
@@ -9137,8 +9151,8 @@ def search_matches(
                     DATA_SOURCE,
                     'manual' as id_type
                 FROM {read_table('matches')}
-                WHERE (NORMALIZE_TEXT_UDF(HOMESQUADNAME) ILIKE %s
-                       OR NORMALIZE_TEXT_UDF(AWAYSQUADNAME) ILIKE %s)
+                WHERE (TRANSLATE(NORMALIZE_TEXT_UDF(HOMESQUADNAME), 'łđøħı', 'ldohi') ILIKE %s
+                       OR TRANSLATE(NORMALIZE_TEXT_UDF(AWAYSQUADNAME), 'łđøħı', 'ldohi') ILIKE %s)
                   AND SCHEDULEDDATE < CURRENT_DATE()
                   AND CAFC_MATCH_ID IS NOT NULL
                   AND DATA_SOURCE = 'internal'
@@ -9260,6 +9274,78 @@ def get_matches_by_date(
             conn.close()
 
 
+# Map specific positions to attribute groups for assessment forms
+POSITION_TO_ATTRIBUTE_GROUP = {
+    # Goalkeeper
+    "GK": "GOALKEEPER",
+    # Full Backs (store as RB/LB, use FULL BACK attributes)
+    "RB": "FULL BACK",
+    "LB": "FULL BACK",
+    # Wing Backs (store as RWB/LWB, use WINGBACK attributes)
+    "RWB": "WINGBACK",
+    "LWB": "WINGBACK",
+    # Centre Backs - Wide (store specific positions, use WIDE CB attributes)
+    "RCB(3)": "WIDE CB",  # Right CB in back 3
+    "LCB(3)": "WIDE CB",  # Left CB in back 3
+    "RCB(2)": "CENTRAL CB",  # Right CB in back 2
+    "LCB(2)": "CENTRAL CB",  # Left CB in back 2
+    # Centre Backs - Central (store as CCB(3), use CENTRAL CB attributes)
+    "CCB(3)": "CENTRAL CB",  # Central CB in back 3
+    # Midfielders (store as DM/CM/AM/RAM/LAM, use respective attributes)
+    "DM": "DEFENSIVE MIDFIELDER",
+    "CM": "CENTRAL MIDFIELDER",
+    "AM": "ATTACKING MIDFIELDER",
+    "RAM": "ATTACKING MIDFIELDER",
+    "LAM": "ATTACKING MIDFIELDER",
+    # Wingers (store as RW/LW, use WINGER attributes)
+    "RW": "WINGER",
+    "LW": "WINGER",
+    # Centre Forwards (store as Target Man CF/In Behind CF, use respective attributes)
+    "Target Man CF": "TARGET CF",
+    "In Behind CF": "IN BEHIND CF",
+}
+
+
+# POSITION_ATTRIBUTES.ATTRIBUTE_GROUP values -> the three chart groups the
+# report screens colour and order by.
+_ATTRIBUTE_GROUP_SHORT_NAMES = {
+    "PHYSICAL / PSYCHOLOGICAL": "PHYSICAL / PSYCHOLOGICAL",
+    "ATTACKING // IN POSSESSION": "ATTACKING",
+    "DEFENDING // OUT OF POSSESSION": "DEFENDING",
+}
+
+_attribute_groups_cache = {}
+
+
+def get_attribute_groups_for_position(cursor, position):
+    """Map each attribute of a report position (e.g. "RCB(2)") to its chart
+    group ("PHYSICAL / PSYCHOLOGICAL", "ATTACKING" or "DEFENDING"), read from
+    POSITION_ATTRIBUTES. The same attribute name can sit in different groups
+    for different positions (Aerial Ability is defending for a centre back but
+    attacking for a target CF), so the group must come from the position."""
+    if not position:
+        return {}
+    if position in _attribute_groups_cache:
+        return _attribute_groups_cache[position]
+    attribute_group = POSITION_TO_ATTRIBUTE_GROUP.get(position, position)
+    cursor.execute(
+        f"""
+        SELECT ATTRIBUTE_NAME, ATTRIBUTE_GROUP
+        FROM {core_table('position_attributes')}
+        WHERE POSITION = %s
+        """,
+        (attribute_group,),
+    )
+    groups = {
+        name: _ATTRIBUTE_GROUP_SHORT_NAMES.get(
+            (group or "").upper(), (group or "").upper()
+        )
+        for name, group in cursor.fetchall()
+    }
+    _attribute_groups_cache[position] = groups
+    return groups
+
+
 # Simple in-memory cache for position attributes (they rarely change)
 _attributes_cache = {}
 
@@ -9274,39 +9360,9 @@ def get_attributes_by_position(
 
     conn = None
     try:
-        # Map specific positions to attribute groups for assessment forms
-        position_to_attribute_group = {
-            # Goalkeeper
-            "GK": "GOALKEEPER",
-            # Full Backs (store as RB/LB, use FULL BACK attributes)
-            "RB": "FULL BACK",
-            "LB": "FULL BACK",
-            # Wing Backs (store as RWB/LWB, use WINGBACK attributes)
-            "RWB": "WINGBACK",
-            "LWB": "WINGBACK",
-            # Centre Backs - Wide (store specific positions, use WIDE CB attributes)
-            "RCB(3)": "WIDE CB",  # Right CB in back 3
-            "LCB(3)": "WIDE CB",  # Left CB in back 3
-            "RCB(2)": "CENTRAL CB",  # Right CB in back 2
-            "LCB(2)": "CENTRAL CB",  # Left CB in back 2
-            # Centre Backs - Central (store as CCB(3), use CENTRAL CB attributes)
-            "CCB(3)": "CENTRAL CB",  # Central CB in back 3
-            # Midfielders (store as DM/CM/AM/RAM/LAM, use respective attributes)
-            "DM": "DEFENSIVE MIDFIELDER",
-            "CM": "CENTRAL MIDFIELDER",
-            "AM": "ATTACKING MIDFIELDER",
-            "RAM": "ATTACKING MIDFIELDER",
-            "LAM": "ATTACKING MIDFIELDER",
-            # Wingers (store as RW/LW, use WINGER attributes)
-            "RW": "WINGER",
-            "LW": "WINGER",
-            # Centre Forwards (store as Target Man CF/In Behind CF, use respective attributes)
-            "Target Man CF": "TARGET CF",
-            "In Behind CF": "IN BEHIND CF",
-        }
 
         # Get the attribute group for this position
-        attribute_group = position_to_attribute_group.get(position, position)
+        attribute_group = POSITION_TO_ATTRIBUTE_GROUP.get(position, position)
 
         conn = get_snowflake_connection()
         cursor = conn.cursor()
@@ -9329,6 +9385,26 @@ def get_attributes_by_position(
     except Exception as e:
         logging.exception(e)
         raise HTTPException(status_code=500, detail=f"Error fetching attributes: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/attribute_groups/{position}")
+@offload_read
+def get_attribute_groups_by_position(
+    position: str, current_user: User = Depends(get_current_user)
+):
+    """{attribute name: chart group} for a report position."""
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        return get_attribute_groups_for_position(conn.cursor(), position)
+    except Exception as e:
+        logging.exception(e)
+        raise HTTPException(
+            status_code=500, detail=f"Error fetching attribute groups: {e}"
+        )
     finally:
         if conn:
             conn.close()
@@ -10357,6 +10433,9 @@ def get_single_scout_report(
             "clip_category": report_data[24],
             "birth_date": str(report_data[2]) if report_data[2] else None,
             "individual_attribute_scores": individual_attribute_scores,
+            "attribute_groups": get_attribute_groups_for_position(
+                cursor, report_data[6]
+            ),
             "average_attribute_score": round(average_attribute_score, 2),
         }
 
@@ -10620,6 +10699,9 @@ def get_public_report(token: str):
             "player_position": report_data[24],
             "squad_name": report_data[25],
             "individual_attribute_scores": individual_attribute_scores,
+            "attribute_groups": get_attribute_groups_for_position(
+                cursor, report_data[6]
+            ),
             "average_attribute_score": round(average_attribute_score, 2),
             "is_shared_view": True  # Flag to indicate this is a public/shared view
         }
@@ -11926,6 +12008,75 @@ def _normalise_position_side(position: str, side: Optional[str]) -> Optional[str
     return "CENTRE"
 
 
+# Impect codes every wide defender as a wing-back, even in a flat back four.
+# The pitch map tells them apart by the team's formation at the time: a back
+# four makes them full-backs (LB/RB), a back three/five keeps them wing-backs.
+PITCH_FULL_BACKS = {"LEFT_WINGBACK_DEFENDER": "LEFT_BACK", "RIGHT_WINGBACK_DEFENDER": "RIGHT_BACK"}
+
+
+def _formation_back_line(formation: Optional[str]) -> Optional[int]:
+    """Defenders in an Impect formation ('4-2-3-1' -> 4, '5-4-1 (flat)' -> 5)."""
+    head = (formation or "").split("-", 1)[0].strip()
+    return int(head) if head.isdigit() else None
+
+
+def _formation_timeline(raw_formations):
+    """[(from_sec, back_line)] for one team in one match. UNKNOWN spells keep
+    the last known shape (the first known one before any is seen); [] when the
+    match has no known formation at all."""
+    timeline = sorted(
+        (float(item["gameTimeInSec"]), _formation_back_line(item.get("formation")))
+        for item in _parse_variant(raw_formations)
+        if item.get("gameTimeInSec") is not None
+    )
+    known = [back_line for _, back_line in timeline if back_line]
+    if not known:
+        return []
+    current = known[0]
+    resolved = []
+    for at, back_line in timeline:
+        current = back_line or current
+        resolved.append((at, current))
+    return resolved
+
+
+def _formation_segments(timeline, start: float, end: float):
+    """Split [start, end) at formation changes: [(seg_start, seg_end, back_line)]."""
+    if not timeline:
+        return [(start, end, None)]
+    segments = []
+    for index, (at, back_line) in enumerate(timeline):
+        seg_start = max(start, at if index else float("-inf"))
+        seg_end = min(end, timeline[index + 1][0] if index + 1 < len(timeline) else float("inf"))
+        if seg_end > seg_start:
+            segments.append((seg_start, seg_end, back_line))
+    return segments
+
+
+def _match_back_line(timeline) -> Optional[int]:
+    """Shape the team spent the longest in, for matches estimated from events."""
+    if not timeline:
+        return None
+    durations = {}
+    for index, (at, back_line) in enumerate(timeline):
+        until = timeline[index + 1][0] if index + 1 < len(timeline) else at + 1
+        durations[back_line] = durations.get(back_line, 0.0) + max(until - at, 0.0)
+    return max(durations, key=durations.get)
+
+
+def _display_slot(position: str, side: Optional[str], back_line: Optional[int] = None):
+    """Collapse Impect slots to the 16 profile pitch-map positions: LCM/RCM and
+    LDM/RDM -> CM, LCF/RCF -> CF, wide defenders -> LB/RB in a back four
+    (LWB/RWB otherwise, including when the formation is unknown)."""
+    if position in PITCH_FULL_BACKS:
+        return (PITCH_FULL_BACKS[position] if back_line == 4 else position, None)
+    if position == "CENTRAL_MIDFIELD" or (position == "DEFENSE_MIDFIELD" and side != "CENTRE"):
+        return ("CENTRAL_MIDFIELD", "CENTRE")
+    if position == "CENTER_FORWARD":
+        return ("CENTER_FORWARD", "CENTRE")
+    return (position, side)
+
+
 def _parse_variant(value):
     import json
 
@@ -11939,7 +12090,7 @@ def _parse_variant(value):
     return value
 
 
-def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
+def _replay_lineup_seconds(match_info_row, source_player_id: int, periods, formation_timeline=None):
     """Replay Impect starting positions + substitution timeline for one match.
 
     Every timeline entry for the player moves them to `toPosition` /
@@ -11954,6 +12105,10 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
     slot only), "bench" (came on as a substitute into it), "moved" (switched
     into it from another slot on the pitch) or "unknown" (timeline without a
     starting slot or a bench entry, i.e. incomplete lineup data).
+
+    Slots are the collapsed pitch-map positions (`_display_slot`). A wide
+    defender's time is split by the team's `formation_timeline`; when the
+    shape changes mid-stint, the later slot counts as "moved".
     """
     if not periods:
         return None, None
@@ -11974,20 +12129,34 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
         if current is None or PITCH_ENTRY_PRIORITY.index(kind) < PITCH_ENTRY_PRIORITY.index(current):
             entries[slot] = kind
 
+    # state = (raw Impect slot, how the player entered it this stint)
     state = None
     for starter in starters:
         if starter.get("playerId") == source_player_id and starter.get("position"):
-            state = (starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide")))
-            enter(state, "start")
+            state = ((starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide"))), "start")
             break
     if state is None and not changes:
         return None, None
 
-    def add(slot, start, end):
-        for period_start, period_end in periods:
-            overlap = min(end, period_end) - max(start, period_start)
-            if overlap > 0:
-                seconds[slot] = seconds.get(slot, 0.0) + overlap
+    def add(stint, start, end):
+        (position, side), kind = stint
+        windows = (
+            _formation_segments(formation_timeline or [], start, end)
+            if position in PITCH_FULL_BACKS else [(start, end, None)]
+        )
+        first_slot = None
+        for window_start, window_end, back_line in windows:
+            slot = _display_slot(position, side, back_line)
+            counted = 0.0
+            for period_start, period_end in periods:
+                overlap = min(window_end, period_end) - max(window_start, period_start)
+                if overlap > 0:
+                    counted += overlap
+            if counted <= 0:
+                continue
+            seconds[slot] = seconds.get(slot, 0.0) + counted
+            first_slot = first_slot or slot
+            enter(slot, kind if slot == first_slot else "moved")
 
     segment_start = periods[0][0]
     for change in changes:
@@ -12000,8 +12169,7 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
         else:
             from_bench = change.get("fromPosition") == "BANK" or change.get("substitutionType") == "SUB_ON"
             kind = "bench" if from_bench else ("moved" if state else "unknown")
-            state = (target, _normalise_position_side(target, change.get("positionSide")))
-            enter(state, kind)
+            state = ((target, _normalise_position_side(target, change.get("positionSide"))), kind)
         segment_start = at
     if state:
         add(state, segment_start, periods[-1][1])
@@ -12045,7 +12213,7 @@ def get_player_position_history(
 
         selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
-        cache_key = f"player_position_history_v4_{source_player_id}_{competition}_{season}"
+        cache_key = f"player_position_history_v5_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
@@ -12055,7 +12223,7 @@ def get_player_position_history(
         cursor.execute(
             """
             SELECT e.MATCH_ID, e.PERIOD_ID, e.PLAYER_POSITION, e.PLAYER_POSITION_SIDE,
-                   MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC)
+                   MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC), MAX(e.SQUAD_ID)
             FROM CAFC_DB.IMPECT_RAW.EVENTS e
             JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
             WHERE e.PLAYER_ID = %s
@@ -12065,15 +12233,19 @@ def get_player_position_history(
             """,
             (source_player_id, competition, season),
         )
-        event_spans = {}
-        for match_id, _period, position, side, span in cursor.fetchall():
+        event_spans = {}  # raw Impect slots; collapsed per match once the formation is known
+        squad_by_match = {}
+        for match_id, _period, position, side, span, squad_id in cursor.fetchall():
             slot = (position, _normalise_position_side(position, side))
             match_spans = event_spans.setdefault(int(match_id), {})
             match_spans[slot] = match_spans.get(slot, 0.0) + float(span or 0)
+            if squad_id is not None:
+                squad_by_match[int(match_id)] = int(squad_id)
         match_ids = sorted(event_spans)
 
         periods_by_match = {}
         lineups_by_match = {}
+        formations_by_match = {}
         if match_ids:
             placeholders = ",".join(["%s"] * len(match_ids))
             cursor.execute(
@@ -12091,13 +12263,22 @@ def get_player_position_history(
             cursor.execute(
                 f"""
                 SELECT MATCH_ID, HOME_STARTING_POSITIONS, AWAY_STARTING_POSITIONS,
-                       HOME_SUBSTITUTIONS, AWAY_SUBSTITUTIONS
+                       HOME_SUBSTITUTIONS, AWAY_SUBSTITUTIONS,
+                       HOME_SQUAD_ID, AWAY_SQUAD_ID, HOME_FORMATIONS, AWAY_FORMATIONS
                 FROM CAFC_DB.IMPECT_RAW.MATCH_INFO
                 WHERE MATCH_ID IN ({placeholders})
                 """,
                 match_ids,
             )
-            lineups_by_match = {int(row[0]): row for row in cursor.fetchall()}
+            for row in cursor.fetchall():
+                match_id = int(row[0])
+                lineups_by_match[match_id] = row[:5]
+                home_squad, away_squad, home_formations, away_formations = row[5:]
+                squad = squad_by_match.get(match_id)
+                if squad is not None and home_squad is not None and int(home_squad) == squad:
+                    formations_by_match[match_id] = _formation_timeline(home_formations)
+                elif squad is not None and away_squad is not None and int(away_squad) == squad:
+                    formations_by_match[match_id] = _formation_timeline(away_formations)
 
         totals = {}
         estimated_matches = 0
@@ -12105,12 +12286,18 @@ def get_player_position_history(
             seconds, entries = (None, None)
             if match_id in lineups_by_match:
                 seconds, entries = _replay_lineup_seconds(
-                    lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, [])
+                    lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, []),
+                    formations_by_match.get(match_id),
                 )
             if not seconds:
                 # No usable lineup: minutes come from event spans and how the
-                # player entered each slot is unknown, never inferred.
-                seconds, entries = event_spans[match_id], {}
+                # player entered each slot is unknown, never inferred. Wide
+                # defenders take the team's main shape for the match.
+                back_line = _match_back_line(formations_by_match.get(match_id))
+                seconds, entries = {}, {}
+                for (position, side), span in event_spans[match_id].items():
+                    slot = _display_slot(position, side, back_line)
+                    seconds[slot] = seconds.get(slot, 0.0) + span
                 estimated_matches += 1
             for slot, slot_seconds in seconds.items():
                 if slot_seconds <= 0:
@@ -12880,9 +13067,9 @@ def get_all_players(
 
         if search:
             where_conditions.append(
-                "(NORMALIZE_TEXT_UDF(p.PLAYERNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.FIRSTNAME) ILIKE %s OR NORMALIZE_TEXT_UDF(p.LASTNAME) ILIKE %s)"
+                "(TRANSLATE(NORMALIZE_TEXT_UDF(p.PLAYERNAME), 'łđøħı', 'ldohi') ILIKE %s OR TRANSLATE(NORMALIZE_TEXT_UDF(p.FIRSTNAME), 'łđøħı', 'ldohi') ILIKE %s OR TRANSLATE(NORMALIZE_TEXT_UDF(p.LASTNAME), 'łđøħı', 'ldohi') ILIKE %s)"
             )
-            search_param = f"%{search}%"
+            search_param = f"%{search_text(search)}%"
             params.extend([search_param, search_param, search_param])
 
         if position:
@@ -18007,13 +18194,13 @@ def get_all_lists_with_details(
 
         # Position filter (with accent-insensitive collation)
         if position:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)) ILIKE %s)")
-            filter_params.append(f"%{position}%")
+            filter_conditions.append("(TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(p.POSITION, ip.POSITION)), 'łđøħı', 'ldohi') ILIKE %s)")
+            filter_params.append(f"%{search_text(position)}%")
 
         # Club filter
         if club:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)) ILIKE %s)")
-            filter_params.append(f"%{club}%")
+            filter_conditions.append("(TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(p.SQUADNAME, ip.SQUADNAME)), 'łđøħı', 'ldohi') ILIKE %s)")
+            filter_params.append(f"%{search_text(club)}%")
 
         # Competition filter (supports comma-separated multi-select from UI)
         if competition:
@@ -18045,8 +18232,8 @@ def get_all_lists_with_details(
 
         # Player name filter (with accent-insensitive collation)
         if player_name:
-            filter_conditions.append("(NORMALIZE_TEXT_UDF(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)) ILIKE %s)")
-            filter_params.append(f"%{player_name}%")
+            filter_conditions.append("(TRANSLATE(NORMALIZE_TEXT_UDF(COALESCE(p.PLAYERNAME, ip.PLAYERNAME)), 'łđøħı', 'ldohi') ILIKE %s)")
+            filter_params.append(f"%{search_text(player_name)}%")
 
         where_clause = ""
         if filter_conditions:

@@ -71,6 +71,10 @@ import {
   PlayerFlowHistoryResponse,
   FlowHistoryEvent,
 } from "../types/Player";
+import {
+  getAttributeGroup as getAttributeGroupFor,
+  getAttributeGroupColor as getAttributeGroupColorFor,
+} from "../utils/attributeGroups";
 
 // Loaded only when the Technical data tab is opened, so the Profile tab fetches and parses nothing extra.
 const TechnicalDataSection = lazy(() => import("../components/player/TechnicalDataSection"));
@@ -615,6 +619,29 @@ const PlayerProfilePage: React.FC = () => {
   // Position filter for radar charts - updated for multi-select
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [positionAttributes, setPositionAttributes] = useState<string[]>([]);
+  // { attribute name: chart group } for the positions behind positionAttributes,
+  // from the backend's POSITION_ATTRIBUTES (see utils/attributeGroups.ts).
+  const [positionAttributeGroups, setPositionAttributeGroups] = useState<Record<string, string>>({});
+
+  // Load the chart group of every attribute for the given positions. When two
+  // positions disagree on an attribute's group, the first position wins.
+  const loadPositionAttributeGroups = async (positions: string[]) => {
+    try {
+      const responses = await Promise.all(
+        positions.map((pos) => axiosInstance.get(`/attribute_groups/${pos}`))
+      );
+      const merged: Record<string, string> = {};
+      responses.forEach((res) => {
+        Object.entries(res.data || {}).forEach(([name, group]) => {
+          if (!(name in merged)) merged[name] = group as string;
+        });
+      });
+      setPositionAttributeGroups(merged);
+    } catch (error) {
+      console.error("Error fetching attribute groups:", error);
+      setPositionAttributeGroups({});
+    }
+  };
   const [positionAttributeScores, setPositionAttributeScores] = useState<{
     [key: string]: number;
   }>({});
@@ -953,6 +980,7 @@ const PlayerProfilePage: React.FC = () => {
 
         const mergedAttributes = Array.from(allPositionAttributes);
         setPositionAttributes(mergedAttributes);
+        loadPositionAttributeGroups(positions);
 
         // If reports are selected, re-fetch data from ALL selected reports (no position filter to backend)
         // Position selection only determines which attributes to DISPLAY, not which reports to include
@@ -1062,6 +1090,7 @@ const PlayerProfilePage: React.FC = () => {
               );
             });
             setPositionAttributes(Array.from(allPositionAttributes));
+            loadPositionAttributeGroups(reportPositions);
           } catch (error) {
             console.error("Error fetching position attributes:", error);
           }
@@ -1104,78 +1133,12 @@ const PlayerProfilePage: React.FC = () => {
     setPositionAttributeScores({});
   };
 
-  // Helper functions for attribute grouping (copied from PlayerReportModal)
-  const getAttributeGroup = (attributeName: string) => {
-    const physicalPsychological = [
-      "Athleticism & Pace",
-      "Stamina & Work Rate",
-      "Strength & Physicality",
-      "Size & Physicality",
-      "Proactive",
-      "Movement",
-      "Communication, Leadership & Organisation",
-      "Technical Ability",
-    ];
+  // Attribute grouping for the polar chart, driven by the backend's per-position groups
+  const getAttributeGroup = (attributeName: string) =>
+    getAttributeGroupFor(attributeName, positionAttributeGroups);
 
-    const attacking = [
-      "Distribution",
-      "Attacking Transitions & Impact",
-      "Crossing",
-      "Ball Progression",
-      "Composure",
-      "Starting & Building Attacks",
-      "Receiving & Ball Carrying",
-      "Attacking Movement",
-      "Attacking Creativity",
-      "Finishing",
-      "Ball Carrying",
-      "Ball Carrying & Attacking 1v1",
-      "Final Third Movement",
-      "Chance Creation",
-      "Link Play / Ball Retention",
-      "Hold-Up Play / Ball Retention",
-      "Aerial Ability",
-      "Distribution - Short / Building Attacks",
-      "Distribution – Long / Starting Attacks",
-    ];
-
-    const defending = [
-      "Aerial & Defending The Box",
-      "Defensive Positioning & Anticipation",
-      "Defending In Wide Areas",
-      "Defensive Transitions & Recovery",
-      "Aggressive & Front Footed",
-      "Defensive Positioning",
-      "Anticipation / Sense of Danger",
-      "Defending The Box",
-      "Starting Position",
-      "Command of The Box",
-      "Shot Stopping",
-      "Handling",
-      "Defensive Transitions & Impact",
-    ];
-
-    if (physicalPsychological.some((attr) => attributeName.includes(attr))) {
-      return { group: "PHYSICAL / PSYCHOLOGICAL", order: 1 };
-    } else if (attacking.some((attr) => attributeName.includes(attr))) {
-      return { group: "ATTACKING", order: 2 };
-    } else if (defending.some((attr) => attributeName.includes(attr))) {
-      return { group: "DEFENDING", order: 3 };
-    }
-    return { group: "PHYSICAL / PSYCHOLOGICAL", order: 1 }; // Default
-  };
-
-  const getPositionAttributeGroupColor = (attributeName: string) => {
-    // Group-based color mapping using exact colors from PlayerReportModal
-    const groupColors: { [key: string]: string } = {
-      "PHYSICAL / PSYCHOLOGICAL": "#009FB7", // Light blue   - calm, balanced
-      ATTACKING: "#9370DB", // Purple - energetic, forward-thinking
-      DEFENDING: "#7FC8F8", // Brown - strong, protective
-    };
-
-    const group = getAttributeGroup(attributeName);
-    return groupColors[group.group] || "#009FB7"; // Fallback to default color
-  };
+  const getPositionAttributeGroupColor = (attributeName: string) =>
+    getAttributeGroupColorFor(attributeName, positionAttributeGroups);
 
   // Function to convert score to level description (from PlayerReportModal)
   const getScoreLevel = (score: number) => {

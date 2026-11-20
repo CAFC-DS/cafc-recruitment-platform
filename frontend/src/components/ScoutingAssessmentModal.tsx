@@ -19,6 +19,15 @@ import { Player } from "../types/Player";
 import { useTheme } from "../contexts/ThemeContext";
 import { getReactSelectStyles } from "../utils/reactSelectTheme";
 
+// "FC Luzern · 20 yrs" — helps tell apart players who share a name.
+const playerSearchDetails = (player: Player): string =>
+  [
+    player.squad_name || player.team || "No club",
+    player.age != null ? `${player.age} yrs` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
 interface QueuedReport {
   id: string; // unique ID for queue management
   timestamp: string;
@@ -1558,7 +1567,7 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
                         className="d-flex justify-content-between align-items-center"
                       >
                         <span>{player.player_name}</span>
-                        <small className="text-muted">({player.squad_name})</small>
+                        <small className="text-muted text-end ms-2">{playerSearchDetails(player)}</small>
                       </ListGroup.Item>
                     );
                   })}
@@ -1577,7 +1586,8 @@ const ScoutingAssessmentModal: React.FC<ScoutingAssessmentModalProps> = ({
               )}
               {selectedPlayer && (
                 <div className="mt-2 p-2" style={{ backgroundColor: "var(--color-background)", borderRadius: "4px" }}>
-                  <strong>Selected:</strong> {selectedPlayer.player_name} ({selectedPlayer.squad_name})
+                  <strong>Selected:</strong> {selectedPlayer.player_name}
+                  {playerSearchDetails(selectedPlayer) && ` (${playerSearchDetails(selectedPlayer)})`}
                 </div>
               )}
             </Form.Group>
