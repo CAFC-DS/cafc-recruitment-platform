@@ -38,34 +38,33 @@ interface PositionHistoryResponse {
 }
 
 // SVG pitch is 100 x 140 with the player's team attacking upwards, so the
-// player's left is on the left of the image.
+// player's left is on the left of the image. The backend collapses Impect's
+// slots to these 16 positions (LCM/RCM and LDM/RDM -> CM, LCF/RCF -> CF, wide
+// defenders -> LB/RB in a back four, LWB/RWB in a back three/five).
 const coordinates: Record<string, { x: number; y: number }> = {
   GOALKEEPER: { x: 50, y: 128 },
-  "CENTRAL_DEFENDER:CENTRE_LEFT": { x: 35, y: 111 },
+  "CENTRAL_DEFENDER:CENTRE_LEFT": { x: 33, y: 111 },
   "CENTRAL_DEFENDER:CENTRE": { x: 50, y: 111 },
-  "CENTRAL_DEFENDER:CENTRE_RIGHT": { x: 65, y: 111 },
-  LEFT_WINGBACK_DEFENDER: { x: 15, y: 102 },
-  RIGHT_WINGBACK_DEFENDER: { x: 85, y: 102 },
-  "DEFENSE_MIDFIELD:CENTRE_LEFT": { x: 37, y: 89 },
+  "CENTRAL_DEFENDER:CENTRE_RIGHT": { x: 67, y: 111 },
+  LEFT_BACK: { x: 14, y: 107 },
+  RIGHT_BACK: { x: 86, y: 107 },
+  LEFT_WINGBACK_DEFENDER: { x: 13, y: 75 },
+  RIGHT_WINGBACK_DEFENDER: { x: 87, y: 75 },
   "DEFENSE_MIDFIELD:CENTRE": { x: 50, y: 89 },
-  "DEFENSE_MIDFIELD:CENTRE_RIGHT": { x: 63, y: 89 },
-  "CENTRAL_MIDFIELD:CENTRE_LEFT": { x: 33, y: 69 },
   "CENTRAL_MIDFIELD:CENTRE": { x: 50, y: 69 },
-  "CENTRAL_MIDFIELD:CENTRE_RIGHT": { x: 67, y: 69 },
-  "ATTACKING_MIDFIELD:CENTRE_LEFT": { x: 35, y: 48 },
-  "ATTACKING_MIDFIELD:CENTRE": { x: 50, y: 48 },
-  "ATTACKING_MIDFIELD:CENTRE_RIGHT": { x: 65, y: 48 },
-  LEFT_WINGER: { x: 17, y: 38 },
-  RIGHT_WINGER: { x: 83, y: 38 },
-  "CENTER_FORWARD:CENTRE_LEFT": { x: 39, y: 18 },
+  "ATTACKING_MIDFIELD:CENTRE": { x: 50, y: 47 },
+  "ATTACKING_MIDFIELD:CENTRE_LEFT": { x: 31, y: 33 },
+  "ATTACKING_MIDFIELD:CENTRE_RIGHT": { x: 69, y: 33 },
+  LEFT_WINGER: { x: 14, y: 43 },
+  RIGHT_WINGER: { x: 86, y: 43 },
   "CENTER_FORWARD:CENTRE": { x: 50, y: 17 },
-  "CENTER_FORWARD:CENTRE_RIGHT": { x: 61, y: 18 },
 };
 
 const baseLabels: Record<string, string> = {
-  GOALKEEPER: "GK", CENTRAL_DEFENDER: "CB", LEFT_WINGBACK_DEFENDER: "LWB",
-  RIGHT_WINGBACK_DEFENDER: "RWB", DEFENSE_MIDFIELD: "DM", CENTRAL_MIDFIELD: "CM",
-  ATTACKING_MIDFIELD: "AM", LEFT_WINGER: "LW", RIGHT_WINGER: "RW", CENTER_FORWARD: "CF",
+  GOALKEEPER: "GK", CENTRAL_DEFENDER: "CB", LEFT_BACK: "LB", RIGHT_BACK: "RB",
+  LEFT_WINGBACK_DEFENDER: "LWB", RIGHT_WINGBACK_DEFENDER: "RWB", DEFENSE_MIDFIELD: "DM",
+  CENTRAL_MIDFIELD: "CM", ATTACKING_MIDFIELD: "AM", LEFT_WINGER: "LW", RIGHT_WINGER: "RW",
+  CENTER_FORWARD: "CF",
 };
 
 const slotKey = (item: PositionEntry) => (item.side ? `${item.position}:${item.side}` : item.position);

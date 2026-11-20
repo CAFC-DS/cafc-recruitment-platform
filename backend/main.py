@@ -12008,6 +12008,75 @@ def _normalise_position_side(position: str, side: Optional[str]) -> Optional[str
     return "CENTRE"
 
 
+# Impect codes every wide defender as a wing-back, even in a flat back four.
+# The pitch map tells them apart by the team's formation at the time: a back
+# four makes them full-backs (LB/RB), a back three/five keeps them wing-backs.
+PITCH_FULL_BACKS = {"LEFT_WINGBACK_DEFENDER": "LEFT_BACK", "RIGHT_WINGBACK_DEFENDER": "RIGHT_BACK"}
+
+
+def _formation_back_line(formation: Optional[str]) -> Optional[int]:
+    """Defenders in an Impect formation ('4-2-3-1' -> 4, '5-4-1 (flat)' -> 5)."""
+    head = (formation or "").split("-", 1)[0].strip()
+    return int(head) if head.isdigit() else None
+
+
+def _formation_timeline(raw_formations):
+    """[(from_sec, back_line)] for one team in one match. UNKNOWN spells keep
+    the last known shape (the first known one before any is seen); [] when the
+    match has no known formation at all."""
+    timeline = sorted(
+        (float(item["gameTimeInSec"]), _formation_back_line(item.get("formation")))
+        for item in _parse_variant(raw_formations)
+        if item.get("gameTimeInSec") is not None
+    )
+    known = [back_line for _, back_line in timeline if back_line]
+    if not known:
+        return []
+    current = known[0]
+    resolved = []
+    for at, back_line in timeline:
+        current = back_line or current
+        resolved.append((at, current))
+    return resolved
+
+
+def _formation_segments(timeline, start: float, end: float):
+    """Split [start, end) at formation changes: [(seg_start, seg_end, back_line)]."""
+    if not timeline:
+        return [(start, end, None)]
+    segments = []
+    for index, (at, back_line) in enumerate(timeline):
+        seg_start = max(start, at if index else float("-inf"))
+        seg_end = min(end, timeline[index + 1][0] if index + 1 < len(timeline) else float("inf"))
+        if seg_end > seg_start:
+            segments.append((seg_start, seg_end, back_line))
+    return segments
+
+
+def _match_back_line(timeline) -> Optional[int]:
+    """Shape the team spent the longest in, for matches estimated from events."""
+    if not timeline:
+        return None
+    durations = {}
+    for index, (at, back_line) in enumerate(timeline):
+        until = timeline[index + 1][0] if index + 1 < len(timeline) else at + 1
+        durations[back_line] = durations.get(back_line, 0.0) + max(until - at, 0.0)
+    return max(durations, key=durations.get)
+
+
+def _display_slot(position: str, side: Optional[str], back_line: Optional[int] = None):
+    """Collapse Impect slots to the 16 profile pitch-map positions: LCM/RCM and
+    LDM/RDM -> CM, LCF/RCF -> CF, wide defenders -> LB/RB in a back four
+    (LWB/RWB otherwise, including when the formation is unknown)."""
+    if position in PITCH_FULL_BACKS:
+        return (PITCH_FULL_BACKS[position] if back_line == 4 else position, None)
+    if position == "CENTRAL_MIDFIELD" or (position == "DEFENSE_MIDFIELD" and side != "CENTRE"):
+        return ("CENTRAL_MIDFIELD", "CENTRE")
+    if position == "CENTER_FORWARD":
+        return ("CENTER_FORWARD", "CENTRE")
+    return (position, side)
+
+
 def _parse_variant(value):
     import json
 
@@ -12021,7 +12090,7 @@ def _parse_variant(value):
     return value
 
 
-def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
+def _replay_lineup_seconds(match_info_row, source_player_id: int, periods, formation_timeline=None):
     """Replay Impect starting positions + substitution timeline for one match.
 
     Every timeline entry for the player moves them to `toPosition` /
@@ -12036,6 +12105,10 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
     slot only), "bench" (came on as a substitute into it), "moved" (switched
     into it from another slot on the pitch) or "unknown" (timeline without a
     starting slot or a bench entry, i.e. incomplete lineup data).
+
+    Slots are the collapsed pitch-map positions (`_display_slot`). A wide
+    defender's time is split by the team's `formation_timeline`; when the
+    shape changes mid-stint, the later slot counts as "moved".
     """
     if not periods:
         return None, None
@@ -12056,20 +12129,34 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
         if current is None or PITCH_ENTRY_PRIORITY.index(kind) < PITCH_ENTRY_PRIORITY.index(current):
             entries[slot] = kind
 
+    # state = (raw Impect slot, how the player entered it this stint)
     state = None
     for starter in starters:
         if starter.get("playerId") == source_player_id and starter.get("position"):
-            state = (starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide")))
-            enter(state, "start")
+            state = ((starter["position"], _normalise_position_side(starter["position"], starter.get("positionSide"))), "start")
             break
     if state is None and not changes:
         return None, None
 
-    def add(slot, start, end):
-        for period_start, period_end in periods:
-            overlap = min(end, period_end) - max(start, period_start)
-            if overlap > 0:
-                seconds[slot] = seconds.get(slot, 0.0) + overlap
+    def add(stint, start, end):
+        (position, side), kind = stint
+        windows = (
+            _formation_segments(formation_timeline or [], start, end)
+            if position in PITCH_FULL_BACKS else [(start, end, None)]
+        )
+        first_slot = None
+        for window_start, window_end, back_line in windows:
+            slot = _display_slot(position, side, back_line)
+            counted = 0.0
+            for period_start, period_end in periods:
+                overlap = min(window_end, period_end) - max(window_start, period_start)
+                if overlap > 0:
+                    counted += overlap
+            if counted <= 0:
+                continue
+            seconds[slot] = seconds.get(slot, 0.0) + counted
+            first_slot = first_slot or slot
+            enter(slot, kind if slot == first_slot else "moved")
 
     segment_start = periods[0][0]
     for change in changes:
@@ -12082,8 +12169,7 @@ def _replay_lineup_seconds(match_info_row, source_player_id: int, periods):
         else:
             from_bench = change.get("fromPosition") == "BANK" or change.get("substitutionType") == "SUB_ON"
             kind = "bench" if from_bench else ("moved" if state else "unknown")
-            state = (target, _normalise_position_side(target, change.get("positionSide")))
-            enter(state, kind)
+            state = ((target, _normalise_position_side(target, change.get("positionSide"))), kind)
         segment_start = at
     if state:
         add(state, segment_start, periods[-1][1])
@@ -12127,7 +12213,7 @@ def get_player_position_history(
 
         selected = select_metric_season(available_pairs, competition, season)
         competition, season = selected["competition"], selected["season"]
-        cache_key = f"player_position_history_v4_{source_player_id}_{competition}_{season}"
+        cache_key = f"player_position_history_v5_{source_player_id}_{competition}_{season}"
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
@@ -12137,7 +12223,7 @@ def get_player_position_history(
         cursor.execute(
             """
             SELECT e.MATCH_ID, e.PERIOD_ID, e.PLAYER_POSITION, e.PLAYER_POSITION_SIDE,
-                   MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC)
+                   MAX(e.GAME_TIME_IN_SEC) - MIN(e.GAME_TIME_IN_SEC), MAX(e.SQUAD_ID)
             FROM CAFC_DB.IMPECT_RAW.EVENTS e
             JOIN CAFC_DB.IMPECT_RAW.ITERATIONS i ON i.ID = e.ITERATION_ID
             WHERE e.PLAYER_ID = %s
@@ -12147,15 +12233,19 @@ def get_player_position_history(
             """,
             (source_player_id, competition, season),
         )
-        event_spans = {}
-        for match_id, _period, position, side, span in cursor.fetchall():
+        event_spans = {}  # raw Impect slots; collapsed per match once the formation is known
+        squad_by_match = {}
+        for match_id, _period, position, side, span, squad_id in cursor.fetchall():
             slot = (position, _normalise_position_side(position, side))
             match_spans = event_spans.setdefault(int(match_id), {})
             match_spans[slot] = match_spans.get(slot, 0.0) + float(span or 0)
+            if squad_id is not None:
+                squad_by_match[int(match_id)] = int(squad_id)
         match_ids = sorted(event_spans)
 
         periods_by_match = {}
         lineups_by_match = {}
+        formations_by_match = {}
         if match_ids:
             placeholders = ",".join(["%s"] * len(match_ids))
             cursor.execute(
@@ -12173,13 +12263,22 @@ def get_player_position_history(
             cursor.execute(
                 f"""
                 SELECT MATCH_ID, HOME_STARTING_POSITIONS, AWAY_STARTING_POSITIONS,
-                       HOME_SUBSTITUTIONS, AWAY_SUBSTITUTIONS
+                       HOME_SUBSTITUTIONS, AWAY_SUBSTITUTIONS,
+                       HOME_SQUAD_ID, AWAY_SQUAD_ID, HOME_FORMATIONS, AWAY_FORMATIONS
                 FROM CAFC_DB.IMPECT_RAW.MATCH_INFO
                 WHERE MATCH_ID IN ({placeholders})
                 """,
                 match_ids,
             )
-            lineups_by_match = {int(row[0]): row for row in cursor.fetchall()}
+            for row in cursor.fetchall():
+                match_id = int(row[0])
+                lineups_by_match[match_id] = row[:5]
+                home_squad, away_squad, home_formations, away_formations = row[5:]
+                squad = squad_by_match.get(match_id)
+                if squad is not None and home_squad is not None and int(home_squad) == squad:
+                    formations_by_match[match_id] = _formation_timeline(home_formations)
+                elif squad is not None and away_squad is not None and int(away_squad) == squad:
+                    formations_by_match[match_id] = _formation_timeline(away_formations)
 
         totals = {}
         estimated_matches = 0
@@ -12187,12 +12286,18 @@ def get_player_position_history(
             seconds, entries = (None, None)
             if match_id in lineups_by_match:
                 seconds, entries = _replay_lineup_seconds(
-                    lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, [])
+                    lineups_by_match[match_id], source_player_id, periods_by_match.get(match_id, []),
+                    formations_by_match.get(match_id),
                 )
             if not seconds:
                 # No usable lineup: minutes come from event spans and how the
-                # player entered each slot is unknown, never inferred.
-                seconds, entries = event_spans[match_id], {}
+                # player entered each slot is unknown, never inferred. Wide
+                # defenders take the team's main shape for the match.
+                back_line = _match_back_line(formations_by_match.get(match_id))
+                seconds, entries = {}, {}
+                for (position, side), span in event_spans[match_id].items():
+                    slot = _display_slot(position, side, back_line)
+                    seconds[slot] = seconds.get(slot, 0.0) + span
                 estimated_matches += 1
             for slot, slot_seconds in seconds.items():
                 if slot_seconds <= 0:
