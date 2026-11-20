@@ -12659,7 +12659,9 @@ def get_player_technical_data(player_id: str, current_user: User = Depends(get_c
             raise HTTPException(status_code=404, detail="Player not found")
         if data_source != "external" or player_data[0] is None:
             return {"available": False, "message": "Technical data is only available for external players.", "run": None, "rows": []}
-        return data_scores.technical_for_player(int(player_data[0]))
+        result = data_scores.technical_for_player(int(player_data[0]))
+        _link_similar_players(result, cursor)
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -12668,6 +12670,28 @@ def get_player_technical_data(player_id: str, current_user: User = Depends(get_c
     finally:
         if conn:
             conn.close()
+
+
+def _link_similar_players(result, cursor):
+    """Give each similar player a profile link when the platform has him (external players are keyed by Impect ID),
+    and the platform's name when the scoring page has none."""
+    ids = sorted({p["impect_id"] for row in result.get("rows", []) for p in row.get("similar") or []})
+    if not ids:
+        return
+    known = {}
+    try:
+        placeholders = ", ".join(["%s"] * len(ids))
+        cursor.execute(
+            f"SELECT PLAYERID, PLAYERNAME FROM {read_table('players')} "
+            f"WHERE DATA_SOURCE = 'external' AND PLAYERID IN ({placeholders})", ids)
+        known = {int(pid): name for pid, name in cursor.fetchall()}
+    except Exception as e:  # the list still shows, just without links
+        logging.error("technical data: similar player lookup failed: %s", e)
+    for row in result.get("rows", []):
+        for p in row.get("similar") or []:
+            pid = p["impect_id"]
+            p["profile_id"] = f"external_{pid}" if pid in known else None
+            p["name"] = p.get("name") or known.get(pid)
 
 
 @app.get("/players/{player_id}/data-scores")

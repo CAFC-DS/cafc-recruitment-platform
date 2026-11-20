@@ -287,3 +287,178 @@ def test_technical_data_is_not_offered_for_internal_players():
         result = asyncio.run(main.get_player_technical_data("internal_3", current_user=MagicMock(role=main.ROLE_ADMIN)))
     assert result["available"] is False and "external" in result["message"]
     lookup.assert_not_called()
+
+
+# --- Reference boxes: own league and Championship regulars ----------------------------------------------------------
+
+def regular(pid, league, season, t, minutes, cats, cell):
+    return [pid, f"P{pid}", "Club", league, season, 24, minutes, 100.0, 95, 105, 100, 95, 105, t, 100.0, 1, cats], cell
+
+
+def reference_page(extra=()):
+    """21 League Two and 21 Championship regulars in 23/24 with readings 90..110, plus player 7 and any extras."""
+    rows, cells = [], []
+    for k in range(21):
+        for league, shift in (("League Two", 0.0), ("Championship", 10.0)):
+            v = 90.0 + k + shift
+            row, cell = regular(100 + k * 2 + (league == "Championship"), league, "23/24", 2024.0, 1200, [v, v - 5],
+                                [0.1 * k, v, 1.0 + k, v + 1, 0.3, v - 5])
+            rows.append(row); cells.append(cell)
+    for row, cell in [(NEW_ROW, NEW_CELL), *extra]:
+        rows.append(row); cells.append(cell)
+    return tech_page(rows, cells)
+
+
+def test_reference_boxes_are_own_league_and_championship_quantiles(tmp_path):
+    row = scores_for(tmp_path, reference_page()).technical_for_player(7)["rows"][0]
+    # 21 regulars + player 7 (4,626 minutes, 113.2) in League Two; 21 in the Championship.
+    assert row["reference"] == {"own": {"league": "League Two", "season": "23/24", "n": 22}, "champ": {"season": "23/24", "n": 21}}
+    shot = row["categories"][0]
+    # Championship 100..120: he (113.2) beats 100..113, 14 of 21.
+    assert shot["champ"] == {"q": [102.0, 105.0, 110.0, 115.0, 118.0], "mean": 110.0, "beats": 67}
+    assert shot["own"]["q"][2] == 100.5  # median of 90..110 and 113.2
+    assert shot["own"]["beats"] == 95  # 21 of 22, himself excluded by "<"
+    first = shot["metrics"][0]
+    assert first["champ"]["q"] == [102.0, 105.0, 110.0, 115.0, 118.0] and first["champ"]["mean"] == 110.0
+    assert first["champ_value"] == 1.0
+
+
+def test_championship_players_get_no_own_league_box(tmp_path):
+    champ_row = [7, "A", "Club B", "Championship", "23/24", 27, 2000, 95.0, 90, 100, 96, 90, 102, 2024.0, 104.0, 2, [93.0, 87.9]]
+    page_html = reference_page(extra=[(champ_row, NEW_CELL)])
+    rows = scores_for(tmp_path, page_html).technical_for_player(7)["rows"]
+    champ = next(r for r in rows if r["league"] == "Championship")
+    assert champ["reference"]["own"] is None and champ["categories"][0]["own"] is None
+    assert champ["categories"][0]["champ"] is not None
+
+
+def test_small_groups_get_no_box_and_seasons_fall_back_to_the_latest_full_one(tmp_path):
+    # 26/27: only player 7 is a regular in League Two, so his boxes come from 23/24; Scottish boxes never exist.
+    current = [7, "A", "Club A", "League Two", "26/27", 26, 950, 101.0, 95, 107, 100, 95, 105, 2027.0, 104.0, 2, [101.0, 99.0]]
+    scot = [7, "A", "Club C", "Scottish Championship", "22/23", 24, 2500, 99.0, 95, 103, 100, 95, 105, 2023.0, 104.0, 1, [99.0, 98.0]]
+    rows = scores_for(tmp_path, reference_page(extra=[(current, NEW_CELL), (scot, NEW_CELL)])).technical_for_player(7)["rows"]
+    by_season = {r["season"]: r for r in rows}
+    assert by_season["26/27"]["reference"]["own"]["season"] == "23/24"
+    assert by_season["22/23"]["reference"]["own"] is None and by_season["22/23"]["categories"][0]["own"] is None
+    # The Championship has no group before 23/24 either, so its latest one is used.
+    assert by_season["22/23"]["reference"]["champ"]["season"] == "23/24"
+
+
+def test_reference_boxes_skip_missing_readings_and_short_minutes(tmp_path):
+    short = [regular(300 + k, "League Two", "23/24", 2024.0, 400, [50.0, 50.0], [None] * 6) for k in range(30)]
+    row = scores_for(tmp_path, reference_page(extra=short)).technical_for_player(7)["rows"][0]
+    assert row["reference"]["own"]["n"] == 22  # the 400-minute players are not regulars
+    assert row["categories"][0]["own"]["q"][0] > 50
+
+
+def test_quantiles_need_enough_readings():
+    from services.data_scores import _quantiles
+    assert _quantiles([1.0] * 19) is None
+    assert _quantiles([float("nan")] * 5 + [float(v) for v in range(21)]) == [2.0, 5.0, 10.0, 15.0, 18.0]
+
+
+def test_a_thin_season_in_progress_falls_back_to_the_last_complete_one(tmp_path):
+    cell = [0.0, 130.0, 0.0, 130.0, 0.0, 130.0]
+    season_2425 = [regular(500 + k, "Championship", "24/25", 2025.0, 950, [130.0, 130.0], cell) for k in range(20)]
+    player = ([7, "A", "Club A", "League Two", "24/25", 26, 3000, 101.0, 95, 107, 100, 95, 105, 2025.0, 104.0, 2, [101.0, 99.0]], NEW_CELL)
+
+    def champ_season(extra):
+        rows = scores_for(tmp_path, reference_page(extra=extra + season_2425 + [player])).technical_for_player(7)["rows"]
+        return next(r for r in rows if r["season"] == "24/25")["reference"]["champ"]
+
+    # 20 regulars after 21 the season before: a real season, kept.
+    assert champ_season([]) == {"season": "24/25", "n": 20}
+    # 20 after 66: a season in progress, so the last complete one is used.
+    more_2324 = [regular(700 + k, "Championship", "23/24", 2024.0, 2000, [100.0, 100.0], cell) for k in range(45)]
+    assert champ_season(more_2324) == {"season": "23/24", "n": 66}
+
+
+def test_no_share_is_given_when_the_player_has_no_reading(tmp_path):
+    no_reading = BASE + [[None, 94.6]]
+    row = scores_for(tmp_path, reference_page(extra=[(no_reading, NEW_CELL)])).technical_for_player(7)["rows"]
+    unscored = next(r for r in row if r["categories"][0]["ch"] is None)
+    assert unscored["categories"][0]["own"]["beats"] is None and unscored["categories"][0]["own"]["mean"] is not None
+
+
+# --- Outlook, role fit and similar players --------------------------------------------------------------------------
+
+FULL_COLUMNS = TECH_COLUMNS + ["name", "team", "teamRel", "pCh", "pPl", "pSucc", "avail", "availN", "fit", "best"]
+PROFILES = {"striker": [{"name": "Poacher", "desc": "Lives in the box."}, {"name": "Runner", "desc": "Carries the ball."}]}
+
+
+def full_page(rows):
+    meta = {"columns": FULL_COLUMNS, "profiles": PROFILES,
+            "positions": {"striker": {"label": "Striker", "categories": ["shot_threat", "box_presence"]}}}
+    body = [blob("meta", meta), blob("striker", [[r[i] for r in rows] for i in range(len(FULL_COLUMNS))])]
+    return "<html>" + "".join(body) + "</html>"
+
+
+def striker_row(pid, name, cats, season="23/24", t=2024.0, minutes=2000, extra=None):
+    row = [pid, "x", f"Club {pid}", "League Two", season, 25, minutes, 100.0, 95, 105, 101, 94, 108, t, 99.0, 2, cats,
+           name, 104.0, 6.0, 0.41, 0.12, None, 0.8, 2, [55.0, 70.0], 1]
+    return row if extra is None else row[:-len(extra)] + extra
+
+
+def test_outlook_scores_and_role_fit_come_with_each_row(tmp_path):
+    row = scores_for(tmp_path, full_page([striker_row(7, "Player Seven", [110.0, 95.0])])).technical_for_player(7)["rows"][0]
+    assert row["scores"] == {"ch": 100.0, "ch_lo": 95.0, "ch_hi": 105.0, "team": 104.0, "team_rel": 6.0, "career": 99.0,
+                             "career_seasons": 2, "forecast": 101.0, "forecast_lo": 94.0, "forecast_hi": 108.0}
+    assert row["outlook"] == {"starter_championship": 0.41, "starter_premier_league": 0.12, "step_up_success": None,
+                              "availability": 0.8, "availability_seasons": 2}
+    assert row["role_fit"] == {"best": 1, "profiles": [{"name": "Poacher", "desc": "Lives in the box.", "fit": 55.0},
+                                                        {"name": "Runner", "desc": "Carries the ball.", "fit": 70.0}]}
+
+
+def test_an_older_page_has_no_outlook_or_role_fit(tmp_path):
+    row = scores_for(tmp_path, tech_page([NEW_ROW])).technical_for_player(7)["rows"][0]
+    assert row["scores"]["team"] is None and row["outlook"]["starter_championship"] is None
+    assert row["role_fit"] is None and row["similar"] == []
+
+
+def test_similar_players_are_the_nearest_regulars_by_category_scores(tmp_path):
+    rows = [striker_row(7, "Seven", [110.0, 95.0]),
+            striker_row(8, "Close", [109.0, 96.0]),
+            striker_row(9, "Far", [80.0, 120.0]),
+            striker_row(10, "Closer old", [120.0, 90.0], season="22/23", t=2023.0),
+            striker_row(10, "Closer new", [110.0, 95.0]),  # his latest season is the one compared
+            striker_row(11, "Few minutes", [110.0, 95.0], minutes=400),
+            striker_row(7, "Seven", [100.0, 100.0], season="22/23", t=2023.0)]  # never himself
+    similar = scores_for(tmp_path, full_page(rows)).technical_for_player(7)["rows"][0]["similar"]
+    assert [(p["impect_id"], p["name"], p["distance"]) for p in similar] == [(10, "Closer new", 0.0), (8, "Close", 1.0), (9, "Far", 27.6)]
+    assert similar[1]["categories"] == [109.0, 96.0] and similar[1]["club"] == "Club 8"
+
+
+def test_similar_players_link_to_profiles_the_platform_has():
+    result = {"rows": [{"similar": [{"impect_id": 8, "name": None}, {"impect_id": 9, "name": "Far"}]}]}
+    cursor = MagicMock()
+    cursor.fetchall.return_value = [(8, "Platform Eight")]
+    main._link_similar_players(result, cursor)
+    assert result["rows"][0]["similar"] == [{"impect_id": 8, "name": "Platform Eight", "profile_id": "external_8"},
+                                            {"impect_id": 9, "name": "Far", "profile_id": None}]
+    cursor.execute.side_effect = RuntimeError("down")
+    main._link_similar_players(result, cursor)  # a failed lookup leaves the list without links, not an error
+    assert all(p["profile_id"] is None for p in result["rows"][0]["similar"])
+
+
+def test_similar_over_recent_seasons_weights_each_players_last_three_seasons_by_minutes(tmp_path):
+    rows = [striker_row(7, "Seven", [110.0, 95.0], season="25/26", t=2026.0, minutes=900),
+            striker_row(7, "Seven", [100.0, 100.0], season="24/25", t=2025.0, minutes=2700),
+            striker_row(7, "Seven", [50.0, 50.0], season="21/22", t=2022.0, minutes=3000),  # a fourth season back: left out
+            striker_row(8, "Steady", [102.5, 98.75], season="25/26", t=2026.0, minutes=2000),
+            striker_row(9, "One-season match", [110.0, 95.0], season="25/26", t=2026.0, minutes=2000),
+            striker_row(9, "One-season match", [80.0, 120.0], season="24/25", t=2025.0, minutes=2000)]
+    head = scores_for(tmp_path, full_page(rows)).technical_for_player(7)["rows"][0]
+    # His last three seasons: (110, 95) x 900 + (100, 100) x 2700 -> (102.5, 98.75), over 3,600 minutes.
+    assert head["similar_recent_basis"] == {"seasons": "24/25–25/26", "minutes": 3600, "ch": 100.0, "categories": [102.5, 98.8]}
+    assert [p["name"] for p in head["similar_recent"]] == ["Steady", "One-season match"]
+    assert head["similar_recent"][0]["distance"] == 0.0 and head["similar_recent"][1]["season"] == "24/25–25/26"
+    assert head["similar"][0]["name"] == "One-season match"  # this season alone, the one-season match is the nearest
+
+
+def test_similar_players_leave_out_players_with_no_recent_season(tmp_path):
+    rows = [striker_row(7, "Seven", [110.0, 95.0], season="25/26", t=2026.0),
+            striker_row(8, "Retired twin", [110.0, 95.0], season="22/23", t=2023.0),
+            striker_row(9, "Last season", [100.0, 100.0], season="24/25", t=2025.0)]
+    head = scores_for(tmp_path, full_page(rows)).technical_for_player(7)["rows"][0]
+    assert [p["name"] for p in head["similar"]] == ["Last season"]
+    assert [p["name"] for p in head["similar_recent"]] == ["Last season"]

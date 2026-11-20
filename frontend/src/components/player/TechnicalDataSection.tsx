@@ -1,11 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import axiosInstance from "../../axiosInstance";
-import { useTheme } from "../../contexts/ThemeContext";
+import { DataScoreBox } from "./PlayerDataScore";
+import TechnicalDataExtras, { RoleFit, SimilarPlayer, TechnicalOutlook, TechnicalScores } from "./TechnicalDataExtras";
 import "./TechnicalDataSection.css";
 
-/** Technical data tab: the categories behind a player's Data Score and the metrics behind each category,
- * all on the Championship scale (100 = Championship average at the position, 10 = one standard deviation).
- * Data comes from the data-scoring app's weekly page via GET /players/{id}/technical-data (admin and senior manager). */
+/** Technical data tab: the categories behind a player's Data Score and the metrics behind each category, all on the
+ * Championship scale (100 = Championship average at the position, 10 = one standard deviation), each set against
+ * boxes for his own league's regulars and the Championship's. Data comes from the data-scoring app's weekly page via
+ * GET /players/{id}/technical-data (admin and senior manager). */
+
+/** 10th, 25th, 50th, 75th and 90th percentile of a reading among a league's regulars. */
+export type Box = [number, number, number, number, number];
+/** A league's regulars on one category or metric: their box, their average, and the share of them this player beats
+ * (null when he has no reading). The whole entry is null when the league has too few regulars. */
+export interface Reference { q: Box; mean: number; beats: number | null }
 
 /** One metric behind a category (data-scoring build_metric_breakdown.py). ch is its reading on the category's
  * Championship scale, so the category score is the average of its metrics' ch; value is the real figure. */
@@ -16,6 +24,9 @@ export interface TechnicalMetric {
   lower_better: boolean;
   ch: number | null;
   value: number | null;
+  own?: Reference | null;
+  champ?: Reference | null;
+  champ_value?: number | null;
 }
 
 export interface TechnicalCategory {
@@ -25,6 +36,13 @@ export interface TechnicalCategory {
   band: number | null;
   band_name: string | null;
   metrics: TechnicalMetric[] | null;
+  own?: Reference | null;
+  champ?: Reference | null;
+}
+
+export interface TechnicalReference {
+  own: { league: string; season: string; n: number } | null;
+  champ: { season: string; n: number } | null;
 }
 
 export interface TechnicalRow {
@@ -36,9 +54,15 @@ export interface TechnicalRow {
   min: number | null;
   t: number | null;
   ch: number | null;
+  band?: number | null;
   band_name: string | null;
   categories: TechnicalCategory[];
+  reference?: TechnicalReference;
   has_metrics: boolean;
+  scores?: TechnicalScores;
+  outlook?: TechnicalOutlook;
+  role_fit?: RoleFit | null;
+  similar?: SimilarPlayer[];
 }
 
 export interface TechnicalDataResponse {
@@ -49,172 +73,218 @@ export interface TechnicalDataResponse {
 }
 
 const SMALL_SAMPLE = 900;
-const PALETTE = {
-  light: ["#3d6bb3", "#2f8a7e", "#b7862c", "#b0503b", "#7b5aa6"],
-  dark: ["#7ea3e0", "#5fb8aa", "#d8ae5c", "#df866f", "#a68bd0"],
-};
+const LO = 70, HI = 130; // the strips' fixed axis; the scout app's ruler is 80-125
+// The scout app's CH bands (dashboard/scout/scout.js BANDS), the same cut-offs the backend uses.
+const BANDS: [number, string][] = [[116, "Elite"], [108, "Strong starter"], [103, "Starter"], [98, "Average"], [92, "Squad level"], [-Infinity, "Below Championship level"]];
+export const bandOf = (v: number | null | undefined) => (v == null ? null : 5 - BANDS.findIndex(([cut]) => Math.floor(v + 0.5) >= cut));
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-const round = (v: number | null) => (v == null ? "—" : String(Math.round(v)));
+const round = (v: number | null | undefined) => (v == null ? "—" : String(Math.round(v)));
 const seasonLabel = (s: string) => (/^\d{2}\/\d{2}$/.test(s) ? `20${s}` : s);
 
-/** "Touches in box" -> ["Touches in", "box"]: short lines for the space under a bar. */
-const wrapLabel = (text: string, max = 10) =>
-  text.split(" ").reduce<string[]>((lines, word) => {
-    const last = lines[lines.length - 1];
-    if (last && `${last} ${word}`.length <= max) lines[lines.length - 1] = `${last} ${word}`;
-    else lines.push(word);
-    return lines;
-  }, []);
-
-/** The real value, formatted as the scout app shows it (dashboard/scout/scout.js showMetricValue). */
-export const formatValue = (m: TechnicalMetric) => {
-  const v = m.value;
+/** A real figure, formatted as the scout app shows it (dashboard/scout/scout.js showMetricValue). */
+const formatNumber = (m: Pick<TechnicalMetric, "key" | "percent">, v: number | null | undefined) => {
   if (v == null) return null;
   if (m.percent) return `${Math.round(v * 100)}%`;
   if (m.key === "r_pass_over_expected") return `${v >= 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(1)} pts`;
   return v.toFixed(Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2);
 };
+export const formatValue = (m: TechnicalMetric) => formatNumber(m, m.value);
 
-/** Labels carry their unit ("Shots per 90", "Interceptions per 1,000 opponent touches"). Under a narrow bar the unit
- * is dropped; the tooltip keeps the full label. */
+/** Labels carry their unit ("Shots per 90", "Interceptions per 1,000 opponent touches"); the unit moves to the line
+ * underneath so the name stays short. */
 export const shortLabel = (label: string) =>
   label.replace(/ per 90$/, "").replace(/ per 1,000 [a-z ]+$/, "").replace(/ \(share\)$/, "");
+const unitOf = (label: string) => {
+  const per = label.match(/ (per 90|per 1,000 [a-z ]+)$/);
+  return per ? per[1] : null;
+};
 
-interface Tip { x: number; y: number; metric: TechnicalMetric; league: string }
+/** One sentence for the top of the panel: where he is above and below the Championship, and, for a category below
+ * it, whether he is still ahead of his own league there. */
+export const verdict = (row: TechnicalRow) => {
+  const scored = row.categories.filter((c) => c.ch != null) as (TechnicalCategory & { ch: number })[];
+  if (!scored.length) return null;
+  const by = [...scored].sort((a, b) => b.ch - a.ch);
+  const top = by.filter((c) => c.ch >= 103).slice(0, 2);
+  const low = by.filter((c) => c.ch < 98).reverse().slice(0, 2);
+  const list = (cs: typeof scored) => cs.map((c, i) => (
+    <React.Fragment key={c.key}>{i > 0 && " and "}<b>{c.label.toLowerCase()}</b> ({Math.round(c.ch)})</React.Fragment>
+  ));
+  const ahead = low.filter((c) => c.own && c.ch > c.own.mean);
+  const own = row.reference?.own;
+  return (
+    <>
+      {top.length ? <>Above Championship level in {list(top)}.</> : <>No category clearly above Championship level.</>}
+      {low.length > 0 && <> Below it in {list(low)}{!own || !ahead.length ? "."
+        : ahead.length === low.length ? <>, though still above most {own.league} {row.position.toLowerCase()}s there.</>
+          : <>; still above most {own.league} {row.position.toLowerCase()}s in {list(ahead)}.</>}</>}
+    </>
+  );
+};
 
-const CategoryRadar: React.FC<{ row: TechnicalRow; focus: number | null; onFocus: (i: number) => void }> = ({ row, focus, onFocus }) => {
+/** Pizza chart: one slice per category, its length the Championship score (60 at the hub, 120 at the rim) with the
+ * number printed in it; the dotted arc is 100 and the amber arc his league's average. Slices are read one by one, so
+ * nothing depends on area or axis order as a radar's shape does. */
+const CategoryRadar: React.FC<{ row: TechnicalRow; open: number | null; onOpen: (i: number) => void }> = ({ row, open, onOpen }) => {
   const cats = row.categories;
   const n = cats.length;
-  const cx = 190, cy = 160, R = 100, LO = 70, HI = 130;
-  const ang = (i: number) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
-  const rr = (v: number) => (R * (clamp(v, LO, HI) - LO)) / (HI - LO);
-  const pt = (i: number, v: number) => [cx + rr(v) * Math.cos(ang(i)), cy + rr(v) * Math.sin(ang(i))];
-  const ring = (v: number) => cats.map((_, i) => pt(i, v).map((c) => c.toFixed(1)).join(",")).join(" ");
-  const scored = cats.every((c) => c.ch != null);
-  const shape = cats.map((c, i) => pt(i, c.ch ?? LO).map((v) => v.toFixed(1)).join(",")).join(" ");
+  const cx = 300, cy = 270, R0 = 30, R = 172, LO = 60, HI = 120, GAP = 0.03;
+  const rr = (v: number) => R0 + ((R - R0) * (clamp(v, LO, HI) - LO)) / (HI - LO);
+  const at = (r: number, a: number) => `${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`;
+  const wedge = (r0: number, r1: number, a0: number, a1: number) =>
+    `M${at(r1, a0)} A${r1},${r1} 0 0 1 ${at(r1, a1)} L${at(r0, a1)} A${r0},${r0} 0 0 0 ${at(r0, a0)} Z`;
+  const arc = (r: number, a0: number, a1: number) => `M${at(r, a0)} A${r},${r} 0 0 1 ${at(r, a1)}`;
+  const slice = (2 * Math.PI) / n;
   return (
-    <svg className="td-radar" viewBox="-45 0 470 320" role="img" aria-label={`Category Championship scores: ${cats.map((c) => `${c.label} ${round(c.ch)}`).join(", ")}`}>
-      {[80, 90, 110, 120, 130].map((v) => <polygon key={v} points={ring(v)} className="td-grid" />)}
-      {cats.map((_, i) => {
-        const [x, y] = pt(i, HI);
-        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} className="td-grid" />;
-      })}
-      <polygon points={ring(100)} className="td-average" />
-      {[100, 120].map((v) => <text key={v} x={cx + 5} y={cy - rr(v) - 3} className="td-tick">{v}</text>)}
-      {scored && <polygon points={shape} className="td-shape" />}
+    <svg className="td-radar td-pizza" viewBox="0 30 600 482" role="img"
+      aria-label={`Category Championship scores: ${cats.map((c) => `${c.label} ${round(c.ch)}`).join(", ")}`}>
       {cats.map((c, i) => {
-        if (c.ch == null) return null;
-        const [x, y] = pt(i, c.ch);
-        return <circle key={c.key} cx={x} cy={y} r={3.5} className="td-point" />;
-      })}
-      {cats.map((c, i) => {
-        const a = ang(i);
-        const lx = cx + (R + 14) * Math.cos(a), ly = cy + (R + 14) * Math.sin(a);
-        const anchor = Math.cos(a) > 0.2 ? "start" : Math.cos(a) < -0.2 ? "end" : "middle";
-        const y0 = Math.sin(a) < -0.5 ? ly - 20 : Math.sin(a) > 0.5 ? ly + 12 : ly - 4;
+        const a0 = -Math.PI / 2 - slice / 2 + i * slice + GAP, a1 = a0 + slice - 2 * GAP, mid = (a0 + a1) / 2;
+        const usable = !!c.metrics?.length;
+        const dim = open !== null && open !== i;
+        const vr = c.ch == null ? R0 + 34 : Math.max(R0 + 34, rr(c.ch) - 30);
+        // the heading sits outside the slice, level, split over two lines when long
+        const words = c.label.toUpperCase().split(" ");
+        const lines = words.length > 1 && c.label.length > 9 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : [words.join(" ")];
+        const cos = Math.cos(mid), sin = Math.sin(mid);
+        const lr = R + 16, lx = cx + lr * cos, ly = cy + lr * sin;
+        const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
+        const lineH = 21;
+        const firstY = sin < -0.5 ? ly - (lines.length - 1) * lineH - 6 : sin > 0.5 ? ly + 18 : ly - ((lines.length - 1) * lineH) / 2 + 7;
         return (
-          <g key={c.key} data-focus={i} className={`td-axis${focus !== null && focus !== i ? " is-faded" : ""}`} onClick={() => onFocus(i)}>
-            <text textAnchor={anchor} className="td-axis-label">
-              <tspan x={lx} y={y0}>{c.label}</tspan>
-              <tspan x={lx} dy={15} className="td-axis-score">{round(c.ch)}</tspan>
-            </text>
+          <g key={c.key} data-open={i} className={`td-slice${dim ? " is-dim" : ""}${open === i ? " is-open" : ""}${usable ? " is-usable" : ""}`}
+            onClick={usable ? () => onOpen(i) : undefined}>
+            <path d={wedge(R0, R, a0, a1)} className="td-slice-bg" />
+            {c.ch != null && <path d={wedge(R0, rr(c.ch), a0, a1)} className={`td-slice-fill${c.ch < 100 ? " is-below" : ""}`} />}
+            <path d={arc(rr(100), a0, a1)} className="td-slice-hundred" />
+            {c.own && <path d={arc(rr(c.own.mean), a0, a1)} className="td-r-own" />}
+            <text x={cx + vr * Math.cos(mid)} y={cy + vr * Math.sin(mid) + 7} textAnchor="middle" className="td-slice-value">{round(c.ch)}</text>
+            <g className={`td-r-label${dim ? " is-dim" : ""}${usable ? " is-usable" : ""}`}>
+              <text textAnchor={anchor} className="td-r-name">
+                {lines.map((line, k) => <tspan key={k} x={lx} y={firstY + k * lineH}>{line}</tspan>)}
+              </text>
+            </g>
           </g>
         );
       })}
+      <circle cx={cx} cy={cy} r={R0 - 6} className="td-pizza-hub" />
     </svg>
   );
 };
 
-const MetricBars: React.FC<{ row: TechnicalRow; colours: string[]; focus: number | null; onTip: (tip: Tip | null) => void }> = ({ row, colours, focus, onTip }) => {
-  const H = 436, L = 34, R = 6, T = 60, B = 86, LO = 60, HI = 140;
-  const SLOT = 58; // room per bar so a wrapped label (11px, ~10 characters a line) never meets its neighbour
-  const gapG = 34, gapB = 16, CHAR = 7;
-  const ph = H - T - B;
-  const y = (v: number) => T + ph * (1 - (clamp(v, LO, HI) - LO) / (HI - LO));
-  const groups = row.categories.map((c) => c.metrics ?? []);
-  const n = groups.reduce((a, g) => a + g.length, 0);
-  // A heading wider than its bars wraps to name / score; the group is then made at least as wide as the heading.
-  const heads = row.categories.map((c) => {
-    const oneLine = (c.label.length + 4) * CHAR;
-    return { oneLine, twoLine: Math.max(c.label.length, 3) * CHAR };
-  });
-  const W = Math.max(760, L + R + n * SLOT + gapG * Math.max(0, groups.length - 1));
-  const bw = Math.min(46, SLOT - gapB);
-  const barsWidth = (k: number) => k * bw + Math.max(0, k - 1) * gapB;
-  const layout = groups.map((g, i) => {
-    const bars = barsWidth(g.length);
-    const wrap = heads[i].oneLine > bars;
-    return { wrap, width: Math.max(bars, wrap ? heads[i].twoLine : 0) };
-  });
-  const total = layout.reduce((a, g) => a + g.width, 0) + gapG * Math.max(0, groups.length - 1);
-  let x = L + Math.max(0, (W - L - R - total) / 2);
-  const parts: React.ReactNode[] = [];
-  groups.forEach((metrics, i) => {
-    const x0 = x, { wrap, width } = layout[i];
-    let bx = x0 + (width - barsWidth(metrics.length)) / 2;
-    const cls = focus !== null && focus !== i ? "is-faded" : "";
-    metrics.forEach((m) => {
-      if (m.ch != null) {
-        const up = m.ch >= 100;
-        parts.push(
-          <rect key={`${m.key}-${i}-bar`} className={cls} x={bx} y={y(Math.max(m.ch, 100))} width={bw} height={Math.max(1, Math.abs(y(m.ch) - y(100)))} fill={colours[i]}
-            onMouseMove={(e) => onTip({ x: e.clientX, y: e.clientY, metric: m, league: row.league })} onMouseLeave={() => onTip(null)} />,
-          <text key={`${m.key}-${i}-v`} className={`td-bar-value ${cls}`} x={bx + bw / 2} y={up ? y(m.ch) - 6 : y(m.ch) + 15} textAnchor="middle">{Math.round(m.ch)}</text>,
-        );
-      }
-      parts.push(
-        <text key={`${m.key}-${i}-l`} className={`td-bar-label ${cls}`} textAnchor="middle">
-          {wrapLabel(shortLabel(m.label), 10).map((line, k) => <tspan key={k} x={bx + bw / 2} y={y(LO) + 18 + k * 14}>{line}</tspan>)}
-        </text>,
-      );
-      bx += bw + gapB;
-    });
-    const cat = row.categories[i];
-    parts.push(
-      <g key={`${cat.key}-head`} className={cls}>
-        <line x1={x0} x2={x0 + width} y1={T - 22} y2={T - 22} stroke={colours[i]} strokeWidth={2} />
-        {wrap ? (
-          <text className="td-group-label"><tspan x={x0} y={T - 44}>{cat.label}</tspan><tspan x={x0} y={T - 29} className="td-group-score">{round(cat.ch)}</tspan></text>
-        ) : (
-          <text x={x0} y={T - 30} className="td-group-label">{cat.label} <tspan className="td-group-score">{round(cat.ch)}</tspan></text>
-        )}
-      </g>,
-    );
-    x = x0 + width + gapG;
-  });
+const refTip = (who: string, r: Reference) =>
+  `${who}: average ${Math.round(r.mean)}, median ${Math.round(r.q[2])}, middle half ${Math.round(r.q[1])}–${Math.round(r.q[3])}, ` +
+  `10th–90th percentile ${Math.round(r.q[0])}–${Math.round(r.q[4])}${r.beats == null ? "" : `; he beats ${r.beats}%`}`;
+
+/** His league's box above the Championship's on one axis, each with its average (diamond), and the player's mark across
+ * both. Drawn at a fixed aspect ratio so the diamonds and labels keep their shape. */
+/** The element's width in CSS pixels, so a chart can draw at 1 unit = 1 pixel (fixed text size at any width). */
+const useWidth = (fallback: number): [React.RefObject<SVGSVGElement | null>, number] => {
+  const ref = useRef<SVGSVGElement>(null);
+  const [width, setWidth] = useState(fallback);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => { const w = el.getBoundingClientRect().width; if (w > 0) setWidth(Math.round(w)); };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width];
+};
+
+export const BoxStrip: React.FC<{ value: number | null; own: Reference | null | undefined; champ: Reference | null | undefined; ownLabel: string | null; label: string }> = ({ value, own, champ, ownLabel, label }) => {
+  const [svgRef, W] = useWidth(600);
+  const two = !!own && !!champ;
+  const H = two ? 52 : 32;
+  const X = (v: number) => ((clamp(v, LO, HI) - LO) / (HI - LO)) * W;
+  const lanes: [Reference, number, "own" | "champ"][] = [];
+  if (own) lanes.push([own, two ? 15 : 16, "own"]);
+  if (champ) lanes.push([champ, two ? 37 : 16, "champ"]);
+  const mid = two ? 26 : 16;
+  const tips = [own && ownLabel ? refTip(ownLabel, own) : null, champ ? refTip("Championship", champ) : null].filter(Boolean);
   return (
-    <svg className="td-bars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Metric Championship scores grouped by category">
-      {[60, 80, 120, 140].map((v) => <line key={v} x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="td-grid" />)}
-      {[60, 80, 100, 120, 140].map((v) => <text key={v} x={L - 8} y={y(v) + 4} textAnchor="end" className="td-tick">{v}</text>)}
-      {parts}
-      <line x1={L} x2={W - R} y1={y(100)} y2={y(100)} className="td-baseline" />
+    <svg ref={svgRef} className="td-strip" viewBox={`0 0 ${W} ${H}`} height={H} role="img"
+      aria-label={`${label}: ${round(value)}${tips.length ? `. ${tips.join(". ")}` : ""}`}>
+      <title>{[`${label}: ${round(value)}`, ...tips].join("\n")}</title>
+      {[80, 90, 110, 120].map((t) => <line key={t} x1={X(t)} x2={X(t)} y1={4} y2={H - 4} className="td-s-grid" />)}
+      <line x1={X(100)} x2={X(100)} y1={4} y2={H - 4} className="td-s-average" />
+      {lanes.map(([r, y, kind]) => {
+        const q = r.q, mx = X(r.mean);
+        return (
+          <g key={kind} className={`td-s-${kind}`}>
+            <line x1={X(q[0])} x2={X(q[4])} y1={y} y2={y} className="td-s-whisker" />
+            <rect x={X(q[1])} y={y - 7} width={Math.max(2, X(q[3]) - X(q[1]))} height={14} rx={2} className="td-s-box" />
+            <line x1={X(q[2])} x2={X(q[2])} y1={y - 7} y2={y + 7} className="td-s-median" />
+            <path d={`M${mx} ${y - 5.5} L${mx + 5.5} ${y} L${mx} ${y + 5.5} L${mx - 5.5} ${y} Z`} className="td-s-mean" />
+          </g>
+        );
+      })}
+      {value != null && (
+        <g className="td-s-player">
+          <line x1={X(value)} x2={X(value)} y1={3} y2={H - 3} />
+          <circle cx={X(value)} cy={mid} r={5} />
+        </g>
+      )}
     </svg>
   );
 };
+
+/** "League Two" -> "L2", "Eredivisie" -> "Eredivisie": a short name for the league's average label. */
+export const leagueTag = (league: string | null) => {
+  if (!league) return "League";
+  const m = league.match(/^League (One|Two)$/);
+  if (m) return m[1] === "One" ? "L1" : "L2";
+  return league.length > 14 ? `${league.slice(0, 13)}…` : league;
+};
+
+/** His gap to one group's average, with the average and the share of the group he beats underneath. */
+const VsCell: React.FC<{ value: number | null; r: Reference | null | undefined }> = ({ value, r }) => {
+  if (!r) return <span className="td-vs" />;
+  const gap = value == null ? null : Math.round(value - r.mean);
+  return (
+    <span className="td-vs">
+      <b className={gap != null && gap < 0 ? "is-below" : ""}>{gap == null ? "—" : `${gap > 0 ? "+" : gap < 0 ? "−" : "±"}${Math.abs(gap)}`}</b>
+      <small>avg {Math.round(r.mean)}{r.beats != null && ` · beats ${r.beats}%`}</small>
+    </span>
+  );
+};
+
+const Chevron: React.FC = () => (
+  <svg className="td-chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M4 2.5 7.5 6 4 9.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const Axis: React.FC = () => (
+  <div className="td-axis" aria-hidden="true">
+    {[70, 80, 90, 100, 110, 120, 130].map((t) => (
+      <span key={t} className={t === 100 ? "is-mid" : ""} style={{ left: `${((t - LO) / (HI - LO)) * 100}%` }}>{t}</span>
+    ))}
+  </div>
+);
 
 const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
-  const { theme } = useTheme();
   const [data, setData] = useState<TechnicalDataResponse | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState(0);
-  const [focus, setFocus] = useState<number | null>(null);
-  const [tip, setTip] = useState<Tip | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setData(null);
     setFailed(false);
     axiosInstance.get<TechnicalDataResponse>(`/players/${playerId}/technical-data`)
-      .then(({ data: response }) => { if (!cancelled) { setData(response); setSelected(0); setFocus(null); } })
+      .then(({ data: response }) => { if (!cancelled) { setData(response); setSelected(0); setOpen(null); } })
       .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, [playerId, attempt]);
 
-  const colours = PALETTE[theme.isDark ? "dark" : "light"];
   const row = data?.available ? data.rows[selected] : undefined;
-  const toggleFocus = useCallback((i: number) => setFocus((f) => (f === i ? null : i)), []);
+  const toggle = useCallback((i: number) => setOpen((o) => (o === i ? null : i)), []);
   const options = useMemo(() => {
     const rows = data?.rows ?? [];
     const seasons = rows.map((r) => r.season);
@@ -235,75 +305,115 @@ const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
   if (!data) return <div className="td-shell td-state" role="status">Loading technical data…</div>;
   if (!data.available || !row) return <div className="td-shell td-state"><p>{data.message || "No technical data for this player."}</p></div>;
 
-  const categoryTable = (
-    <table className="td-table">
-      <thead><tr><th>Category</th><th>Score</th><th>Level</th></tr></thead>
-      <tbody>
-        {row.categories.map((c, i) => (
-          <tr key={c.key} data-focus={i} tabIndex={0} className={focus !== null && focus !== i ? "is-dim" : ""}
-            onClick={() => toggleFocus(i)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFocus(i); } }}>
-            <td><span className="td-swatch" style={{ background: colours[i] }} />{c.label}</td>
-            <td>{round(c.ch)}</td>
-            <td>{c.band_name ?? "—"}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  const ref = row.reference ?? { own: null, champ: null };
+  const ownLabel = ref.own?.league ?? null;
+  const said = verdict(row);
 
   return (
-    <div className="td-shell" onClick={(e) => { if (focus !== null && !(e.target as Element).closest("[data-focus], select")) setFocus(null); }}>
-      <div className="td-context">
-        <p>
-          <b>{row.position}</b> · {row.club} ({row.league}) · {row.min == null ? "—" : row.min.toLocaleString()} minutes
-          {row.min != null && row.min < SMALL_SAMPLE && <span className="td-warn"> · small sample, under {SMALL_SAMPLE} minutes</span>}
-        </p>
-        {options.length > 1 && (
-          <label className="td-season">
-            Season
-            <select value={selected} onChange={(e) => { setSelected(Number(e.target.value)); setFocus(null); }}>
-              {options.map((o) => <option key={o.i} value={o.i}>{o.label}</option>)}
-            </select>
-          </label>
-        )}
-      </div>
-
-      <div className="td-body">
-        <section>
-          <h2>Category scores</h2>
-          <p className="td-sub">Championship scale. The dashed ring is 100, the Championship average.</p>
-          <CategoryRadar row={row} focus={focus} onFocus={toggleFocus} />
-          <div className="td-key"><span><i className="td-key-cur" />{seasonLabel(row.season)}</span><span><i className="td-key-avg" />Championship average</span></div>
-          {row.has_metrics && categoryTable}
-        </section>
-
-        <section>
-          {row.has_metrics ? (
-            <>
-              <h2>What makes up each score</h2>
-              <p className="td-sub">Each bar is a metric's Championship score. Bars above the line are better than the Championship average.</p>
-              <div className="td-plot"><MetricBars row={row} colours={colours} focus={focus} onTip={setTip} /></div>
-              <p className="td-foot">Metrics are per 90 unless marked. The figure beside each category name is its Championship score, the average of its metrics' scores. 100 is the Championship average for the position; 10 points is one standard deviation. Hover a bar for the real value.</p>
-            </>
-          ) : (
-            <>
-              <h2>Level by category</h2>
-              <p className="td-sub">Levels use the same bands as the Data Score.</p>
-              {categoryTable}
-              <p className="td-foot td-pending">The metrics behind each category arrive with the next weekly data refresh.</p>
-            </>
-          )}
-        </section>
-      </div>
-
-      {tip && (
-        <div className="td-tip" style={{ left: Math.min(tip.x + 14, window.innerWidth - 250), top: tip.y + 14 }}>
-          <b>{tip.metric.label}</b>
-          Championship score {round(tip.metric.ch)}
-          {formatValue(tip.metric) && <><br />{formatValue(tip.metric)} in {tip.league}</>}
-          {tip.metric.lower_better && <><br />Lower is better, so a low value scores high</>}
+    <div className="td-shell">
+    <div className="td-match">
+      <div className="td-panel">
+        <div className="td-panel-inner">
+          <div className="td-head">
+            <div>
+              <h2>{row.position}</h2>
+              <p>{row.club} · {row.league}</p>
+            </div>
+            {options.length > 1 && (
+              <label className="td-season">
+                <span className="visually-hidden">Season</span>
+                <select aria-label="Season" value={selected} onChange={(e) => { setSelected(Number(e.target.value)); setOpen(null); }}>
+                  {options.map((o) => <option key={o.i} value={o.i}>{o.label}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+          <p className="td-mins">
+            {row.min == null ? "—" : row.min.toLocaleString()} minutes in {seasonLabel(row.season)}
+            {row.min != null && row.min < SMALL_SAMPLE && <span className="td-warn" title={`Under ${SMALL_SAMPLE} minutes, so read these scores with care.`}> · small sample</span>}
+          </p>
+          <dl className="td-scores">
+            <div title={`CH index for ${seasonLabel(row.season)}${row.scores?.ch_lo != null && row.scores?.ch_hi != null ? `, likely ${round(row.scores.ch_lo)}–${round(row.scores.ch_hi)}` : ""}`}>
+              <dt>CH index</dt><dd>{round(row.ch)}</dd><span className="td-band-line">{row.band_name === "Below Championship level" ? "Below CH level" : row.band_name ?? ""}</span>
+            </div>
+            <div title="CH index this season if he played in an average team in his league"><dt>Avg team</dt><dd>{round(row.scores?.team)}</dd></div>
+            <div title={`All his seasons, weighted by how reliable each is and adjusted for age${row.scores?.career_seasons ? ` (${row.scores.career_seasons} seasons)` : ""}`}><dt>Career</dt><dd>{round(row.scores?.career)}</dd></div>
+            <div title={`Expected CH index next season in an average Championship team${row.scores?.forecast_lo != null && row.scores?.forecast_hi != null ? `, likely ${round(row.scores.forecast_lo)}–${round(row.scores.forecast_hi)}` : ""}`}>
+              <dt>Forecast</dt><dd>{round(row.scores?.forecast)}</dd>
+              {row.scores?.forecast_lo != null && row.scores?.forecast_hi != null && <span className="td-band-line">{round(row.scores.forecast_lo)}–{round(row.scores.forecast_hi)}</span>}
+            </div>
+          </dl>
+          {said && <p className="td-verdict">{said}</p>}
+          <CategoryRadar row={row} open={open} onOpen={toggle} />
+          <div className="td-legend">
+            <span><i className="td-l-player" />Slice: his score</span>
+            <span><i className="td-l-average" />100 Championship average</span>
+            {ownLabel && row.categories.every((c) => c.own) && <span><i className="td-l-own" />{leagueTag(ownLabel)} average</span>}
+          </div>
         </div>
-      )}
+      </div>
+
+      <div className="td-list">
+        <div className="td-cols">
+          <span>Category</span>
+          <span className="td-num">Score</span>
+          <Axis />
+          <span className="td-vs-head">{ref.own && <><i className="td-k-own" />vs {leagueTag(ref.own.league)}</>}</span>
+          <span className="td-vs-head">{ref.champ && <><i className="td-k-champ" />vs Championship</>}</span>
+          <span />
+        </div>
+        {row.categories.map((c, i) => {
+          const usable = !!c.metrics?.length;
+          const isOpen = open === i && usable;
+          return (
+            <div key={c.key} className={`td-cat${isOpen ? " is-open" : ""}${open !== null && !isOpen ? " is-dim" : ""}`}>
+              <div className={`td-row${usable ? " is-usable" : ""}`} data-open={i}
+                role={usable ? "button" : undefined} tabIndex={usable ? 0 : undefined} aria-expanded={usable ? isOpen : undefined}
+                onClick={usable ? () => toggle(i) : undefined}
+                onKeyDown={usable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(i); } } : undefined}>
+                <div className="td-name"><b>{c.label}</b><small>{c.band_name ?? "No score"}</small></div>
+                <span className="td-num"><DataScoreBox value={c.ch} band={c.band ?? bandOf(c.ch)} /></span>
+                <BoxStrip value={c.ch} own={c.own} champ={c.champ} ownLabel={ownLabel} label={c.label} />
+                <VsCell value={c.ch} r={c.own} />
+                <VsCell value={c.ch} r={c.champ} />
+                {usable ? <Chevron /> : <span />}
+              </div>
+              {isOpen && (
+                <div className="td-metrics">
+                  {c.metrics!.map((m) => {
+                    const unit = unitOf(m.label);
+                    const champValue = formatNumber(m, m.champ_value);
+                    return (
+                      <div key={m.key} className="td-row td-metric">
+                        <div className="td-name">
+                          {shortLabel(m.label)}
+                          <small>
+                            {formatValue(m) ?? "—"}{champValue && <> · CH median {champValue}</>}
+                            {unit && ` · ${unit}`}{m.lower_better && " · lower is better"}
+                          </small>
+                        </div>
+                        <span className="td-num"><DataScoreBox value={m.ch} band={bandOf(m.ch)} size="sm" /></span>
+                        <BoxStrip value={m.ch} own={m.own} champ={m.champ} ownLabel={ownLabel} label={m.label} />
+                        <VsCell value={m.ch} r={m.own} />
+                        <VsCell value={m.ch} r={m.champ} />
+                        <span />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <p className="td-foot">
+          Box: middle half of the position's regulars (900+ minutes), line: 10th–90th percentile, diamond: average
+          {ref.own && ` · ${ref.own.league} ${seasonLabel(ref.own.season)} (${ref.own.n})`}
+          {ref.champ && ` · Championship ${seasonLabel(ref.champ.season)} (${ref.champ.n})`}. 100 is the Championship average; 10 points is one standard deviation.
+          {!row.has_metrics && " The metrics behind each category arrive with the next weekly data refresh."}
+        </p>
+      </div>
+    </div>
+    <TechnicalDataExtras rows={data.rows} row={row} />
     </div>
   );
 };
