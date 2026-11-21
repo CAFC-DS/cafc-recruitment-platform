@@ -48,6 +48,7 @@ RECENT_SEASONS = 3  # similar players over a career stretch: each player's last 
 # A group with fewer than 20 regulars is not kept; its seasons fall back to the league's latest season that has 20.
 QUANTILES = (0.10, 0.25, 0.50, 0.75, 0.90)
 REGULAR_MINUTES, MIN_REGULARS = 900, 20
+POOL_SEASONS = 3  # a league-season under MIN_REGULARS is combined with the seasons before it, up to three in all
 CHAMPIONSHIP = "Championship"
 
 # The scout app's CH bands (data-scoring dashboard/scout/scout.js BANDS): fixed cut-offs at the Championship's
@@ -131,6 +132,7 @@ class ScoreIndex:
         self.positions = {}  # d-meta positions: label, categories, metrics (None on pages that predate them)
         # (position_key code, league code) -> [(t, season code, n, row numbers of its regulars)], oldest season first.
         self.reference = {}
+        self.in_progress = {}  # (position, league) -> the season set aside as still in progress
         self.player_of = array("q")  # Impect ID per row
         self.fit = array("f")  # MAX_PROFILES per row
         self.profiles = {}  # d-meta profiles: position key -> [{name, desc}]
@@ -190,23 +192,45 @@ class ScoreIndex:
                 pool.append((player, profile))
         if pool:
             self.recent_pool[self.position_key[start]] = pool
-        for (position, league, season), rows in groups.items():
-            if len(rows) >= MIN_REGULARS:
-                self.reference.setdefault((position, league), []).append((max(t[i] for i in rows), season, len(rows), rows))
-        for entries in self.reference.values():
+        for (position, league, season), rows in groups.items():  # every season, however small: small ones get pooled
+            self.reference.setdefault((position, league), []).append((max(t[i] for i in rows), season, len(rows), rows))
+        for key, entries in self.reference.items():
+            if key[0] != self.position_key[start]:
+                continue
             entries.sort(key=lambda e: e[0])
             # A season still in progress has only its early regulars (half the previous season's or fewer), who are
-            # not a fair picture of the league: drop it, so its rows use the last complete season.
+            # not a fair picture of the league: set it aside, so its rows use the seasons before it.
             if len(entries) > 1 and entries[-1][2] * 2 <= entries[-2][2]:
-                entries.pop()
+                self.in_progress[key] = entries.pop()
 
     def _reference_group(self, position, league, season_t):
-        """The league's group for this season, else its latest season before it, else its latest season."""
+        """The league's regulars for this season; when it has under MIN_REGULARS, combined with the seasons before it
+        (up to POOL_SEASONS in all). A season still in progress is skipped for the last complete one. Returns
+        {seasons, n, rows, in_progress} or, when even POOL_SEASONS seasons fall short, {seasons, n, rows: None}."""
         entries = self.reference.get((position, league))
         if not entries:
             return None
-        earlier = [e for e in entries if e[0] <= season_t]  # NaN season_t: nothing matches, latest is used
-        return (earlier or entries)[-1]
+        earlier = [e for e in entries if e[0] <= season_t]  # NaN season_t: nothing matches, the latest are used
+        base = earlier or entries
+        taken, n = [], 0
+        for e in reversed(base):
+            if taken and e[0] <= taken[0][0] - POOL_SEASONS:  # only the three seasons up to the newest one used
+                break
+            taken.append(e)
+            n += e[2]
+            if n >= MIN_REGULARS or len(taken) == POOL_SEASONS:
+                break
+        taken.reverse()
+        skipped = self.in_progress.get((position, league))
+        result = {"seasons": [self.words[e[1]] for e in taken], "n": n,
+                  "in_progress": None if skipped is None or skipped[0] != season_t else self.words[skipped[1]],
+                  "rows": None}
+        if n >= MIN_REGULARS:
+            rows = array("I")
+            for e in taken:
+                rows.extend(e[3])
+            result["rows"] = rows
+        return result
 
     def _categories(self, i):
         return len(self.positions.get(self.words[self.position_key[i]], {}).get("categories") or [])
@@ -317,15 +341,17 @@ class ScoreIndex:
         league = self.words[self.text["league"][i]]
         season_t = self.numbers["t"][i]
         champ_code = self.codes.get(CHAMPIONSHIP)
-        own = None if league == CHAMPIONSHIP else self._reference_group(self.position_key[i], self.text["league"][i], season_t)
-        champ = None if champ_code is None else self._reference_group(self.position_key[i], champ_code, season_t)
+        own_found = None if league == CHAMPIONSHIP else self._reference_group(self.position_key[i], self.text["league"][i], season_t)
+        champ_found = None if champ_code is None else self._reference_group(self.position_key[i], champ_code, season_t)
+        own = own_found if own_found and own_found["rows"] is not None else None
+        champ = champ_found if champ_found and champ_found["rows"] is not None else None
         def stats(group, column, at):
             """The group's box, average and the share of it the player beats for one category or metric column."""
             if group is None:
                 return None
             player = column[i * at[0] + at[1]]  # compared as stored, so he never counts as beating himself
             player = None if math.isnan(player) else player
-            values = [v for v in (column[k * at[0] + at[1]] for k in group[3]) if not math.isnan(v)]
+            values = [v for v in (column[k * at[0] + at[1]] for k in group["rows"]) if not math.isnan(v)]
             q = _quantiles(values)
             if q is None:
                 return None
@@ -344,7 +370,7 @@ class ScoreIndex:
                     r = c * MAX_METRICS + m
                     reading = _num(self.metric_ch[j])
                     at, width = (MAX_CATS * MAX_METRICS, r), MAX_CATS * MAX_METRICS
-                    champ_value = None if champ is None else _median([self.metric_value[k * width + r] for k in champ[3]])
+                    champ_value = None if champ is None else _median([self.metric_value[k * width + r] for k in champ["rows"]])
                     metrics.append(dict(info, ch=reading, value=_num(self.metric_value[j], 3),
                                         own=stats(own, self.metric_ch, at), champ=stats(champ, self.metric_ch, at),
                                         champ_value=None if champ_value is None else round(champ_value, 3)))
@@ -353,10 +379,21 @@ class ScoreIndex:
                                "band": band(ch), "band_name": band_name(band(ch)), "metrics": metrics,
                                "own": stats(own, self.cat_ch, (MAX_CATS, c)) if c < MAX_CATS else None,
                                "champ": stats(champ, self.cat_ch, (MAX_CATS, c)) if c < MAX_CATS else None})
-        reference = {
-            "own": None if own is None else {"league": league, "season": self.words[own[1]], "n": own[2]},
-            "champ": None if champ is None else {"season": self.words[champ[1]], "n": champ[2]},
-        }
+        row_season = self.words[self.text["season"][i]]
+
+        def describe(found, name):
+            """Which seasons a box covers and why, so the tab can say so: pooled when one season had too few
+            regulars, in_progress when this season was set aside, missing when even three seasons fell short."""
+            if found is None:
+                return None
+            seasons = found["seasons"]
+            span = seasons[0] if len(seasons) == 1 else f"{seasons[0]}–{seasons[-1]}"
+            return {"league": name, "season": span, "seasons": seasons, "n": found["n"],
+                    "pooled": len(seasons) > 1, "same_season": seasons == [row_season],
+                    "in_progress": found["in_progress"], "missing": found["rows"] is None}
+
+        reference = {"own": describe(own_found, league), "champ": describe(champ_found, CHAMPIONSHIP),
+                     "min_regulars": MIN_REGULARS, "pool_seasons": POOL_SEASONS}
         return key, categories, reference
 
     def rows(self, player_id):
