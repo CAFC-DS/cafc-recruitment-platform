@@ -276,3 +276,5 @@
 .td-vs-head { flex-direction: column; align-items: flex-start; gap: .15rem; }
 .td-vs-head > span { display: inline-flex; align-items: center; gap: .35rem; }
 .td-vs-head small { font: 500 .62rem/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--color-text-muted); }
+.td-cols, .td-row { grid-template-columns: minmax(120px, .85fr) 3rem minmax(240px, 3fr) 6.6rem 6.6rem 12px; }
+.td-vs-head > span { white-space: nowrap; }

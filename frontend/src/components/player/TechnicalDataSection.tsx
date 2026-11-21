@@ -153,7 +153,7 @@ const CategoryRadar: React.FC<{ row: TechnicalRow; open: number | null; onOpen: 
   const arc = (r: number, a0: number, a1: number) => `M${at(r, a0)} A${r},${r} 0 0 1 ${at(r, a1)}`;
   const slice = (2 * Math.PI) / n;
   return (
-    <svg className="td-radar td-pizza" viewBox="0 30 600 482" role="img"
+    <svg className="td-radar td-pizza" viewBox="-50 30 700 482" role="img"
       aria-label={`Category Championship scores: ${cats.map((c) => `${c.label} ${round(c.ch)}`).join(", ")}`}>
       {cats.map((c, i) => {
         const a0 = -Math.PI / 2 - slice / 2 + i * slice + GAP, a1 = a0 + slice - 2 * GAP, mid = (a0 + a1) / 2;
