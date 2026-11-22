@@ -312,7 +312,11 @@ def reference_page(extra=()):
 def test_reference_boxes_are_own_league_and_championship_quantiles(tmp_path):
     row = scores_for(tmp_path, reference_page()).technical_for_player(7)["rows"][0]
     # 21 regulars + player 7 (4,626 minutes, 113.2) in League Two; 21 in the Championship.
-    assert row["reference"] == {"own": {"league": "League Two", "season": "23/24", "n": 22}, "champ": {"season": "23/24", "n": 21}}
+    own, champ = row["reference"]["own"], row["reference"]["champ"]
+    assert {k: own[k] for k in ("league", "season", "n", "pooled", "same_season", "in_progress", "missing")} == \
+        {"league": "League Two", "season": "23/24", "n": 22, "pooled": False, "same_season": True, "in_progress": None, "missing": False}
+    assert (champ["league"], champ["season"], champ["n"]) == ("Championship", "23/24", 21)
+    assert (row["reference"]["min_regulars"], row["reference"]["pool_seasons"]) == (20, 3)
     shot = row["categories"][0]
     # Championship 100..120: he (113.2) beats 100..113, 14 of 21.
     assert shot["champ"] == {"q": [102.0, 105.0, 110.0, 115.0, 118.0], "mean": 110.0, "beats": 67}
@@ -333,13 +337,17 @@ def test_championship_players_get_no_own_league_box(tmp_path):
 
 
 def test_small_groups_get_no_box_and_seasons_fall_back_to_the_latest_full_one(tmp_path):
-    # 26/27: only player 7 is a regular in League Two, so his boxes come from 23/24; Scottish boxes never exist.
+    # 26/27: only player 7 is a regular in League Two, a season in progress, so his boxes come from 23/24; the
+    # Scottish Championship never has enough regulars, so there is no box and the tab is told why.
     current = [7, "A", "Club A", "League Two", "26/27", 26, 950, 101.0, 95, 107, 100, 95, 105, 2027.0, 104.0, 2, [101.0, 99.0]]
     scot = [7, "A", "Club C", "Scottish Championship", "22/23", 24, 2500, 99.0, 95, 103, 100, 95, 105, 2023.0, 104.0, 1, [99.0, 98.0]]
     rows = scores_for(tmp_path, reference_page(extra=[(current, NEW_CELL), (scot, NEW_CELL)])).technical_for_player(7)["rows"]
     by_season = {r["season"]: r for r in rows}
-    assert by_season["26/27"]["reference"]["own"]["season"] == "23/24"
-    assert by_season["22/23"]["reference"]["own"] is None and by_season["22/23"]["categories"][0]["own"] is None
+    current_own = by_season["26/27"]["reference"]["own"]
+    assert (current_own["season"], current_own["in_progress"], current_own["same_season"]) == ("23/24", "26/27", False)
+    scottish = by_season["22/23"]["reference"]["own"]
+    assert (scottish["league"], scottish["n"], scottish["missing"]) == ("Scottish Championship", 1, True)
+    assert by_season["22/23"]["categories"][0]["own"] is None
     # The Championship has no group before 23/24 either, so its latest one is used.
     assert by_season["22/23"]["reference"]["champ"]["season"] == "23/24"
 
@@ -367,10 +375,10 @@ def test_a_thin_season_in_progress_falls_back_to_the_last_complete_one(tmp_path)
         return next(r for r in rows if r["season"] == "24/25")["reference"]["champ"]
 
     # 20 regulars after 21 the season before: a real season, kept.
-    assert champ_season([]) == {"season": "24/25", "n": 20}
+    assert {k: champ_season([])[k] for k in ("season", "n", "in_progress")} == {"season": "24/25", "n": 20, "in_progress": None}
     # 20 after 66: a season in progress, so the last complete one is used.
     more_2324 = [regular(700 + k, "Championship", "23/24", 2024.0, 2000, [100.0, 100.0], cell) for k in range(45)]
-    assert champ_season(more_2324) == {"season": "23/24", "n": 66}
+    assert {k: champ_season(more_2324)[k] for k in ("season", "n", "in_progress")} == {"season": "23/24", "n": 66, "in_progress": "24/25"}
 
 
 def test_no_share_is_given_when_the_player_has_no_reading(tmp_path):
@@ -462,3 +470,26 @@ def test_similar_players_leave_out_players_with_no_recent_season(tmp_path):
     head = scores_for(tmp_path, full_page(rows)).technical_for_player(7)["rows"][0]
     assert [p["name"] for p in head["similar"]] == ["Last season"]
     assert [p["name"] for p in head["similar_recent"]] == ["Last season"]
+
+
+def test_a_small_league_pools_its_recent_seasons_and_says_so(tmp_path):
+    # League One centre: 12 regulars in 22/23 and 12 in 23/24, so neither season alone reaches 20.
+    league_one = [regular(900 + k, "League One", season, t, 1500, [95.0 + k, 90.0], NEW_CELL)
+                  for season, t in (("22/23", 2023.0), ("23/24", 2024.0)) for k in range(12)]
+    player = ([7, "A", "Club A", "League One", "23/24", 25, 3000, 104.0, 98, 110, 103, 96, 110, 2024.0, 104.0, 1, [113.2, 94.6]], NEW_CELL)
+    rows = scores_for(tmp_path, reference_page(extra=league_one + [player])).technical_for_player(7)["rows"]
+    row = next(r for r in rows if r["league"] == "League One")
+    own = row["reference"]["own"]
+    assert (own["season"], own["seasons"], own["n"], own["pooled"], own["missing"]) == ("22/23–23/24", ["22/23", "23/24"], 25, True, False)
+    assert row["categories"][0]["own"]["q"] is not None
+
+
+def test_a_league_too_small_even_over_three_seasons_has_no_box_but_says_how_many(tmp_path):
+    tiny = [regular(950 + k, "League One", season, t, 1500, [95.0, 90.0], NEW_CELL)
+            for season, t in (("21/22", 2022.0), ("22/23", 2023.0), ("23/24", 2024.0)) for k in range(5)]
+    player = ([7, "A", "Club A", "League One", "23/24", 25, 3000, 104.0, 98, 110, 103, 96, 110, 2024.0, 104.0, 1, [113.2, 94.6]], NEW_CELL)
+    rows = scores_for(tmp_path, reference_page(extra=tiny + [player])).technical_for_player(7)["rows"]
+    row = next(r for r in rows if r["league"] == "League One")
+    own = row["reference"]["own"]
+    assert (own["missing"], own["n"], own["season"]) == (True, 16, "21/22–23/24")
+    assert all(c["own"] is None for c in row["categories"])

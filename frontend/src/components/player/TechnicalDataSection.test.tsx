@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import axiosInstance from "../../axiosInstance";
-import TechnicalDataSection, { formatValue, leagueTag, Reference, shortLabel, TechnicalCategory, TechnicalRow } from "./TechnicalDataSection";
+import TechnicalDataSection, { formatValue, leagueTag, Reference, referenceNotes, shortLabel, TechnicalCategory, TechnicalRow } from "./TechnicalDataSection";
 
 jest.mock("../../axiosInstance", () => ({ __esModule: true, default: { get: jest.fn() } }));
 jest.mock("../../contexts/ThemeContext", () => ({ useTheme: () => ({ theme: { isDark: false } }) }));
@@ -70,7 +70,8 @@ test("draws his own league's box above the Championship's, with the counts behin
   expect(first.querySelectorAll(".td-s-mean")).toHaveLength(2);
   expect(screen.getByText("vs L2")).toBeInTheDocument();
   expect(screen.getByText("vs Championship")).toBeInTheDocument();
-  expect(screen.getByText(/League Two 2023\/24 \(99\) · Championship 2023\/24 \(93\)/)).toBeInTheDocument();
+  expect(screen.getByText(/League Two 2023\/24 \(99 regulars\) · Championship 2023\/24 \(93 regulars\)/)).toBeInTheDocument();
+  expect(screen.queryByRole("note")).toBeNull();  // a plain this-league-this-season comparison needs no note
   expect(container.querySelector(".td-r-own")).not.toBeNull();
 });
 
@@ -186,4 +187,26 @@ test("compares him with each group's average and says how much of it he beats", 
 
 test("shortens league names for the average labels", () => {
   expect(["League Two", "League One", "Eredivisie", "Scottish Championship", null].map(leagueTag)).toEqual(["L2", "L1", "Eredivisie", "Scottish Cham…", "League"]);
+});
+
+test("says when a box combines seasons, skips a season under way, or is missing", async () => {
+  const pooled = striker({
+    position: "Attacking midfielder",
+    reference: {
+      own: { league: "Allsvenskan", season: "2025–2026", seasons: ["2025", "2026"], n: 30, pooled: true, same_season: false, in_progress: null, missing: false },
+      champ: { league: "Championship", season: "25/26", seasons: ["25/26"], n: 41, pooled: false, same_season: false, in_progress: "26/27", missing: false },
+      min_regulars: 20, pool_seasons: 3,
+    },
+  });
+  respond([pooled]);
+  render(<TechnicalDataSection playerId="external_7" />);
+  const note = await screen.findByRole("note");
+  expect(note).toHaveTextContent("Allsvenskan box combines 2025 and 2026: no single season had 20 attacking midfielders with 900+ minutes (30 across them).");
+  expect(note).toHaveTextContent("Championship box uses 2025/26: 2026/27 is still under way and has too few regulars so far.");
+  expect(screen.getByText("2025–2026 · 30")).toBeInTheDocument();
+});
+
+test("explains a missing league box", () => {
+  expect(referenceNotes({ own: { league: "Allsvenskan", season: "2024–2026", seasons: ["2024", "2025", "2026"], n: 16, pooled: true, missing: true }, champ: null }, "Attacking midfielder"))
+    .toEqual(["No Allsvenskan box: only 16 attacking midfielders played 900+ minutes over 2024–2026, and a box needs 20."]);
 });

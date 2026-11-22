@@ -40,9 +40,25 @@ export interface TechnicalCategory {
   champ?: Reference | null;
 }
 
+/** Which regulars a box is drawn from. season is one season or a span ("2025–2026"): a league-season with under
+ * min_regulars is combined with the seasons before it (up to pool_seasons). in_progress names this season when it was
+ * set aside as still under way; missing means even pool_seasons seasons fell short, so there is no box. */
+export interface ReferenceGroup {
+  league?: string;
+  season: string;
+  seasons?: string[];
+  n: number;
+  pooled?: boolean;
+  same_season?: boolean;
+  in_progress?: string | null;
+  missing?: boolean;
+}
+
 export interface TechnicalReference {
-  own: { league: string; season: string; n: number } | null;
-  champ: { season: string; n: number } | null;
+  own: (ReferenceGroup & { league: string }) | null;
+  champ: ReferenceGroup | null;
+  min_regulars?: number;
+  pool_seasons?: number;
 }
 
 export interface TechnicalRow {
@@ -80,7 +96,7 @@ export const bandOf = (v: number | null | undefined) => (v == null ? null : 5 - 
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const round = (v: number | null | undefined) => (v == null ? "—" : String(Math.round(v)));
-const seasonLabel = (s: string) => (/^\d{2}\/\d{2}$/.test(s) ? `20${s}` : s);
+const seasonLabel = (s: string) => s.split("–").map((x) => (/^\d{2}\/\d{2}$/.test(x) ? `20${x}` : x)).join("–");
 
 /** A real figure, formatted as the scout app shows it (dashboard/scout/scout.js showMetricValue). */
 const formatNumber = (m: Pick<TechnicalMetric, "key" | "percent">, v: number | null | undefined) => {
@@ -137,7 +153,7 @@ const CategoryRadar: React.FC<{ row: TechnicalRow; open: number | null; onOpen: 
   const arc = (r: number, a0: number, a1: number) => `M${at(r, a0)} A${r},${r} 0 0 1 ${at(r, a1)}`;
   const slice = (2 * Math.PI) / n;
   return (
-    <svg className="td-radar td-pizza" viewBox="0 30 600 482" role="img"
+    <svg className="td-radar td-pizza" viewBox="-50 30 700 482" role="img"
       aria-label={`Category Championship scores: ${cats.map((c) => `${c.label} ${round(c.ch)}`).join(", ")}`}>
       {cats.map((c, i) => {
         const a0 = -Math.PI / 2 - slice / 2 + i * slice + GAP, a1 = a0 + slice - 2 * GAP, mid = (a0 + a1) / 2;
@@ -266,6 +282,31 @@ const Axis: React.FC = () => (
   </div>
 );
 
+/** Plain-language notes for any box that is not simply "this league, this season": seasons combined because one had
+ * too few regulars, a season set aside as still under way, or no box at all. Nothing when everything is standard. */
+export const referenceNotes = (ref: TechnicalReference, position: string) => {
+  const min = ref.min_regulars ?? 20;
+  const pos = `${position.toLowerCase()}s`;
+  const out: string[] = [];
+  const say = (g: ReferenceGroup | null, name: string) => {
+    if (!g) return;
+    const span = seasonLabel(g.season);
+    if (g.missing) {
+      out.push(`No ${name} box: only ${g.n} ${pos} played 900+ minutes over ${span}, and a box needs ${min}.`);
+    } else if (g.pooled) {
+      const list = (g.seasons ?? []).map(seasonLabel);
+      const joined = list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : span;
+      out.push(`${name} box combines ${joined}: no single season had ${min} ${pos} with 900+ minutes (${g.n} across them).`);
+    }
+    if (g.in_progress) {
+      out.push(`${name} box uses ${span}: ${seasonLabel(g.in_progress)} is still under way and has too few regulars so far.`);
+    }
+  };
+  say(ref.own, ref.own?.league ?? "League");
+  say(ref.champ, "Championship");
+  return out;
+};
+
 const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
   const [data, setData] = useState<TechnicalDataResponse | null>(null);
   const [failed, setFailed] = useState(false);
@@ -306,7 +347,10 @@ const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
   if (!data.available || !row) return <div className="td-shell td-state"><p>{data.message || "No technical data for this player."}</p></div>;
 
   const ref = row.reference ?? { own: null, champ: null };
-  const ownLabel = ref.own?.league ?? null;
+  const ownRef = ref.own && !ref.own.missing ? ref.own : null;
+  const champRef = ref.champ && !ref.champ.missing ? ref.champ : null;
+  const ownLabel = ownRef?.league ?? null;
+  const notes = referenceNotes(ref, row.position);
   const said = verdict(row);
 
   return (
@@ -354,12 +398,18 @@ const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
       </div>
 
       <div className="td-list">
+        {notes.length > 0 && (
+          <div className="td-notes" role="note">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M7 6.2v3.8M7 4.1v.1" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            <ul>{notes.map((n) => <li key={n}>{n}</li>)}</ul>
+          </div>
+        )}
         <div className="td-cols">
           <span>Category</span>
           <span className="td-num">Score</span>
           <Axis />
-          <span className="td-vs-head">{ref.own && <><i className="td-k-own" />vs {leagueTag(ref.own.league)}</>}</span>
-          <span className="td-vs-head">{ref.champ && <><i className="td-k-champ" />vs Championship</>}</span>
+          <span className="td-vs-head">{ownRef && <><span><i className="td-k-own" />vs {leagueTag(ownRef.league)}</span><small>{seasonLabel(ownRef.season)} · {ownRef.n}</small></>}</span>
+          <span className="td-vs-head">{champRef && <><span><i className="td-k-champ" />vs Championship</span><small>{seasonLabel(champRef.season)} · {champRef.n}</small></>}</span>
           <span />
         </div>
         {row.categories.map((c, i) => {
@@ -407,8 +457,8 @@ const TechnicalDataSection: React.FC<{ playerId: string }> = ({ playerId }) => {
         })}
         <p className="td-foot">
           Box: middle half of the position's regulars (900+ minutes), line: 10th–90th percentile, diamond: average
-          {ref.own && ` · ${ref.own.league} ${seasonLabel(ref.own.season)} (${ref.own.n})`}
-          {ref.champ && ` · Championship ${seasonLabel(ref.champ.season)} (${ref.champ.n})`}. 100 is the Championship average; 10 points is one standard deviation.
+          {ownRef && ` · ${ownRef.league} ${seasonLabel(ownRef.season)} (${ownRef.n} regulars)`}
+          {champRef && ` · Championship ${seasonLabel(champRef.season)} (${champRef.n} regulars)`}. 100 is the Championship average; 10 points is one standard deviation.
           {!row.has_metrics && " The metrics behind each category arrive with the next weekly data refresh."}
         </p>
       </div>

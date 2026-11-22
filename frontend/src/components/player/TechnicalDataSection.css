@@ -265,3 +265,16 @@
 .td-pizza .td-r-name.is-on-fill { fill: #5a1217; }
 .td-pizza .td-slice-value { font-size: 26px; }
 .td-pizza { width: 100%; margin: .6rem 0 .2rem; }
+
+/* which seasons the boxes use, when it is not simply this league this season */
+.td-notes { display: flex; gap: .55rem; align-items: flex-start; margin: 0 0 .75rem; padding: .55rem .75rem; border-radius: 6px;
+  background: color-mix(in srgb, #D9692F 9%, var(--color-surface, #fff)); border: 1px solid color-mix(in srgb, #D9692F 30%, transparent);
+  font-size: .78rem; line-height: 1.45; color: var(--color-text); }
+.td-notes svg { flex: none; margin-top: .15rem; color: #b5531f; }
+.theme-dark .td-notes svg { color: #F0A270; }
+.td-notes ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .2rem; }
+.td-vs-head { flex-direction: column; align-items: flex-start; gap: .15rem; }
+.td-vs-head > span { display: inline-flex; align-items: center; gap: .35rem; }
+.td-vs-head small { font: 500 .62rem/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--color-text-muted); }
+.td-cols, .td-row { grid-template-columns: minmax(120px, .85fr) 3rem minmax(240px, 3fr) 6.6rem 6.6rem 12px; }
+.td-vs-head > span { white-space: nowrap; }
