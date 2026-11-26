@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import AgentContactsPage from "./AgentContactsPage";
 import { agentContactsService } from "../services/agentContactsService";
-import { contactLetter } from "../utils/agentContactsGrouping";
+import { contactLetter, dataScoreDisplay } from "../utils/agentContactsGrouping";
 
 jest.mock("../axiosInstance", () => ({ __esModule: true, default: { get: jest.fn() } }));
 jest.mock("../services/agentContactsService", () => ({
@@ -211,7 +211,7 @@ test("agent averages render as chips, and an agent with none shows a dash", asyn
 test("hovering an average explains how many players it covers", async () => {
   await renderPage(SCORED);
   fireEvent.mouseOver(within(screen.getAllByTestId("agent-row")[1]).getByText("6.4"));
-  expect(await screen.findByText("Average of 9 scouted players (of 22 recommended)")).toBeInTheDocument();
+  expect(await screen.findByText("Average of 9 scouted players (of 22 recommendations)")).toBeInTheDocument();
 });
 
 test("sorting by Average data score puts the highest first and unscored agents last", async () => {
@@ -249,4 +249,11 @@ test("the accordion shows each player's Performance and Data score", async () =>
   expect(within(kofi).getByText("114")).toBeInTheDocument();
   const ryan = screen.getByText("Ryan Clarke").closest("tr") as HTMLElement;
   expect(within(ryan).getAllByText("—").length).toBe(2);
+});
+
+
+test("an average data score is rounded before its band is chosen", () => {
+  expect(dataScoreDisplay(115.6)).toEqual({ value: 116, band: 5 });
+  expect(dataScoreDisplay(115.4)).toEqual({ value: 115, band: 4 });
+  expect(dataScoreDisplay(91.5)).toEqual({ value: 92, band: 1 });
 });

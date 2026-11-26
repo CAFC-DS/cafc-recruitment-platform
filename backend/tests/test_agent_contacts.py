@@ -279,3 +279,29 @@ def test_recent_recs_hide_scores_from_intel_reviewer(call):
     item = call("/internal/agent-contacts/7/recommendations", role="intel_reviewer")[0].json()["items"][0]
     assert item["avg_performance_score"] is None
     assert item["data_score"] is None
+
+
+def test_player_key_matches_linked_and_name_matched_recs():
+    linked = main.agent_contact_player_key("external_123", None, 123, "Kofi Mensah", "external")
+    legacy = main.agent_contact_player_key(None, None, 123, "Kofi Mensah", "external")
+    assert linked == legacy
+    linked_internal = main.agent_contact_player_key("internal_45", 45, None, "Finn Walsh", "internal")
+    legacy_internal = main.agent_contact_player_key(None, 45, 9, "Finn Walsh", "internal")
+    assert linked_internal == legacy_internal
+    assert main.agent_contact_player_key("external_5", None, None, "X", None) == main.agent_contact_player_key(None, None, 5, "X", "external")
+
+
+def test_summarise_takes_first_available_score_for_a_duplicated_player():
+    rows = [(7, "ext:501", None, None), (7, "ext:501", 6.0, 501)]
+    result = summarise_scores(rows, _lookup, include_perf=True)[7]
+    assert result["avg_performance_score"] == 6.0
+    assert result["avg_data_score"] == 110.0
+
+
+def test_list_still_loads_when_the_score_query_fails(call):
+    call.cursor.fetchall.side_effect = [[LIST_ROW]]
+    call.cursor.execute.side_effect = [None, RuntimeError("snowflake hiccup")]
+    response, _ = call("/internal/agent-contacts")
+    assert response.status_code == 200
+    assert response.json()[0]["name"] == "Sam Hartley"
+    assert response.json()[0]["avg_performance_score"] is None

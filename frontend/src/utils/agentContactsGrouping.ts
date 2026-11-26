@@ -44,3 +44,13 @@ export const compareContacts = (key: AgentContactSortKey, dir: 1 | -1) => (a: Ag
   if (av === bv) return textOrder(a.name, b.name, 1);
   return (av > bv ? 1 : -1) * dir;
 };
+
+/**
+ * An average data score as shown: rounded to a whole number, then given the band for that number,
+ * the way the backend bands a score (backend/services/data_scores.py BANDS: 116/108/103/98/92).
+ */
+export const dataScoreDisplay = (average: number): { value: number; band: number } => {
+  const value = Math.round(average);
+  const band = value >= 116 ? 5 : value >= 108 ? 4 : value >= 103 ? 3 : value >= 98 ? 2 : value >= 92 ? 1 : 0;
+  return { value, band };
+};

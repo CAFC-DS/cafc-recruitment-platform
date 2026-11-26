@@ -41,7 +41,11 @@ def summarise_scores(rows: Iterable[tuple], data_lookup: Optional[Callable[[Any]
     """
     players: Dict[int, Dict[str, tuple]] = {}
     for submitter, player_key, perf, external_id in rows:
-        players.setdefault(submitter, {}).setdefault(player_key, (perf, external_id))
+        by_player = players.setdefault(submitter, {})
+        known_perf, known_external = by_player.get(player_key, (None, None))
+        # A player recommended more than once keeps the first score and external id any rec has.
+        by_player[player_key] = (known_perf if known_perf is not None else perf,
+                                 known_external if known_external is not None else external_id)
 
     result = {}
     for submitter, by_player in players.items():

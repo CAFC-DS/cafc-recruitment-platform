@@ -9,7 +9,7 @@ import { DataScoreBox } from '../components/player/PlayerDataScore';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { agentContactsService } from '../services/agentContactsService';
 import { AgentContact, AgentContactRecs } from '../types/agentContacts';
-import { AgentContactSortKey, compareContacts, contactLetter, foldText } from '../utils/agentContactsGrouping';
+import { AgentContactSortKey, compareContacts, contactLetter, dataScoreDisplay, foldText } from '../utils/agentContactsGrouping';
 import { calculateAge } from '../utils/age';
 import './ExternalRecommendationsListPage.css';
 import './AgentContactsPage.css';
@@ -22,8 +22,6 @@ const formatDate = (value?: string | null) =>
 
 type RecsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; data: AgentContactRecs };
 
-// The scout app's CH bands (backend/services/data_scores.py BANDS).
-const dataBand = (value: number) => (value >= 116 ? 5 : value >= 108 ? 4 : value >= 103 ? 3 : value >= 98 ? 2 : value >= 92 ? 1 : 0);
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 const ScoreTip: React.FC<{ id: string; tip: string; children: React.ReactElement }> = ({ id, tip, children }) => (
@@ -270,8 +268,8 @@ const AgentContactsPage: React.FC = () => {
                       {showScores ? (
                         <td data-testid="avg-performance">
                           {contact.avg_performance_score != null ? (
-                            <ScoreTip id={`avg-performance-${contact.agent_user_id}`} tip={`Average of ${plural(contact.performance_scored_count ?? 0, 'scouted player')} (of ${contact.rec_count} recommended)`}>
-                              <span tabIndex={0} className="agent-contacts-score"><GradeChip score={contact.avg_performance_score} decimals={1} size="sm" /></span>
+                            <ScoreTip id={`avg-performance-${contact.agent_user_id}`} tip={`Average of ${plural(contact.performance_scored_count ?? 0, 'scouted player')} (of ${plural(contact.rec_count, 'recommendation')})`}>
+                              <span tabIndex={0} ><GradeChip score={contact.avg_performance_score} decimals={1} size="sm" /></span>
                             </ScoreTip>
                           ) : <span className="agent-contacts-dash" title="None of this agent's players have scout reports yet">—</span>}
                         </td>
@@ -279,8 +277,8 @@ const AgentContactsPage: React.FC = () => {
                       {showScores ? (
                         <td data-testid="avg-data">
                           {contact.avg_data_score != null ? (
-                            <ScoreTip id={`avg-data-${contact.agent_user_id}`} tip={`Average of ${plural(contact.data_scored_count ?? 0, 'player')} with a data score (of ${contact.rec_count} recommended)`}>
-                              <span tabIndex={0} className="agent-contacts-score"><DataScoreBox value={Math.round(contact.avg_data_score)} band={dataBand(contact.avg_data_score)} size="sm" /></span>
+                            <ScoreTip id={`avg-data-${contact.agent_user_id}`} tip={`Average of ${plural(contact.data_scored_count ?? 0, 'player')} with a data score (of ${plural(contact.rec_count, 'recommendation')})`}>
+                              <span tabIndex={0} ><DataScoreBox {...dataScoreDisplay(contact.avg_data_score)} size="sm" /></span>
                             </ScoreTip>
                           ) : <span className="agent-contacts-dash" title="None of this agent's players have a data score">—</span>}
                         </td>

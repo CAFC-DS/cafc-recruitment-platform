@@ -3606,14 +3606,25 @@ def require_agent_contacts_viewer(current_user: User = Depends(get_current_user)
 AGENT_CONTACT_DATA_SCORE_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER]
 
 
-def agent_contact_player_key(universal_id, cafc_player_id, player_id, player_name) -> str:
-    """One key per recommended player, so an agent's averages count each player once."""
-    if universal_id:
-        return str(universal_id)
-    if cafc_player_id is not None:
+def agent_contact_player_key(universal_id, cafc_player_id, player_id, player_name, data_source) -> str:
+    """One key per recommended player, so an agent's averages count each player once.
+
+    Linked and name-matched recommendations of the same player resolve to the same id, so key on the
+    resolved id first (as attach_recommendation_list_stages does) and only then on the stored link.
+    """
+    if data_source == "internal" and cafc_player_id is not None:
         return f"cafc:{cafc_player_id}"
     if player_id is not None:
         return f"ext:{player_id}"
+    if cafc_player_id is not None:
+        return f"cafc:{cafc_player_id}"
+    link = str(universal_id or "")
+    if link.startswith("external_"):
+        return "ext:" + link[len("external_"):]
+    if link.startswith("internal_"):
+        return "cafc:" + link[len("internal_"):]
+    if link:
+        return link
     return "name:" + " ".join(str(player_name or "").lower().split())
 
 
@@ -4945,37 +4956,46 @@ def list_agent_contacts(current_user: User = Depends(require_agent_contacts_view
             ))
 
         # Scores per recommendation come from the same query External Recommendations uses.
-        cursor.execute(
-            f"""
-            SELECT rec.SUBMITTED_BY_USER_ID, rec.LINKED_UNIVERSAL_ID, rec.LINKED_CAFC_PLAYER_ID,
-                   rec.LINKED_PLAYER_ID, rec.PLAYER_NAME, rec.AVG_PERFORMANCE_SCORE, rec.LINKED_PLAYER_DATA_SOURCE
-            FROM ({build_recommendation_select()}) rec
-            WHERE rec.SUBMITTED_BY_USER_ID IS NOT NULL
-        """
-        )
-        score_rows = [
-            (
-                row[0],
-                agent_contact_player_key(row[1], row[2], row[3], row[4]),
-                row[5],
-                row[3] if row[6] == "external" else None,
-            )
-            for row in cursor.fetchall()
-        ]
-        summaries = agent_contacts.summarise_scores(
-            score_rows,
-            agent_contact_data_value if current_user.role in AGENT_CONTACT_DATA_SCORE_ROLES else None,
-            include_perf=current_user.role != ROLE_INTEL_REVIEWER,
-        )
-        for contact in contacts:
-            summary = summaries.get(contact.agent_user_id)
-            if summary:
-                for field, value in summary.items():
-                    setattr(contact, field, value)
+        # A failure here leaves the averages empty rather than taking the contact book down.
+        try:
+            attach_agent_contact_scores(cursor, contacts, current_user.role)
+        except Exception:
+            logging.exception("Agent contacts: failed to load agent score averages")
         return contacts
     finally:
         if conn:
             conn.close()
+
+
+def attach_agent_contact_scores(cursor, contacts, role):
+    """Fill each contact's average performance and data score from their recommendations."""
+    cursor.execute(
+        f"""
+        SELECT rec.SUBMITTED_BY_USER_ID, rec.LINKED_UNIVERSAL_ID, rec.LINKED_CAFC_PLAYER_ID,
+               rec.LINKED_PLAYER_ID, rec.PLAYER_NAME, rec.AVG_PERFORMANCE_SCORE, rec.LINKED_PLAYER_DATA_SOURCE
+        FROM ({build_recommendation_select()}) rec
+        WHERE rec.SUBMITTED_BY_USER_ID IS NOT NULL
+    """
+    )
+    score_rows = [
+        (
+            row[0],
+            agent_contact_player_key(row[1], row[2], row[3], row[4], row[6]),
+            row[5],
+            row[3] if row[6] == "external" else None,
+        )
+        for row in cursor.fetchall()
+    ]
+    summaries = agent_contacts.summarise_scores(
+        score_rows,
+        agent_contact_data_value if role in AGENT_CONTACT_DATA_SCORE_ROLES else None,
+        include_perf=role != ROLE_INTEL_REVIEWER,
+    )
+    for contact in contacts:
+        summary = summaries.get(contact.agent_user_id)
+        if summary:
+            for field, value in summary.items():
+                setattr(contact, field, value)
 
 
 @app.get("/internal/agent-contacts/{user_id}/recommendations", response_model=AgentContactRecsResponse)
