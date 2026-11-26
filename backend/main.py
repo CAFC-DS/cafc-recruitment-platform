@@ -1,5 +1,6 @@
 import logging
 import canonical_players
+import agent_contacts
 
 # Configure logging
 logging.basicConfig(
@@ -1467,6 +1468,17 @@ class RecommendationStatusHistoryResponse(BaseModel):
     changed_at: str
     changed_by: Optional[int] = None
     changed_by_name: Optional[str] = None
+
+
+class AgentContactResponse(BaseModel):
+    agent_user_id: int
+    name: str
+    agency: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    rec_count: int
+    last_rec_at: Optional[datetime] = None
+    details_from_latest_rec: bool
 
 
 class RecommendationNoteHistoryResponse(BaseModel):
@@ -3564,6 +3576,13 @@ def require_recs_viewer(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_agent_contacts_viewer(current_user: User = Depends(get_current_user)) -> User:
+    """Agent contact details: the same people who can open External Recommendations."""
+    if current_user.role not in INTEL_VIEW_ROLES:
+        raise HTTPException(status_code=403, detail="Agent contacts access required")
+    return current_user
+
+
 def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != ROLE_AGENT:
         raise HTTPException(status_code=403, detail="Agent access required")
@@ -4838,6 +4857,54 @@ def list_internal_recommendations(
     except Exception as e:
         logging.exception(f"Failed to fetch internal recommendations: {e}")
         raise HTTPException(status_code=500, detail="Failed to load recommendations")
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/agent-contacts", response_model=List[AgentContactResponse])
+@offload_read
+def list_agent_contacts(current_user: User = Depends(require_agent_contacts_viewer)):
+    validate_recommendation_schema_ready()
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            f"""
+            WITH recs AS (
+                SELECT SUBMITTED_BY_USER_ID AS UID, AGENT_NAME, AGENCY, AGENT_EMAIL, AGENT_NUMBER,
+                       ROW_NUMBER() OVER (PARTITION BY SUBMITTED_BY_USER_ID ORDER BY CREATED_AT DESC, ID DESC) AS RN,
+                       COUNT(*) OVER (PARTITION BY SUBMITTED_BY_USER_ID) AS REC_COUNT,
+                       MAX(CREATED_AT) OVER (PARTITION BY SUBMITTED_BY_USER_ID) AS LAST_REC_AT
+                FROM {core_table('player_recommendations')}
+                WHERE SUBMITTED_BY_USER_ID IS NOT NULL
+            )
+            SELECT r.UID, ap.USER_ID, ap.AGENT_NAME, ap.AGENCY, ap.AGENT_EMAIL, ap.AGENT_NUMBER,
+                   r.AGENT_NAME, r.AGENCY, r.AGENT_EMAIL, r.AGENT_NUMBER,
+                   u.FIRSTNAME, u.LASTNAME, u.USERNAME, r.REC_COUNT, r.LAST_REC_AT
+            FROM recs r
+            LEFT JOIN {core_table('agent_profiles')} ap ON ap.USER_ID = r.UID
+            LEFT JOIN {core_table('users')} u ON u.ID = r.UID
+            WHERE r.RN = 1
+        """
+        )
+        contacts = []
+        for row in cursor.fetchall():
+            profile = None
+            if row[1] is not None:
+                profile = {"name": row[2], "agency": row[3], "email": row[4], "phone": row[5]}
+            latest = {"name": row[6], "agency": row[7], "email": row[8], "phone": row[9]}
+            user = {"firstname": row[10], "lastname": row[11], "username": row[12]}
+            merged, from_latest_rec = agent_contacts.merge_contact(profile, latest, user)
+            contacts.append(AgentContactResponse(
+                agent_user_id=row[0],
+                rec_count=row[13] or 0,
+                last_rec_at=row[14],
+                details_from_latest_rec=from_latest_rec,
+                **merged,
+            ))
+        return contacts
     finally:
         if conn:
             conn.close()
