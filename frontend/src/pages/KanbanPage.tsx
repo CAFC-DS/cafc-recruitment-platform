@@ -121,6 +121,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
     archivedReasons: [],
     initialReasons: [],
     recencyMonths: "",
+    addedFrom: "",
+    addedTo: "",
   });
 
   // Debounced filters for API. Seed with the category so the very first fetch is
@@ -316,6 +318,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
       if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
       if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
+      if (filters.addedFrom) apiFilters.addedFrom = filters.addedFrom;
+      if (filters.addedTo) apiFilters.addedTo = filters.addedTo;
 
       if (filters.minScore) apiFilters.minScore = parseFloat(filters.minScore);
       if (filters.maxScore) apiFilters.maxScore = parseFloat(filters.maxScore);
@@ -373,6 +377,8 @@ const KanbanPage: React.FC<KanbanPageProps> = ({
       archivedReasons: [],
       initialReasons: [],
       recencyMonths: "",
+      addedFrom: "",
+      addedTo: "",
     });
     setShowArchived(false);
   }, [setFilters, setShowArchived]);

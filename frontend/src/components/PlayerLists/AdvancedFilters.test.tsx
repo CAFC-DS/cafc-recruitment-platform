@@ -5,7 +5,7 @@ import { AdvancedFilters, PlayerListFilters } from "./AdvancedFilters";
 const emptyFilters: PlayerListFilters = {
   playerName: "", position: "", club: "", competition: [], minScore: "", maxScore: "", minDataScore: "", maxDataScore: "",
   minAge: "", maxAge: "", minReports: "", maxReports: "", stages: [],
-  archivedReasons: [], initialReasons: [], recencyMonths: "",
+  archivedReasons: [], initialReasons: [], recencyMonths: "", addedFrom: "", addedTo: "",
 };
 
 function setup() {
