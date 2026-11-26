@@ -1,6 +1,6 @@
 import { AgentContact } from '../types/agentContacts';
 
-export type AgentContactSortKey = 'name' | 'agency' | 'rec_count' | 'last_rec_at';
+export type AgentContactSortKey = 'name' | 'agency' | 'rec_count' | 'last_rec_at' | 'avg_performance_score' | 'avg_data_score';
 
 // Letters NFD doesn't split into base letter + accent.
 const EXTRA_FOLDS: Record<string, string> = { Ł: 'L', Ø: 'O', Æ: 'A', Đ: 'D', Œ: 'O', Þ: 'T', ß: 'S' };
@@ -33,6 +33,12 @@ export const compareContacts = (key: AgentContactSortKey, dir: 1 | -1) => (a: Ag
     return textOrder(a.name, b.name, dir);
   }
   if (key === 'agency') return textOrder(a.agency, b.agency, dir) || textOrder(a.name, b.name, 1);
+  if (key === 'avg_performance_score' || key === 'avg_data_score') {
+    const an = a[key] ?? null;
+    const bn = b[key] ?? null;
+    if (an === null || bn === null) return an === bn ? textOrder(a.name, b.name, 1) : an === null ? 1 : -1; // unscored last
+    return an === bn ? textOrder(a.name, b.name, 1) : (an > bn ? 1 : -1) * dir;
+  }
   const av = key === 'rec_count' ? a.rec_count : a.last_rec_at || '';
   const bv = key === 'rec_count' ? b.rec_count : b.last_rec_at || '';
   if (av === bv) return textOrder(a.name, b.name, 1);
