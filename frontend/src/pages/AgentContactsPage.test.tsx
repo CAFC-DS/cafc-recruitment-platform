@@ -202,8 +202,9 @@ test("agent averages render as chips, and an agent with none shows a dash", asyn
   await renderPage(SCORED);
   const [ana, daniel, lucia] = screen.getAllByTestId("agent-row");
   expect(within(daniel).getByText("6.4")).toBeInTheDocument();
-  expect(within(daniel).getByText("107")).toBeInTheDocument();
+  expect(within(daniel).getByText("106.8")).toBeInTheDocument();
   expect(within(lucia).getByText("7.3")).toBeInTheDocument();
+  expect(within(lucia).getByText("112.4")).toBeInTheDocument();
   expect(within(ana).getByTestId("avg-performance")).toHaveTextContent("—");
   expect(within(ana).getByTestId("avg-data")).toHaveTextContent("—");
 });
@@ -252,8 +253,9 @@ test("the accordion shows each player's Performance and Data score", async () =>
 });
 
 
-test("an average data score is rounded before its band is chosen", () => {
-  expect(dataScoreDisplay(115.6)).toEqual({ value: 116, band: 5 });
-  expect(dataScoreDisplay(115.4)).toEqual({ value: 115, band: 4 });
-  expect(dataScoreDisplay(91.5)).toEqual({ value: 92, band: 1 });
+test("an average data score keeps one decimal and is banded on that value", () => {
+  expect(dataScoreDisplay(115.6)).toEqual({ value: 115.6, band: 4 });
+  expect(dataScoreDisplay(116)).toEqual({ value: 116, band: 5 });
+  expect(dataScoreDisplay(106.84)).toEqual({ value: 106.8, band: 3 });
+  expect(dataScoreDisplay(91.96)).toEqual({ value: 92, band: 1 });
 });

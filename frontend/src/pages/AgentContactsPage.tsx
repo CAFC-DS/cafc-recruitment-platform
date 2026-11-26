@@ -219,8 +219,8 @@ const AgentContactsPage: React.FC = () => {
           <thead>
             <tr>
               <th style={{ width: showScores ? '18%' : '22%' }}>{sortHeader('name', 'Agent')}</th>
-              {showScores ? <th style={{ width: '9%' }} title="Average of our scouts' performance scores across this agent's players">{sortHeader('avg_performance_score', 'Average performance')}</th> : null}
-              {showScores ? <th style={{ width: '9%' }} title="Average data score across this agent's players">{sortHeader('avg_data_score', 'Average data score')}</th> : null}
+              {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average of our scouts' performance scores across this agent's players">{sortHeader('avg_performance_score', 'Average performance')}</th> : null}
+              {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average data score across this agent's players">{sortHeader('avg_data_score', 'Average data score')}</th> : null}
               <th style={{ width: showScores ? '14%' : '18%' }}>{sortHeader('agency', 'Agency')}</th>
               <th style={{ width: showScores ? '19%' : '24%' }}>Email</th>
               <th style={{ width: showScores ? '13%' : '16%' }}>Phone</th>
@@ -278,7 +278,7 @@ const AgentContactsPage: React.FC = () => {
                         <td data-testid="avg-data">
                           {contact.avg_data_score != null ? (
                             <ScoreTip id={`avg-data-${contact.agent_user_id}`} tip={`Average of ${plural(contact.data_scored_count ?? 0, 'player')} with a data score (of ${plural(contact.rec_count, 'recommendation')})`}>
-                              <span tabIndex={0} ><DataScoreBox {...dataScoreDisplay(contact.avg_data_score)} size="sm" /></span>
+                              <span tabIndex={0} ><DataScoreBox {...dataScoreDisplay(contact.avg_data_score)} decimals={1} size="sm" /></span>
                             </ScoreTip>
                           ) : <span className="agent-contacts-dash" title="None of this agent's players have a data score">—</span>}
                         </td>

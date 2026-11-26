@@ -46,11 +46,12 @@ export const compareContacts = (key: AgentContactSortKey, dir: 1 | -1) => (a: Ag
 };
 
 /**
- * An average data score as shown: rounded to a whole number, then given the band for that number,
- * the way the backend bands a score (backend/services/data_scores.py BANDS: 116/108/103/98/92).
+ * An average data score as shown: one decimal place (it's an average), banded on that value with the
+ * backend's CH cut-offs (backend/services/data_scores.py BANDS: 116/108/103/98/92), so 115.6 is
+ * still below the 116 line.
  */
 export const dataScoreDisplay = (average: number): { value: number; band: number } => {
-  const value = Math.round(average);
+  const value = Math.round(average * 10) / 10;
   const band = value >= 116 ? 5 : value >= 108 ? 4 : value >= 103 ? 3 : value >= 98 ? 2 : value >= 92 ? 1 : 0;
   return { value, band };
 };
