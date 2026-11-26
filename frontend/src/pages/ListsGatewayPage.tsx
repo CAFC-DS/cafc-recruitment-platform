@@ -52,6 +52,19 @@ const ListsGatewayPage: React.FC = () => {
             </Link>
           </div>
         </div>
+
+        <div className="agent-portal-card">
+          <div className="agent-portal-card-body">
+            <div className="agent-portal-label">Agent Contacts</div>
+            <div className="agent-portal-kpi-value" style={{ fontSize: '1.8rem' }}>Agent Contact Book</div>
+            <div className="agent-portal-kpi-copy" style={{ marginBottom: '1.5rem' }}>
+              Every agent who has recommended a player, A to Z, with their agency, email and phone, and the players they've put forward.
+            </div>
+            <Link to="/lists/agents" className="agent-auth-button" style={{ textDecoration: 'none', minWidth: 200 }}>
+              Open Agent Contacts
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { Button, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
-import { ArrowLeft, ChevronDown, ChevronsUpDown, ChevronUp, CircleHelp, History, ListFilter, Mail, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowLeft, BookUser, ChevronDown, ChevronsUpDown, ChevronUp, CircleHelp, History, ListFilter, Mail, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
 import { dealTypeShortLabel } from '../components/recommendations/DealTypeBadges';
 import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
@@ -181,9 +181,20 @@ const ExternalRecommendationsListPage: React.FC = () => {
     return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
   };
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
-  const [filters, setFilters] = usePersistentState<RecommendationFilterState>('external-recs:filters', defaultFilters, {
-    restore: (saved) => ({ ...saved, page: 1 }),
-  });
+  // Agent Contacts links here with ?agent=<user_id>; that agent wins over any saved filter.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [linkedAgent] = useState(() => searchParams.get('agent') || '');
+  const agentOverride = linkedAgent ? { agent_user_id: linkedAgent, queue: 'all' as const, status: '' as const } : {};
+  const [filters, setFilters] = usePersistentState<RecommendationFilterState>(
+    'external-recs:filters',
+    { ...defaultFilters, ...agentOverride },
+    { restore: (saved) => ({ ...saved, ...agentOverride, page: 1 }) },
+  );
+
+  useEffect(() => {
+    if (linkedAgent) setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
@@ -540,7 +551,10 @@ const ExternalRecommendationsListPage: React.FC = () => {
           <h1>External Recommendations</h1>
           <p>Players agents have put forward for review.</p>
         </div>
-        <Link to="/lists" className="rec-queue-back"><ArrowLeft size={15} aria-hidden="true" />Back to Lists</Link>
+        <div className="rec-queue-header-links">
+          <Link to="/lists/agents" className="rec-queue-back"><BookUser size={15} aria-hidden="true" />Agent contacts</Link>
+          <Link to="/lists" className="rec-queue-back"><ArrowLeft size={15} aria-hidden="true" />Back to Lists</Link>
+        </div>
       </header>
 
       {banner ? <div className="alert alert-success alert-dismissible fade show"><i className="bi bi-check-circle me-2"></i>{banner}<button type="button" className="btn-close" onClick={() => setBanner(null)}></button></div> : null}

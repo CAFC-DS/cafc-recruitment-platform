@@ -173,3 +173,32 @@ test("roles without list access get no stage column", async () => {
   await screen.findByText("Jon Smith");
   expect(screen.queryByRole("columnheader", { name: "Stage" })).not.toBeInTheDocument();
 });
+
+describe("arriving from Agent Contacts", () => {
+  const fakeToken = `x.${btoa(JSON.stringify({ user_id: 5 }))}.y`;
+  const savedKey = "persisted:v1:5:external-recs:filters";
+
+  afterEach(() => localStorage.clear());
+
+  test("?agent= sets the agent filter and the All queue, overriding saved filters", async () => {
+    localStorage.setItem("token", fakeToken);
+    localStorage.setItem(savedKey, JSON.stringify({ agent_user_id: "99", queue: "needs_decision" }));
+    render(<MemoryRouter initialEntries={["/lists/external?agent=7"]}><ExternalRecommendationsListPage /></MemoryRouter>);
+    await waitFor(() => expect(service.list).toHaveBeenCalled());
+    expect(service.list).toHaveBeenCalledTimes(1);
+    expect(service.list.mock.calls[0][0]).toEqual(expect.objectContaining({ agent_user_id: "7", status: "" }));
+  });
+
+  test("without ?agent= the saved agent filter is kept", async () => {
+    localStorage.setItem("token", fakeToken);
+    localStorage.setItem(savedKey, JSON.stringify({ agent_user_id: "99", queue: "needs_decision" }));
+    renderPage();
+    await waitFor(() => expect(service.list).toHaveBeenCalled());
+    expect(service.list.mock.calls[0][0]).toEqual(expect.objectContaining({ agent_user_id: "99", status: "Submitted,Under Review" }));
+  });
+
+  test("header links to Agent contacts", async () => {
+    renderPage();
+    expect(await screen.findByRole("link", { name: /Agent contacts/ })).toHaveAttribute("href", "/lists/agents");
+  });
+});
