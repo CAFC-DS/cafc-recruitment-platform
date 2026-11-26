@@ -23,6 +23,9 @@ export interface PlayerListFilters {
   archivedReasons: string[];
   initialReasons: string[];
   recencyMonths: string;
+  // Date added to the list, YYYY-MM-DD (inclusive range).
+  addedFrom?: string;
+  addedTo?: string;
   // Display only: hide the favourite star / summer-transfer dot without removing players.
   showSummerTransfers?: boolean;
   showFavourites?: boolean;
@@ -87,7 +90,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       playerName: "", position: "", club: "", competition: [],
       minScore: "", maxScore: "", minDataScore: "", maxDataScore: "", minAge: "", maxAge: "", minReports: "",
       maxReports: "", stages: [], archivedReasons: [], initialReasons: [],
-      recencyMonths: "",
+      recencyMonths: "", addedFrom: "", addedTo: "",
     });
     onShowArchivedChange(false);
     onIncludeArchivedReportsChange(false);
@@ -116,7 +119,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   const activeCount = [filters.playerName, filters.position, filters.club,
     filters.competition.length, filters.minScore || filters.maxScore, filters.minDataScore || filters.maxDataScore,
     filters.minAge || filters.maxAge, filters.minReports || filters.maxReports,
-    filters.stages.length, filters.recencyMonths, showArchived,
+    filters.stages.length, filters.recencyMonths, filters.addedFrom || filters.addedTo, showArchived,
     filters.showSummerTransfers === false, filters.showFavourites === false,
     includeArchivedReports, includeFlagReports, filters.initialReasons.length, filters.archivedReasons.length].filter(Boolean).length;
   const hasPendingChanges = JSON.stringify(filters) !== JSON.stringify(appliedFilters)
@@ -127,7 +130,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     appliedFilters.competition.length, appliedFilters.minScore || appliedFilters.maxScore,
     appliedFilters.minDataScore || appliedFilters.maxDataScore,
     appliedFilters.minAge || appliedFilters.maxAge, appliedFilters.minReports || appliedFilters.maxReports,
-    appliedFilters.stages.length, appliedFilters.recencyMonths, appliedShowArchived,
+    appliedFilters.stages.length, appliedFilters.recencyMonths, appliedFilters.addedFrom || appliedFilters.addedTo, appliedShowArchived,
     appliedFilters.showSummerTransfers === false, appliedFilters.showFavourites === false,
     appliedIncludeArchivedReports, appliedIncludeFlagReports, appliedFilters.initialReasons.length,
     appliedFilters.archivedReasons.length].filter(Boolean).length;
@@ -144,6 +147,8 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
     if (appliedFilters.minDataScore || appliedFilters.maxDataScore) addChip(`Data score ${appliedFilters.minDataScore || "Any"}–${appliedFilters.maxDataScore || "Any"}`, () => appliedOnFilterChange({ minDataScore: "", maxDataScore: "" }));
     if (appliedFilters.minReports || appliedFilters.maxReports) addChip(`Reports ${appliedFilters.minReports || "Any"}–${appliedFilters.maxReports || "Any"}`, () => appliedOnFilterChange({ minReports: "", maxReports: "" }));
     if (appliedFilters.recencyMonths) addChip(`Last ${appliedFilters.recencyMonths} months`, () => appliedOnFilterChange({ recencyMonths: "" }));
+    const formatAdded = (d?: string) => d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Any";
+    if (appliedFilters.addedFrom || appliedFilters.addedTo) addChip(`Added ${formatAdded(appliedFilters.addedFrom)}–${formatAdded(appliedFilters.addedTo)}`, () => appliedOnFilterChange({ addedFrom: "", addedTo: "" }));
     if (!pitchView && appliedFilters.stages.length) addChip(appliedFilters.stages.join(", "), () => appliedOnFilterChange({ stages: [] }));
     if (appliedFilters.initialReasons.length) addChip(`Initial reasons: ${appliedFilters.initialReasons.join(", ")}`, () => appliedOnFilterChange({ initialReasons: [] }));
     if (!pitchView && appliedFilters.archivedReasons.length) addChip(`Archived reasons: ${appliedFilters.archivedReasons.join(", ")}`, () => appliedOnFilterChange({ archivedReasons: [] }));
@@ -183,6 +188,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               <label className="filter-drawer__field">Last reported<Form.Select aria-label="Last reported" value={filters.recencyMonths} onChange={event => onFilterChange({ recencyMonths: event.target.value })}><option value="">Any time</option>{[1,3,6,12].map(months => <option key={months} value={months}>Last {months} {months === 1 ? "month" : "months"}</option>)}</Form.Select></label>
             </section>
             <section aria-labelledby={`${filterId}-recruitment`}><h3 id={`${filterId}-recruitment`}>Recruitment</h3>
+              <fieldset className="filter-drawer__range"><legend>Date added to list</legend><div>{(["addedFrom", "addedTo"] as const).map((key, index) => <label key={key}>{index ? "To" : "From"}<Form.Control type="date" aria-label={`Date added ${index ? "to" : "from"}`} value={filters[key] ?? ""} min={index ? filters.addedFrom || undefined : undefined} max={index ? undefined : filters.addedTo || undefined} onChange={event => onFilterChange({ [key]: event.target.value })} /></label>)}</div></fieldset>
               {multiSelect("Initial reasons", "initialReasons", initialReasonOptions)}
               {!pitchView && <>{multiSelect("Stages", "stages", STAGE_OPTIONS)}{multiSelect("Archived reasons", "archivedReasons", archivedReasonOptions)}<Form.Check id={`${filterId}-archived`} label="Include archived players" checked={showArchived} onChange={event => onShowArchivedChange(event.target.checked)} /></>}
               <Form.Check id={`${filterId}-archived-reports`} label="Include archived reports in counts" checked={includeArchivedReports} onChange={event => onIncludeArchivedReportsChange(event.target.checked)} />

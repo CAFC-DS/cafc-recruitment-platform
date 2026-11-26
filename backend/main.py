@@ -17881,6 +17881,8 @@ def get_all_lists_with_details(
     archived_reasons: Optional[str] = None,  # Comma-separated reasons for latest archive event
     initial_reasons: Optional[str] = None,  # Comma-separated reasons for original add-to-list event
     recency_months: Optional[int] = None,
+    added_from: Optional[date] = None,  # Date added to the list, inclusive: "YYYY-MM-DD"
+    added_to: Optional[date] = None,
     include_archived: bool = False,  # Include archived reports in counts
     include_flags: bool = False,  # Include flag reports in counts (default: exclude)
     category: str = "first_team",  # Which shortlist: first_team / emerging_talent_u21 / emerging_talent_u18
@@ -18417,6 +18419,16 @@ def get_all_lists_with_details(
                 if last_report.tzinfo is not None:
                     last_report = last_report.replace(tzinfo=None)
                 if last_report < recency_cutoff:
+                    continue
+
+            # Date added to the list (inclusive on both ends)
+            if added_from is not None or added_to is not None:
+                added_on = row[7].date() if isinstance(row[7], datetime) else row[7]
+                if added_on is None:
+                    continue
+                if added_from is not None and added_on < added_from:
+                    continue
+                if added_to is not None and added_on > added_to:
                     continue
 
             # Determine universal_id

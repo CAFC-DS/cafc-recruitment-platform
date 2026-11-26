@@ -201,6 +201,8 @@ export interface PlayerListFilters {
   archivedReasons?: string; // Comma-separated
   initialReasons?: string; // Comma-separated
   recencyMonths?: number;
+  addedFrom?: string; // YYYY-MM-DD, date added to the list (inclusive)
+  addedTo?: string;
   includeArchivedReports?: boolean;
   includeFlagReports?: boolean;
   // Which shortlist to fetch: 'first_team' (default), 'emerging_talent_u21' or
@@ -234,6 +236,8 @@ export const getAllListsWithDetails = async (
     if (filters.archivedReasons) params.append("archived_reasons", filters.archivedReasons);
     if (filters.initialReasons) params.append("initial_reasons", filters.initialReasons);
     if (filters.recencyMonths !== undefined) params.append("recency_months", filters.recencyMonths.toString());
+    if (filters.addedFrom) params.append("added_from", filters.addedFrom);
+    if (filters.addedTo) params.append("added_to", filters.addedTo);
     if (filters.includeArchivedReports !== undefined) params.append("include_archived", filters.includeArchivedReports.toString());
     if (filters.includeFlagReports !== undefined) params.append("include_flags", filters.includeFlagReports.toString());
     if (filters.category) params.append("category", filters.category);

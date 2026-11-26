@@ -239,6 +239,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
     archivedReasons: [],
     initialReasons: [],
     recencyMonths: "",
+    addedFrom: "",
+    addedTo: "",
   });
 
   // Debounced filters for API. Seed with the category so the very first fetch is
@@ -462,6 +464,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       if (filters.minReports) apiFilters.minReports = parseInt(filters.minReports);
       if (filters.maxReports) apiFilters.maxReports = parseInt(filters.maxReports);
       if (filters.recencyMonths) apiFilters.recencyMonths = parseInt(filters.recencyMonths);
+      if (filters.addedFrom) apiFilters.addedFrom = filters.addedFrom;
+      if (filters.addedTo) apiFilters.addedTo = filters.addedTo;
 
       if (filters.minScore) apiFilters.minScore = parseFloat(filters.minScore);
       if (filters.maxScore) apiFilters.maxScore = parseFloat(filters.maxScore);
@@ -528,6 +532,8 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
       archivedReasons: [],
       initialReasons: [],
       recencyMonths: "",
+      addedFrom: "",
+      addedTo: "",
     });
     setShowArchived(false);
     setIncludeArchivedReports(false);
@@ -1788,6 +1794,7 @@ const PlayerListsPage: React.FC<PlayerListsPageProps> = ({
                 (filters.minAge || filters.maxAge) && `Age: ${filters.minAge || "Any"}–${filters.maxAge || "Any"}`,
                 (filters.minReports || filters.maxReports) && `Reports: ${filters.minReports || "Any"}–${filters.maxReports || "Any"}`,
                 filters.recencyMonths && `Last ${filters.recencyMonths} months`,
+                (filters.addedFrom || filters.addedTo) && `Added: ${filters.addedFrom || "Any"} to ${filters.addedTo || "Any"}`,
                 filters.initialReasons.length > 0 && `Initial reasons: ${filters.initialReasons.join(", ")}`,
                 filters.showFavourites === false && "Favourites hidden",
                 filters.showSummerTransfers === false && "Summer transfers hidden",
