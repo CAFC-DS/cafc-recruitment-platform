@@ -1,11 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Spinner } from 'react-bootstrap';
+import { OverlayTrigger, Spinner, Tooltip } from 'react-bootstrap';
 import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink, Search } from 'lucide-react';
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
+import GradeChip from '../components/GradeChip';
+import ListDataScore from '../components/PlayerLists/ListDataScore';
+import { DataScoreBox } from '../components/player/PlayerDataScore';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { agentContactsService } from '../services/agentContactsService';
 import { AgentContact, AgentContactRecs } from '../types/agentContacts';
-import { AgentContactSortKey, compareContacts, contactLetter, foldText } from '../utils/agentContactsGrouping';
+import { AgentContactSortKey, compareContacts, contactLetter, dataScoreDisplay, foldText } from '../utils/agentContactsGrouping';
 import { calculateAge } from '../utils/age';
 import './ExternalRecommendationsListPage.css';
 import './AgentContactsPage.css';
@@ -17,6 +21,12 @@ const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 type RecsState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; data: AgentContactRecs };
+
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
+
+const ScoreTip: React.FC<{ id: string; tip: string; children: React.ReactElement }> = ({ id, tip, children }) => (
+  <OverlayTrigger placement="top" overlay={<Tooltip id={id}>{tip}</Tooltip>}>{children}</OverlayTrigger>
+);
 
 const Dash = () => <span className="agent-contacts-dash">—</span>;
 
@@ -36,6 +46,9 @@ const CopyButton: React.FC<{ value: string; label: string }> = ({ value, label }
 );
 
 const AgentContactsPage: React.FC = () => {
+  const { isIntelReviewer } = useCurrentUser();
+  const showScores = !isIntelReviewer; // Intel Reviewers aren't shown performance or data scores
+  const columnCount = showScores ? 8 : 6;
   const [contacts, setContacts] = useState<AgentContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -118,10 +131,12 @@ const AgentContactsPage: React.FC = () => {
           <table className="agent-contacts-recs">
             <thead>
               <tr>
-                <th style={{ width: '30%' }}>Player</th>
-                <th style={{ width: '14%' }}>Position</th>
-                <th style={{ width: '8%' }}>Age</th>
-                <th style={{ width: '16%' }}>Submitted</th>
+                <th style={{ width: showScores ? '24%' : '30%' }}>Player</th>
+                <th style={{ width: showScores ? '10%' : '14%' }}>Position</th>
+                <th style={{ width: '7%' }}>Age</th>
+                {showScores ? <th style={{ width: '11%' }}>Performance</th> : null}
+                {showScores ? <th style={{ width: '10%' }}>Data score</th> : null}
+                <th style={{ width: '14%' }}>Submitted</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -131,6 +146,12 @@ const AgentContactsPage: React.FC = () => {
                   <td className="agent-contacts-recs-player">{rec.player_name}</td>
                   <td>{rec.recommended_position || '—'}</td>
                   <td>{calculateAge(rec.player_date_of_birth)}</td>
+                  {showScores ? (
+                    <td>{rec.avg_performance_score != null ? <GradeChip score={rec.avg_performance_score} decimals={1} size="sm" /> : <span className="agent-contacts-dash" title="No scout reports yet">—</span>}</td>
+                  ) : null}
+                  {showScores ? (
+                    <td>{rec.data_score ? <ListDataScore score={rec.data_score} size="sm" /> : <span className="agent-contacts-dash" title="No data score">—</span>}</td>
+                  ) : null}
                   <td>{formatDate(rec.submitted_at)}</td>
                   <td><SubmissionStatusBadge status={rec.status} short /></td>
                 </tr>
@@ -197,19 +218,21 @@ const AgentContactsPage: React.FC = () => {
         <table className="rec-queue-table agent-contacts-table">
           <thead>
             <tr>
-              <th style={{ width: '22%' }}>{sortHeader('name', 'Agent')}</th>
-              <th style={{ width: '18%' }}>{sortHeader('agency', 'Agency')}</th>
-              <th style={{ width: '24%' }}>Email</th>
-              <th style={{ width: '16%' }}>Phone</th>
+              <th style={{ width: showScores ? '18%' : '22%' }}>{sortHeader('name', 'Agent')}</th>
+              {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average of our scouts' performance scores across this agent's players">{sortHeader('avg_performance_score', 'Average performance score')}</th> : null}
+              {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average data score across this agent's players">{sortHeader('avg_data_score', 'Average data score')}</th> : null}
+              <th style={{ width: showScores ? '14%' : '18%' }}>{sortHeader('agency', 'Agency')}</th>
+              <th style={{ width: showScores ? '19%' : '24%' }}>Email</th>
+              <th style={{ width: showScores ? '13%' : '16%' }}>Phone</th>
               <th style={{ width: '8%', textAlign: 'right' }}>{sortHeader('rec_count', 'Recs')}</th>
               <th style={{ width: '12%' }}>{sortHeader('last_rec_at', 'Last rec')}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="rec-queue-message"><Spinner animation="border" size="sm" className="me-2" />Loading agent contacts...</td></tr>
+              <tr><td colSpan={columnCount} className="rec-queue-message"><Spinner animation="border" size="sm" className="me-2" />Loading agent contacts...</td></tr>
             ) : !error && rows.length === 0 ? (
-              <tr><td colSpan={6} className="rec-queue-message">{contacts.length === 0 ? 'No agents have submitted yet.' : 'No agents match that search.'}</td></tr>
+              <tr><td colSpan={columnCount} className="rec-queue-message">{contacts.length === 0 ? 'No agents have submitted yet.' : 'No agents match that search.'}</td></tr>
             ) : (
               rows.map((contact, index) => {
                 const letter = contactLetter(contact.name);
@@ -219,7 +242,7 @@ const AgentContactsPage: React.FC = () => {
                   <React.Fragment key={contact.agent_user_id}>
                     {startsSection ? (
                       <tr className="agent-contacts-letter" id={`agent-letter-${letter === '#' ? 'other' : letter}`}>
-                        <td colSpan={6} data-testid="letter-section">{letter}</td>
+                        <td colSpan={columnCount} data-testid="letter-section">{letter}</td>
                       </tr>
                     ) : null}
                     <tr
@@ -242,6 +265,24 @@ const AgentContactsPage: React.FC = () => {
                         </div>
                         {contact.details_from_latest_rec ? <div className="rec-queue-sub agent-contacts-sub">Details from latest rec</div> : null}
                       </td>
+                      {showScores ? (
+                        <td data-testid="avg-performance">
+                          {contact.avg_performance_score != null ? (
+                            <ScoreTip id={`avg-performance-${contact.agent_user_id}`} tip={`Average of ${plural(contact.performance_scored_count ?? 0, 'scouted player')} (of ${plural(contact.rec_count, 'recommendation')})`}>
+                              <span tabIndex={0} ><GradeChip score={contact.avg_performance_score} decimals={1} size="sm" /></span>
+                            </ScoreTip>
+                          ) : <span className="agent-contacts-dash" title="None of this agent's players have scout reports yet">—</span>}
+                        </td>
+                      ) : null}
+                      {showScores ? (
+                        <td data-testid="avg-data">
+                          {contact.avg_data_score != null ? (
+                            <ScoreTip id={`avg-data-${contact.agent_user_id}`} tip={`Average of ${plural(contact.data_scored_count ?? 0, 'player')} with a data score (of ${plural(contact.rec_count, 'recommendation')})`}>
+                              <span tabIndex={0} ><DataScoreBox {...dataScoreDisplay(contact.avg_data_score)} decimals={1} size="sm" /></span>
+                            </ScoreTip>
+                          ) : <span className="agent-contacts-dash" title="None of this agent's players have a data score">—</span>}
+                        </td>
+                      ) : null}
                       <td><div className="rec-queue-line">{contact.agency || <Dash />}</div></td>
                       <td>
                         {contact.email ? (
@@ -264,7 +305,7 @@ const AgentContactsPage: React.FC = () => {
                     </tr>
                     {isOpen ? (
                       <tr className="agent-contacts-panel">
-                        <td colSpan={6}>{renderPanel(contact)}</td>
+                        <td colSpan={columnCount}>{renderPanel(contact)}</td>
                       </tr>
                     ) : null}
                   </React.Fragment>

@@ -179,3 +179,17 @@
   font-size: 0.82rem;
   font-weight: 500;
 }
+
+/* Header row: headings sit on one baseline, and the two score headings may wrap to two lines. */
+.agent-contacts-table thead th {
+  vertical-align: bottom;
+}
+
+.agent-contacts-table thead th.agent-contacts-score-head {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.agent-contacts-score-head .agent-contacts-sort {
+  text-align: left;
+}

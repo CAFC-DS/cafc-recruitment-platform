@@ -35,14 +35,14 @@ interface DataScoreResponse {
   rows: DataScoreRow[];
 }
 
-const fmt = (v: number | null) => (v == null ? "—" : String(Math.round(v)));
+const fmt = (v: number | null, decimals = 0) => (v == null ? "—" : decimals > 0 ? v.toFixed(decimals) : String(Math.round(v)));
 
-/** A CH score in its band colour, as the scout app draws it. */
-export const DataScoreBox: React.FC<{ value: number | null; band: number | null; size?: "sm" | "md" }> = ({ value, band, size = "md" }) => {
+/** A CH score in its band colour, as the scout app draws it. Averages pass decimals={1}. */
+export const DataScoreBox: React.FC<{ value: number | null; band: number | null; size?: "sm" | "md"; decimals?: number }> = ({ value, band, size = "md", decimals = 0 }) => {
   const { theme } = useTheme();
   return (
     <span className={`data-score-box data-score-box-${size}`} style={getDataScoreBandStyle(band, theme.isDark)}>
-      {fmt(value)}
+      {fmt(value, decimals)}
     </span>
   );
 };
