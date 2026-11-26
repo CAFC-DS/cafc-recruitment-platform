@@ -14,6 +14,7 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useTheme } from '../contexts/ThemeContext';
 import { getStageBgColor, getStageTextColor } from '../styles/playerLists.theme';
 import './ExternalRecommendationsListPage.css';
+import { calculateAge } from '../utils/age';
 import {
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
@@ -121,19 +122,6 @@ const formatDate = (value?: string | null) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('en-GB');
-};
-
-const calculateAge = (dateOfBirth?: string | null) => {
-  if (!dateOfBirth) return '-';
-  const dob = new Date(dateOfBirth);
-  if (Number.isNaN(dob.getTime())) return '-';
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const monthDifference = today.getMonth() - dob.getMonth();
-  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dob.getDate())) {
-    age--;
-  }
-  return age >= 0 ? String(age) : '-';
 };
 
 const formatDateTime = (value?: string | null) => {

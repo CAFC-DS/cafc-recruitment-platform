@@ -1,0 +1,181 @@
+/* Agent contact book: an A–Z directory in the External Recommendations look. */
+.agent-contacts-search {
+  position: relative;
+  flex: 1 1 320px;
+  max-width: 420px;
+}
+
+.agent-contacts-search svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+}
+
+.agent-contacts-search input {
+  padding-left: 32px;
+}
+
+.agent-contacts-count {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.agent-contacts-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 0.65rem;
+}
+
+.agent-contacts-jump button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.agent-contacts-jump button.is-available {
+  background: var(--color-surface, #fff);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  font-weight: 700;
+  color: var(--color-text);
+  opacity: 1;
+  cursor: pointer;
+}
+
+.agent-contacts-jump button.is-available:hover {
+  color: var(--color-primary);
+}
+
+.agent-contacts-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+.agent-contacts-table tbody tr.agent-contacts-letter td {
+  height: auto;
+  padding: 0.3rem 0.75rem;
+  background: var(--color-background);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  scroll-margin-top: 80px;
+}
+
+.agent-contacts-table tbody tr.agent-contacts-letter:hover {
+  background: none;
+}
+
+.agent-contacts-row {
+  cursor: pointer;
+}
+
+.agent-contacts-row.is-open,
+.agent-contacts-panel {
+  background: var(--color-background);
+}
+
+.agent-contacts-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.agent-contacts-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.agent-contacts-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform 150ms ease-out;
+}
+
+.agent-contacts-row.is-open .agent-contacts-chevron {
+  transform: rotate(90deg);
+}
+
+.agent-contacts-sub {
+  padding-left: 18px;
+}
+
+.agent-contacts-dash {
+  color: var(--color-text-muted);
+}
+
+.agent-contacts-copy {
+  padding: 0 0 0 6px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+}
+
+.agent-contacts-copy:hover {
+  color: var(--color-text);
+}
+
+.agent-contacts-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-contacts-table tbody tr.agent-contacts-panel > td {
+  height: auto;
+  padding: 0.25rem 0.75rem 0.85rem 2.1rem;
+}
+
+.agent-contacts-recs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.agent-contacts-recs th {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: left;
+  color: var(--color-text-muted);
+}
+
+.agent-contacts-table .agent-contacts-recs td {
+  height: auto;
+  padding: 0.4rem 0.5rem;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 0;
+}
+
+.agent-contacts-recs-player {
+  font-weight: 600;
+}
+
+.agent-contacts-panel-message {
+  padding: 0.5rem 0;
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
+.agent-contacts-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
