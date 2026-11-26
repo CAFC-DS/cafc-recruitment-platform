@@ -148,8 +148,9 @@ def test_list_allowed_roles(call, role):
     assert call("/internal/agent-contacts", role=role)[0].status_code == 200
 
 
-def _rec(i):
-    return (100 + i, f"Player {i}", "CB", datetime(2004, 1, 1).date(), datetime(2026, 11, 25 - i, 9, 0), "Submitted")
+def _rec(i, perf=None, player_id=None, source=None):
+    return (100 + i, f"Player {i}", "CB", datetime(2004, 1, 1).date(), datetime(2026, 11, 25 - i, 9, 0), "Submitted",
+            perf, player_id, source)
 
 
 def _limit_query(cursor):
@@ -167,10 +168,11 @@ def test_recent_recs_newest_first_and_limited(call):
     assert body["items"][0] == {
         "id": 100, "player_name": "Player 0", "recommended_position": "CB",
         "player_date_of_birth": "2004-01-01", "submitted_at": "2026-11-25T09:00:00", "status": "Submitted",
+        "avg_performance_score": None, "data_score": None,
     }
     sql, params = _limit_query(cursor).args
     assert "SUBMITTED_BY_USER_ID = %s" in sql
-    assert "ORDER BY CREATED_AT DESC, ID DESC" in sql
+    assert "ORDER BY rec.CREATED_AT DESC, rec.ID DESC" in sql
     assert tuple(params) == (7, 5)
 
 
@@ -259,3 +261,21 @@ def test_list_hides_scores_from_intel_reviewer(call):
     body = call("/internal/agent-contacts", role="intel_reviewer")[0].json()[0]
     assert body["avg_performance_score"] is None
     assert body["avg_data_score"] is None
+
+
+def test_recent_recs_carry_player_scores_for_admin(call):
+    call.cursor.fetchone.return_value = (2,)
+    call.cursor.fetchall.return_value = [_rec(0, 6.5, 501, "external"), _rec(1, None, 77, "internal")]
+    items = call("/internal/agent-contacts/7/recommendations")[0].json()["items"]
+    assert items[0]["avg_performance_score"] == 6.5
+    assert items[0]["data_score"]["value"] == 110.0
+    assert items[1]["avg_performance_score"] is None
+    assert items[1]["data_score"] is None   # only external players have data scores
+
+
+def test_recent_recs_hide_scores_from_intel_reviewer(call):
+    call.cursor.fetchone.return_value = (1,)
+    call.cursor.fetchall.return_value = [_rec(0, 6.5, 501, "external")]
+    item = call("/internal/agent-contacts/7/recommendations", role="intel_reviewer")[0].json()["items"][0]
+    assert item["avg_performance_score"] is None
+    assert item["data_score"] is None

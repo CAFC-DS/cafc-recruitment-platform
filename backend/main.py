@@ -1492,6 +1492,8 @@ class AgentContactRecResponse(BaseModel):
     player_date_of_birth: Optional[date] = None
     submitted_at: datetime
     status: str
+    avg_performance_score: Optional[float] = None
+    data_score: Optional[Dict[str, Any]] = None
 
 
 class AgentContactRecsResponse(BaseModel):
@@ -4992,20 +4994,26 @@ def list_agent_contact_recommendations(
         table = core_table('player_recommendations')
         cursor.execute(f"SELECT COUNT(*) FROM {table} WHERE SUBMITTED_BY_USER_ID = %s", (user_id,))
         total = cursor.fetchone()[0] or 0
+        # The same query External Recommendations uses, so the scores match that page.
         cursor.execute(
             f"""
-            SELECT ID, PLAYER_NAME, RECOMMENDED_POSITION, PLAYER_DATE_OF_BIRTH, CREATED_AT, STATUS
-            FROM {table}
-            WHERE SUBMITTED_BY_USER_ID = %s
-            ORDER BY CREATED_AT DESC, ID DESC
+            SELECT rec.ID, rec.PLAYER_NAME, rec.RECOMMENDED_POSITION, rec.PLAYER_DATE_OF_BIRTH, rec.CREATED_AT,
+                   rec.STATUS, rec.AVG_PERFORMANCE_SCORE, rec.LINKED_PLAYER_ID, rec.LINKED_PLAYER_DATA_SOURCE
+            FROM ({build_recommendation_select()}) rec
+            WHERE rec.SUBMITTED_BY_USER_ID = %s
+            ORDER BY rec.CREATED_AT DESC, rec.ID DESC
             LIMIT %s
         """,
             (user_id, limit),
         )
+        show_perf = current_user.role != ROLE_INTEL_REVIEWER
+        show_data = current_user.role in AGENT_CONTACT_DATA_SCORE_ROLES
         items = [
             AgentContactRecResponse(
                 id=row[0], player_name=row[1] or "", recommended_position=row[2],
                 player_date_of_birth=row[3], submitted_at=row[4], status=row[5] or "",
+                avg_performance_score=format_decimal(row[6]) if show_perf else None,
+                data_score=data_scores.list_score(row[7]) if show_data and row[8] == "external" else None,
             )
             for row in cursor.fetchall()
         ]
