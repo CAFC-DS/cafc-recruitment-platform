@@ -69,6 +69,7 @@ test("lists similar players, linking those the platform has", () => {
   expect(rows[2]).toHaveTextContent("106+2");
   expect(rows[2]).toHaveTextContent("Very close");
   expect(rows[3]).toHaveTextContent("Similar");
+  expect(screen.getByText(/Only players in leagues with SkillCorner game intelligence data are listed\./)).toBeInTheDocument();
 });
 
 test("renders nothing extra for a page without the new columns", () => {
