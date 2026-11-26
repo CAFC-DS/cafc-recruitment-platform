@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink, Se
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
 import { agentContactsService } from '../services/agentContactsService';
 import { AgentContact, AgentContactRecs } from '../types/agentContacts';
-import { AgentContactSortKey, compareContacts, contactLetter } from '../utils/agentContactsGrouping';
+import { AgentContactSortKey, compareContacts, contactLetter, foldText } from '../utils/agentContactsGrouping';
 import { calculateAge } from '../utils/age';
 import './ExternalRecommendationsListPage.css';
 import './AgentContactsPage.css';
@@ -57,9 +57,9 @@ const AgentContactsPage: React.FC = () => {
   }, []);
 
   const rows = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = foldText(search.trim());
     return contacts
-      .filter((c) => !term || [c.name, c.agency, c.email].filter(Boolean).join(' ').toLowerCase().includes(term))
+      .filter((c) => !term || foldText([c.name, c.agency, c.email].filter(Boolean).join(' ')).includes(term))
       .sort(compareContacts(sort.key, sort.dir));
   }, [contacts, search, sort]);
 

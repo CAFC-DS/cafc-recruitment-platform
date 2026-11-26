@@ -189,6 +189,17 @@ describe("arriving from Agent Contacts", () => {
     expect(service.list.mock.calls[0][0]).toEqual(expect.objectContaining({ agent_user_id: "7", status: "" }));
   });
 
+  test("?agent= drops other saved filters so every rec from that agent shows", async () => {
+    localStorage.setItem("token", fakeToken);
+    localStorage.setItem(savedKey, JSON.stringify({ agent_user_id: "99", position: "CB", player_name: "Smith", page_size: 50 }));
+    render(<MemoryRouter initialEntries={["/lists/external?agent=7"]}><ExternalRecommendationsListPage /></MemoryRouter>);
+    await waitFor(() => expect(service.list).toHaveBeenCalled());
+    const request = service.list.mock.calls[0][0];
+    expect(request).toEqual(expect.objectContaining({ agent_user_id: "7", page_size: 50 }));
+    expect(request.position ?? "").toBe("");
+    expect(request.player_name ?? "").toBe("");
+  });
+
   test("without ?agent= the saved agent filter is kept", async () => {
     localStorage.setItem("token", fakeToken);
     localStorage.setItem(savedKey, JSON.stringify({ agent_user_id: "99", queue: "needs_decision" }));

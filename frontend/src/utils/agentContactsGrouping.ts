@@ -2,9 +2,19 @@ import { AgentContact } from '../types/agentContacts';
 
 export type AgentContactSortKey = 'name' | 'agency' | 'rec_count' | 'last_rec_at';
 
+// Letters NFD doesn't split into base letter + accent.
+const EXTRA_FOLDS: Record<string, string> = { Ł: 'L', Ø: 'O', Æ: 'A', Đ: 'D', Œ: 'O', Þ: 'T', ß: 'S' };
+
+/** Lower-cased text with accents removed, for accent-insensitive matching. */
+export const foldText = (text: string): string =>
+  Array.from((text || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    .map((ch) => EXTRA_FOLDS[ch.toUpperCase()] ?? ch)
+    .join('')
+    .toLowerCase();
+
 /** Contact-book letter for a name: accents folded, upper-cased, anything not A–Z under '#'. */
 export const contactLetter = (name: string): string => {
-  const first = (name || '').trim().normalize('NFD').charAt(0).toUpperCase();
+  const first = foldText((name || '').trim()).charAt(0).toUpperCase();
   return /^[A-Z]$/.test(first) ? first : '#';
 };
 

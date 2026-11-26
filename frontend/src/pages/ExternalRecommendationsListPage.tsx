@@ -188,7 +188,13 @@ const ExternalRecommendationsListPage: React.FC = () => {
   const [filters, setFilters] = usePersistentState<RecommendationFilterState>(
     'external-recs:filters',
     { ...defaultFilters, ...agentOverride },
-    { restore: (saved) => ({ ...saved, ...agentOverride, page: 1 }) },
+    {
+      // A hand-off shows every rec from that agent: keep only view settings from what was saved.
+      restore: (saved) =>
+        linkedAgent
+          ? { ...defaultFilters, page_size: saved.page_size, sort_by: saved.sort_by, sort_order: saved.sort_order, ...agentOverride }
+          : { ...saved, page: 1 },
+    },
   );
 
   useEffect(() => {

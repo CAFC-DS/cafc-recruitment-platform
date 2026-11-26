@@ -50,6 +50,19 @@ test("contactLetter folds accents, upper-cases, and buckets non-letters", () => 
   expect(contactLetter("")).toBe("#");
 });
 
+test("contactLetter files Ł, Ø, Æ and Đ under their base letter", () => {
+  expect(contactLetter("Łukasz Nowak")).toBe("L");
+  expect(contactLetter("Øyvind Berg")).toBe("O");
+  expect(contactLetter("Æsa Lund")).toBe("A");
+  expect(contactLetter("Đorđe Ilić")).toBe("D");
+});
+
+test("search ignores accents", async () => {
+  await renderPage();
+  fireEvent.change(screen.getByPlaceholderText("Search name, agency or email"), { target: { value: "lucia ferrer" } });
+  expect(agentRowNames()).toEqual(["Lucía Ferrer"]);
+});
+
 test("lists agents A–Z with letter sections", async () => {
   await renderPage();
   expect(agentRowNames()).toEqual(["Ana Costa", "Daniel Brooks", "Lucía Ferrer"]);
