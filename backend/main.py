@@ -612,7 +612,11 @@ def squad_current_competition_sql() -> str:
     from the squad instead. Preference order per squad: a League iteration within
     a season of the squad's latest data, otherwise the best other non-friendly
     iteration (covers state leagues typed "Cup", clubs only seen in cups); then
-    latest season, then most matches played."""
+    latest season, then most matches played.
+
+    Squad KPIs only appear once a season's data is calculated, so they lag a
+    new season (e.g. 26/27 had no league KPIs, leaving promoted clubs in their
+    old league). Fixtures exist from the start, so they count as evidence too."""
     season_key = (
         "IFF(it.SEASON LIKE '%%/%%', 2000 + TRY_TO_NUMBER(LEFT(it.SEASON, 2)), TRY_TO_NUMBER(it.SEASON))"
     )
@@ -627,20 +631,32 @@ def squad_current_competition_sql() -> str:
                            MATCHES DESC NULLS LAST
                    ) AS rn
             FROM (
-                SELECT s.SQUAD_NAME, it.COMPETITIONNAME AS COMPETITION_NAME,
+                SELECT src.SQUAD_NAME, it.COMPETITIONNAME AS COMPETITION_NAME,
                        it.COMPETITIONTYPE AS COMPETITION_TYPE,
                        {season_key} AS SEASON_KEY,
-                       MAX({season_key}) OVER (PARTITION BY s.SQUAD_NAME) AS MAX_SEASON_KEY,
-                       MAX(i.MATCHES_PLAYED) AS MATCHES
-                FROM {core_table('core_squad_iteration_kpis')} i
-                JOIN {core_table('core_squads')} s ON s.CAFC_SQUAD_ID = i.CAFC_SQUAD_ID
+                       MAX({season_key}) OVER (PARTITION BY src.SQUAD_NAME) AS MAX_SEASON_KEY,
+                       MAX(src.MATCHES) AS MATCHES
+                FROM (
+                    SELECT s.SQUAD_NAME, i.SOURCE_ITERATION_ID AS ITERATIONID,
+                           i.MATCHES_PLAYED AS MATCHES
+                    FROM {core_table('core_squad_iteration_kpis')} i
+                    JOIN {core_table('core_squads')} s ON s.CAFC_SQUAD_ID = i.CAFC_SQUAD_ID
+                    UNION ALL
+                    SELECT SQUAD_NAME, ITERATIONID, COUNT(*) AS MATCHES FROM (
+                        SELECT HOMESQUADNAME AS SQUAD_NAME, ITERATIONID FROM {read_table('matches')}
+                        UNION ALL
+                        SELECT AWAYSQUADNAME, ITERATIONID FROM {read_table('matches')}
+                    )
+                    WHERE SQUAD_NAME IS NOT NULL AND ITERATIONID IS NOT NULL
+                    GROUP BY SQUAD_NAME, ITERATIONID
+                ) src
                 JOIN (
                     SELECT DISTINCT ITERATIONID, COMPETITIONNAME, COMPETITIONTYPE, SEASON
                     FROM {read_table('players_base')}
                     WHERE ITERATIONID IS NOT NULL
                       AND COALESCE(COMPETITIONTYPE, '') <> 'Friendly'
-                ) it ON it.ITERATIONID = i.SOURCE_ITERATION_ID
-                GROUP BY s.SQUAD_NAME, it.COMPETITIONNAME, it.COMPETITIONTYPE, it.SEASON
+                ) it ON it.ITERATIONID = src.ITERATIONID
+                GROUP BY src.SQUAD_NAME, it.COMPETITIONNAME, it.COMPETITIONTYPE, it.SEASON
             )
         )
         WHERE rn = 1
