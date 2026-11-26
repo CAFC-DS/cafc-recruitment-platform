@@ -193,7 +193,7 @@ const SCORED = [
 
 test("agent score columns use full headings", async () => {
   await renderPage(SCORED);
-  expect(screen.getByRole("button", { name: "Average performance" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Average performance score" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Average data score" })).toBeInTheDocument();
   expect(screen.queryByText(/Avg /)).not.toBeInTheDocument();
 });
@@ -226,7 +226,7 @@ test("sorting by Average data score puts the highest first and unscored agents l
 test("Intel Reviewers see no score columns", async () => {
   mockRole = "intel_reviewer";
   await renderPage(SCORED);
-  expect(screen.queryByRole("button", { name: "Average performance" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Average performance score" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Average data score" })).not.toBeInTheDocument();
 });
 

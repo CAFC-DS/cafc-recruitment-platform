@@ -219,7 +219,7 @@ const AgentContactsPage: React.FC = () => {
           <thead>
             <tr>
               <th style={{ width: showScores ? '18%' : '22%' }}>{sortHeader('name', 'Agent')}</th>
-              {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average of our scouts' performance scores across this agent's players">{sortHeader('avg_performance_score', 'Average performance')}</th> : null}
+              {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average of our scouts' performance scores across this agent's players">{sortHeader('avg_performance_score', 'Average performance score')}</th> : null}
               {showScores ? <th className="agent-contacts-score-head" style={{ width: '9%' }} title="Average data score across this agent's players">{sortHeader('avg_data_score', 'Average data score')}</th> : null}
               <th style={{ width: showScores ? '14%' : '18%' }}>{sortHeader('agency', 'Agency')}</th>
               <th style={{ width: showScores ? '19%' : '24%' }}>Email</th>
