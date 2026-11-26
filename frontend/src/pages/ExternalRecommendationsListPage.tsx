@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { Button, Col, Collapse, Form, Modal, OverlayTrigger, Row, Spinner, Toast, ToastContainer, Tooltip } from 'react-bootstrap';
-import { ArrowLeft, ChevronDown, ChevronsUpDown, ChevronUp, CircleHelp, History, ListFilter, Mail, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowLeft, BookUser, ChevronDown, ChevronsUpDown, ChevronUp, CircleHelp, History, ListFilter, Mail, X } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import SubmissionStatusBadge from '../components/agents/SubmissionStatusBadge';
 import { dealTypeShortLabel } from '../components/recommendations/DealTypeBadges';
 import RecommendationReviewModal from '../components/recommendations/RecommendationReviewModal';
@@ -14,6 +14,7 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useTheme } from '../contexts/ThemeContext';
 import { getStageBgColor, getStageTextColor } from '../styles/playerLists.theme';
 import './ExternalRecommendationsListPage.css';
+import { calculateAge } from '../utils/age';
 import {
   InternalRecommendation,
   InternalRecommendationFiltersMeta,
@@ -123,19 +124,6 @@ const formatDate = (value?: string | null) => {
   return date.toLocaleDateString('en-GB');
 };
 
-const calculateAge = (dateOfBirth?: string | null) => {
-  if (!dateOfBirth) return '-';
-  const dob = new Date(dateOfBirth);
-  if (Number.isNaN(dob.getTime())) return '-';
-  const today = new Date();
-  let age = today.getFullYear() - dob.getFullYear();
-  const monthDifference = today.getMonth() - dob.getMonth();
-  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dob.getDate())) {
-    age--;
-  }
-  return age >= 0 ? String(age) : '-';
-};
-
 const formatDateTime = (value?: string | null) => {
   if (!value) return '-';
   const date = new Date(value);
@@ -193,9 +181,26 @@ const ExternalRecommendationsListPage: React.FC = () => {
     return { backgroundColor: colors.bg, color: colors.text, borderColor: colors.border };
   };
   const [ncucSelected, setNcucSelected] = useState<number[]>([]);
-  const [filters, setFilters] = usePersistentState<RecommendationFilterState>('external-recs:filters', defaultFilters, {
-    restore: (saved) => ({ ...saved, page: 1 }),
-  });
+  // Agent Contacts links here with ?agent=<user_id>; that agent wins over any saved filter.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [linkedAgent] = useState(() => searchParams.get('agent') || '');
+  const agentOverride = linkedAgent ? { agent_user_id: linkedAgent, queue: 'all' as const, status: '' as const } : {};
+  const [filters, setFilters] = usePersistentState<RecommendationFilterState>(
+    'external-recs:filters',
+    { ...defaultFilters, ...agentOverride },
+    {
+      // A hand-off shows every rec from that agent: keep only view settings from what was saved.
+      restore: (saved) =>
+        linkedAgent
+          ? { ...defaultFilters, page_size: saved.page_size, sort_by: saved.sort_by, sort_order: saved.sort_order, ...agentOverride }
+          : { ...saved, page: 1 },
+    },
+  );
+
+  useEffect(() => {
+    if (linkedAgent) setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [meta, setMeta] = useState<InternalRecommendationFiltersMeta>({ statuses: [], agents: [] });
   const [items, setItems] = useState<InternalRecommendation[]>([]);
   const [total, setTotal] = useState(0);
@@ -552,7 +557,10 @@ const ExternalRecommendationsListPage: React.FC = () => {
           <h1>External Recommendations</h1>
           <p>Players agents have put forward for review.</p>
         </div>
-        <Link to="/lists" className="rec-queue-back"><ArrowLeft size={15} aria-hidden="true" />Back to Lists</Link>
+        <div className="rec-queue-header-links">
+          <Link to="/lists/agents" className="rec-queue-back"><BookUser size={15} aria-hidden="true" />Agent contacts</Link>
+          <Link to="/lists" className="rec-queue-back"><ArrowLeft size={15} aria-hidden="true" />Back to Lists</Link>
+        </div>
       </header>
 
       {banner ? <div className="alert alert-success alert-dismissible fade show"><i className="bi bi-check-circle me-2"></i>{banner}<button type="button" className="btn-close" onClick={() => setBanner(null)}></button></div> : null}

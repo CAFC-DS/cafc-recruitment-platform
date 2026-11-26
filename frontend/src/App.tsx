@@ -36,6 +36,7 @@ const ExternalRecommendationsListPage = lazy(() => import('./pages/ExternalRecom
 const EmergingTalentListsPage = lazy(() => import('./pages/EmergingTalentListsPage'));
 const EmergingTalentKanbanPage = lazy(() => import('./pages/EmergingTalentKanbanPage'));
 const StyleTilePage = lazy(() => import('./pages/StyleTilePage'));
+const AgentContactsPage = lazy(() => import('./pages/AgentContactsPage'));
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token } = useAuth();
@@ -369,6 +370,14 @@ function App() {
               }
             />
             <Route path="/lists/kanban" element={<Navigate to="/lists/internal/kanban" replace />} />
+            <Route
+              path="/lists/agents"
+              element={
+                <ExternalRecsRoute>
+                  <AgentContactsPage />
+                </ExternalRecsRoute>
+              }
+            />
             <Route
               path="/lists/external"
               element={
