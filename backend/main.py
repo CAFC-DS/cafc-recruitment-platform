@@ -1479,6 +1479,10 @@ class AgentContactResponse(BaseModel):
     rec_count: int
     last_rec_at: Optional[datetime] = None
     details_from_latest_rec: bool
+    avg_performance_score: Optional[float] = None
+    performance_scored_count: int = 0
+    avg_data_score: Optional[float] = None
+    data_scored_count: int = 0
 
 
 class AgentContactRecResponse(BaseModel):
@@ -3597,6 +3601,25 @@ def require_agent_contacts_viewer(current_user: User = Depends(get_current_user)
     return current_user
 
 
+AGENT_CONTACT_DATA_SCORE_ROLES = [ROLE_ADMIN, ROLE_SENIOR_MANAGER]
+
+
+def agent_contact_player_key(universal_id, cafc_player_id, player_id, player_name) -> str:
+    """One key per recommended player, so an agent's averages count each player once."""
+    if universal_id:
+        return str(universal_id)
+    if cafc_player_id is not None:
+        return f"cafc:{cafc_player_id}"
+    if player_id is not None:
+        return f"ext:{player_id}"
+    return "name:" + " ".join(str(player_name or "").lower().split())
+
+
+def agent_contact_data_value(player_id) -> Optional[float]:
+    score = data_scores.list_score(player_id)
+    return score["value"] if score else None
+
+
 def require_agent_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != ROLE_AGENT:
         raise HTTPException(status_code=403, detail="Agent access required")
@@ -4918,6 +4941,35 @@ def list_agent_contacts(current_user: User = Depends(require_agent_contacts_view
                 details_from_latest_rec=from_latest_rec,
                 **merged,
             ))
+
+        # Scores per recommendation come from the same query External Recommendations uses.
+        cursor.execute(
+            f"""
+            SELECT rec.SUBMITTED_BY_USER_ID, rec.LINKED_UNIVERSAL_ID, rec.LINKED_CAFC_PLAYER_ID,
+                   rec.LINKED_PLAYER_ID, rec.PLAYER_NAME, rec.AVG_PERFORMANCE_SCORE, rec.LINKED_PLAYER_DATA_SOURCE
+            FROM ({build_recommendation_select()}) rec
+            WHERE rec.SUBMITTED_BY_USER_ID IS NOT NULL
+        """
+        )
+        score_rows = [
+            (
+                row[0],
+                agent_contact_player_key(row[1], row[2], row[3], row[4]),
+                row[5],
+                row[3] if row[6] == "external" else None,
+            )
+            for row in cursor.fetchall()
+        ]
+        summaries = agent_contacts.summarise_scores(
+            score_rows,
+            agent_contact_data_value if current_user.role in AGENT_CONTACT_DATA_SCORE_ROLES else None,
+            include_perf=current_user.role != ROLE_INTEL_REVIEWER,
+        )
+        for contact in contacts:
+            summary = summaries.get(contact.agent_user_id)
+            if summary:
+                for field, value in summary.items():
+                    setattr(contact, field, value)
         return contacts
     finally:
         if conn:

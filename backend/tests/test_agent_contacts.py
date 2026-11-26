@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main
-from agent_contacts import merge_contact
+from agent_contacts import merge_contact, summarise_scores
 
 USER = {"firstname": "Sam", "lastname": "Hartley", "username": "samh"}
 
@@ -80,10 +80,15 @@ def call():
     def request(path, role=main.ROLE_ADMIN):
         _as_role(role)
         with patch.object(main, "validate_recommendation_schema_ready"), \
-             patch.object(main, "get_snowflake_connection", return_value=connection):
+             patch.object(main, "get_snowflake_connection", return_value=connection), \
+             patch.object(main, "build_recommendation_select", return_value="SELECT 1"), \
+             patch.object(main.data_scores, "list_score", side_effect=request.data_score):
             return TestClient(main.app).get(path), cursor
 
     request.cursor = cursor
+    request.data_score = lambda pid: {"kind": "career", "value": {501: 110.0, 502: 100.0}.get(pid), "band": 4,
+                                      "band_name": "Strong starter", "position": "CB", "season": "25/26",
+                                      "seasons": 3, "min": 3000} if pid in (501, 502) else None
     yield request
     main.app.dependency_overrides.clear()
 
@@ -97,7 +102,7 @@ LIST_ROW = (
 
 
 def test_list_endpoint_shapes_rows(call):
-    call.cursor.fetchall.return_value = [LIST_ROW]
+    call.cursor.fetchall.side_effect = [[LIST_ROW], []]
     response, _ = call("/internal/agent-contacts")
     assert response.status_code == 200
     assert response.json() == [{
@@ -109,13 +114,17 @@ def test_list_endpoint_shapes_rows(call):
         "rec_count": 22,
         "last_rec_at": "2026-11-25T10:00:00",
         "details_from_latest_rec": True,
+        "avg_performance_score": None,
+        "performance_scored_count": 0,
+        "avg_data_score": None,
+        "data_scored_count": 0,
     }]
 
 
 def test_list_without_profile_row_uses_latest_rec(call):
     row = (9, None, None, None, None, None, "Ana Costa", "AC Rep", "ana@ac.example", None, "A", "C", "ac", 3,
            datetime(2026, 6, 8))
-    call.cursor.fetchall.return_value = [row]
+    call.cursor.fetchall.side_effect = [[row], []]
     body = call("/internal/agent-contacts")[0].json()
     assert body[0]["name"] == "Ana Costa"
     assert body[0]["details_from_latest_rec"] is True
@@ -184,3 +193,69 @@ def test_recent_recs_unknown_agent_is_empty(call):
 @pytest.mark.parametrize("role", ["manager", "loan_manager", "scout", "agent"])
 def test_recent_recs_forbidden_roles(call, role):
     assert call("/internal/agent-contacts/7/recommendations", role=role)[0].status_code == 403
+
+
+# --- scores -------------------------------------------------------------------------------------
+
+def _lookup(pid):
+    return {501: 110.0, 502: 100.0}.get(pid)
+
+
+def test_summarise_counts_each_player_once():
+    rows = [
+        (7, "ext:501", 7.0, 501),
+        (7, "ext:501", 7.0, 501),   # same player recommended again
+        (7, "ext:502", 5.0, 502),
+    ]
+    result = summarise_scores(rows, _lookup, include_perf=True)
+    assert result[7] == {"avg_performance_score": 6.0, "performance_scored_count": 2,
+                         "avg_data_score": 105.0, "data_scored_count": 2}
+
+
+def test_summarise_partial_scores_count_only_towards_what_they_have():
+    rows = [
+        (7, "ext:501", None, 501),        # data only
+        (7, "cafc:9", 8.0, None),         # performance only
+        (7, "name:joe bloggs", None, None),  # neither
+    ]
+    result = summarise_scores(rows, _lookup, include_perf=True)
+    assert result[7] == {"avg_performance_score": 8.0, "performance_scored_count": 1,
+                         "avg_data_score": 110.0, "data_scored_count": 1}
+
+
+def test_summarise_hidden_scores_are_none():
+    rows = [(7, "ext:501", 7.0, 501)]
+    result = summarise_scores(rows, None, include_perf=False)
+    assert result[7] == {"avg_performance_score": None, "performance_scored_count": 0,
+                         "avg_data_score": None, "data_scored_count": 0}
+
+
+def test_summarise_rounds_performance_to_two_places():
+    rows = [(7, "a", 7.0, None), (7, "b", 6.0, None), (7, "c", 6.0, None)]
+    assert summarise_scores(rows, None, include_perf=True)[7]["avg_performance_score"] == 6.33
+
+
+SCORE_ROWS = [
+    # submitter, universal id, cafc id, player id, player name, avg perf, data source
+    (7, None, None, 501, "Kofi Mensah", 7.0, "external"),
+    (7, None, None, 501, "Kofi Mensah", 7.0, "external"),
+    (7, "internal_9", 9, None, "Finn Walsh", 5.0, "internal"),
+]
+
+
+def test_list_attaches_agent_averages_for_admin(call):
+    call.cursor.fetchall.side_effect = [[LIST_ROW], SCORE_ROWS]
+    body = call("/internal/agent-contacts")[0].json()[0]
+    assert body["avg_performance_score"] == 6.0
+    assert body["performance_scored_count"] == 2
+    assert body["avg_data_score"] == 110.0
+    assert body["data_scored_count"] == 1
+    sql = call.cursor.execute.call_args_list[-1].args[0]
+    assert "AVG_PERFORMANCE_SCORE" in sql and "SUBMITTED_BY_USER_ID IS NOT NULL" in sql
+
+
+def test_list_hides_scores_from_intel_reviewer(call):
+    call.cursor.fetchall.side_effect = [[LIST_ROW], SCORE_ROWS]
+    body = call("/internal/agent-contacts", role="intel_reviewer")[0].json()[0]
+    assert body["avg_performance_score"] is None
+    assert body["avg_data_score"] is None
