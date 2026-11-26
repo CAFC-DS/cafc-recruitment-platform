@@ -1481,6 +1481,20 @@ class AgentContactResponse(BaseModel):
     details_from_latest_rec: bool
 
 
+class AgentContactRecResponse(BaseModel):
+    id: int
+    player_name: str
+    recommended_position: Optional[str] = None
+    player_date_of_birth: Optional[date] = None
+    submitted_at: datetime
+    status: str
+
+
+class AgentContactRecsResponse(BaseModel):
+    total: int
+    items: List[AgentContactRecResponse]
+
+
 class RecommendationNoteHistoryResponse(BaseModel):
     id: int
     note_content: str
@@ -4905,6 +4919,45 @@ def list_agent_contacts(current_user: User = Depends(require_agent_contacts_view
                 **merged,
             ))
         return contacts
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.get("/internal/agent-contacts/{user_id}/recommendations", response_model=AgentContactRecsResponse)
+@offload_read
+def list_agent_contact_recommendations(
+    user_id: int,
+    limit: int = 5,
+    current_user: User = Depends(require_agent_contacts_viewer),
+):
+    validate_recommendation_schema_ready()
+    limit = min(max(limit, 1), 20)
+    conn = None
+    try:
+        conn = get_snowflake_connection()
+        cursor = conn.cursor()
+        table = core_table('player_recommendations')
+        cursor.execute(f"SELECT COUNT(*) FROM {table} WHERE SUBMITTED_BY_USER_ID = %s", (user_id,))
+        total = cursor.fetchone()[0] or 0
+        cursor.execute(
+            f"""
+            SELECT ID, PLAYER_NAME, RECOMMENDED_POSITION, PLAYER_DATE_OF_BIRTH, CREATED_AT, STATUS
+            FROM {table}
+            WHERE SUBMITTED_BY_USER_ID = %s
+            ORDER BY CREATED_AT DESC, ID DESC
+            LIMIT %s
+        """,
+            (user_id, limit),
+        )
+        items = [
+            AgentContactRecResponse(
+                id=row[0], player_name=row[1] or "", recommended_position=row[2],
+                player_date_of_birth=row[3], submitted_at=row[4], status=row[5] or "",
+            )
+            for row in cursor.fetchall()
+        ]
+        return AgentContactRecsResponse(total=total, items=items)
     finally:
         if conn:
             conn.close()

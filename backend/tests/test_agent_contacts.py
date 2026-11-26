@@ -137,3 +137,50 @@ def test_list_forbidden_roles(call, role):
 def test_list_allowed_roles(call, role):
     call.cursor.fetchall.return_value = []
     assert call("/internal/agent-contacts", role=role)[0].status_code == 200
+
+
+def _rec(i):
+    return (100 + i, f"Player {i}", "CB", datetime(2004, 1, 1).date(), datetime(2026, 11, 25 - i, 9, 0), "Submitted")
+
+
+def _limit_query(cursor):
+    return next(c for c in cursor.execute.call_args_list if "LIMIT" in c.args[0])
+
+
+def test_recent_recs_newest_first_and_limited(call):
+    call.cursor.fetchone.return_value = (22,)
+    call.cursor.fetchall.return_value = [_rec(i) for i in range(5)]
+    response, cursor = call("/internal/agent-contacts/7/recommendations")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 22
+    assert len(body["items"]) == 5
+    assert body["items"][0] == {
+        "id": 100, "player_name": "Player 0", "recommended_position": "CB",
+        "player_date_of_birth": "2004-01-01", "submitted_at": "2026-11-25T09:00:00", "status": "Submitted",
+    }
+    sql, params = _limit_query(cursor).args
+    assert "SUBMITTED_BY_USER_ID = %s" in sql
+    assert "ORDER BY CREATED_AT DESC, ID DESC" in sql
+    assert tuple(params) == (7, 5)
+
+
+@pytest.mark.parametrize("asked, used", [("500", 20), ("0", 1), ("3", 3)])
+def test_recent_recs_limit_clamped(call, asked, used):
+    call.cursor.fetchone.return_value = (0,)
+    call.cursor.fetchall.return_value = []
+    _, cursor = call(f"/internal/agent-contacts/7/recommendations?limit={asked}")
+    assert tuple(_limit_query(cursor).args[1])[-1] == used
+
+
+def test_recent_recs_unknown_agent_is_empty(call):
+    call.cursor.fetchone.return_value = (0,)
+    call.cursor.fetchall.return_value = []
+    response, _ = call("/internal/agent-contacts/999/recommendations")
+    assert response.status_code == 200
+    assert response.json() == {"total": 0, "items": []}
+
+
+@pytest.mark.parametrize("role", ["manager", "loan_manager", "scout", "agent"])
+def test_recent_recs_forbidden_roles(call, role):
+    assert call("/internal/agent-contacts/7/recommendations", role=role)[0].status_code == 403
