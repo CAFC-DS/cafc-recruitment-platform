@@ -180,6 +180,9 @@ export const SeasonLine: React.FC<{ rows: ExtrasRow[]; selected: ExtrasRow }> = 
   );
 };
 
+/** Similar players come only from leagues with SkillCorner game intelligence data (backend SIMILAR_LEAGUES). */
+export const SIMILAR_LEAGUES_NOTE = "Only players in leagues with SkillCorner game intelligence data are listed.";
+
 const closeness = (d: number) => (d < 2.5 ? "Very close" : d < 4 ? "Close" : "Similar");
 
 export const SimilarPlayers: React.FC<{ row: ExtrasRow }> = ({ row }) => {
@@ -206,6 +209,7 @@ export const SimilarPlayers: React.FC<{ row: ExtrasRow }> = ({ row }) => {
           {useRecent
             ? "Current players at the position whose category scores over their last three seasons, weighted by minutes, are closest to his: the same type of player at a similar level."
             : `Current players whose latest season is closest to his ${seasonLabel(row.season)} season: a match on current form.`}
+          {" "}{SIMILAR_LEAGUES_NOTE}
         </p>
       </div>
       <div className="tx-table-wrap">

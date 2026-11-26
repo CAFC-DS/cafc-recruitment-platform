@@ -43,6 +43,14 @@ OPTIONAL_TEXT = ("name",)
 MAX_PROFILES = 6
 SIMILAR_COUNT = 6
 RECENT_SEASONS = 3  # similar players over a career stretch: each player's last three seasons at the position
+# Similar players come only from leagues with SkillCorner game intelligence data, so every name offered can be followed
+# up in SkillCorner. Names as the scout page spells them ("Fortuna Liga" is the Czech First League). A player counts
+# when the league of his latest season is on this list; the player being viewed can be from any league.
+SIMILAR_LEAGUES = frozenset((
+    "Championship", "League One", "Bundesliga (Austria)", "Jupiler Pro League", "1.HNL (Croatia)", "Fortuna Liga",
+    "Superligaen", "Ligue 2", "Eredivisie", "Liga Portugal", "Scottish Premiership", "Super League (Switzerland)",
+    "Eliteserien", "Allsvenskan", "MLS",
+))
 # Reference boxes on the technical tab, as the scout app's league view draws them: the 10th/25th/50th/75th/90th
 # percentiles of each category and metric reading among a league's regulars (900+ minutes at the position) in a season.
 # A group with fewer than 20 regulars is not kept; its seasons fall back to the league's latest season that has 20.
@@ -179,7 +187,7 @@ class ScoreIndex:
                     latest[self.player_of[i]] = i
         # similar players are current players: someone whose latest season is older than last season is left out
         recent = max((t[i] for i in range(start, end) if not math.isnan(t[i])), default=math.nan) - 1
-        latest = {p: i for p, i in latest.items() if t[i] >= recent}
+        latest = {p: i for p, i in latest.items() if t[i] >= recent and self._similar_league(i)}
         if latest:
             self.similar_pool[self.position_key[start]] = array("I", sorted(latest.values()))
         rows_of = {}
@@ -188,7 +196,8 @@ class ScoreIndex:
         pool = []
         for player, rows in rows_of.items():
             profile = self._profile(rows)
-            if profile is not None and profile["minutes"] >= REGULAR_MINUTES and t[profile["last"]] >= recent:
+            if (profile is not None and profile["minutes"] >= REGULAR_MINUTES and t[profile["last"]] >= recent
+                    and self._similar_league(profile["last"])):
                 pool.append((player, profile))
         if pool:
             self.recent_pool[self.position_key[start]] = pool
@@ -256,6 +265,9 @@ class ScoreIndex:
         first = min(usable, key=lambda i: t[i])
         last = max(usable, key=lambda i: (t[i], mins[i]))
         return {"vec": vec, "minutes": total, "ch": ch, "first": first, "last": last, "rows": len(usable)}
+
+    def _similar_league(self, i):
+        return self.words[self.text["league"][i]] in SIMILAR_LEAGUES
 
     def _span(self, profile):
         a, b = self.words[self.text["season"][profile["first"]]], self.words[self.text["season"][profile["last"]]]

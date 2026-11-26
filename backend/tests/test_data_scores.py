@@ -12,7 +12,7 @@ from fastapi import HTTPException
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main
-from services.data_scores import DataScores, band, band_name, parse_page
+from services.data_scores import SIMILAR_LEAGUES, DataScores, band, band_name, parse_page
 
 COLUMNS = ["id", "name", "club", "league", "season", "age", "min", "ch", "chLo", "chHi", "fc", "fcLo", "fcHi", "t", "rel", "relN"]
 
@@ -401,8 +401,8 @@ def full_page(rows):
     return "<html>" + "".join(body) + "</html>"
 
 
-def striker_row(pid, name, cats, season="23/24", t=2024.0, minutes=2000, extra=None):
-    row = [pid, "x", f"Club {pid}", "League Two", season, 25, minutes, 100.0, 95, 105, 101, 94, 108, t, 99.0, 2, cats,
+def striker_row(pid, name, cats, season="23/24", t=2024.0, minutes=2000, extra=None, league="League One"):
+    row = [pid, "x", f"Club {pid}", league, season, 25, minutes, 100.0, 95, 105, 101, 94, 108, t, 99.0, 2, cats,
            name, 104.0, 6.0, 0.41, 0.12, None, 0.8, 2, [55.0, 70.0], 1]
     return row if extra is None else row[:-len(extra)] + extra
 
@@ -470,6 +470,20 @@ def test_similar_players_leave_out_players_with_no_recent_season(tmp_path):
     head = scores_for(tmp_path, full_page(rows)).technical_for_player(7)["rows"][0]
     assert [p["name"] for p in head["similar"]] == ["Last season"]
     assert [p["name"] for p in head["similar_recent"]] == ["Last season"]
+
+
+def test_similar_players_come_only_from_leagues_with_skillcorner_game_intelligence(tmp_path):
+    rows = [striker_row(7, "Seven", [110.0, 95.0], league="League Two"),  # the player viewed can be from any league
+            striker_row(8, "Twin outside", [110.0, 95.0], league="League Two"),
+            striker_row(9, "Covered", [105.0, 97.0], league="Allsvenskan"),
+            striker_row(10, "Moved in", [110.0, 95.0], season="22/23", t=2023.0, league="League Two"),
+            striker_row(10, "Moved in", [108.0, 96.0], league="Fortuna Liga"),  # his latest league is what counts
+            striker_row(11, "Moved out", [110.0, 95.0], season="22/23", t=2023.0, league="Championship"),
+            striker_row(11, "Moved out", [110.0, 95.0], league="Serie B")]
+    head = scores_for(tmp_path, full_page(rows)).technical_for_player(7)["rows"][0]
+    assert [p["name"] for p in head["similar"]] == ["Moved in", "Covered"]
+    assert [p["name"] for p in head["similar_recent"]] == ["Moved in", "Covered"]
+    assert {p["league"] for p in head["similar"] + head["similar_recent"]} <= SIMILAR_LEAGUES
 
 
 def test_a_small_league_pools_its_recent_seasons_and_says_so(tmp_path):
