@@ -21,6 +21,7 @@ interface StageMovementAnalytics {
     archived_from_stage_3: number;
     archived_from_stage_4: number;
     archived_from_stage_5: number;
+    returned_from_archive?: number;
   };
   stage_counts: Record<string, number>;
   stage_ever_counts: Record<string, number>;
@@ -41,7 +42,7 @@ const getDefaultStartDate = () => {
 
 const getTodayIso = () => new Date().toISOString().slice(0, 10);
 
-const metricCards = [
+const movementCards = [
   {
     key: "moved_into_stage_1",
     title: "Moved into Stage 1",
@@ -67,6 +68,9 @@ const metricCards = [
     title: "Stage 4 to Stage 5",
     subtitle: "Players progressed into Stage 5",
   },
+] as const;
+
+const archiveCards = [
   {
     key: "archived_from_stage_1",
     title: "Archived from Stage 1",
@@ -92,7 +96,17 @@ const metricCards = [
     title: "Archived from Stage 5",
     subtitle: "Players removed after Stage 5 review",
   },
+  {
+    key: "returned_from_archive",
+    title: "Returned from archive",
+    subtitle: "Unique players moved back into an active stage",
+  },
 ] as const;
+
+const metricGroups = [
+  { title: "Moved stages", cards: movementCards, columns: 5 },
+  { title: "Archive", cards: archiveCards, columns: 6 },
+];
 
 const stageCountCards = ALL_STAGES.map(stage => ({ key: stage, title: stage }));
 
@@ -248,25 +262,30 @@ const StageMovementAnalyticsTab: React.FC = () => {
           {" "}({formatDate(data.window_start)} to {formatDate(data.window_end)})
         </span>
       </div>
-      <Row className="g-3">
-        {metricCards.map((metric) => (
-          <Col key={metric.key} xl={4} md={6}>
-            <Card className="shadow-sm h-100 hover-card">
-              <Card.Body>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {metric.title}
-                </div>
-                <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1, marginTop: "0.45rem" }}>
-                  {data.metrics[metric.key].toLocaleString("en-GB")}
-                </div>
-                <div style={{ fontSize: "0.82rem", color: "var(--color-text-muted)", marginTop: "0.5rem" }}>
-                  {metric.subtitle}
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      {metricGroups.map(({ title, cards, columns }) => (
+        <div key={title} className="mt-3">
+          <h3 className="small fw-bold mb-2">{title}</h3>
+          <Row xs={1} sm={2} md={3} xl={columns} className="g-3">
+            {cards.map((metric) => (
+              <Col key={metric.key}>
+                <Card className="shadow-sm h-100 hover-card">
+                  <Card.Body>
+                    <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      {metric.title}
+                    </div>
+                    <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--color-text)", lineHeight: 1.1, marginTop: "0.45rem" }}>
+                      {data.metrics[metric.key]?.toLocaleString("en-GB") ?? "—"}
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--color-text-muted)", marginTop: "0.5rem" }}>
+                      {metric.subtitle}
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
+      ))}
 
       <div className="mb-1 mt-4" style={{ fontSize: "0.9rem", fontWeight: 700, color: "var(--color-text)" }}>
         Unique players who appeared in stages

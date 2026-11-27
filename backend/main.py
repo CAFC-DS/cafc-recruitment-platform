@@ -17010,6 +17010,7 @@ def get_stage_movement_analytics(
     """Get shortlist stage movement analytics for a selected date window.
 
     - Move metrics (transitions) are counted over the start_date..end_date window.
+      Returns from archive count distinct players across all active stages.
     - Stage occupancy (stage_counts) is a point-in-time snapshot of how many
       players sit in each stage as of `as_of_date`.
     - Cumulative presence (stage_ever_counts) counts how many players spent any
@@ -17107,6 +17108,7 @@ def get_stage_movement_analytics(
 
         # 1. Stage MOVE metrics over the selected window. Dated by EFFECTIVE_START
         #    so legacy import rows (NULL CHANGED_AT) still count toward entries.
+        active_stage_placeholders = ", ".join(["%s"] * len(ACTIVE_RECRUITMENT_STAGES))
         cursor.execute(
             f"""
             SELECT
@@ -17119,14 +17121,18 @@ def get_stage_movement_analytics(
                 COUNT_IF(psh.OLD_STAGE = 'Stage 3' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_3,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 4' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_4,
                 COUNT_IF(psh.OLD_STAGE = 'Stage 4' AND psh.NEW_STAGE = 'Stage 5') AS moved_stage_4_to_5,
-                COUNT_IF(psh.OLD_STAGE = 'Stage 5' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_5
+                COUNT_IF(psh.OLD_STAGE = 'Stage 5' AND psh.NEW_STAGE = 'Archived') AS archived_from_stage_5,
+                COUNT(DISTINCT CASE
+                    WHEN psh.OLD_STAGE = 'Archived' AND psh.NEW_STAGE IN ({active_stage_placeholders})
+                    THEN {PLAYER_KEY}
+                END) AS returned_from_archive
             FROM {core_table('player_stage_history')} psh
             {list_join}
             WHERE {EFFECTIVE_START} >= %s
               AND {EFFECTIVE_START} < DATEADD(day, 1, %s::DATE)
               {position_clause}{FIRST_TEAM_ONLY}
             """,
-            [window_start.isoformat(), window_end.isoformat(), *position_params],
+            [*ACTIVE_RECRUITMENT_STAGES, window_start.isoformat(), window_end.isoformat(), *position_params],
         )
         row = cursor.fetchone() or {}
 
@@ -17239,6 +17245,7 @@ def get_stage_movement_analytics(
                 "moved_stage_4_to_5": int(row.get("MOVED_STAGE_4_TO_5") or 0),
                 "archived_from_stage_5": int(row.get("ARCHIVED_FROM_STAGE_5") or 0),
                 "archived_from_stage_4": int(row.get("ARCHIVED_FROM_STAGE_4") or 0),
+                "returned_from_archive": int(row.get("RETURNED_FROM_ARCHIVE") or 0),
             },
             "stage_counts": stage_counts,
             "stage_ever_counts": stage_ever_counts,
