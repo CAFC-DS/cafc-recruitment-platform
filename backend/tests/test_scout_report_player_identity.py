@@ -21,10 +21,12 @@ def _fetch_report(monkeypatch, player_row_tail):
     )
     cursor = MagicMock()
     cursor.fetchone.return_value = head + player_row_tail
-    cursor.fetchall.return_value = [("Passing", 3)]
+    # attribute scores, then the position's attribute groups (POSITION_ATTRIBUTES)
+    cursor.fetchall.side_effect = [[("Passing", 3)], [("Passing", "ATTACKING // IN POSSESSION")]]
     conn = MagicMock()
     conn.cursor.return_value = cursor
     monkeypatch.setattr(main, "get_snowflake_connection", lambda: conn)
+    monkeypatch.setattr(main, "_attribute_groups_cache", {})  # each test reads the groups afresh
     return asyncio.run(main.get_single_scout_report(1, current_user=MagicMock()))
 
 
@@ -32,6 +34,7 @@ def test_external_player_returns_universal_id_and_squad(monkeypatch):
     report = _fetch_report(monkeypatch, ("Correct Costinha FC", "external", 111, None))
     assert report["player_id"] == "external_111"
     assert report["squad_name"] == "Correct Costinha FC"
+    assert report["attribute_groups"] == {"Passing": "ATTACKING"}
 
 
 def test_internal_player_returns_universal_id_and_squad(monkeypatch):
