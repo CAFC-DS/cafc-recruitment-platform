@@ -32,8 +32,13 @@ def test_stage5_update_preserves_history_and_refreshes_counts(bulk):
 
 
 def test_stage5_analytics_contains_current_historical_and_movement_counts():
+    list_name = main.STAGE_LIST_NAMES[0]
     cursor = MagicMock()
-    cursor.fetchone.return_value = {'MOVED_STAGE_4_TO_5': 26, 'ARCHIVED_FROM_STAGE_5': 2}
+    cursor.fetchone.return_value = {
+        'MOVED_STAGE_4_TO_5': 26,
+        'ARCHIVED_FROM_STAGE_5': 2,
+        'RETURNED_FROM_ARCHIVE': 3,
+    }
     cursor.fetchall.side_effect = [[{'STAGE': 'Stage 5', 'PLAYER_COUNT': 26}], [{'STAGE': 'Stage 5', 'PLAYER_COUNT': 28}]]
     connection = MagicMock()
     connection.cursor.return_value = cursor
@@ -43,12 +48,17 @@ def test_stage5_analytics_contains_current_historical_and_movement_counts():
          patch.object(main, 'ensure_player_lists_category_column'):
         result = asyncio.run(main.get_stage_movement_analytics(
             current_user=SimpleNamespace(role=main.ROLE_ADMIN),
-            start_date='2026-01-01', end_date='2026-12-31', as_of_date=date.today().isoformat()))
+            start_date='2026-01-01', end_date='2026-12-31',
+            as_of_date=date.today().isoformat(), lists=list_name))
     assert result['stage_counts']['Stage 5'] == 26
     assert result['stage_counts']['Stage 4'] == 0
     assert result['stage_ever_counts']['Stage 5'] == 28
     assert result['metrics']['moved_stage_4_to_5'] == 26
     assert result['metrics']['archived_from_stage_5'] == 2
+    assert result['metrics']['returned_from_archive'] == 3
+    assert cursor.execute.call_args_list[0].args[1] == [
+        *main.ACTIVE_RECRUITMENT_STAGES, '2026-01-01', '2026-12-31', list_name,
+    ]
 
 
 @pytest.mark.parametrize('role', [main.ROLE_SCOUT, main.ROLE_MANAGER])
